@@ -1,0 +1,85 @@
+import { type NextRequest, NextResponse } from "next/server"
+
+const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
+
+type RouteContext = {
+  params: Promise<{ id: string }>
+}
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  try {
+    const { id } = await params
+    console.log(`[v0] Proxy: Fetching client ${id} from Python API`)
+
+    const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store"
+    })
+
+    console.log("Aqui el response", response);
+    
+
+    if (!response.ok) {
+      console.error(`[v0] Proxy: Client fetch failed with status ${response.status}`)
+      return NextResponse.json({ error: "Failed to fetch client" }, { status: response.status })
+    }
+
+    const data = await response.json()
+    console.log("[v0] Proxy: Successfully fetched client")
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("[v0] Proxy error fetching client:", error)
+    return NextResponse.json({ error: "Failed to fetch client" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+
+    console.log(`[v0] Proxy: Updating client ${id}`)
+
+    const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    })
+
+    if (!response.ok) {
+      console.error(`[v0] Proxy: Client update failed with status ${response.status}`)
+      return NextResponse.json({ error: "Failed to update client" }, { status: response.status })
+    }
+
+    const data = await response.json()
+    console.log("[v0] Proxy: Successfully updated client")
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("[v0] Proxy error updating client:", error)
+    return NextResponse.json({ error: "Failed to update client" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  try {
+    const { id } = await params
+    console.log(`[v0] Proxy: Deleting client ${id}`)
+
+    const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    if (!response.ok) {
+      console.error(`[v0] Proxy: Client deletion failed with status ${response.status}`)
+      return NextResponse.json({ error: "Failed to delete client" }, { status: response.status })
+    }
+
+    console.log("[v0] Proxy: Successfully deleted client")
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[v0] Proxy error deleting client:", error)
+    return NextResponse.json({ error: "Failed to delete client" }, { status: 500 })
+  }
+}

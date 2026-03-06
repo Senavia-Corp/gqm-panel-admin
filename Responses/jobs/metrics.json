@@ -1,0 +1,90 @@
+{
+    "null_status": {
+        "count": 0,
+        "pct": 0.0
+    },
+    "rows": [
+        {
+            "count": 48,
+            "pct": 1.53,
+            "status": "Assigned/P. Quote"
+        },
+        {
+            "count": 811,
+            "pct": 25.9,
+            "status": "Waiting for Approval"
+        },
+        {
+            "count": 47,
+            "pct": 1.5,
+            "status": "Scheduled / Work in Progress"
+        },
+        {
+            "count": 201,
+            "pct": 6.42,
+            "status": "Cancelled"
+        },
+        {
+            "count": 7,
+            "pct": 0.22,
+            "status": "Completed P. INV / POs"
+        },
+        {
+            "count": 120,
+            "pct": 3.83,
+            "status": "Invoiced"
+        },
+        {
+            "count": 33,
+            "pct": 1.05,
+            "status": "HOLD"
+        },
+        {
+            "count": 1356,
+            "pct": 43.31,
+            "status": "PAID"
+        },
+        {
+            "count": 4,
+            "pct": 0.13,
+            "status": "Warranty"
+        },
+        {
+            "count": 1,
+            "pct": 0.03,
+            "status": "Received-Stand By"
+        },
+        {
+            "count": 0,
+            "pct": 0.0,
+            "status": "Assigned-In progress"
+        },
+        {
+            "count": 3,
+            "pct": 0.1,
+            "status": "Completed PVI"
+        },
+        {
+            "count": 475,
+            "pct": 15.17,
+            "status": "Paid"
+        },
+        {
+            "count": 16,
+            "pct": 0.51,
+            "status": "In Progress"
+        },
+        {
+            "count": 9,
+            "pct": 0.29,
+            "status": "Completed PVI / POs"
+        }
+    ],
+    "total": 3131,
+    "type": "ALL",
+    "unknown_status": {
+        "count": 0,
+        "pct": 0.0,
+        "statuses": []
+    }
+}
