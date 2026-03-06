@@ -1,7 +1,16 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from "@/components/ui/alert-dialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 
@@ -15,6 +24,7 @@ interface DeleteChangeOrderDialogProps {
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
 
+  /** Called after a successful delete. Parent uses its own copy of the formula. */
   onDeleted?: () => void
 }
 
@@ -55,6 +65,7 @@ export function DeleteChangeOrderDialog({
 
       toast.success("Change order deleted")
       onOpenChange(false)
+      // ✅ Parent already has the formula from targetChangeOrder — no need to pass it here
       onDeleted?.()
     } catch (e: any) {
       console.error(e)
@@ -71,7 +82,8 @@ export function DeleteChangeOrderDialog({
           <AlertDialogTitle>Delete Change Order</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to delete{" "}
-            <span className="font-medium">{changeOrderName || changeOrderId}</span>? This action cannot be undone.
+            <span className="font-medium">{changeOrderName || changeOrderId}</span>? This action
+            cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -79,7 +91,9 @@ export function DeleteChangeOrderDialog({
           <div className="space-y-0.5">
             <div className="font-medium">Sync Podio</div>
             <div className="text-sm text-muted-foreground">
-              {syncPodio ? `Enabled${yearForPodio ? ` (year: ${yearForPodio})` : ""}` : "Disabled"}
+              {syncPodio
+                ? `Enabled${yearForPodio ? ` (year: ${yearForPodio})` : ""}`
+                : "Disabled"}
             </div>
           </div>
           <Switch checked={syncPodio} onCheckedChange={(v) => setSyncPodio(!!v)} />
@@ -87,7 +101,11 @@ export function DeleteChangeOrderDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={loading}>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={loading}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>

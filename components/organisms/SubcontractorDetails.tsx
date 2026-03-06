@@ -26,6 +26,7 @@ import { CreateChangeOrderDialog } from "@/components/organisms/CreateChangeOrde
 import { Pencil, Trash2 } from "lucide-react"
 import { DeleteChangeOrderDialog } from "@/components/organisms/DeleteChangeOrderDialog"
 import { DeleteOrderDialog } from "./DeleteJobOrderDialog"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface SubcontractorDetailsProps {
   subcontractor: Subcontractor
@@ -94,6 +95,23 @@ function normalizeEmails(raw: any): string[] {
   return Array.from(new Set(cleaned))
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: PATCH Adj_formula on a single Order
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function patchOrderAdjFormula(orderId: string, newAdjFormula: number): Promise<void> {
+  const res = await apiFetch(`/api/order/${encodeURIComponent(orderId)}?sync_podio=false`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ Adj_formula: newAdjFormula }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const msg = (err as any)?.detail ?? (err as any)?.error ?? `Error ${res.status}`
+    throw new Error(`Failed to update Order Adj_formula: ${msg}`)
+  }
+}
+
 export function SubcontractorDetails({
   subcontractor,
   onBack,
@@ -112,7 +130,7 @@ export function SubcontractorDetails({
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
   const [loadingOrders, setLoadingOrders] = useState<boolean>(false)
 
-  // ✅ change order state
+  // change order state
   const [createChOpen, setCreateChOpen] = useState(false)
   const [targetOrderForCh, setTargetOrderForCh] = useState<any | null>(null)
 
@@ -123,9 +141,7 @@ export function SubcontractorDetails({
   const [deleteOrderOpen, setDeleteOrderOpen] = useState(false)
   const [targetOrderForDelete, setTargetOrderForDelete] = useState<any | null>(null)
 
-  console.log("Job Podio Id en sub details", jobPodioId);
-
-  // ✅ Memoized fetch (fix: no double useEffect, no loops)
+  // ── Memoized fetch ──────────────────────────────────────────────────────
   const fetchOrdersForJobAndSub = useCallback(async () => {
     try {
       setLoadingOrders(true)
@@ -162,7 +178,6 @@ export function SubcontractorDetails({
 
       const mapped = ordersData.map((o) => ({
         ...o,
-        // ✅ this is critical so DeleteOrderDialog can detach estimate costs
         Items: o.estimate_costs ?? o.Items ?? o.items ?? [],
         Formula: o.Formula ?? o.formula ?? 0,
         Adj_formula: o.Adj_formula ?? o.adj_formula ?? 0,
@@ -178,18 +193,93 @@ export function SubcontractorDetails({
     }
   }, [subcontractor?.ID_Subcontractor, jobId])
 
-  // ✅ Single effect
   useEffect(() => {
     fetchOrdersForJobAndSub()
   }, [fetchOrdersForJobAndSub])
 
-  // (opcional) mock
   useEffect(() => {
     const subChangeOrders = mockChangeOrders.filter(
       (co) => co.ID_Subcontractor === subcontractor.ID_Subcontractor && co.ID_Jobs === jobId,
     )
     setChangeOrders(subChangeOrders)
   }, [subcontractor, jobId])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Adj_formula PATCH helpers — called after each change order mutation
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * After CREATE: add formula to Adj_formula of the target order.
+   */
+  const handleAfterCreate = useCallback(
+    async (orderId: string, addedFormula: number) => {
+      const order = orders.find((o) => o.ID_Order === orderId)
+      if (!order) {
+        await fetchOrdersForJobAndSub()
+        return
+      }
+      const currentAdj = Number(order.Adj_formula ?? 0)
+      try {
+        await patchOrderAdjFormula(orderId, currentAdj + addedFormula)
+      } catch (err) {
+        console.error("[change-order] patchOrderAdjFormula (create):", err)
+      } finally {
+        await fetchOrdersForJobAndSub()
+      }
+    },
+    [orders, fetchOrdersForJobAndSub],
+  )
+
+  /**
+   * After EDIT: adjust Adj_formula by the delta (newFormula - oldFormula).
+   */
+  const handleAfterEdit = useCallback(
+    async (orderId: string, oldFormula: number, newFormula: number) => {
+      const delta = newFormula - oldFormula
+      if (delta === 0) {
+        await fetchOrdersForJobAndSub()
+        return
+      }
+      const order = orders.find((o) => o.ID_Order === orderId)
+      if (!order) {
+        await fetchOrdersForJobAndSub()
+        return
+      }
+      const currentAdj = Number(order.Adj_formula ?? 0)
+      try {
+        await patchOrderAdjFormula(orderId, currentAdj + delta)
+      } catch (err) {
+        console.error("[change-order] patchOrderAdjFormula (edit):", err)
+      } finally {
+        await fetchOrdersForJobAndSub()
+      }
+    },
+    [orders, fetchOrdersForJobAndSub],
+  )
+
+  /**
+   * After DELETE: subtract formula from Adj_formula of the target order.
+   */
+  const handleAfterDelete = useCallback(
+    async (orderId: string, removedFormula: number) => {
+      const order = orders.find((o) => o.ID_Order === orderId)
+      if (!order) {
+        await fetchOrdersForJobAndSub()
+        return
+      }
+      const currentAdj = Number(order.Adj_formula ?? 0)
+      try {
+        await patchOrderAdjFormula(orderId, currentAdj - removedFormula)
+      } catch (err) {
+        console.error("[change-order] patchOrderAdjFormula (delete):", err)
+      } finally {
+        await fetchOrdersForJobAndSub()
+      }
+    },
+    [orders, fetchOrdersForJobAndSub],
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const formula = orders.reduce((sum, order) => sum + (order.Formula || 0), 0)
   const adjFormula = orders.reduce((sum, order) => sum + (order.Adj_formula || 0), 0)
@@ -531,6 +621,7 @@ export function SubcontractorDetails({
                                   className="h-8 w-8"
                                   title="Delete"
                                   onClick={() => {
+                                    setTargetOrderForCh(order)   // ← needed for delete too
                                     setTargetChangeOrder(co)
                                     setDeleteChOpen(true)
                                   }}
@@ -566,7 +657,7 @@ export function SubcontractorDetails({
                   subcontractorId={subcontractor?.ID_Subcontractor ?? ""}
                 />
 
-                {/* Create Change Order */}
+                {/* ── Create Change Order ──────────────────────────────────── */}
                 {targetOrderForCh?.ID_Order && (
                   <CreateChangeOrderDialog
                     open={createChOpen}
@@ -579,13 +670,17 @@ export function SubcontractorDetails({
                     orderId={String(targetOrderForCh.ID_Order)}
                     defaultSyncPodio={defaultSyncPodio}
                     jobYearForPodioSync={jobYearForPodioSync}
-                    onCreated={async () => {
-                      await fetchOrdersForJobAndSub()
+                    onCreated={async (createdFormula?: number) => {
+                      // PATCH Order: add createdFormula to Adj_formula
+                      await handleAfterCreate(
+                        String(targetOrderForCh.ID_Order),
+                        Number(createdFormula ?? 0),
+                      )
                     }}
                   />
                 )}
 
-                {/* Edit Change Order */}
+                {/* ── Edit Change Order ────────────────────────────────────── */}
                 {targetOrderForCh?.ID_Order && targetChangeOrder?.ID_ChangeOrder && (
                   <CreateChangeOrderDialog
                     open={editChOpen}
@@ -606,13 +701,18 @@ export function SubcontractorDetails({
                       ChangeOrderFormula: targetChangeOrder.ChangeOrderFormula,
                       State: targetChangeOrder.State,
                     }}
-                    onUpdated={async () => {
-                      await fetchOrdersForJobAndSub()
+                    onUpdated={async (newFormula?: number) => {
+                      // PATCH Order: adjust Adj_formula by delta
+                      await handleAfterEdit(
+                        String(targetOrderForCh.ID_Order),
+                        Number(targetChangeOrder.ChangeOrderFormula ?? 0),
+                        Number(newFormula ?? targetChangeOrder.ChangeOrderFormula ?? 0),
+                      )
                     }}
                   />
                 )}
 
-                {/* Delete Change Order */}
+                {/* ── Delete Change Order ──────────────────────────────────── */}
                 {targetChangeOrder?.ID_ChangeOrder && (
                   <DeleteChangeOrderDialog
                     open={deleteChOpen}
@@ -625,7 +725,11 @@ export function SubcontractorDetails({
                     defaultSyncPodio={defaultSyncPodio}
                     jobYearForPodioSync={jobYearForPodioSync}
                     onDeleted={async () => {
-                      await fetchOrdersForJobAndSub()
+                      // PATCH Order: subtract removed formula from Adj_formula
+                      await handleAfterDelete(
+                        String(targetOrderForCh?.ID_Order ?? ""),
+                        Number(targetChangeOrder.ChangeOrderFormula ?? 0),
+                      )
                     }}
                   />
                 )}

@@ -15,7 +15,7 @@ import { apiFetch } from "@/lib/apiFetch"
 type ChangeOrderFormState = {
   Name: string
   Description?: string
-  ChangeOrderFormula: string // lo manejamos como string en UI
+  ChangeOrderFormula: string
   State: "Pending" | "Approved" | "Rejected" | ""
   syncPodio: boolean
 }
@@ -27,7 +27,7 @@ interface CreateChangeOrderDialogProps {
   onOpenChange: (open: boolean) => void
 
   mode?: Mode
-  changeOrderId?: string // requerido en edit
+  changeOrderId?: string // required in edit mode
 
   jobId: string
   orderId: string
@@ -43,8 +43,16 @@ interface CreateChangeOrderDialogProps {
     State?: string | null
   }
 
-  onCreated?: () => void
-  onUpdated?: () => void
+  /**
+   * Called after successful CREATE.
+   * Receives the formula value so the parent can update Adj_formula.
+   */
+  onCreated?: (formula: number) => void
+  /**
+   * Called after successful EDIT.
+   * Receives the new formula value so the parent can calculate the delta.
+   */
+  onUpdated?: (newFormula: number) => void
 }
 
 const STATES = ["Pending", "Approved", "Rejected"] as const
@@ -76,7 +84,7 @@ export function CreateChangeOrderDialog({
     syncPodio: initialSync,
   })
 
-  // Prefill cuando abre (create limpio / edit con data)
+  // Prefill on open
   useEffect(() => {
     if (!open) return
 
@@ -117,18 +125,17 @@ export function CreateChangeOrderDialog({
       return
     }
 
+    const formulaValue = Number(form.ChangeOrderFormula)
+
     const payload = {
       Name: form.Name.trim(),
       Description: form.Description?.trim() || null,
-      ChangeOrderFormula: Number(form.ChangeOrderFormula),
+      ChangeOrderFormula: formulaValue,
       State: form.State,
       ID_Jobs: jobId,
       ID_Order: orderId,
-      // si tu backend necesita esto para sync podio:
       job_podio_id: jobPodioId ?? null,
     }
-    
-    
 
     const qs = new URLSearchParams()
     qs.set("sync_podio", String(!!form.syncPodio))
@@ -157,8 +164,10 @@ export function CreateChangeOrderDialog({
       toast.success(isEdit ? "Change order updated" : "Change order created")
 
       onOpenChange(false)
-      if (isEdit) onUpdated?.()
-      else onCreated?.()
+
+      // ✅ Pass formula value to parent so it can update Adj_formula on the Order
+      if (isEdit) onUpdated?.(formulaValue)
+      else onCreated?.(formulaValue)
     } catch (e: any) {
       console.error(e)
       toast.error(e?.message || "Something went wrong")

@@ -53,20 +53,20 @@ interface Client {
 
 function normalizeClient(raw: any): Client {
   return {
-    Address: raw?.Address ?? raw?.address ?? "",
-    Client_Community: raw?.Client_Community ?? raw?.clientCommunity ?? raw?.Client_community ?? "",
-    Client_Status: raw?.Client_Status ?? raw?.status ?? "Active",
-    Email_Address: raw?.Email_Address ?? raw?.email ?? "",
-    ID_Client: raw?.ID_Client ?? raw?.id ?? raw?.ID ?? "",
+    Address:              raw?.Address              ?? raw?.address               ?? "",
+    Client_Community:     raw?.Client_Community     ?? raw?.clientCommunity       ?? raw?.Client_community ?? "",
+    Client_Status:        raw?.Client_Status        ?? raw?.status                ?? "Active",
+    Email_Address:        raw?.Email_Address        ?? raw?.email                 ?? "",
+    ID_Client:            raw?.ID_Client            ?? raw?.id                    ?? raw?.ID ?? "",
     ID_Community_Tracking: raw?.ID_Community_Tracking ?? raw?.communityTrackingId ?? null,
-    Parent_Company: raw?.Parent_Company ?? raw?.companyName ?? raw?.parentCompany ?? "",
-    Parent_Mgmt_Company: raw?.Parent_Mgmt_Company ?? raw?.parentMgmtCompany ?? raw?.companyName ?? "",
-    Phone_Number: raw?.Phone_Number ?? raw?.phone ?? "",
-    Prop_Manager: raw?.Prop_Manager ?? raw?.name ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
-    Website: raw?.Website ?? raw?.website ?? "",
-    jobs: raw?.jobs ?? [],
-    property_manager: raw?.property_manager ?? raw?.propertyManager ?? [],
-    property_mgmt_co: raw?.property_mgmt_co ?? raw?.propertyMgmtCo ?? null,
+    Parent_Company:       raw?.Parent_Company       ?? raw?.companyName           ?? raw?.parentCompany ?? "",
+    Parent_Mgmt_Company:  raw?.Parent_Mgmt_Company  ?? raw?.parentMgmtCompany     ?? raw?.companyName ?? "",
+    Phone_Number:         raw?.Phone_Number         ?? raw?.phone                 ?? "",
+    Prop_Manager:         raw?.Prop_Manager         ?? raw?.name                  ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
+    Website:              raw?.Website              ?? raw?.website               ?? "",
+    jobs:                 raw?.jobs                 ?? [],
+    property_manager:     raw?.property_manager     ?? raw?.propertyManager       ?? [],
+    property_mgmt_co:     raw?.property_mgmt_co     ?? raw?.propertyMgmtCo        ?? null,
   }
 }
 
@@ -79,7 +79,7 @@ export async function fetchJobs(
     type?:   JobType
     status?: string
     year?:   string
-    search?: string   // ← NEW
+    search?: string
   }
 ): Promise<{ jobs: JobDTO[]; total: number }> {
   try {
@@ -89,12 +89,12 @@ export async function fetchJobs(
     if (filters?.type)   params.set("type",   filters.type)
     if (filters?.year)   params.set("year",   filters.year)
     if (filters?.status) params.set("status", filters.status)
-    if (filters?.search) params.set("search", filters.search)  // ← NEW
+    if (filters?.search) params.set("search", filters.search)
 
     const response = await fetch(`${JOBS_API_URL}?${params.toString()}`, {
-      method: "GET",
+      method:  "GET",
       headers: { "Content-Type": "application/json" },
-      cache: "no-store",
+      cache:   "no-store",
     })
 
     if (!response.ok) {
@@ -116,9 +116,9 @@ export async function fetchJobs(
 export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
   try {
     const response = await fetch(`${JOBS_API_URL}/${encodeURIComponent(idJob)}`, {
-      method: "GET",
+      method:  "GET",
       headers: { "Content-Type": "application/json" },
-      cache: "no-store",
+      cache:   "no-store",
     })
     if (response.status === 404) return null
     if (!response.ok) {
@@ -135,9 +135,9 @@ export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
 export async function fetchClients(): Promise<Client[]> {
   try {
     const response = await fetch("/api/clients", {
-      method: "GET",
+      method:  "GET",
       headers: { "Content-Type": "application/json" },
-      cache: "no-store",
+      cache:   "no-store",
     })
     if (!response.ok) {
       const err = await response.text().catch(() => "")
@@ -151,19 +151,19 @@ export async function fetchClients(): Promise<Client[]> {
     console.error("[jobs-service] fetchClients error:", error)
     return mockClients.map((c) =>
       normalizeClient({
-        Address: c.address,
-        Client_Community: "Sample Community",
-        Client_Status: c.status,
-        Email_Address: c.email,
-        ID_Client: c.id,
-        Parent_Company: c.companyName,
-        Parent_Mgmt_Company: c.companyName,
-        Phone_Number: c.phone,
-        Prop_Manager: c.name,
-        Website: "",
-        jobs: [],
-        property_manager: [],
-        property_mgmt_co: null,
+        Address:               c.address,
+        Client_Community:      "Sample Community",
+        Client_Status:         c.status,
+        Email_Address:         c.email,
+        ID_Client:             c.id,
+        Parent_Company:        c.companyName,
+        Parent_Mgmt_Company:   c.companyName,
+        Phone_Number:          c.phone,
+        Prop_Manager:          c.name,
+        Website:               "",
+        jobs:                  [],
+        property_manager:      [],
+        property_mgmt_co:      null,
         ID_Community_Tracking: null,
       })
     )
@@ -172,7 +172,7 @@ export async function fetchClients(): Promise<Client[]> {
 
 // ─── WRITE operations ─────────────────────────────────────────────────────────
 
-type CreateJobOptions = { sync_podio?: boolean }
+type CreateJobOptions = { sync_podio?: boolean; year?: number }
 type UpdateJobOptions = { sync_podio?: boolean }
 type DeleteJobOptions = { sync_podio?: boolean; year?: number }
 
@@ -183,9 +183,16 @@ export async function createJob(
   const sync = opts?.sync_podio ?? false
   const url  = `${JOBS_API_URL}?sync_podio=${sync ? "true" : "false"}`
 
+  // ── Include year in the body so the proxy can forward it as a query param ──
+  // The proxy strips `year` from the body and appends it to the Python URL.
+  const body = {
+    ...payload,
+    ...(sync && opts?.year ? { year: opts.year } : {}),
+  }
+
   const response = await apiFetch(url, {
     method: "POST",
-    body:   JSON.stringify(payload),
+    body:   JSON.stringify(body),
   })
 
   if (!response.ok) {

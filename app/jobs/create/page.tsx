@@ -18,7 +18,6 @@ import { useToast } from "@/hooks/use-toast"
 import { fetchClients, createJob } from "@/lib/services/jobs-service"
 import type { JobType, JobStatus } from "@/lib/types"
 
-// ✅ Reusar selector del Job Detail (buscador + paginación)
 import { ClientSelect } from "@/components/organisms/ClientSelect"
 
 import {
@@ -48,20 +47,22 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<JobType, JobStatus[]> = {
   PAR: ["In Progress", "Completed PVI / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
+const PODIO_YEAR_OPTIONS = ["2026", "2025", "2024", "2023"]
+
 export default function CreateJobPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [userLoading, setUserLoading] = useState(true)
+  const [mounted, setMounted]           = useState(false)
+  const [user, setUser]                 = useState<any>(null)
+  const [userLoading, setUserLoading]   = useState(true)
 
-  // ✅ mantenemos initialClients para precargar y evitar “pantalla vacía”
-  const [clients, setClients] = useState<any[]>([])
+  const [clients, setClients]               = useState<any[]>([])
   const [loadingClients, setLoadingClients] = useState(true)
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]     = useState(false)
   const [syncPodio, setSyncPodio] = useState(false)
+  const [yearSync, setYearSync]   = useState<string>("")
 
   const [formData, setFormData] = useState<{
     jobType: JobType | ""
@@ -69,7 +70,9 @@ export default function CreateJobPage() {
     projectLocation: string
     status: JobStatus | ""
     dateAssigned: string
+    dateAssignedEnd: string         // ← NEW
     estimatedStartDate: string
+    estimatedStartDateEnd: string   // ← NEW
     estimatedDuration: string
     dateReceived: string
     additionalDetail: string
@@ -81,7 +84,9 @@ export default function CreateJobPage() {
     projectLocation: "",
     status: "",
     dateAssigned: "",
+    dateAssignedEnd: "",            // ← NEW
     estimatedStartDate: "",
+    estimatedStartDateEnd: "",      // ← NEW
     estimatedDuration: "",
     dateReceived: "",
     additionalDetail: "",
@@ -89,18 +94,14 @@ export default function CreateJobPage() {
     clientId: "",
   })
 
-  // ✅ Required condicional según Job Type
-  const isDateAssignedRequired = useMemo(() => formData.jobType === "QID" || formData.jobType === "PAR", [formData.jobType])
+  const isDateAssignedRequired   = useMemo(() => formData.jobType === "QID" || formData.jobType === "PAR", [formData.jobType])
   const isEstimatedStartRequired = useMemo(() => formData.jobType === "PTL", [formData.jobType])
 
   useEffect(() => {
     setMounted(true)
 
     const userData = localStorage.getItem("user_data")
-    if (!userData) {
-      router.push("/login")
-      return
-    }
+    if (!userData) { router.push("/login"); return }
 
     try {
       setUser(JSON.parse(userData))
@@ -111,7 +112,6 @@ export default function CreateJobPage() {
       return
     }
 
-    // precarga (opcional) para que el ClientSelect abra con data inmediata
     fetchClients()
       .then((data) => {
         setClients(Array.isArray(data) ? data : [])
@@ -132,32 +132,35 @@ export default function CreateJobPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // ✅ obligatorios base
     if (!formData.jobType || !formData.status) {
-      toast({
-        title: "Error",
-        description: "Job Type and Status are required.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Job Type and Status are required.", variant: "destructive" })
       return
     }
 
-    // ✅ obligatorios condicionales
     if (isDateAssignedRequired && !formData.dateAssigned) {
-      toast({
-        title: "Error",
-        description: "Date Assigned is required for QID and PAR.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Date Assigned is required for QID and PAR.", variant: "destructive" })
+      return
+    }
+
+    // ← NEW
+    if (isDateAssignedRequired && !formData.dateAssignedEnd) {
+      toast({ title: "Error", description: "Date Assigned End is required for QID and PAR.", variant: "destructive" })
       return
     }
 
     if (isEstimatedStartRequired && !formData.estimatedStartDate) {
-      toast({
-        title: "Error",
-        description: "Estimated Start Date is required for PTL.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Estimated Start Date is required for PTL.", variant: "destructive" })
+      return
+    }
+
+    // ← NEW
+    if (isEstimatedStartRequired && !formData.estimatedStartDateEnd) {
+      toast({ title: "Error", description: "Estimated Start Date End is required for PTL.", variant: "destructive" })
+      return
+    }
+
+    if (syncPodio && !yearSync) {
+      toast({ title: "Error", description: "Year is required when Podio Sync is enabled.", variant: "destructive" })
       return
     }
 
@@ -165,35 +168,31 @@ export default function CreateJobPage() {
 
     try {
       const payload = {
-        Job_type: formData.jobType,
-        Job_status: formData.status,
-
-        Project_name: formData.projectName || null,
-        Project_location: formData.projectLocation || null,
-        Date_assigned: formData.dateAssigned || null,
-        Estimated_start_date: formData.estimatedStartDate || null,
-        Estimated_project_duration: formData.estimatedDuration || null,
-        Date_Received: formData.dateReceived || null,
-        Additional_detail: formData.additionalDetail || null,
-        Service_type: formData.serviceType || null,
-        ID_Client: formData.clientId || null,
+        Job_type:                    formData.jobType,
+        Job_status:                  formData.status,
+        Project_name:                formData.projectName           || null,
+        Project_location:            formData.projectLocation        || null,
+        Date_assigned:               formData.dateAssigned           || null,
+        Date_assigned_end:           formData.dateAssignedEnd        || null,   // ← NEW
+        Estimated_start_date:        formData.estimatedStartDate     || null,
+        Estimated_start_date_end:    formData.estimatedStartDateEnd  || null,   // ← NEW
+        Estimated_project_duration:  formData.estimatedDuration      || null,
+        Date_Received:               formData.dateReceived           || null,
+        Additional_detail:           formData.additionalDetail       || null,
+        Service_type:                formData.serviceType            || null,
+        ID_Client:                   formData.clientId               || null,
       }
 
-      const createdJob = await createJob(payload, { sync_podio: syncPodio })
-
-      toast({
-        title: "Success",
-        description: `Job created successfully (${createdJob?.ID_Jobs ?? "OK"})`,
+      const createdJob = await createJob(payload, {
+        sync_podio: syncPodio,
+        year: syncPodio && yearSync ? parseInt(yearSync, 10) : undefined,
       })
 
+      toast({ title: "Success", description: `Job created successfully (${createdJob?.ID_Jobs ?? "OK"})` })
       router.push("/jobs")
     } catch (error) {
       console.error("Error creating job:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create job. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to create job. Please try again.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -218,11 +217,9 @@ export default function CreateJobPage() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar />
 
-      {/* ✅ min-h-0 + overflow-hidden para evitar “scroll fantasma” */}
       <div className="flex flex-1 flex-col overflow-hidden min-h-0">
         <TopBar user={user} />
 
-        {/* ✅ overscroll-contain evita que “se pase” y muestre blanco abajo */}
         <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6">
           <div className="mb-6 flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -234,9 +231,9 @@ export default function CreateJobPage() {
             </div>
           </div>
 
-          {/* ✅ CENTRADO real */}
           <form onSubmit={handleSubmit} className="mx-auto w-full max-w-4xl space-y-6">
-            {/* Sync Podio */}
+
+            {/* ── Podio Sync ────────────────────────────────────────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -244,23 +241,54 @@ export default function CreateJobPage() {
                   Podio Sync
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium">Sync this Job to Podio</p>
-                  <p className="text-sm text-muted-foreground">
-                    If enabled, the backend will create the item in Podio and use Podio formatted ID for ID_Jobs.
-                  </p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium">Sync this Job to Podio</p>
+                    <p className="text-sm text-muted-foreground">
+                      If enabled, the backend will create the item in Podio and use Podio formatted ID for ID_Jobs.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="syncPodio" className="text-sm">
+                      {syncPodio ? "ON" : "OFF"}
+                    </Label>
+                    <Switch
+                      id="syncPodio"
+                      checked={syncPodio}
+                      onCheckedChange={(val) => {
+                        setSyncPodio(val)
+                        if (!val) setYearSync("")
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Label htmlFor="syncPodio" className="text-sm">
-                    {syncPodio ? "ON" : "OFF"}
-                  </Label>
-                  <Switch id="syncPodio" checked={syncPodio} onCheckedChange={setSyncPodio} />
-                </div>
+
+                {syncPodio && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <Label htmlFor="yearSync" className="mb-2 block text-sm font-medium">
+                      Podio Year{" "}
+                      <span className="text-red-500">*</span>
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        Required to route the item to the correct Podio workspace
+                      </span>
+                    </Label>
+                    <Select value={yearSync} onValueChange={setYearSync}>
+                      <SelectTrigger id="yearSync" className="w-[180px] bg-white">
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PODIO_YEAR_OPTIONS.map((y) => (
+                          <SelectItem key={y} value={y}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Job Characteristics */}
+            {/* ── Job Characteristics ───────────────────────────────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -277,16 +305,9 @@ export default function CreateJobPage() {
                     <Select
                       required
                       value={formData.jobType}
-                      onValueChange={(value) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          jobType: value as JobType,
-                          status: "",
-                          // opcional: si cambian de tipo, no forzar limpiar fechas
-                          // dateAssigned: "",
-                          // estimatedStartDate: "",
-                        }))
-                      }}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, jobType: value as JobType, status: "" }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select job type" />
@@ -315,9 +336,7 @@ export default function CreateJobPage() {
                       <SelectContent>
                         {formData.jobType
                           ? STATUS_OPTIONS_BY_JOB_TYPE[formData.jobType].map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s}
-                              </SelectItem>
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
                             ))
                           : null}
                       </SelectContent>
@@ -326,9 +345,7 @@ export default function CreateJobPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="serviceType" className="mb-2 block">
-                    Service Type
-                  </Label>
+                  <Label htmlFor="serviceType" className="mb-2 block">Service Type</Label>
                   <Input
                     id="serviceType"
                     placeholder="e.g., Roof Repair"
@@ -339,7 +356,7 @@ export default function CreateJobPage() {
               </CardContent>
             </Card>
 
-            {/* General Information */}
+            {/* ── General Information ───────────────────────────────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -349,9 +366,7 @@ export default function CreateJobPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="projectName" className="mb-2 block">
-                    Project Name
-                  </Label>
+                  <Label htmlFor="projectName" className="mb-2 block">Project Name</Label>
                   <Input
                     id="projectName"
                     placeholder="Enter project name"
@@ -361,9 +376,7 @@ export default function CreateJobPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="projectLocation" className="mb-2 block">
-                    Project Location
-                  </Label>
+                  <Label htmlFor="projectLocation" className="mb-2 block">Project Location</Label>
                   <Textarea
                     id="projectLocation"
                     placeholder="Enter full address"
@@ -374,9 +387,7 @@ export default function CreateJobPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="additionalDetail" className="mb-2 block">
-                    Additional Detail
-                  </Label>
+                  <Label htmlFor="additionalDetail" className="mb-2 block">Additional Detail</Label>
                   <Textarea
                     id="additionalDetail"
                     placeholder="Any extra notes..."
@@ -388,7 +399,7 @@ export default function CreateJobPage() {
               </CardContent>
             </Card>
 
-            {/* Project Timeline */}
+            {/* ── Project Timeline ──────────────────────────────────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -397,15 +408,18 @@ export default function CreateJobPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+
+                {/* Date Assigned + Date Assigned End */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="dateAssigned" className="mb-2 block">
-                      Date Assigned {isDateAssignedRequired ? <span className="text-red-500">*</span> : null}
-                      {formData.jobType ? (
+                      Date Assigned{" "}
+                      {isDateAssignedRequired ? <span className="text-red-500">*</span> : null}
+                      {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
                           {isDateAssignedRequired ? "(required for QID/PAR)" : "(optional)"}
                         </span>
-                      ) : null}
+                      )}
                     </Label>
                     <Input
                       id="dateAssigned"
@@ -416,14 +430,38 @@ export default function CreateJobPage() {
                     />
                   </div>
 
+                  {/* ← NEW */}
+                  <div>
+                    <Label htmlFor="dateAssignedEnd" className="mb-2 block">
+                      Date Assigned End{" "}
+                      {isDateAssignedRequired ? <span className="text-red-500">*</span> : null}
+                      {formData.jobType && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {isDateAssignedRequired ? "(required for QID/PAR)" : "(optional)"}
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id="dateAssignedEnd"
+                      type="date"
+                      required={isDateAssignedRequired}
+                      value={formData.dateAssignedEnd}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, dateAssignedEnd: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Estimated Start Date + Estimated Start Date End */}
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="estimatedStart" className="mb-2 block">
-                      Estimated Start Date {isEstimatedStartRequired ? <span className="text-red-500">*</span> : null}
-                      {formData.jobType ? (
+                      Estimated Start Date{" "}
+                      {isEstimatedStartRequired ? <span className="text-red-500">*</span> : null}
+                      {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
                           {isEstimatedStartRequired ? "(required for PTL)" : "(optional)"}
                         </span>
-                      ) : null}
+                      )}
                     </Label>
                     <Input
                       id="estimatedStart"
@@ -433,8 +471,29 @@ export default function CreateJobPage() {
                       onChange={(e) => setFormData((prev) => ({ ...prev, estimatedStartDate: e.target.value }))}
                     />
                   </div>
+
+                  {/* ← NEW */}
+                  <div>
+                    <Label htmlFor="estimatedStartEnd" className="mb-2 block">
+                      Estimated Start Date End{" "}
+                      {isEstimatedStartRequired ? <span className="text-red-500">*</span> : null}
+                      {formData.jobType && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {isEstimatedStartRequired ? "(required for PTL)" : "(optional)"}
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id="estimatedStartEnd"
+                      type="date"
+                      required={isEstimatedStartRequired}
+                      value={formData.estimatedStartDateEnd}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, estimatedStartDateEnd: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
+                {/* Estimated Duration + Date Received */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="estimatedDuration" className="mb-2 block">
@@ -449,9 +508,7 @@ export default function CreateJobPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="dateReceived" className="mb-2 block">
-                      Date Received
-                    </Label>
+                    <Label htmlFor="dateReceived" className="mb-2 block">Date Received</Label>
                     <Input
                       id="dateReceived"
                       type="date"
@@ -460,10 +517,11 @@ export default function CreateJobPage() {
                     />
                   </div>
                 </div>
+
               </CardContent>
             </Card>
 
-            {/* Client Assignment */}
+            {/* ── Client Assignment ─────────────────────────────────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -473,10 +531,7 @@ export default function CreateJobPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="client" className="mb-2 block">
-                    Client
-                  </Label>
-
+                  <Label htmlFor="client" className="mb-2 block">Client</Label>
                   {loadingClients ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -486,17 +541,22 @@ export default function CreateJobPage() {
                     <ClientSelect
                       value={formData.clientId || ""}
                       initialClients={clients}
-                      onChange={(selected) => {
+                      onChange={(selected) =>
                         setFormData((prev) => ({ ...prev, clientId: selected?.id ?? "" }))
-                      }}
+                      }
                     />
                   )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* ── Actions ───────────────────────────────────────────────── */}
             <div className="flex gap-4">
-              <Button type="submit" className="bg-gqm-green-dark hover:bg-gqm-green" disabled={loading}>
+              <Button
+                type="submit"
+                className="bg-gqm-green-dark hover:bg-gqm-green"
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -513,6 +573,7 @@ export default function CreateJobPage() {
                 Cancel
               </Button>
             </div>
+
           </form>
         </main>
       </div>
