@@ -14,6 +14,16 @@ import type { UserRole } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { findApplicableMultiplier } from "@/lib/services/multiplier-service"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+// ✅ NEW: Change Orders CRUD component
+import { ChangeOrdersSection } from "@/components/organisms/ChangeOrdersSection"
 
 const TechnicianJobSidebar = dynamic(
   () => import("@/components/organisms/TechnicianJobSidebar").then((mod) => mod.TechnicianJobSidebar),
@@ -29,12 +39,12 @@ const LeadTechnicianPricingView = dynamic(
 // ---------------------------------------------------------------------------
 
 type SyncPhase =
-  | "idle"          // no sync needed (2026+ job, or already has docs)
-  | "checking"      // brief pause before syncing
-  | "syncing"       // POST /api/qbo/sync-full-job/...
-  | "reloading"     // sync done, parent reloading job data
-  | "done"          // all finished
-  | "error"         // sync failed
+  | "idle"
+  | "checking"
+  | "syncing"
+  | "reloading"
+  | "done"
+  | "error"
 
 // ---------------------------------------------------------------------------
 // Props
@@ -54,6 +64,17 @@ type Props = {
   onAdjPricingCalculated: (adjPricing: number) => void
   /** Called after sync completes so the parent can reload the job */
   onSyncComplete?: () => Promise<void>
+  /** Reload job from server (passed down for ChangeOrdersSection) */
+  onReload?: () => Promise<void>
+  /** Podio sync toggle state inherited from JobDetailPage */
+  syncPodio?: boolean
+  /**
+   * Patch the job in the backend (Gqm_final_sold_pricing).
+   * Maps to useJobDetail.patch(). sync_podio handled by each change-order action individually.
+   */
+  onJobUpdate?: (updates: Record<string, any>) => Promise<void>
+  /** Called when Pricing_target selector changes */
+  onPricingTargetChange?: (value: string | null) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +90,20 @@ function getOptionalNumber(sourceObjects: any[], candidates: string[]): number |
         if (v === null || v === undefined || v === "") return null
         const num = Number(v)
         if (!Number.isNaN(num)) return num
+      }
+    }
+  }
+  return null
+}
+
+function getOptionalString(sourceObjects: any[], candidates: string[]): string | null {
+  for (const src of sourceObjects) {
+    if (!src) continue
+    for (const key of candidates) {
+      if (Object.prototype.hasOwnProperty.call(src, key)) {
+        const v = src[key]
+        if (v === null || v === undefined) return null
+        return String(v)
       }
     }
   }
@@ -102,11 +137,6 @@ function parseNumberInput(raw: string):
   return { kind: "number", value: n }
 }
 
-/**
- * Returns the year of the job depending on job type:
- *   QID / PAR -> Date_assigned
- *   PTL       -> Estimated_start_date
- */
 function resolveJobYear(job: any): number | null {
   const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
   const dateStr =
@@ -229,7 +259,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sync banner — shown during QBO migration
+// Sync banner
 // ---------------------------------------------------------------------------
 
 function SyncBanner({ phase, jobYear, errorMessage, onRetry }: {
@@ -486,13 +516,17 @@ function TransactionCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) 
 // Main component
 // ---------------------------------------------------------------------------
 
+const PRICING_TARGET_OPTIONS = ["Yes", "No", "Leadership Approval"] as const
+
 export function JobPricingTab({
   role, jobId, job, isFieldChanged, onPricingFieldChange,
   onMultipliersChanged, onAdjPricingCalculated, onSyncComplete,
+  onReload, syncPodio = false, onJobUpdate: onPatchJob,
+  onPricingTargetChange,
 }: Props) {
-  // ─── ALL hooks must come before any conditional return ───────────────────
-
   const pricingSources = [job?.pricingData ?? job, job]
+
+  // ── Existing pricing fields ───────────────────────────────────────────────
   const gqmFormula            = getOptionalNumber(pricingSources, ["Gqm_formula_pricing"])
   const gqmAdjFormula         = getOptionalNumber(pricingSources, ["Gqm_adj_formula_pricing"])
   const gqmTargetReturnRaw    = getOptionalNumber(pricingSources, ["Gqm_target_return"])
@@ -501,6 +535,23 @@ export function JobPricingTab({
   const gqmFinalSold          = getOptionalNumber(pricingSources, ["Gqm_final_sold_pricing"])
   const gqmFinalPercentageRaw = getOptionalNumber(pricingSources, ["Gqm_final_percentage"])
 
+  // ── NEW: Initial Proposal fields ─────────────────────────────────────────
+  const estimatedRent      = getOptionalNumber(pricingSources, ["Estimated_rent"])
+  const estimatedMaterial  = getOptionalNumber(pricingSources, ["Estimated_material"])
+  const estimatedCity      = getOptionalNumber(pricingSources, ["Estimated_city"])
+  const techFormulaPricing = getOptionalNumber(pricingSources, ["Tech_formula_pricing"])
+
+  // ── NEW: Pricing Target ──────────────────────────────────────────────────
+  const pricingTarget = getOptionalString(pricingSources, ["Pricing_target"])
+
+  // ── NEW: Accounts Receivable fields ──────────────────────────────────────
+  const accReceivable        = getOptionalNumber(pricingSources, ["Acc_receivable"])
+  const gqmFinalFormPricing  = getOptionalNumber(pricingSources, ["Gqm_final_form_pricing"])
+  const gqmFinalAdjForm      = getOptionalNumber(pricingSources, ["Gqm_final_adj_form_pricing"])
+  const gqmFinalTargetReturn = getOptionalNumber(pricingSources, ["Gqm_final_target_return"])
+  const gqmFinalPremInMoney  = getOptionalNumber(pricingSources, ["Gqm_final_prem_in_money"])
+
+  // ── Text states: existing ─────────────────────────────────────────────────
   const [gqmFormulaText,         setGqmFormulaText]         = useState(gqmFormula?.toString() ?? "")
   const [gqmAdjFormulaText,      setGqmAdjFormulaText]      = useState(gqmAdjFormula?.toString() ?? "")
   const [gqmTargetReturnText,    setGqmTargetReturnText]    = useState(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : "")
@@ -509,6 +560,20 @@ export function JobPricingTab({
   const [gqmFinalSoldText,       setGqmFinalSoldText]       = useState(gqmFinalSold?.toString() ?? "")
   const [gqmFinalPercentageText, setGqmFinalPercentageText] = useState(gqmFinalPercentageRaw != null ? String(gqmFinalPercentageRaw * 100) : "")
 
+  // ── Text states: NEW Initial Proposal ────────────────────────────────────
+  const [estimatedRentText,      setEstimatedRentText]      = useState(estimatedRent?.toString() ?? "")
+  const [estimatedMaterialText,  setEstimatedMaterialText]  = useState(estimatedMaterial?.toString() ?? "")
+  const [estimatedCityText,      setEstimatedCityText]      = useState(estimatedCity?.toString() ?? "")
+  const [techFormulaText,        setTechFormulaText]        = useState(techFormulaPricing?.toString() ?? "")
+
+  // ── Text states: NEW Accounts Receivable ─────────────────────────────────
+  const [accReceivableText,        setAccReceivableText]        = useState(accReceivable?.toString() ?? "")
+  const [gqmFinalFormText,         setGqmFinalFormText]         = useState(gqmFinalFormPricing?.toString() ?? "")
+  const [gqmFinalAdjFormText,      setGqmFinalAdjFormText]      = useState(gqmFinalAdjForm?.toString() ?? "")
+  const [gqmFinalTargetReturnText, setGqmFinalTargetReturnText] = useState(gqmFinalTargetReturn?.toString() ?? "")
+  const [gqmFinalPremText,         setGqmFinalPremText]         = useState(gqmFinalPremInMoney?.toString() ?? "")
+
+  // ── Sync text states when job reloads: existing ──────────────────────────
   useEffect(() => setGqmFormulaText(gqmFormula?.toString() ?? ""),                                             [gqmFormula])
   useEffect(() => setGqmAdjFormulaText(gqmAdjFormula?.toString() ?? ""),                                      [gqmAdjFormula])
   useEffect(() => setGqmTargetReturnText(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : ""), [gqmTargetReturnRaw])
@@ -516,6 +581,17 @@ export function JobPricingTab({
   useEffect(() => setGqmPremiumText(gqmPremium?.toString() ?? ""),                                            [gqmPremium])
   useEffect(() => setGqmFinalSoldText(gqmFinalSold?.toString() ?? ""),                                        [gqmFinalSold])
   useEffect(() => setGqmFinalPercentageText(gqmFinalPercentageRaw != null ? String(gqmFinalPercentageRaw * 100) : ""), [gqmFinalPercentageRaw])
+
+  // ── Sync text states when job reloads: NEW ───────────────────────────────
+  useEffect(() => setEstimatedRentText(estimatedRent?.toString() ?? ""),         [estimatedRent])
+  useEffect(() => setEstimatedMaterialText(estimatedMaterial?.toString() ?? ""), [estimatedMaterial])
+  useEffect(() => setEstimatedCityText(estimatedCity?.toString() ?? ""),         [estimatedCity])
+  useEffect(() => setTechFormulaText(techFormulaPricing?.toString() ?? ""),      [techFormulaPricing])
+  useEffect(() => setAccReceivableText(accReceivable?.toString() ?? ""),         [accReceivable])
+  useEffect(() => setGqmFinalFormText(gqmFinalFormPricing?.toString() ?? ""),    [gqmFinalFormPricing])
+  useEffect(() => setGqmFinalAdjFormText(gqmFinalAdjForm?.toString() ?? ""),     [gqmFinalAdjForm])
+  useEffect(() => setGqmFinalTargetReturnText(gqmFinalTargetReturn?.toString() ?? ""), [gqmFinalTargetReturn])
+  useEffect(() => setGqmFinalPremText(gqmFinalPremInMoney?.toString() ?? ""),    [gqmFinalPremInMoney])
 
   // financial docs
   const financialDocs: any[] = Array.isArray(job?.financial_docs) ? job.financial_docs : Array.isArray(job?.financialDocs) ? job.financialDocs : []
@@ -528,36 +604,25 @@ export function JobPricingTab({
   const invoicesTransactionsTotal  = invoicesTransactions.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
   const billsTransactionsTotal     = billsTransactions.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
 
-  // change orders
-  const jobChangeOrdersRaw = job?.change_orders ?? job?.changeOrders ?? []
-  const generalChangeOrders = Array.isArray(jobChangeOrdersRaw)
-    ? jobChangeOrdersRaw.filter((co: any) => { const id = co?.ID_Order ?? null; return id === null || id === undefined || id === "" })
-    : []
-  const totalGeneralChangeOrdersAmount = generalChangeOrders.reduce((sum: number, co: any) => sum + (Number(co?.ChangeOrderFormula) || 0), 0)
-
   // inner tabs
   const [activeTab, setActiveTab] = useState<"analysis" | "invoices" | "bills">("analysis")
 
   // QBO auto-sync state
-  const [syncPhase,     setSyncPhase]     = useState<SyncPhase>("idle")
-  const [syncError,     setSyncError]     = useState<string | null>(null)
-  const [syncAttempted, setSyncAttempted] = useState(false)
+  const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle")
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const jobYear = useMemo(() => resolveJobYear(job), [job])
   const jobCode = useMemo(() => resolveJobCode(job), [job])
 
-  // Refs so async callbacks never capture stale values
   const onSyncCompleteRef = useRef(onSyncComplete)
   useEffect(() => { onSyncCompleteRef.current = onSyncComplete }, [onSyncComplete])
 
-  // Prevent double-trigger across re-renders (ref = no re-render side effect)
   const syncAttemptedRef = useRef(false)
 
   const runSync = async (code: string) => {
     setSyncError(null)
     try {
       setSyncPhase("syncing")
-      console.log("[QBO sync] POST /api/qbo/sync-full-job/" + code)
       const res = await fetch(`/api/qbo/sync-full-job/${code}`, { method: "POST" })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -573,10 +638,6 @@ export function JobPricingTab({
     }
   }
 
-  // Auto-trigger when the user opens invoices/bills on a pre-2026 job with no docs.
-  // IMPORTANT: `job` is NOT in deps intentionally — the parent produces a new object
-  // reference on every render, which would cancel the 600ms timer on each re-render.
-  // We snapshot the values we need at effect call time instead.
   useEffect(() => {
     if (activeTab !== "invoices" && activeTab !== "bills") return
     if (syncAttemptedRef.current) return
@@ -585,14 +646,11 @@ export function JobPricingTab({
     const year = resolveJobYear(job)
     const hasDocs = hasFinancialDocs(job)
 
-    console.log("[QBO sync] effect check →", { activeTab, code, year, hasDocs })
-
-    if (!code) { console.warn("[QBO sync] no job code"); return }
-    if (year === null || year >= 2026) { console.log("[QBO sync] skip — year:", year); return }
-    if (hasDocs) { console.log("[QBO sync] skip — already has docs"); return }
+    if (!code) return
+    if (year === null || year >= 2026) return
+    if (hasDocs) return
 
     syncAttemptedRef.current = true
-    setSyncAttempted(true)
     setSyncPhase("checking")
 
     const timer = setTimeout(() => { void runSync(code) }, 600)
@@ -600,7 +658,7 @@ export function JobPricingTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  // ─── Early return for LEAD_TECHNICIAN (after all hooks) ──────────────────
+  // ── Early return for LEAD_TECHNICIAN ─────────────────────────────────────
   if (role === "LEAD_TECHNICIAN") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -629,6 +687,10 @@ export function JobPricingTab({
 
   const isSyncing = syncPhase === "checking" || syncPhase === "syncing" || syncPhase === "reloading"
 
+  // ── Fallback noops ────────────────────────────────────────────────────────
+  const handleJobUpdate = onPatchJob ?? (async () => {})
+  const handleReload    = onReload   ?? (async () => {})
+
   return (
     <>
       {/* Tab bar */}
@@ -644,12 +706,61 @@ export function JobPricingTab({
         </div>
       </div>
 
-      {/* Analysis */}
+      {/* ── Analysis tab ─────────────────────────────────────────────────── */}
       {activeTab === "analysis" && (
         <>
           {job?.ID_Jobs && gqmFormula != null && (
             <JobMultipliersManager jobId={job.ID_Jobs} formulaPricing={gqmFormula} multipliers={job?.multipliers || []} onMultipliersChanged={onMultipliersChanged} onAdjPricingCalculated={onAdjPricingCalculated} />
           )}
+
+          {/* ── NEW: Initial Proposal Pricing ────────────────────────────── */}
+          <Card>
+            <CardHeader><CardTitle>Initial Proposal Pricing</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="mb-2 block text-sm">Estimated Rent</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={estimatedRentText}
+                  onChange={(e) => setEstimatedRentText(e.target.value)}
+                  onBlur={() => commitNumber("estimatedRent", estimatedRentText)}
+                  className={isFieldChanged("pricing.estimatedRent") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">Estimated Materials</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={estimatedMaterialText}
+                  onChange={(e) => setEstimatedMaterialText(e.target.value)}
+                  onBlur={() => commitNumber("estimatedMaterial", estimatedMaterialText)}
+                  className={isFieldChanged("pricing.estimatedMaterial") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">Estimated City</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={estimatedCityText}
+                  onChange={(e) => setEstimatedCityText(e.target.value)}
+                  onBlur={() => commitNumber("estimatedCity", estimatedCityText)}
+                  className={isFieldChanged("pricing.estimatedCity") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">Tech Formula Pricing</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={techFormulaText}
+                  onChange={(e) => setTechFormulaText(e.target.value)}
+                  onBlur={() => commitNumber("techFormulaPricing", techFormulaText)}
+                  className={isFieldChanged("pricing.techFormulaPricing") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Existing: Pricing Analysis ───────────────────────────────── */}
           <Card>
             <CardHeader><CardTitle>Pricing Analysis</CardTitle></CardHeader>
             <CardContent className="space-y-6">
@@ -691,7 +802,16 @@ export function JobPricingTab({
                 <div className="space-y-3">
                   <div>
                     <Label className="mb-2 block text-sm">GQM (Final Sold) Pricing</Label>
-                    <Input type="text" inputMode="decimal" value={gqmFinalSoldText} onChange={(e) => setGqmFinalSoldText(e.target.value)} onBlur={() => commitNumber("gqmFinalSoldPricing", gqmFinalSoldText)} className={isFieldChanged("pricing.gqmFinalSoldPricing") ? "border-yellow-400 border-2" : ""} />
+                    <Input
+                      type="text" inputMode="decimal"
+                      value={gqmFinalSoldText}
+                      onChange={(e) => setGqmFinalSoldText(e.target.value)}
+                      onBlur={() => commitNumber("gqmFinalSoldPricing", gqmFinalSoldText)}
+                      className={isFieldChanged("pricing.gqmFinalSoldPricing") ? "border-yellow-400 border-2" : ""}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Automatically adjusted when Change Orders are created, edited, or deleted.
+                    </p>
                   </div>
                   <div>
                     <Label className="mb-2 block text-sm">GQM (Final) %</Label>
@@ -699,51 +819,102 @@ export function JobPricingTab({
                   </div>
                 </div>
               </div>
+
+              {/* ── NEW: Pricing Target ─────────────────────────────────── */}
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Target</h3>
+                <div>
+                  <Label className="mb-2 block text-sm">Pricing Target</Label>
+                  <Select
+                    value={pricingTarget ?? ""}
+                    onValueChange={(v) => onPricingTargetChange?.(v || null)}
+                  >
+                    <SelectTrigger className={isFieldChanged("pricing.pricingTarget") ? "border-yellow-400 border-2" : ""}>
+                      <SelectValue placeholder="Select…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRICING_TARGET_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardContent>
           </Card>
-          <Card className="mt-4">
-            <CardHeader>
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <CardTitle>Job Change Orders (General)</CardTitle>
-                </div>
-                <div className="text-sm text-muted-foreground">Total: <span className="font-semibold">{fmtMoney(totalGeneralChangeOrdersAmount)}</span></div>
-              </div>
-            </CardHeader>
+
+          {/* ── Change Orders CRUD ────────────────────────────────────────── */}
+          <ChangeOrdersSection
+            job={job}
+            syncPodio={syncPodio}
+            jobYear={jobYear ?? undefined}
+            onReload={handleReload}
+            onPatchJob={handleJobUpdate}
+          />
+
+          {/* ── NEW: Accounts Receivable ─────────────────────────────────── */}
+          <Card>
+            <CardHeader><CardTitle>Accounts Receivable</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {generalChangeOrders.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No general change orders for this job</div>
-              ) : (
-                <div className="space-y-2">
-                  {generalChangeOrders.map((co: any) => (
-                    <div key={co?.ID_ChangeOrder ?? co?.podio_field ?? Math.random()} className="flex items-center justify-between gap-4 rounded-md border p-3 bg-white">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div className="font-semibold truncate">{co?.ID_ChangeOrder || "—"}</div>
-                          {co?.Name && <div className="text-sm text-muted-foreground truncate">— {co.Name}</div>}
-                        </div>
-                        {co?.Description
-                          ? <div className="mt-1"><ItemDescription text={co.Description} /></div>
-                          : <div className="text-sm text-muted-foreground mt-1">No description</div>}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-semibold">{fmtMoney(Number(co?.ChangeOrderFormula || 0))}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{co?.State || ""}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div>
+                <Label className="mb-2 block text-sm">Accounts Receivable</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={accReceivableText}
+                  onChange={(e) => setAccReceivableText(e.target.value)}
+                  onBlur={() => commitNumber("accReceivable", accReceivableText)}
+                  className={isFieldChanged("pricing.accReceivable") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">GQM Final Form Pricing</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={gqmFinalFormText}
+                  onChange={(e) => setGqmFinalFormText(e.target.value)}
+                  onBlur={() => commitNumber("gqmFinalFormPricing", gqmFinalFormText)}
+                  className={isFieldChanged("pricing.gqmFinalFormPricing") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">GQM Final Adj. Form Pricing</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={gqmFinalAdjFormText}
+                  onChange={(e) => setGqmFinalAdjFormText(e.target.value)}
+                  onBlur={() => commitNumber("gqmFinalAdjFormPricing", gqmFinalAdjFormText)}
+                  className={isFieldChanged("pricing.gqmFinalAdjFormPricing") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">GQM Final Target Return</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={gqmFinalTargetReturnText}
+                  onChange={(e) => setGqmFinalTargetReturnText(e.target.value)}
+                  onBlur={() => commitNumber("gqmFinalTargetReturn", gqmFinalTargetReturnText)}
+                  className={isFieldChanged("pricing.gqmFinalTargetReturn") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm">GQM Final Premium in Money</Label>
+                <Input
+                  type="text" inputMode="decimal"
+                  value={gqmFinalPremText}
+                  onChange={(e) => setGqmFinalPremText(e.target.value)}
+                  onBlur={() => commitNumber("gqmFinalPremInMoney", gqmFinalPremText)}
+                  className={isFieldChanged("pricing.gqmFinalPremInMoney") ? "border-yellow-400 border-2" : ""}
+                />
+              </div>
             </CardContent>
           </Card>
         </>
       )}
 
-      {/* Invoices */}
+      {/* ── Invoices tab ─────────────────────────────────────────────────── */}
       {activeTab === "invoices" && (
         <div className="space-y-6">
-          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => setSyncAttempted(false)} />
+          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
           {isSyncing ? (
             <DocsSkeleton accentColor="border-l-emerald-200" />
           ) : (
@@ -761,10 +932,10 @@ export function JobPricingTab({
         </div>
       )}
 
-      {/* Bills */}
+      {/* ── Bills tab ────────────────────────────────────────────────────── */}
       {activeTab === "bills" && (
         <div className="space-y-6">
-          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => setSyncAttempted(false)} />
+          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
           {isSyncing ? (
             <DocsSkeleton accentColor="border-l-orange-200" />
           ) : (

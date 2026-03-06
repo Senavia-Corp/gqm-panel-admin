@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 const PYTHON_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms/"
-const JOBS_BASE = `${PYTHON_BASE_URL}jobs`
+const JOBS_BASE       = `${PYTHON_BASE_URL}jobs`
 
 const DEFAULT_PAGE  = "1"
 const DEFAULT_LIMIT = "10"
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status")
   const type   = searchParams.get("type")
   const year   = searchParams.get("year")
-  const search = searchParams.get("search") // ← NEW
+  const search = searchParams.get("search")
 
   const clientId        = searchParams.get("clientId")
   const memberId        = searchParams.get("memberId")
@@ -77,14 +77,14 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams()
   params.set("page",  page)
   params.set("limit", limit)
-  if (type)           params.set("type",           type)
-  if (year)           params.set("year",           year)
-  if (status)         params.set("status",         status)
-  if (search)         params.set("search",         search) // ← NEW
-  if (clientId)       params.set("clientId",       clientId)
-  if (memberId)       params.set("memberId",       memberId)
+  if (type)            params.set("type",            type)
+  if (year)            params.set("year",            year)
+  if (status)          params.set("status",          status)
+  if (search)          params.set("search",          search)
+  if (clientId)        params.set("clientId",        clientId)
+  if (memberId)        params.set("memberId",        memberId)
   if (subcontractorId) params.set("subcontractorId", subcontractorId)
-  if (dateAssigned)   params.set("dateAssigned",   dateAssigned)
+  if (dateAssigned)    params.set("dateAssigned",    dateAssigned)
 
   const url = `${JOBS_BASE}/jobs_table?${params.toString()}`
   console.log("[jobs proxy] GET jobs_table ->", url)
@@ -104,14 +104,23 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   if (!body) return jsonError("Invalid JSON body", 400)
 
-  const url = `${JOBS_BASE}/?sync_podio=${syncPodio ? "true" : "false"}`
+  // ── Extract year from body and forward it as a query param to Python ──────
+  // The Python backend expects year as ?year=2025, not inside the JSON body.
+  const year                    = body?.year ?? null
+  const { year: _year, ...jobPayload } = body   // strip year from the payload
+
+  const params = new URLSearchParams()
+  params.set("sync_podio", syncPodio ? "true" : "false")
+  if (year) params.set("year", String(year))
+
+  const url = `${JOBS_BASE}/?${params.toString()}`
   console.log("[jobs proxy] POST ->", url)
 
   const userId = request.headers.get("X-User-Id")
 
   const result = await proxyFetch(url, {
     method:  "POST",
-    body:    JSON.stringify(body),
+    body:    JSON.stringify(jobPayload),
     headers: userId ? { "X-User-Id": userId } : {},
   })
 

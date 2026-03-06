@@ -20,6 +20,10 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
     { id: "documents", label: "Documents" },
   ]
 
+  // ✅ FIX: use correct backend field names (ID_Jobs, Job_type)
+  const jobId: string = job?.ID_Jobs ?? job?.id ?? ""
+  const jobType: string = job?.Job_type ?? job?.job_type ?? job?.jobType ?? ""
+
   const filteredAttachments = useMemo(() => {
     if (!job?.attachments) return []
 
@@ -29,11 +33,17 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
 
     switch (documentFilter) {
       case "images":
-        return job.attachments.filter((att: any) => imageFormats.includes(att.Document_type.toLowerCase()))
+        return job.attachments.filter((att: any) =>
+          imageFormats.includes((att.Document_type ?? "").toLowerCase()),
+        )
       case "videos":
-        return job.attachments.filter((att: any) => videoFormats.includes(att.Document_type.toLowerCase()))
+        return job.attachments.filter((att: any) =>
+          videoFormats.includes((att.Document_type ?? "").toLowerCase()),
+        )
       case "documents":
-        return job.attachments.filter((att: any) => documentFormats.includes(att.Document_type.toLowerCase()))
+        return job.attachments.filter((att: any) =>
+          documentFormats.includes((att.Document_type ?? "").toLowerCase()),
+        )
       default:
         return job.attachments
     }
@@ -43,7 +53,8 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
     <>
       <div>
         <h2 className="mb-4 text-xl font-semibold">Job Documents</h2>
-        <DocumentUpload jobId={job.id} jobType={job.jobType} onUploadComplete={onRefresh} />
+        {/* ✅ FIX: pass resolved jobId and jobType */}
+        <DocumentUpload jobId={jobId} jobType={jobType} onUploadComplete={onRefresh} />
       </div>
 
       <div>
@@ -66,10 +77,10 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           ))}
         </div>
 
-        {!job.attachments || filteredAttachments.length === 0 ? (
+        {!job?.attachments || filteredAttachments.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-muted-foreground">
-              {!job.attachments ? "No documents uploaded yet" : `No ${documentFilter} found`}
+              {!job?.attachments ? "No documents uploaded yet" : `No ${documentFilter} found`}
             </p>
           </div>
         ) : (

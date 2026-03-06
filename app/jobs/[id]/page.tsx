@@ -31,7 +31,6 @@ import { mapEstimateCostsFromJob, mapEstimateItemToCreatePayload } from "@/lib/m
 import { mockOrders } from "@/lib/mock-data/estimates"
 import type { Cost } from "@/components/organisms/CostBreakdownTable"
 
-// ✅ Tabs separados (ajusta la ruta si en tu proyecto las guardaste en otro folder)
 import { JobTabLayout } from "@/components/organisms/job-detail/JobTabLayout"
 import { JobDetailsTab } from "@/components/organisms/job-detail/tabs/JobDetailsTab"
 import { JobDocumentsTab } from "@/components/organisms/job-detail/tabs/JobDocumentsTab"
@@ -51,7 +50,6 @@ import { UnlinkMemberDialog } from "@/components/organisms/UnlinkMemberDialog"
 import { apiFetch } from "@/lib/apiFetch"
 
 
-// 👇 Dynamic components que solo aplica en algunos tabs (si tus tabs ya los importan internamente, puedes borrar esto)
 const TechnicianJobSidebar = dynamic(
   () => import("@/components/organisms/TechnicianJobSidebar").then((mod) => mod.TechnicianJobSidebar),
   { ssr: false },
@@ -65,7 +63,6 @@ const LeadTechnicianTechniciansView = dynamic(
   { ssr: false },
 )
 
-// mocks (se quedan tal cual)
 const mockDocuments = [
   { id: "1", fileName: "FileName.jpg", fileSize: "2.5 MB", uploadDate: "01/15/2025", tag: "TAG" },
   { id: "2", fileName: "FileName.jpg", fileSize: "1.8 MB", uploadDate: "01/14/2025", tag: "TAG" },
@@ -202,7 +199,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [availableMembers, setAvailableMembers] = useState(mockAvailableMembers)
   const [clients, setClients] = useState<any[]>([])
 
-  // Loading error state (job / clients)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | null>(null)
@@ -220,13 +216,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [estimateItems, setEstimateItems] = useState<EstimateItem[]>([])
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
   const [orders, setOrders] = useState<SubcontractorOrder[]>([])
-  const [syncPodio, setSyncPodio] = useState(true) // ✅ default ON
+  const [syncPodio, setSyncPodio] = useState(true)
 
   const jobDetail = useJobDetail(jobId)
   const job = jobDetail.job
 
   // ---------------------------
-  // helpers basados en jobDetail (paso 2H)
+  // helpers basados en jobDetail
   // ---------------------------
   const getChangedFieldsSet = (): Set<string> => {
     const anyDetail = jobDetail as any
@@ -242,21 +238,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       if (tabId === "details") {
         return [
-          "status",
-          "serviceType",
-          "projectName",
-          "projectLocation",
-          "poWtnWo",
-          "dateAssigned",
-          "estimatedStartDate",
-          "estimatedDuration",
-          "client",
-          "location",
+          "status", "serviceType", "projectName", "projectLocation", "poWtnWo",
+          "dateAssigned", "estimatedStartDate", "estimatedDuration", "client", "location",
         ].some((f) => changed.has(f))
       }
 
       if (tabId === "pricing") {
-        return Array.from(changed).some((f) => f.startsWith("pricing."))
+        return Array.from(changed).some((f) => f.startsWith("pricing.") || f === "pricingTarget")
       }
 
       if (tabId === "estimate") {
@@ -284,14 +272,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setUser(parsedUser)
     setActiveChat(parsedUser.role === "LEAD_TECHNICIAN" ? "general" : "admin")
 
-    // clear prior load errors and fetch initial clients
     setLoadError(null)
     void loadClients()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   // ---------------------------
-  // reload job + hydrate estimate state from backend job payload
+  // reload job
   // ---------------------------
   useEffect(() => {
     if (!mounted || !jobId || jobId === "create") return
@@ -311,8 +298,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           loadDocuments()
           loadTasks()
           setOrders(mockOrders.filter((order) => order.ID_Jobs === jobId))
-
-          // ... tu lógica de ensure client (igual, usando sourceJob)
         } catch (err) {
           console.error("[jobs] reload error:", err)
           setLoadError(err instanceof Error ? err.message : "Unexpected error loading job")
@@ -327,7 +312,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const loadClients = async () => {
     try {
       setLoadError(null)
-      // traer la primera página (5 por página) para poblar el selector inicialmente
       const { clients: fetchedClients, total } = await fetchClients(1, 5)
       setClients(Array.isArray(fetchedClients) ? fetchedClients : [])
     } catch (error) {
@@ -429,20 +413,18 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     if (!job || !(job as any).tasks) return
 
-    // ── 1. Optimistic update ───────────────────────────────────────────────
     const prevTasks = (job as any).tasks as Task[]
     const updatedTasks = prevTasks.map((task: Task) =>
       task.ID_Tasks === taskId ? { ...task, Task_status: newStatus } : task,
     )
     jobDetail.setJob({ ...(job as any), tasks: updatedTasks } as any)
 
-    // ── 2. PATCH to API ────────────────────────────────────────────────────
     try {
       const res = await apiFetch("/api/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ID_Tasks: taskId,      // ← proxy reads this, puts it in the URL
+          ID_Tasks: taskId,
           Task_status: newStatus,
         }),
       })
@@ -452,15 +434,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         throw new Error(data?.error ?? data?.detail ?? `Error ${res.status}`)
       }
 
-      // ── 3. Sync with server after successful save ──────────────────────
       await jobDetail.reload()
 
     } catch (error) {
       console.error("[tasks] status change error:", error)
-
-      // ── 4. Revert optimistic update on failure ─────────────────────────
       jobDetail.setJob({ ...(job as any), tasks: prevTasks } as any)
-
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update task status",
@@ -496,62 +474,67 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       ; (jobDetail as any).markChanged?.(field)
   }
 
+  // ── PATCH A: handlePricingFieldChange — extended with 9 new fields ────────
   const handlePricingFieldChange = (field: string, value: number) => {
     if (!job) return
-    const j: any = job
-
-    const next: any = { ...j }
+    const next: any = { ...(job as any) }
     const mark = (f: string) => (jobDetail as any).markChanged?.(`pricing.${f}`)
 
     switch (field) {
+      // Existing
       case "gqmFormulaPricing":
-        next.Gqm_formula_pricing = value
-        mark("gqmFormulaPricing")
-        break
-
+        next.Gqm_formula_pricing = value;         mark("gqmFormulaPricing");      break
       case "gqmAdjFormulaPricing":
-        next.Gqm_adj_formula_pricing = value
-        mark("gqmAdjFormulaPricing")
-        break
-
+        next.Gqm_adj_formula_pricing = value;     mark("gqmAdjFormulaPricing");   break
       case "gqmTargetReturn":
-        next.Gqm_target_return = value
-        mark("gqmTargetReturn")
-        break
-
+        next.Gqm_target_return = value;           mark("gqmTargetReturn");         break
       case "gqmTargetSoldPricing":
-        next.Gqm_target_sold_pricing = value
-        mark("gqmTargetSoldPricing")
-        break
-
+        next.Gqm_target_sold_pricing = value;     mark("gqmTargetSoldPricing");   break
       case "gqmPremiumInMoney":
-        next.Gqm_premium_in_money = value
-        mark("gqmPremiumInMoney")
-        break
-
+        next.Gqm_premium_in_money = value;        mark("gqmPremiumInMoney");      break
       case "gqmFinalSoldPricing":
-        next.Gqm_final_sold_pricing = value
-        mark("gqmFinalSoldPricing")
-        break
-
+        next.Gqm_final_sold_pricing = value;      mark("gqmFinalSoldPricing");    break
       case "gqmFinalPercentage":
-        next.Gqm_final_percentage = value
-        mark("gqmFinalPercentage")
-        break
+        next.Gqm_final_percentage = value;        mark("gqmFinalPercentage");     break
+
+      // NEW: Initial Proposal Pricing
+      case "estimatedRent":
+        next.Estimated_rent = value;              mark("estimatedRent");           break
+      case "estimatedMaterial":
+        next.Estimated_material = value;          mark("estimatedMaterial");       break
+      case "estimatedCity":
+        next.Estimated_city = value;              mark("estimatedCity");           break
+      case "techFormulaPricing":
+        next.Tech_formula_pricing = value;        mark("techFormulaPricing");      break
+
+      // NEW: Accounts Receivable
+      case "accReceivable":
+        next.Acc_receivable = value;              mark("accReceivable");           break
+      case "gqmFinalFormPricing":
+        next.Gqm_final_form_pricing = value;      mark("gqmFinalFormPricing");    break
+      case "gqmFinalAdjFormPricing":
+        next.Gqm_final_adj_form_pricing = value;  mark("gqmFinalAdjFormPricing"); break
+      case "gqmFinalTargetReturn":
+        next.Gqm_final_target_return = value;     mark("gqmFinalTargetReturn");   break
+      case "gqmFinalPremInMoney":
+        next.Gqm_final_prem_in_money = value;     mark("gqmFinalPremInMoney");    break
     }
 
     jobDetail.setJob(next)
   }
 
+  // ── PATCH B: handlePricingTargetChange — new handler for string selector ──
+  const handlePricingTargetChange = useCallback((value: string | null) => {
+    if (!job) return
+    jobDetail.setJob({ ...(job as any), Pricing_target: value } as any)
+    ;(jobDetail as any).markChanged?.("pricingTarget")
+  }, [job, jobDetail])
+
   const handleAdjPricingCalculated = async (adjPricing: number) => {
     if (!job) return
-    const j: any = job
-
-    const next: any = { ...j }
+    const next: any = { ...(job as any) }
     next.Gqm_adj_formula_pricing = adjPricing
       ; (jobDetail as any).markChanged?.("pricing.gqmAdjFormulaPricing")
-
-    // NO autosave. Solo set state.
     jobDetail.setJob(next)
 
     toast({
@@ -593,9 +576,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setEstimateItems(items)
   }
 
-  // ---------------------------
-  // estimate helpers (retry / dedupe / reporting)
-  // ---------------------------
   const ESTIMATE_POOL_LIMIT = 2
   const ESTIMATE_RETRY_MAX = 3
 
@@ -620,22 +600,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   function getEstimateItemSignature(i: Partial<EstimateItem>) {
-    // Normaliza strings para tener un "fingerprint" consistente
     const norm = (v: any) =>
-      String(v ?? "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ")
-
-    // Campos "más estables" para evitar duplicados
-    // (evita incluir costos si hay riesgo de floats distintos)
+      String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ")
     return [
-      norm(i.Title),
-      norm(i.Cost_Code),
-      norm(i.Parent_Group),
-      norm(i.Description),
-      norm(i.Unit),
-      norm(i.Category),
+      norm(i.Title), norm(i.Cost_Code), norm(i.Parent_Group),
+      norm(i.Description), norm(i.Unit), norm(i.Category),
     ].join("||")
   }
 
@@ -655,16 +624,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         Unit: c.Unit,
         Category: c.Category,
       } as any)
-
       return sig === targetSig
     })
 
     const persistedId =
-      match?.ID_EstimateCost ??
-      match?.ID_Estimate_Cost ??
-      match?.id ??
-      match?.ID
-
+      match?.ID_EstimateCost ?? match?.ID_Estimate_Cost ?? match?.id ?? match?.ID
     return persistedId ? String(persistedId) : null
   }
 
@@ -703,23 +667,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
         const raw = await response.text().catch(() => "")
         let parsed: any = null
-        try {
-          parsed = raw ? JSON.parse(raw) : null
-        } catch {
-          parsed = null
-        }
+        try { parsed = raw ? JSON.parse(raw) : null } catch { parsed = null }
 
-        const errMsg = `POST /api/estimate failed (${response.status}) :: ${parsed?.error ?? parsed?.detail ?? raw ?? "no body"
-          }`
+        const errMsg = `POST /api/estimate failed (${response.status}) :: ${parsed?.error ?? parsed?.detail ?? raw ?? "no body"}`
 
-        // Retry solo si es transiente
         if (isTransientStatus(response.status) && attempt < ESTIMATE_RETRY_MAX) {
           const backoff = 900 * Math.pow(2, attempt) + Math.floor(Math.random() * 500)
-          console.warn("[estimate] transient error, retrying...", {
-            attempt: attempt + 1,
-            status: response.status,
-            backoff,
-          })
+          console.warn("[estimate] transient error, retrying...", { attempt: attempt + 1, status: response.status, backoff })
           await sleep(backoff)
           continue
         }
@@ -727,7 +681,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         throw new Error(errMsg)
       } catch (err) {
         lastErr = err
-        // Retry solo si parece error de red
         if (isNetworkError(err) && attempt < ESTIMATE_RETRY_MAX) {
           const backoff = 400 * Math.pow(2, attempt) + Math.floor(Math.random() * 200)
           console.warn("[estimate] network error, retrying...", { attempt: attempt + 1, backoff, err: String(err) })
@@ -777,11 +730,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return
     }
 
-    // 1) Deduplicar dentro del import
     const { unique, duplicates } = dedupeEstimateItems(estimateItems)
 
-    // 2) Deduplicar contra lo que YA existe en DB (job.estimate_costs)
-    //    - Si tu mapper ya hidrata estimateItems desde job, esto cubre re-saves o reimports.
     const existingCostsRaw = Array.isArray((job as any)?.estimate_costs) ? (job as any).estimate_costs : []
     const existingSigSet = new Set<string>(
       existingCostsRaw.map((c: any) =>
@@ -807,7 +757,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return
     }
 
-    // Toast “in progress”
     toast({
       title: "Saving estimates...",
       description: `Creating ${toCreate.length} items (pool=${ESTIMATE_POOL_LIMIT}, retry=${ESTIMATE_RETRY_MAX})`,
@@ -821,7 +770,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const succeeded = results.filter((r) => r.status === "fulfilled").length
     const failed = results.filter((r) => r.status === "rejected") as Array<PromiseRejectedResult>
 
-    // Report detallado a consola para debug
     if (failed.length) {
       const failedReport = failed.map((f, i) => {
         const idx = results.findIndex((r) => r === f)
@@ -837,10 +785,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[estimate] failed items report:", failedReport)
     }
 
-    // Recargar job para reflejar DB
     await jobDetail.reload()
 
-    // Toast final (resumen)
     const skippedDupImport = duplicates.length
     const skipped = skippedExisting + skippedDupImport
 
@@ -871,7 +817,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       .map((c: any) => String(c?.ID_EstimateCost ?? c?.ID_Estimate_Cost ?? c?.id ?? c?.ID ?? ""))
       .filter(Boolean)
 
-    // borra en pool (2) para no saturar
     await asyncPool(2, ids, async (id) => {
       const res = await fetch(`/api/estimate/${id}`, { method: "DELETE" })
       if (res.status === 404) return { ok: true, skipped: true }
@@ -890,7 +835,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   const handleDeleteEstimateItem = async (item: EstimateItem) => {
-    // Si es TEMP, solo se borra del state
     const rawId = String(item?.ID_EstimateItem ?? "")
     if (!rawId || rawId.startsWith("TEMP")) {
       setEstimateItems((prev) => prev.filter((x) => x.ID_EstimateItem !== item.ID_EstimateItem))
@@ -902,13 +846,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     const res = await fetch(`/api/estimate/${persistedId}`, { method: "DELETE" })
 
-    // 404 -> ya no existe, lo tratamos como ok (idempotente)
     if (res.status !== 404 && !res.ok) {
       const raw = await res.text().catch(() => "")
       throw new Error(raw || `Failed to delete (${res.status})`)
     }
 
-    // refresca estado
     await jobDetail.reload()
   }
 
@@ -921,7 +863,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       const selectedItems = estimateItems.filter((item) => selectedItemIds.includes(item.ID_EstimateItem))
       const formula = selectedItems.reduce((sum, item) => sum + item.Builder_Cost, 0)
 
-      const year = resolveJobYearForPodioSync(job) // ✅ nueva helper abajo
+      const year = resolveJobYearForPodioSync(job)
 
       const qs =
         syncPodioOverride
@@ -938,7 +880,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         Formula: formula,
         Adj_formula: formula,
         ID_Subcontractor: subcontractorId,
-        // ✅ solo si existe
         job_podio_id: (job as any)?.podio_item_id ?? null,
       }
 
@@ -956,7 +897,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       const orderData = await orderResponse.json()
       const orderId = orderData.ID_Order
 
-      // asignar items a la order (igual que ya lo tienes)
       const updatePromises = selectedItemIds.map(async (estimateId) => {
         const response = await fetch(`/api/estimate/${estimateId}`, {
           method: "PATCH",
@@ -1000,7 +940,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           { id: "details", label: "Details" },
           { id: "subcontractors", label: "Subcontractors" },
           { id: "documents", label: "Documents" },
-          { id: "chat", label: "Chat" },
+          /* { id: "chat", label: "Chat" }, */
           { id: "pricing", label: "Pricing" },
           { id: "members", label: "Members" },
           { id: "tasks", label: "Tasks" },
@@ -1009,12 +949,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     [user?.role],
   )
 
-  // ✅ Sidebar unificado (creado 1 sola vez)
   const rightSidebar = useMemo(() => {
     if (!user || !job) return null
-
-    // Lead-tech: algunas vistas ya renderizan un sidebar técnico aparte (pricing/technicians),
-    // pero mantenemos el sidebar general para el resto.
     return <JobRightSidebar role={user.role} job={job as any} />
   }, [user, job])
 
@@ -1024,13 +960,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }, [job])
 
   // ---------------------------
-  // renderTab (tabs separados)
+  // renderTab
   // ---------------------------
   const renderTab = () => {
     if (!user || !job) return null
 
-    // 🔥 IMPORTANT:
-    // Para evitar errores de tipos si alguna tab cambió props, las usamos como ComponentType<any>.
     const Details: React.ComponentType<any> = JobDetailsTab as any
     const Docs: React.ComponentType<any> = JobDocumentsTab as any
     const Chat: React.ComponentType<any> = JobChatTab as any
@@ -1112,7 +1046,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     if (activeTab === "pricing") {
-      // Lead tech: layout especial (pricing + technician sidebar)
       if (user.role === "LEAD_TECHNICIAN") {
         return (
           <div className="grid gap-6 lg:grid-cols-3">
@@ -1124,12 +1057,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         )
       }
 
+      // ── PATCH C: <Pricing /> with onPricingTargetChange added ─────────────
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Pricing
             role={user.role}
             jobId={jobId}
-            jobCode={String((job as any)?.ID_Jobs ?? "")}   // ← nuevo: e.g. "QID6387"
+            jobCode={String((job as any)?.ID_Jobs ?? "")}
             job={job}
             costs={costs}
             onEditCost={handleEditCost}
@@ -1141,6 +1075,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             isFieldChanged={isFieldChanged}
             onReload={jobDetail.reload}
             onSyncComplete={jobDetail.reload}
+            syncPodio={syncPodio}
+            onJobUpdate={async (updates: Record<string, any>) => {
+              await jobDetail.patch(updates, { sync_podio: false })
+            }}
+            onPricingTargetChange={handlePricingTargetChange}
           />
         </JobTabLayout>
       )
@@ -1273,17 +1212,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
             {jobDetail.hasChanges && (
               <div className="flex items-center gap-4">
-                {/* Toggle */}
                 <div className="flex items-center gap-3 rounded-lg border bg-white px-3 py-2">
                   <div className="leading-tight">
-                    <Label htmlFor="sync-podio" className="text-sm">
-                      Sync Podio
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {syncPodio ? "Enabled" : "Disabled"}
-                    </p>
+                    <Label htmlFor="sync-podio" className="text-sm">Sync Podio</Label>
+                    <p className="text-xs text-muted-foreground">{syncPodio ? "Enabled" : "Disabled"}</p>
                   </div>
-
                   <Switch
                     id="sync-podio"
                     checked={syncPodio}
@@ -1291,8 +1224,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     disabled={jobDetail.isSaving}
                   />
                 </div>
-
-                {/* Save */}
                 <Button
                   onClick={handleSaveChanges}
                   disabled={jobDetail.isSaving}
@@ -1374,7 +1305,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       <LinkSubcontractorDialog
         open={linkSubcontractorOpen}
         onClose={() => setLinkSubcontractorOpen(false)}
-        jobId={resolvedJobId} // ✅ ID correcto
+        jobId={resolvedJobId}
         defaultSyncPodio={syncPodio}
         jobYear={resolveJobYearForPodioSync(job)}
         onSubcontractorLinked={async () => {
@@ -1414,7 +1345,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   )
 }
 
-// helper: normalize job.client en formato backend-like para la lista de clients
 function normalizeJobClient(c: any) {
   if (!c) return null
   return {
@@ -1425,34 +1355,25 @@ function normalizeJobClient(c: any) {
     Phone_Number: c.Phone_Number ?? c.phone ?? "",
     Address: c.Address ?? c.address ?? "",
     Client_Status: c.Client_Status ?? c.Client_Status ?? c.status ?? "",
-    // preserve any extra fields
     ...c,
   }
 }
 
 function resolveJobYear(job: any): number | undefined {
   const v =
-    job?.Year ??
-    job?.year ??
-    job?.Job_year ??
-    job?.job_year ??
-    job?.Job_Year ??
-    job?.JOB_YEAR
-
+    job?.Year ?? job?.year ?? job?.Job_year ?? job?.job_year ?? job?.Job_Year ?? job?.JOB_YEAR
   const asNum = Number(v)
   return Number.isFinite(asNum) && asNum > 0 ? asNum : undefined
 }
 
 function resolveJobYearForPodioSync(job: any): number | undefined {
   const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
-
   const pickDate =
     jobType === "PTL"
       ? (job?.Estimated_start_date ?? job?.estimated_start_date ?? null)
       : (job?.Date_assigned ?? job?.date_assigned ?? null)
 
   if (!pickDate) return undefined
-
   const d = new Date(pickDate)
   const y = d.getFullYear()
   return Number.isFinite(y) ? y : undefined

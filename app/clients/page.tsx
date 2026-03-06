@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { toast } from "@/components/ui/use-toast"
 import { Plus, Search, ChevronLeft, ChevronRight, Eye, Trash2 } from "lucide-react"
 
 interface ParentMgmtCo {
@@ -40,18 +41,17 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<ParentMgmtCo | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const itemsPerPage = 10
 
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
-    if (!userData) {
-      router.push("/login")
-      return
-    }
+    if (!userData) { router.push("/login"); return }
     setUser(JSON.parse(userData))
     fetchParentMgmtCo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,11 +60,27 @@ export default function ClientsPage() {
   const fetchParentMgmtCo = async () => {
     try {
       setLoading(true)
+      setLoadError(null)
+
       const response = await fetch("/api/parent_mgmt_co", { cache: "no-store" })
+
+      // ✅ FIX 4: verificar response.ok antes de parsear — antes se llamaba .json() sin chequeo
+      // y si la API fallaba, setItems([]) silenciosamente sin mostrar nada al usuario.
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "")
+        throw new Error(`API returned ${response.status}${errText ? `: ${errText.substring(0, 200)}` : ""}`)
+      }
+
       const data = await response.json()
-      setItems(data.results || [])
-    } catch (error) {
+      setItems(data.results ?? [])
+    } catch (error: any) {
       console.error("Error fetching parent mgmt co:", error)
+      setLoadError(error?.message ?? "Failed to load")
+      toast({
+        title: "Error loading companies",
+        description: error?.message ?? "Could not fetch parent management companies",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -73,22 +89,12 @@ export default function ClientsPage() {
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return items
-
     return items.filter((x) => {
       const haystack = [
-        x.Property_mgmt_co,
-        x.Company_abbrev,
-        x.ID_Community_Tracking,
-        x.Main_office_hq,
-        x.Main_office_email,
-        x.Main_office_number,
-        x.State,
-        x.podio_item_id,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-
+        x.Property_mgmt_co, x.Company_abbrev, x.ID_Community_Tracking,
+        x.Main_office_hq, x.Main_office_email, x.Main_office_number,
+        x.State, x.podio_item_id,
+      ].filter(Boolean).join(" ").toLowerCase()
       return haystack.includes(q)
     })
   }, [items, searchQuery])
@@ -100,22 +106,24 @@ export default function ClientsPage() {
 
   const confirmDelete = async () => {
     if (!itemToDelete) return
-
+    setIsDeleting(true)
     try {
       const response = await fetch(`/api/parent_mgmt_co/${itemToDelete.ID_Community_Tracking}`, {
         method: "DELETE",
       })
-
-      if (response.ok) {
-        setItems((prev) => prev.filter((x) => x.ID_Community_Tracking !== itemToDelete.ID_Community_Tracking))
-        setDeleteDialogOpen(false)
-        setItemToDelete(null)
-      } else {
+      if (!response.ok) {
         const err = await response.text().catch(() => "")
-        console.error("Delete failed:", response.status, err)
+        throw new Error(`Delete failed (${response.status})${err ? `: ${err}` : ""}`)
       }
-    } catch (error) {
+      setItems((prev) => prev.filter((x) => x.ID_Community_Tracking !== itemToDelete.ID_Community_Tracking))
+      setDeleteDialogOpen(false)
+      setItemToDelete(null)
+      toast({ title: "Deleted", description: `${itemToDelete.Property_mgmt_co ?? itemToDelete.ID_Community_Tracking} removed.` })
+    } catch (error: any) {
       console.error("Error deleting parent mgmt co:", error)
+      toast({ title: "Delete failed", description: error?.message ?? "Could not delete", variant: "destructive" })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -125,7 +133,6 @@ export default function ClientsPage() {
   const paginatedItems = filteredItems.slice(startIndex, startIndex + itemsPerPage)
 
   useEffect(() => {
-    // si cambia el filtro/busqueda, resetea a page 1
     setCurrentPage(1)
   }, [searchQuery])
 
@@ -148,11 +155,8 @@ export default function ClientsPage() {
                     {filteredItems.length}
                   </span>
                 </div>
-
-                {/* Mantengo el botón por coherencia, pero probablemente cambiará a "Add Parent Mgmt Co" */}
                 <Button onClick={() => router.push("/clients/create")} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add New
+                  <Plus className="h-4 w-4" /> Add New
                 </Button>
               </div>
 
@@ -171,6 +175,11 @@ export default function ClientsPage() {
               <div className="flex h-64 items-center justify-center rounded-lg border bg-white">
                 <p className="text-gray-500">Loading parent management companies...</p>
               </div>
+            ) : loadError ? (
+              <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border bg-white">
+                <p className="text-sm text-red-500">{loadError}</p>
+                <Button variant="outline" size="sm" onClick={fetchParentMgmtCo}>Retry</Button>
+              </div>
             ) : (
               <>
                 <div className="overflow-hidden rounded-lg border bg-white">
@@ -187,7 +196,6 @@ export default function ClientsPage() {
                         <TableHead className="pr-6 text-right font-semibold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-
                     <TableBody>
                       {paginatedItems.map((row) => (
                         <TableRow key={row.ID_Community_Tracking}>
@@ -198,20 +206,17 @@ export default function ClientsPage() {
                           <TableCell className="max-w-[220px] truncate">{row.Main_office_email || "-"}</TableCell>
                           <TableCell className="max-w-[180px] truncate">{row.Main_office_number || "-"}</TableCell>
                           <TableCell>{row.podio_item_id || "-"}</TableCell>
-
                           <TableCell className="pr-6 text-right">
                             <div className="flex justify-end gap-2">
                               <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="ghost" size="icon"
                                 className="h-8 w-8 bg-yellow-500 text-white hover:bg-yellow-600"
                                 onClick={() => router.push(`/clients/${row.ID_Community_Tracking}`)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="ghost" size="icon"
                                 className="h-8 w-8 bg-gray-800 text-white hover:bg-gray-900"
                                 onClick={() => handleDelete(row)}
                               >
@@ -221,7 +226,6 @@ export default function ClientsPage() {
                           </TableCell>
                         </TableRow>
                       ))}
-
                       {paginatedItems.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={8} className="py-10 text-center text-sm text-gray-500">
@@ -238,30 +242,13 @@ export default function ClientsPage() {
                     Showing {filteredItems.length === 0 ? 0 : startIndex + 1} to{" "}
                     {Math.min(startIndex + itemsPerPage, filteredItems.length)} of {filteredItems.length} records
                   </div>
-
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                      <ChevronLeft className="h-4 w-4" /> Previous
                     </Button>
-
-                    <span className="text-sm font-medium">
-                      Page {Math.min(currentPage, totalPages)} of {totalPages}
-                    </span>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
+                    <span className="text-sm font-medium">Page {Math.min(currentPage, totalPages)} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                      Next <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -282,9 +269,9 @@ export default function ClientsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+              {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
