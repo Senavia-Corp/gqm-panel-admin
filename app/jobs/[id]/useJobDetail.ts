@@ -40,8 +40,9 @@ export function useJobDetail(jobId: string) {
 
   const getValue = (j: any, uiKey: string, pyKey: string) =>
     j?.[uiKey] !== undefined ? j[uiKey] : j?.[pyKey]
+
   // -----------------------------
-  // Manual patch (ya existente)
+  // Manual patch (already existing)
   // -----------------------------
   const patch = useCallback(
     async (updates: Record<string, any>, opts?: SaveOptions) => {
@@ -49,7 +50,7 @@ export function useJobDetail(jobId: string) {
       if (!idJob) throw new Error("Job ID_Jobs is missing")
       setIsSaving(true)
       try {
-        await updateJob(idJob, updates as any, { sync_podio: opts?.sync_podio ?? false }) // ✅
+        await updateJob(idJob, updates as any, { sync_podio: opts?.sync_podio ?? false })
         setChangedFields(new Set())
         await reload()
       } finally {
@@ -72,6 +73,7 @@ export function useJobDetail(jobId: string) {
 
       changedFields.forEach((field) => {
         switch (field) {
+          // ── Details fields ─────────────────────────────────────────────
           case "status":
             payload.Job_status = getValue(job, "status", "Job_status")
             break
@@ -123,11 +125,18 @@ export function useJobDetail(jobId: string) {
             payload.ID_Client = id
             break
           }
+
+          // ── NEW: Pricing Target (string selector, handled at top level) ─
+          case "pricingTarget":
+            payload.Pricing_target = (job as any)?.Pricing_target ?? null
+            break
         }
 
+        // ── Pricing numeric fields ───────────────────────────────────────
         if (field.startsWith("pricing.")) {
           const key = field.replace("pricing.", "")
           switch (key) {
+            // Existing
             case "gqmFormulaPricing":
               payload.Gqm_formula_pricing = job?.Gqm_formula_pricing ?? null
               break
@@ -149,13 +158,44 @@ export function useJobDetail(jobId: string) {
             case "gqmFinalPercentage":
               payload.Gqm_final_percentage = job?.Gqm_final_percentage ?? null
               break
+
+            // NEW: Initial Proposal Pricing
+            case "estimatedRent":
+              payload.Estimated_rent = (job as any)?.Estimated_rent ?? null
+              break
+            case "estimatedMaterial":
+              payload.Estimated_material = (job as any)?.Estimated_material ?? null
+              break
+            case "estimatedCity":
+              payload.Estimated_city = (job as any)?.Estimated_city ?? null
+              break
+            case "techFormulaPricing":
+              payload.Tech_formula_pricing = (job as any)?.Tech_formula_pricing ?? null
+              break
+
+            // NEW: Accounts Receivable
+            case "accReceivable":
+              payload.Acc_receivable = (job as any)?.Acc_receivable ?? null
+              break
+            case "gqmFinalFormPricing":
+              payload.Gqm_final_form_pricing = (job as any)?.Gqm_final_form_pricing ?? null
+              break
+            case "gqmFinalAdjFormPricing":
+              payload.Gqm_final_adj_form_pricing = (job as any)?.Gqm_final_adj_form_pricing ?? null
+              break
+            case "gqmFinalTargetReturn":
+              payload.Gqm_final_target_return = (job as any)?.Gqm_final_target_return ?? null
+              break
+            case "gqmFinalPremInMoney":
+              payload.Gqm_final_prem_in_money = (job as any)?.Gqm_final_prem_in_money ?? null
+              break
           }
         }
       })
 
       setIsSaving(true)
       try {
-        await updateJob(idJob, payload, { sync_podio: opts?.sync_podio ?? false }) // ✅
+        await updateJob(idJob, payload, { sync_podio: opts?.sync_podio ?? false })
         setChangedFields(new Set())
         await reload()
       } finally {
@@ -178,6 +218,6 @@ export function useJobDetail(jobId: string) {
     isSaving,
     reload,
     patch,
-    save, // ✅ ahora existe oficialmente
+    save,
   }
 }
