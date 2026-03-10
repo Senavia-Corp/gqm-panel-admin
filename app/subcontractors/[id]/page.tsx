@@ -5,7 +5,6 @@ import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -14,28 +13,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TimelineItem } from "@/components/molecules/TimelineItem"
 import { TechnicianCard } from "@/components/organisms/TechnicianCard"
 import { DeleteTechnicianDialog } from "@/components/organisms/DeleteTechnicianDialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { toast } from "@/components/ui/use-toast"
 import {
-  ArrowLeft,
-  ExternalLink,
-  Save,
-  Search,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  Wrench,
-  Link2,
-  Unlink,
-  Loader2,
-  MapPin,
-  Map,
-  X,
+  ArrowLeft, Save, Search, Plus, ChevronLeft, ChevronRight,
+  Wrench, Link2, Unlink, Loader2, MapPin, Map, X, Mail, Phone,
+  Building2, Globe, Star, ShieldCheck, FileText, CheckCircle,
+  AlertCircle, RefreshCw, Hash, Briefcase, ClipboardList, Calendar,
+  DollarSign, Tag, ExternalLink, Clock, Sparkles,
 } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Skill = {
   ID_Skill: string
@@ -43,7 +39,7 @@ type Skill = {
   Division_trade?: string | null
 }
 
-type SubcontractorTechnician = {
+type SubcTechnician = {
   ID_Technician: string
   Name?: string | null
   Email_Address?: string | null
@@ -54,8 +50,8 @@ type SubcontractorTechnician = {
   tasks?: any[]
 }
 
-type SubcontractorDetailsResponse = Subcontractor & {
-  technicians?: SubcontractorTechnician[]
+type SubcFull = Subcontractor & {
+  technicians?: SubcTechnician[]
   attachments?: any[]
   opportunities?: any[]
   orders?: any[]
@@ -67,38 +63,62 @@ type SubcontractorDetailsResponse = Subcontractor & {
   Coverage_Area?: string[] | null
 }
 
-const ITEMS_PER_PAGE = 10
+// Fields to never send in PATCH
+const SKIP_ON_PATCH = new Set([
+  "ID_Subcontractor", "podio_item_id",
+  "technicians", "orders", "jobs", "attachments",
+  "tlactivity", "skills", "opportunities", "role",
+])
 
 const COVERAGE_AREA_OPTIONS = [
-  "Dade County",
-  "Broward County",
-  "Palm Beach County",
-  "St. Lucie County",
-  "Orange County",
-  "Seminole County",
-  "Pinellas County (St Pete)",
-  "Hillsborough County (Tampa)",
-  "Osceola County",
+  "Dade County", "Broward County", "Palm Beach County", "St. Lucie County",
+  "Orange County", "Seminole County", "Pinellas County (St Pete)",
+  "Hillsborough County (Tampa)", "Osceola County",
 ] as const
 
-const asString = (v: unknown) => (v == null ? "" : String(v))
+const ITEMS_PER_PAGE = 10
 
-const normalizeOrg = (org?: string | null) => {
-  if (!org) return ""
-  const s = org.trim()
-  if (!s) return ""
-  if (s.startsWith("{") && s.endsWith("}")) {
-    const inner = s.slice(1, -1).trim()
-    return inner.replace(/^"+|"+$/g, "").replace(/\\"/g, '"').trim()
-  }
-  return s.replace(/\\"/g, '"').trim()
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const asStr = (v: unknown) => (v == null ? "" : String(v))
+
+function normalizeOrg(raw: any): string {
+  if (!raw) return ""
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean).join(", ")
+  let s = String(raw).trim().replace(/\\"/g, '"')
+  if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]")))
+    s = s.slice(1, -1).trim()
+  return s.replace(/^["']+|["']+$/g, "").trim()
 }
 
-const safeWebsite = (url?: string | null) => {
-  if (!url) return null
-  const trimmed = url.trim()
-  if (!trimmed) return null
-  return trimmed.startsWith("http://") || trimmed.startsWith("https://") ? trimmed : `https://${trimmed}`
+function parseArrayField(raw: any): string[] {
+  if (!raw) return []
+  const s = (Array.isArray(raw) ? raw.join(",") : String(raw)).trim()
+  if (!s) return []
+  let inner = s
+  if ((inner.startsWith("{") && inner.endsWith("}")) || (inner.startsWith("[") && inner.endsWith("]")))
+    inner = inner.slice(1, -1)
+  const parts: string[] = []
+  let cur = "", inQ = false
+  for (const ch of inner) {
+    if (ch === '"') { inQ = !inQ; continue }
+    if (ch === "," && !inQ) { parts.push(cur.trim()); cur = ""; continue }
+    cur += ch
+  }
+  if (cur.trim()) parts.push(cur.trim())
+  return [...new Set(parts.map((p) => p.replace(/^[{["']+|[}\]"']+$/g, "").trim()).filter(Boolean))]
+}
+
+function serializeArrayField(values: string[]): string | null {
+  const clean = values.filter((v) => v.trim())
+  if (!clean.length) return null
+  if (clean.length === 1) return clean[0]
+  return `{${clean.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",")}}`
+}
+
+function safeUrl(url?: string | null) {
+  if (!url?.trim()) return null
+  return url.startsWith("http") ? url : `https://${url}`
 }
 
 function normalizeSkillsResponse(data: any): Skill[] {
@@ -108,737 +128,753 @@ function normalizeSkillsResponse(data: any): Skill[] {
   return []
 }
 
+// ─── Mini components ──────────────────────────────────────────────────────────
+
+function SectionCard({ icon: Icon, iconBg, iconColor, title, action, children }: {
+  icon: React.ElementType; iconBg: string; iconColor: string
+  title: string; action?: React.ReactNode; children: React.ReactNode
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
+            <Icon className={`h-4 w-4 ${iconColor}`} />
+          </div>
+          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+        </div>
+        {action}
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  )
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{children}</p>
+}
+
+function StatusBadge({ status }: { status?: string | null }) {
+  if (!status) return <span className="text-xs italic text-slate-400">No status</span>
+  const map: Record<string, string> = {
+    active:   "bg-emerald-100 text-emerald-700 border-emerald-200",
+    inactive: "bg-slate-100 text-slate-500 border-slate-200",
+    pending:  "bg-yellow-100 text-yellow-700 border-yellow-200",
+  }
+  const cls = map[status.toLowerCase()] ?? "bg-blue-100 text-blue-700 border-blue-200"
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>{status}</span>
+}
+
+function ScoreBadge({ score }: { score?: number | null }) {
+  if (score == null) return <span className="text-xs italic text-slate-400">No score</span>
+  const pct = Math.min(100, Math.max(0, score))
+  const cls = pct >= 80 ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+            : pct >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                        : "bg-red-100 text-red-600 border-red-200"
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
+      <Star className="h-2.5 w-2.5 fill-current" />
+      {pct % 1 === 0 ? pct : pct.toFixed(1)}
+    </span>
+  )
+}
+
+function CertBadge({ value }: { value?: string | null }) {
+  if (!value) return <span className="text-xs italic text-slate-400">—</span>
+  const good = ["yes", "active", "completed", "passed"].includes(value.toLowerCase())
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${good ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+      <CheckCircle className="h-3 w-3" />{value}
+    </span>
+  )
+}
+
+function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
+  values: string[]; icon: React.ElementType; placeholder: string
+  onChange: (v: string[]) => void
+}) {
+  const items = values.length ? values : [""]
+  return (
+    <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
+      {items.map((item, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <input type="text" value={item} placeholder={placeholder}
+            onChange={(e) => { const n = [...items]; n[idx] = e.target.value; onChange(n) }}
+            className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+          />
+          <button type="button"
+            onClick={() => { if (items.length === 1) { onChange([""]); return } onChange(items.filter((_, i) => i !== idx)) }}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-400 transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...items, ""])}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
+        <Plus className="h-3 w-3" /> Add another
+      </button>
+    </div>
+  )
+}
+
+function ArrayDisplayChips({ values, icon: Icon, href, emptyLabel }: {
+  values: string[]; icon: React.ElementType
+  href?: (v: string) => string; emptyLabel: string
+}) {
+  if (!values.length) return <span className="text-sm italic text-slate-400">{emptyLabel}</span>
+  return (
+    <div className="flex flex-col gap-1">
+      {values.map((v, i) => href
+        ? <a key={i} href={href(v)} className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline">
+            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
+          </a>
+        : <span key={i} className="flex items-center gap-1.5 text-sm text-slate-700">
+            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
+          </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function PageSkeleton({ user }: { user: any }) {
+  return (
+    <div className="flex h-screen bg-slate-50">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar user={user} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto max-w-6xl space-y-4">
+            <div className="h-16 animate-pulse rounded-2xl bg-white border border-slate-200" />
+            <div className="h-10 animate-pulse rounded-xl bg-white border border-slate-200" />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="space-y-4 lg:col-span-2">
+                {[1,2,3].map(i => <div key={i} className={`animate-pulse rounded-2xl border border-slate-200 bg-white`} style={{height: `${120 + i * 20}px`}} />)}
+              </div>
+              <div className="space-y-4">
+                <div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+                <div className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function SubcontractorDetailsPage() {
-  const router = useRouter()
+  const router       = useRouter()
   const searchParams = useSearchParams()
-  const { id } = useParams<{ id: string }>()
-  const activeTab = searchParams.get("tab") || "details"
+  const params       = useParams<{ id: string }>()
+  const id           = params.id as string
+  const activeTab    = searchParams.get("tab") || "details"
 
   const [user, setUser] = useState<any>(null)
 
-  const [subcontractor, setSubcontractor] = useState<SubcontractorDetailsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+  // ── Data state ─────────────────────────────────────────────────────────────
+  const [subc, setSubc]           = useState<SubcFull | null>(null)
+  const [loading, setLoading]     = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
-  const [formData, setFormData] = useState<Partial<SubcontractorDetailsResponse>>({})
+  // ── Edit state ─────────────────────────────────────────────────────────────
+  const [editing, setEditing]     = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
+  const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
 
-  // ✅ Toggle Podio for EDIT (PATCH)
-  const [syncWithPodio, setSyncWithPodio] = useState(true)
-
-  // ✅ Save button loading
-  const [isSaving, setIsSaving] = useState(false)
-
-  const [technicians, setTechnicians] = useState<SubcontractorTechnician[]>([])
-  const [techSearch, setTechSearch] = useState("")
-  const [techTypeFilter, setTechTypeFilter] = useState<"all" | "Leader" | "Worker">("all")
-  const [techPage, setTechPage] = useState(1)
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; technician: SubcontractorTechnician | null }>({
-    open: false,
-    technician: null,
+  const [form, setForm] = useState({
+    Name:                     "",
+    Organization:             "",
+    Organization_Website:     "",
+    Address:                  "",
+    Specialty:                "",
+    Status:                   "",
+    Score:                    "",
+    Gqm_compliance:           "",
+    Gqm_best_service_training:"",
+    Notes:                    "",
+    Email_Address:            [""] as string[],
+    Phone_Number:             [""] as string[],
+    Coverage_Area:            [] as string[],
   })
 
-  // ---------------------------
-  // Skills UI state
-  // ---------------------------
-  const [skillsSyncWithPodio, setSkillsSyncWithPodio] = useState(true)
-  const [skillsModalOpen, setSkillsModalOpen] = useState(false)
-  const [skillsDbLoading, setSkillsDbLoading] = useState(false)
-  const [skillsDbError, setSkillsDbError] = useState<string | null>(null)
-  const [allSkills, setAllSkills] = useState<Skill[]>([])
-  const [skillsSearch, setSkillsSearch] = useState("")
-  const [skillsPage, setSkillsPage] = useState(1)
-  const [isLinkingSkillId, setIsLinkingSkillId] = useState<string | null>(null)
-  const [isUnlinkingSkillId, setIsUnlinkingSkillId] = useState<string | null>(null)
+  const setField = (k: string, v: any) => {
+    setChangedFields((p) => { const n = new Set(p); n.add(k); return n })
+    setForm((p) => ({ ...p, [k]: v }))
+  }
 
-  // Coverage area picker (details)
+  // ── Technicians state ──────────────────────────────────────────────────────
+  const [technicians, setTechnicians] = useState<SubcTechnician[]>([])
+  const [techSearch, setTechSearch]   = useState("")
+  const [techTypeFilter, setTechTypeFilter] = useState<"all" | "Leader" | "Worker">("all")
+  const [techPage, setTechPage]       = useState(1)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; technician: SubcTechnician | null }>({ open: false, technician: null })
+
+  // ── Skills state ───────────────────────────────────────────────────────────
+  const [skillsSyncPodio, setSkillsSyncPodio] = useState(true)
+  const [skillsModalOpen, setSkillsModalOpen] = useState(false)
+  const [skillsLoading, setSkillsLoading]     = useState(false)
+  const [skillsError, setSkillsError]         = useState<string | null>(null)
+  const [allSkills, setAllSkills]             = useState<Skill[]>([])
+  const [skillsSearch, setSkillsSearch]       = useState("")
+  const [skillsPage, setSkillsPage]           = useState(1)
+  const [linkingSkillId, setLinkingSkillId]   = useState<string | null>(null)
+  const [unlinkingSkillId, setUnlinkingSkillId] = useState<string | null>(null)
+
+  // ── Coverage picker ────────────────────────────────────────────────────────
   const [coveragePick, setCoveragePick] = useState<string>("")
 
-  const fetchSubcontractor = async () => {
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const u = localStorage.getItem("user_data")
+    if (!u) { router.push("/login"); return }
+    setUser(JSON.parse(u))
+  }, [router])
+
+  // ── Helpers to init form from subc ─────────────────────────────────────────
+  const initForm = (s: SubcFull) => setForm({
+    Name:                     s.Name ?? "",
+    Organization:             normalizeOrg(s.Organization),
+    Organization_Website:     s.Organization_Website ?? "",
+    Address:                  s.Address ?? "",
+    Specialty:                s.Specialty ?? "",
+    Status:                   s.Status ?? "",
+    Score:                    s.Score != null ? String(s.Score) : "",
+    Gqm_compliance:           s.Gqm_compliance ?? "",
+    Gqm_best_service_training: s.Gqm_best_service_training ?? "",
+    Notes:                    s.Notes ?? "",
+    Email_Address:            parseArrayField(s.Email_Address),
+    Phone_Number:             parseArrayField(s.Phone_Number),
+    Coverage_Area:            Array.isArray(s.Coverage_Area) ? s.Coverage_Area : [],
+  })
+
+  // ── Fetch subcontractor ────────────────────────────────────────────────────
+  const fetchSubc = async () => {
     if (!id) return
-
+    setLoading(true); setLoadError(null)
     try {
-      setLoading(true)
-      setLoadError(null)
-
-      const response = await fetch(`/api/subcontractors/${id}`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch subcontractor (${response.status})`)
-      }
-
-      const data = (await response.json()) as SubcontractorDetailsResponse
-
-      const normalized: SubcontractorDetailsResponse = {
+      const res = await fetch(`/api/subcontractors/${id}`, { cache: "no-store" })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json() as SubcFull
+      const normalized: SubcFull = {
         ...data,
-        Organization: normalizeOrg(data.Organization as any),
-        technicians: Array.isArray(data.technicians) ? data.technicians : [],
-        attachments: Array.isArray(data.attachments) ? data.attachments : [],
+        Organization: normalizeOrg(data.Organization),
+        technicians:  Array.isArray(data.technicians)  ? data.technicians  : [],
+        attachments:  Array.isArray(data.attachments)  ? data.attachments  : [],
         opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
-        orders: Array.isArray(data.orders) ? data.orders : [],
-        jobs: Array.isArray(data.jobs) ? data.jobs : [],
-        skills: Array.isArray(data.skills) ? (data.skills as Skill[]) : [],
-        tlactivity: Array.isArray(data.tlactivity) ? data.tlactivity : [],
-        Coverage_Area: Array.isArray((data as any).Coverage_Area) ? ((data as any).Coverage_Area as string[]) : [],
+        orders:       Array.isArray(data.orders)       ? data.orders       : [],
+        jobs:         Array.isArray(data.jobs)         ? data.jobs         : [],
+        skills:       Array.isArray(data.skills)       ? data.skills       : [],
+        tlactivity:   Array.isArray(data.tlactivity)   ? data.tlactivity   : [],
+        Coverage_Area: Array.isArray(data.Coverage_Area) ? data.Coverage_Area : [],
       }
-
-      setSubcontractor(normalized)
-      setFormData(normalized)
+      setSubc(normalized)
       setTechnicians(normalized.technicians ?? [])
-      setTechPage(1)
-
-      // (Optional) keep edit sync toggle default ON; do nothing here
-    } catch (error: any) {
-      console.error("Error fetching subcontractor:", error)
-      setSubcontractor(null)
-      setFormData({})
-      setTechnicians([])
-      setLoadError(error?.message ?? "Failed to load subcontractor")
+      initForm(normalized)
+      setChangedFields(new Set())
+    } catch (e: any) {
+      setLoadError(e?.message ?? "Failed to load subcontractor")
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    const userData = localStorage.getItem("user_data")
-    if (!userData) {
-      router.push("/login")
-      return
-    }
-    setUser(JSON.parse(userData))
-  }, [router])
+  useEffect(() => { if (user && id) fetchSubc() }, [user, id]) // eslint-disable-line
 
-  useEffect(() => {
-    if (!user || !id) return
-    fetchSubcontractor()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, id])
-
-  const handleFieldChange = (field: keyof SubcontractorDetailsResponse, value: any) => {
-    setEditedFields((prev) => {
-      const next = new Set(prev)
-      next.add(field as string)
-      return next
-    })
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setIsEditing(true)
-  }
-
-  const handleSaveChanges = async () => {
-    if (!id) return
-    if (isSaving) return
-
+  // ── Save changes ───────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!id || !subc) return
+    setSaving(true)
     try {
-      setIsSaving(true)
-
-      const response = await fetch(`/api/subcontractors/${id}?sync_podio=${syncWithPodio ? "true" : "false"}`, {
+      const payload: Record<string, any> = {}
+      const allFields: Record<string, any> = {
+        Name:                     form.Name.trim() || null,
+        Organization:             form.Organization.trim() || null,
+        Organization_Website:     form.Organization_Website.trim() || null,
+        Address:                  form.Address.trim() || null,
+        Specialty:                form.Specialty.trim() || null,
+        Status:                   form.Status || null,
+        Score:                    form.Score !== "" ? parseFloat(form.Score) : null,
+        Gqm_compliance:           form.Gqm_compliance.trim() || null,
+        Gqm_best_service_training: form.Gqm_best_service_training.trim() || null,
+        Notes:                    form.Notes.trim() || null,
+        Email_Address:            serializeArrayField(form.Email_Address),
+        Phone_Number:             serializeArrayField(form.Phone_Number),
+        Coverage_Area:            form.Coverage_Area.length ? form.Coverage_Area : null,
+      }
+      for (const [k, v] of Object.entries(allFields)) {
+        if (!SKIP_ON_PATCH.has(k)) payload[k] = v
+      }
+      const res = await fetch(`/api/subcontractors/${id}?sync_podio=${syncPodio}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        cache: "no-store",
+        body: JSON.stringify(payload),
       })
-
-      if (!response.ok) {
-        throw new Error(`Failed to update subcontractor (${response.status})`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as any)?.detail ?? `Error ${res.status}`)
       }
-
-      const updated = (await response.json()) as SubcontractorDetailsResponse
-      const normalized: SubcontractorDetailsResponse = {
+      const updated = await res.json() as SubcFull
+      const normalized: SubcFull = {
         ...updated,
-        Organization: normalizeOrg(updated.Organization as any),
-        technicians: Array.isArray(updated.technicians) ? updated.technicians : technicians,
-        attachments: Array.isArray(updated.attachments) ? updated.attachments : subcontractor?.attachments ?? [],
-        opportunities: Array.isArray(updated.opportunities) ? updated.opportunities : subcontractor?.opportunities ?? [],
-        orders: Array.isArray(updated.orders) ? updated.orders : subcontractor?.orders ?? [],
-        jobs: Array.isArray(updated.jobs) ? updated.jobs : subcontractor?.jobs ?? [],
-        skills: Array.isArray(updated.skills) ? (updated.skills as Skill[]) : subcontractor?.skills ?? [],
-        tlactivity: Array.isArray(updated.tlactivity) ? updated.tlactivity : subcontractor?.tlactivity ?? [],
-        Coverage_Area: Array.isArray((updated as any).Coverage_Area) ? ((updated as any).Coverage_Area as string[]) : [],
+        Organization:  normalizeOrg(updated.Organization),
+        technicians:   Array.isArray(updated.technicians)   ? updated.technicians   : technicians,
+        attachments:   Array.isArray(updated.attachments)   ? updated.attachments   : subc.attachments ?? [],
+        opportunities: Array.isArray(updated.opportunities) ? updated.opportunities : subc.opportunities ?? [],
+        orders:        Array.isArray(updated.orders)        ? updated.orders        : subc.orders ?? [],
+        jobs:          Array.isArray(updated.jobs)          ? updated.jobs          : subc.jobs ?? [],
+        skills:        Array.isArray(updated.skills)        ? updated.skills        : subc.skills ?? [],
+        tlactivity:    Array.isArray(updated.tlactivity)    ? updated.tlactivity    : subc.tlactivity ?? [],
+        Coverage_Area: Array.isArray(updated.Coverage_Area) ? updated.Coverage_Area : [],
       }
-
-      setSubcontractor(normalized)
-      setFormData(normalized)
-      setIsEditing(false)
-      setEditedFields(new Set())
-    } catch (error) {
-      console.error("Error updating subcontractor:", error)
-      alert("Failed to update subcontractor.")
-    } finally {
-      setIsSaving(false)
-    }
+      setSubc(normalized)
+      initForm(normalized)
+      setEditing(false)
+      setChangedFields(new Set())
+      toast({ title: "Saved", description: "Subcontractor updated successfully." })
+    } catch (e: any) {
+      toast({ title: "Error saving", description: e?.message ?? "Unknown error.", variant: "destructive" })
+    } finally { setSaving(false) }
   }
 
-  // ---------------------------
-  // Coverage Area helpers (Details)
-  // ---------------------------
-  const coverageAreas = useMemo(() => {
-    const arr = (formData as any)?.Coverage_Area
-    return Array.isArray(arr) ? (arr as string[]) : []
-  }, [formData])
+  const handleCancel = () => {
+    if (subc) initForm(subc)
+    setChangedFields(new Set())
+    setEditing(false)
+  }
 
-  const addCoverageArea = (valueRaw?: string) => {
-    const value = asString(valueRaw ?? coveragePick).trim()
-    if (!value) return
-
-    const next = Array.from(new Set([...coverageAreas, value].map((x) => x.trim()).filter(Boolean)))
-
-    handleFieldChange("Coverage_Area" as any, next)
+  // ── Coverage area helpers ──────────────────────────────────────────────────
+  const addCoverageArea = (val?: string) => {
+    const v = (val ?? coveragePick).trim()
+    if (!v) return
+    setField("Coverage_Area", [...new Set([...form.Coverage_Area, v])])
     setCoveragePick("")
   }
+  const removeCoverageArea = (val: string) =>
+    setField("Coverage_Area", form.Coverage_Area.filter((x) => x !== val))
 
-  const removeCoverageArea = (value: string) => {
-    const next = coverageAreas.filter((x) => x !== value)
-    handleFieldChange("Coverage_Area" as any, next)
-  }
-
-  // ---------------------------
-  // Skills helpers
-  // ---------------------------
-  const linkedSkillIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const s of subcontractor?.skills ?? []) {
-      if (s?.ID_Skill) ids.add(s.ID_Skill)
-    }
-    return ids
-  }, [subcontractor?.skills])
+  // ── Skills helpers ─────────────────────────────────────────────────────────
+  const linkedSkillIds = useMemo(() => new Set((subc?.skills ?? []).map((s) => s.ID_Skill)), [subc?.skills])
 
   const fetchAllSkills = async () => {
+    setSkillsLoading(true); setSkillsError(null)
     try {
-      setSkillsDbLoading(true)
-      setSkillsDbError(null)
-
-      const res = await fetch(`/api/skills`, { cache: "no-store" })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const detail = body?.detail || body?.error || body?.message || `Failed (${res.status})`
-        throw new Error(detail)
-      }
-
-      const data = await res.json()
-      const list = normalizeSkillsResponse(data)
-
-      setAllSkills(Array.isArray(list) ? list : [])
+      const res = await fetch("/api/skills", { cache: "no-store" })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      setAllSkills(normalizeSkillsResponse(await res.json()))
       setSkillsPage(1)
     } catch (e: any) {
-      console.error("fetchAllSkills error:", e)
-      setAllSkills([])
-      setSkillsDbError(e?.message ?? "Failed to load skills")
-    } finally {
-      setSkillsDbLoading(false)
-    }
+      setSkillsError(e?.message ?? "Failed to load skills")
+    } finally { setSkillsLoading(false) }
   }
 
   const openSkillsModal = async () => {
     setSkillsModalOpen(true)
-    if (!allSkills.length) {
-      await fetchAllSkills()
-    }
+    if (!allSkills.length) await fetchAllSkills()
   }
 
   const linkSkill = async (skillId: string) => {
-    if (!id) return
+    setLinkingSkillId(skillId)
     try {
-      setIsLinkingSkillId(skillId)
-
       const res = await fetch(
-        `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(
-          id
-        )}?sync_podio=${skillsSyncWithPodio ? "true" : "false"}`,
+        `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(id)}?sync_podio=${skillsSyncPodio}`,
         { method: "POST", cache: "no-store" }
       )
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const detail = body?.detail || body?.error || body?.message || `Failed (${res.status})`
-        throw new Error(detail)
-      }
-
-      await fetchSubcontractor()
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      await fetchSubc()
     } catch (e: any) {
-      console.error("linkSkill error:", e)
-      alert(e?.message ?? "Failed to link skill")
-    } finally {
-      setIsLinkingSkillId(null)
-    }
+      toast({ title: "Error", description: e?.message ?? "Failed to link skill.", variant: "destructive" })
+    } finally { setLinkingSkillId(null) }
   }
 
   const unlinkSkill = async (skillId: string) => {
-    if (!id) return
+    setUnlinkingSkillId(skillId)
     try {
-      setIsUnlinkingSkillId(skillId)
-
       const res = await fetch(
-        `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(
-          id
-        )}?sync_podio=${skillsSyncWithPodio ? "true" : "false"}`,
+        `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(id)}?sync_podio=${skillsSyncPodio}`,
         { method: "DELETE", cache: "no-store" }
       )
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const detail = body?.detail || body?.error || body?.message || `Failed (${res.status})`
-        throw new Error(detail)
-      }
-
-      await fetchSubcontractor()
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      await fetchSubc()
     } catch (e: any) {
-      console.error("unlinkSkill error:", e)
-      alert(e?.message ?? "Failed to unlink skill")
-    } finally {
-      setIsUnlinkingSkillId(null)
-    }
+      toast({ title: "Error", description: e?.message ?? "Failed to unlink skill.", variant: "destructive" })
+    } finally { setUnlinkingSkillId(null) }
   }
 
   const filteredSkillsDb = useMemo(() => {
     const q = skillsSearch.trim().toLowerCase()
     if (!q) return allSkills
-    return allSkills.filter((s) => {
-      const name = asString(s.Skill_name).toLowerCase()
-      const div = asString(s.Division_trade).toLowerCase()
-      const sid = asString(s.ID_Skill).toLowerCase()
-      return name.includes(q) || div.includes(q) || sid.includes(q)
-    })
+    return allSkills.filter((s) =>
+      asStr(s.Skill_name).toLowerCase().includes(q) ||
+      asStr(s.Division_trade).toLowerCase().includes(q) ||
+      asStr(s.ID_Skill).toLowerCase().includes(q)
+    )
   }, [allSkills, skillsSearch])
 
   const SKILLS_PAGE_SIZE = 12
   const skillsTotalPages = Math.max(1, Math.ceil(filteredSkillsDb.length / SKILLS_PAGE_SIZE))
   const skillsStart = (skillsPage - 1) * SKILLS_PAGE_SIZE
-  const skillsEnd = skillsStart + SKILLS_PAGE_SIZE
-  const paginatedSkillsDb = filteredSkillsDb.slice(skillsStart, skillsEnd)
+  const paginatedSkillsDb = filteredSkillsDb.slice(skillsStart, skillsStart + SKILLS_PAGE_SIZE)
+  useEffect(() => setSkillsPage(1), [skillsSearch])
 
-  useEffect(() => {
-    setSkillsPage(1)
-  }, [skillsSearch])
-
-  // ---------------------------
-  // Technicians
-  // ---------------------------
+  // ── Technicians helpers ────────────────────────────────────────────────────
   const filteredTechnicians = useMemo(() => {
     const q = techSearch.trim().toLowerCase()
     return technicians.filter((t) => {
-      const name = asString(t.Name).toLowerCase()
-      const email = asString(t.Email_Address).toLowerCase()
-      const tid = asString(t.ID_Technician).toLowerCase()
-      const type = asString(t.Type_of_technician)
-      const matchesSearch = !q || name.includes(q) || email.includes(q) || tid.includes(q)
-      const matchesType = techTypeFilter === "all" || type === techTypeFilter
-      return matchesSearch && matchesType
+      const ok = !q || asStr(t.Name).toLowerCase().includes(q) ||
+        asStr(t.Email_Address).toLowerCase().includes(q) ||
+        asStr(t.ID_Technician).toLowerCase().includes(q)
+      const typeOk = techTypeFilter === "all" || t.Type_of_technician === techTypeFilter
+      return ok && typeOk
     })
   }, [technicians, techSearch, techTypeFilter])
 
   const techTotalPages = Math.max(1, Math.ceil(filteredTechnicians.length / ITEMS_PER_PAGE))
-  const techStartIndex = (techPage - 1) * ITEMS_PER_PAGE
-  const techEndIndex = techStartIndex + ITEMS_PER_PAGE
-  const paginatedTechnicians = filteredTechnicians.slice(techStartIndex, techEndIndex)
+  const techStart = (techPage - 1) * ITEMS_PER_PAGE
+  const paginatedTechnicians = filteredTechnicians.slice(techStart, techStart + ITEMS_PER_PAGE)
+  useEffect(() => setTechPage(1), [techSearch, techTypeFilter])
 
-  useEffect(() => {
-    setTechPage(1)
-  }, [techSearch, techTypeFilter])
-
-  const leaderTechnician = useMemo(() => {
-    return (technicians ?? []).find((t) => asString(t.Type_of_technician) === "Leader") ?? null
-  }, [technicians])
-
-  const handleViewTechnician = (techId: string) => {
-    router.push(`/subcontractors/${id}/technicians/${techId}`)
-  }
-
-  const handleDeleteTechnician = (techId: string) => {
-    const tech = technicians.find((t) => t.ID_Technician === techId) ?? null
-    if (tech) setDeleteDialog({ open: true, technician: tech })
-  }
+  const leaderTechnician = useMemo(
+    () => technicians.find((t) => t.Type_of_technician === "Leader") ?? null,
+    [technicians]
+  )
 
   const confirmDeleteTechnician = async () => {
     if (!deleteDialog.technician?.ID_Technician) return
-
-    try {
-      await fetch(`/api/technicians/${deleteDialog.technician.ID_Technician}`, {
-        method: "DELETE",
-        cache: "no-store",
-      }).catch(() => null)
-
-      setTechnicians((prev) => prev.filter((t) => t.ID_Technician !== deleteDialog.technician?.ID_Technician))
-      setDeleteDialog({ open: false, technician: null })
-    } catch (error) {
-      console.error("Error deleting technician:", error)
-    }
+    await fetch(`/api/technicians/${deleteDialog.technician.ID_Technician}`, { method: "DELETE", cache: "no-store" }).catch(() => null)
+    setTechnicians((p) => p.filter((t) => t.ID_Technician !== deleteDialog.technician?.ID_Technician))
+    setDeleteDialog({ open: false, technician: null })
   }
 
+  // ── Guards ─────────────────────────────────────────────────────────────────
   if (!user) return null
+  if (loading) return <PageSkeleton user={user} />
 
-  if (loading) {
-    return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="flex h-64 items-center justify-center rounded-lg border bg-white">
-              <p className="text-gray-500">Loading subcontractor...</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
-
-  if (!subcontractor) {
-    return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
-          <main className="flex-1 overflow-y-auto p-6">
-            <Button variant="ghost" onClick={() => router.push("/subcontractors")} className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Subcontractors
-            </Button>
-
-            <Card className="p-6">
-              <h1 className="text-xl font-semibold">Subcontractor could not be loaded</h1>
-              <p className="mt-2 text-sm text-red-600">{loadError ?? "Unknown error."}</p>
-              <div className="mt-4">
-                <Button onClick={fetchSubcontractor}>Retry</Button>
-              </div>
-            </Card>
-          </main>
-        </div>
-      </div>
-    )
-  }
-
-  const website = safeWebsite(asString(formData.Organization_Website))
-
-  return (
-    <div className="flex h-screen bg-gray-50">
+  if (!subc) return (
+    <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
         <main className="flex-1 overflow-y-auto p-6">
-          <Button variant="ghost" onClick={() => router.push("/subcontractors")} className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Subcontractors
-          </Button>
+          <button onClick={() => router.push("/subcontractors")}
+            className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="h-4 w-4" /> Back to Subcontractors
+          </button>
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <h2 className="font-semibold text-red-800">Could not load subcontractor</h2>
+            </div>
+            <p className="mt-2 text-sm text-red-600">{loadError}</p>
+            <Button onClick={fetchSubc} className="mt-4 gap-2" variant="outline">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <div className="mb-6 flex items-start justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold">{subcontractor.Name ?? "-"}</h1>
-                  <p className="text-muted-foreground">{subcontractor.ID_Subcontractor ?? id}</p>
-                </div>
+  const displayEmails = parseArrayField(subc.Email_Address)
+  const displayPhones = parseArrayField(subc.Phone_Number)
+  const displayOrg    = normalizeOrg(subc.Organization)
+  const inputCls      = "border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+  const changedCls    = (field: string) => changedFields.has(field) ? "border-amber-400 ring-1 ring-amber-400/30" : ""
 
-                {/* ✅ Header actions: Sync + Save */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-yellow-500 px-4 py-1 text-sm font-semibold text-white">
-                    Score: {subcontractor.Score ?? "-"}
-                  </span>
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex h-screen bg-slate-50">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar user={user} />
+        <main className="flex-1 overflow-y-auto">
 
-                  <span
-                    className={`rounded-full px-4 py-1 text-sm font-semibold ${
-                      subcontractor.Status === "Active" ? "bg-green-500 text-white" : "bg-gray-400 text-white"
-                    }`}
-                  >
-                    {subcontractor.Status ?? "Unknown"}
-                  </span>
-
-                  <div className="flex items-center gap-3 rounded-lg border bg-white px-4 py-2">
-                    <div className="space-y-0.5">
-                      <div className="text-sm font-medium">Sync with Podio</div>
-                      <div className="text-xs text-gray-500">Applies to save changes</div>
-                    </div>
-                    <Switch checked={syncWithPodio} onCheckedChange={setSyncWithPodio} disabled={isSaving} />
+          {/* ── Sticky header ── */}
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center gap-4">
+                <button onClick={() => router.push("/subcontractors")}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm">
+                    {(subc.Name ?? "??").slice(0, 2).toUpperCase()}
                   </div>
-
-                  {isEditing && editedFields.size > 0 ? (
-                    <Button onClick={handleSaveChanges} className="gap-2" disabled={isSaving}>
-                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
-                  ) : null}
+                  <div>
+                    <h1 className="text-lg font-bold text-slate-900 leading-none">{subc.Name ?? "Unnamed"}</h1>
+                    <p className="mt-0.5 font-mono text-xs text-slate-400">{subc.ID_Subcontractor}</p>
+                  </div>
                 </div>
+                {subc.Specialty && (
+                  <span className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600 md:inline-flex">
+                    <Wrench className="h-3 w-3 text-slate-400" />{subc.Specialty}
+                  </span>
+                )}
+                <StatusBadge status={subc.Status} />
+                <ScoreBadge score={subc.Score} />
               </div>
 
-              <Tabs value={activeTab} onValueChange={(value) => router.push(`/subcontractors/${id}?tab=${value}`)} className="w-full">
-                <TabsList className="mb-6 inline-flex h-auto flex-wrap gap-2 rounded-lg border bg-white p-1">
-                  <TabsTrigger value="details" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Details
-                  </TabsTrigger>
-                  <TabsTrigger value="technicians" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Technicians
-                  </TabsTrigger>
-                  {/* <TabsTrigger value="attachments" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Attachments
-                  </TabsTrigger> */}
-                  {/* <TabsTrigger value="opportunities" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Opportunities
-                  </TabsTrigger> */}
-                  <TabsTrigger value="orders" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Orders
-                  </TabsTrigger>
-                  <TabsTrigger value="jobs" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Jobs
-                  </TabsTrigger>
-                  <TabsTrigger value="skills" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Skills
-                  </TabsTrigger>
-                  {/* <TabsTrigger value="timeline" className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-gqm-green data-[state=active]:text-white">
-                    Timeline
-                  </TabsTrigger> */}
-                </TabsList>
+              <div className="flex items-center gap-2.5">
+                {/* Podio toggle */}
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+                  <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                    onClick={() => setSyncPodio((v) => !v)}>
+                    <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                  </div>
+                  Sync Podio
+                </label>
 
-                {/* -------------------- DETAILS -------------------- */}
-                <TabsContent value="details" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-6 text-xl font-semibold">Organization Information</h2>
+                {editing ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}
+                      className="gap-1.5 text-xs border-slate-200">
+                      <X className="h-3.5 w-3.5" /> Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={saving}
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      {saving ? "Saving…" : "Save Changes"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}
+                    className="gap-1.5 text-xs border-slate-200">
+                    ✎ Edit
+                  </Button>
+                )}
+              </div>
+            </div>
 
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div>
-                        <Label className="mb-2 block font-semibold">Organization</Label>
-                        <Input
-                          value={asString(formData.Organization)}
-                          onChange={(e) => handleFieldChange("Organization" as any, normalizeOrg(e.target.value))}
-                          className={editedFields.has("Organization") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          disabled={isSaving}
-                        />
-                      </div>
+            {syncPodio && (
+              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-xs font-medium text-emerald-700">Podio sync enabled — changes will be reflected in Podio</p>
+              </div>
+            )}
+          </div>
 
-                      <div>
-                        <Label className="mb-2 block font-semibold">Website</Label>
-                        <div className="relative">
-                          <Input
-                            value={asString(formData.Organization_Website)}
-                            onChange={(e) => handleFieldChange("Organization_Website" as any, e.target.value)}
-                            className={editedFields.has("Organization_Website") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                            disabled={isSaving}
-                          />
+          <div className="mx-auto max-w-7xl p-6">
+            <div className="grid gap-6 lg:grid-cols-3">
 
-                          {website ? (
-                            <a href={website} target="_blank" rel="noopener noreferrer" className="absolute right-3 top-1/2 -translate-y-1/2">
-                              <ExternalLink className="h-4 w-4 text-blue-600" />
-                            </a>
-                          ) : null}
+              {/* ── LEFT: tabs (2/3) ─────────────────────────────────────── */}
+              <div className="lg:col-span-2">
+                <Tabs value={activeTab} onValueChange={(v) => router.push(`/subcontractors/${id}?tab=${v}`)}>
+
+                  {/* Tab bar */}
+                  <div className="mb-5 overflow-x-auto">
+                    <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                      {[
+                        { value: "details",     label: "Details",     count: null },
+                        { value: "technicians", label: "Technicians", count: technicians.length },
+                        { value: "orders",      label: "Orders",      count: subc.orders?.length ?? 0 },
+                        { value: "jobs",        label: "Jobs",        count: subc.jobs?.length ?? 0 },
+                        { value: "skills",      label: "Skills",      count: subc.skills?.length ?? 0 },
+                        { value: "timeline",    label: "Timeline",    count: subc.tlactivity?.length ?? 0 },
+                      ].map(({ value, label, count }) => (
+                        <TabsTrigger key={value} value={value}
+                          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm">
+                          {label}
+                          {count !== null && (
+                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${activeTab === value ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+                              {count}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </div>
+
+                  {/* ── DETAILS tab ─────────────────────────────────────── */}
+                  <TabsContent value="details" className="space-y-4">
+
+                    {/* Organization */}
+                    <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Organization Information">
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                          <FieldLabel>Organization Name</FieldLabel>
+                          {editing
+                            ? <Input value={form.Organization} onChange={(e) => setField("Organization", e.target.value)} className={`${inputCls} ${changedCls("Organization")}`} placeholder="Organization name" />
+                            : <p className="text-sm text-slate-800">{displayOrg || <span className="italic text-slate-400">—</span>}</p>
+                          }
+                        </div>
+                        <div>
+                          <FieldLabel>Specialty</FieldLabel>
+                          {editing
+                            ? <Input value={form.Specialty} onChange={(e) => setField("Specialty", e.target.value)} className={`${inputCls} ${changedCls("Specialty")}`} placeholder="e.g. Plumbing, HVAC…" />
+                            : <p className="text-sm text-slate-800">{subc.Specialty || <span className="italic text-slate-400">—</span>}</p>
+                          }
+                        </div>
+                        <div>
+                          <FieldLabel>Website</FieldLabel>
+                          {editing
+                            ? <Input value={form.Organization_Website} onChange={(e) => setField("Organization_Website", e.target.value)} className={`${inputCls} ${changedCls("Organization_Website")}`} placeholder="https://…" />
+                            : safeUrl(subc.Organization_Website)
+                              ? <a href={safeUrl(subc.Organization_Website)!} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline">
+                                  <Globe className="h-3.5 w-3.5" />{subc.Organization_Website}
+                                </a>
+                              : <span className="text-sm italic text-slate-400">—</span>
+                          }
+                        </div>
+                        <div>
+                          <FieldLabel>Status</FieldLabel>
+                          {editing
+                            ? <Select value={form.Status || "Active"} onValueChange={(v) => setField("Status", v)}>
+                                <SelectTrigger className={`${inputCls} ${changedCls("Status")}`}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {["Active","Inactive","Pending","Banned"].map(s =>
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            : <StatusBadge status={subc.Status} />
+                          }
+                        </div>
+                        <div className="md:col-span-2">
+                          <FieldLabel>Address</FieldLabel>
+                          {editing
+                            ? <Textarea value={form.Address} onChange={(e) => setField("Address", e.target.value)} className={`${inputCls} resize-none ${changedCls("Address")}`} rows={2} placeholder="Full address" />
+                            : <p className="flex items-start gap-1.5 text-sm text-slate-800">
+                                {subc.Address ? <><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{subc.Address}</> : <span className="italic text-slate-400">—</span>}
+                              </p>
+                          }
                         </div>
                       </div>
+                    </SectionCard>
 
-                      <div className="md:col-span-2">
-                        <Label className="mb-2 block font-semibold">Address</Label>
-                        <Textarea
-                          value={asString(formData.Address)}
-                          onChange={(e) => handleFieldChange("Address" as any, e.target.value)}
-                          className={editedFields.has("Address") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          rows={2}
-                          disabled={isSaving}
-                        />
+                    {/* Contact */}
+                    <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title="Contact Information">
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                          <FieldLabel>Email Address</FieldLabel>
+                          {editing
+                            ? <ArrayEditField values={form.Email_Address} icon={Mail} placeholder="email@example.com" onChange={(v) => setField("Email_Address", v)} />
+                            : <ArrayDisplayChips values={displayEmails} icon={Mail} href={(e) => `mailto:${e}`} emptyLabel="No email" />
+                          }
+                        </div>
+                        <div>
+                          <FieldLabel>Phone Number</FieldLabel>
+                          {editing
+                            ? <ArrayEditField values={form.Phone_Number} icon={Phone} placeholder="(555) 000-0000" onChange={(v) => setField("Phone_Number", v)} />
+                            : <ArrayDisplayChips values={displayPhones} icon={Phone} href={(p) => `tel:${p}`} emptyLabel="No phone" />
+                          }
+                        </div>
                       </div>
+                    </SectionCard>
 
-                      <div>
-                        <Label className="mb-2 block font-semibold">Specialty</Label>
-                        <Input
-                          value={asString(formData.Specialty)}
-                          onChange={(e) => handleFieldChange("Specialty" as any, e.target.value)}
-                          className={editedFields.has("Specialty") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          disabled={isSaving}
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block font-semibold">Status</Label>
-                        <Select value={asString(formData.Status) || "Active"} onValueChange={(v) => handleFieldChange("Status" as any, v)} disabled={isSaving}>
-                          <SelectTrigger className={editedFields.has("Status") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-6">
-                    <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
-
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div>
-                        <Label className="mb-2 block font-semibold">Email</Label>
-                        <Input
-                          type="email"
-                          value={asString(formData.Email_Address)}
-                          onChange={(e) => handleFieldChange("Email_Address" as any, e.target.value)}
-                          className={editedFields.has("Email_Address") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          disabled={isSaving}
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block font-semibold">Phone Number</Label>
-                        <Input
-                          value={asString(formData.Phone_Number)}
-                          onChange={(e) => handleFieldChange("Phone_Number" as any, e.target.value)}
-                          className={editedFields.has("Phone_Number") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          disabled={isSaving}
-                        />
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Coverage Area */}
-                  <Card className="p-6">
-                    <div className="mb-6 flex items-center gap-2">
-                      <Map className="h-5 w-5 text-gray-700" />
-                      <h2 className="text-xl font-semibold">Coverage Area</h2>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                        <div className="relative">
-                          <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            <MapPin className="h-4 w-4" />
+                    {/* Coverage Area */}
+                    <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title="Coverage Area">
+                      <div className="space-y-3">
+                        {editing && (
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                              <Select value={coveragePick || undefined}
+                                onValueChange={(v) => { setCoveragePick(v); addCoverageArea(v) }}>
+                                <SelectTrigger className={`pl-9 ${inputCls}`}>
+                                  <SelectValue placeholder="Select a county…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {COVERAGE_AREA_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt} value={opt}
+                                      disabled={form.Coverage_Area.some(x => x.toLowerCase() === opt.toLowerCase())}>
+                                      {opt}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
+                        )}
+                        {form.Coverage_Area.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {form.Coverage_Area.map((area) => (
+                              <span key={area} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                                <MapPin className="h-3 w-3 text-slate-400" />{area}
+                                {editing && (
+                                  <button type="button" onClick={() => removeCoverageArea(area)}
+                                    className="ml-0.5 rounded-full text-slate-400 hover:text-red-500 transition-colors">
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm italic text-slate-400">No coverage areas added yet</p>
+                        )}
+                      </div>
+                    </SectionCard>
 
-                          <Select
-                            value={coveragePick || undefined}
-                            onValueChange={(v) => {
-                              setCoveragePick(v)
-                              addCoverageArea(v)
-                            }}
-                            disabled={isSaving}
-                          >
-                            <SelectTrigger
-                              className={[
-                                "h-10 pl-10",
-                                editedFields.has("Coverage_Area") ? "border-yellow-500 ring-2 ring-yellow-200" : "",
-                              ].join(" ")}
-                            >
-                              <SelectValue placeholder="Select a county..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {COVERAGE_AREA_OPTIONS.map((opt) => (
-                                <SelectItem
-                                  key={opt}
-                                  value={opt}
-                                  disabled={coverageAreas.some((x) => x.toLowerCase() === opt.toLowerCase())}
-                                >
-                                  {opt}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    {/* GQM */}
+                    <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title="GQM Information">
+                      <div className="grid gap-5 md:grid-cols-3">
+                        <div>
+                          <FieldLabel>Score</FieldLabel>
+                          {editing
+                            ? <Input type="number" min={0} max={100} value={form.Score} onChange={(e) => setField("Score", e.target.value)} className={`${inputCls} ${changedCls("Score")}`} placeholder="0–100" />
+                            : <ScoreBadge score={subc.Score} />
+                          }
                         </div>
+                        <div>
+                          <FieldLabel>GQM Compliance</FieldLabel>
+                          {editing
+                            ? <Select value={form.Gqm_compliance || "N/A"} onValueChange={(v) => setField("Gqm_compliance", v)}>
+                                <SelectTrigger className={`${inputCls} ${changedCls("Gqm_compliance")}`}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            : <CertBadge value={subc.Gqm_compliance} />
+                          }
+                        </div>
+                        <div>
+                          <FieldLabel>Best Service Training</FieldLabel>
+                          {editing
+                            ? <Select value={form.Gqm_best_service_training || "N/A"} onValueChange={(v) => setField("Gqm_best_service_training", v)}>
+                                <SelectTrigger className={`${inputCls} ${changedCls("Gqm_best_service_training")}`}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            : <CertBadge value={subc.Gqm_best_service_training} />
+                          }
+                        </div>
+                        <div className="md:col-span-3">
+                          <FieldLabel>Notes</FieldLabel>
+                          {editing
+                            ? <Textarea value={form.Notes} onChange={(e) => setField("Notes", e.target.value)} className={`${inputCls} resize-none ${changedCls("Notes")}`} rows={3} placeholder="Additional notes…" />
+                            : <p className="whitespace-pre-wrap text-sm text-slate-700">{subc.Notes || <span className="italic text-slate-400">No notes</span>}</p>
+                          }
+                        </div>
+                      </div>
+                    </SectionCard>
+                  </TabsContent>
 
-                        <Button type="button" onClick={() => addCoverageArea()} className="gap-2" disabled={!coveragePick || isSaving}>
-                          <Plus className="h-4 w-4" />
-                          Add
+                  {/* ── TECHNICIANS tab ──────────────────────────────────── */}
+                  <TabsContent value="technicians">
+                    <SectionCard icon={Wrench} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Technicians"
+                      action={
+                        <Button size="sm" onClick={() => router.push(`/subcontractors/${id}/technicians/create`)}
+                          className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                          <Plus className="h-3.5 w-3.5" /> Add Technician
                         </Button>
-                      </div>
-
-                      {coverageAreas.length ? (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {coverageAreas.map((area) => (
-                            <Badge key={area} variant="secondary" className="flex items-center gap-2 py-1">
-                              {area}
-                              <button
-                                type="button"
-                                onClick={() => removeCoverageArea(area)}
-                                className="rounded p-0.5 hover:bg-black/10"
-                                aria-label={`Remove ${area}`}
-                                disabled={isSaving}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
+                      }>
+                      {/* Search + filter */}
+                      <div className="mb-5 flex flex-wrap items-center gap-3">
+                        <div className="relative flex-1 min-w-[200px]">
+                          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                          <Input placeholder="Search technicians…" value={techSearch} onChange={(e) => setTechSearch(e.target.value)}
+                            className={`pl-9 ${inputCls}`} />
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No coverage areas added yet.</p>
-                      )}
-                    </div>
-                  </Card>
-
-                  <Card className="p-6">
-                    <h2 className="mb-6 text-xl font-semibold">GQM Information</h2>
-
-                    <div className="grid gap-6 md:grid-cols-3">
-                      <div>
-                        <Label className="mb-2 block font-semibold">Score</Label>
-                        <Input
-                          type="number"
-                          value={formData.Score == null ? "" : String(formData.Score)}
-                          onChange={(e) => handleFieldChange("Score" as any, e.target.value === "" ? null : Number(e.target.value))}
-                          className={editedFields.has("Score") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          disabled={isSaving}
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block font-semibold">GQM Compliance</Label>
-                        <Select
-                          value={asString(formData.Gqm_compliance) || "N/A"}
-                          onValueChange={(v) => handleFieldChange("Gqm_compliance" as any, v)}
-                          disabled={isSaving}
-                        >
-                          <SelectTrigger className={editedFields.has("Gqm_compliance") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Yes">Yes</SelectItem>
-                            <SelectItem value="No">No</SelectItem>
-                            <SelectItem value="N/A">N/A</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block font-semibold">Best Service Training</Label>
-                        <Select
-                          value={asString(formData.Gqm_best_service_training) || "N/A"}
-                          onValueChange={(v) => handleFieldChange("Gqm_best_service_training" as any, v)}
-                          disabled={isSaving}
-                        >
-                          <SelectTrigger className={editedFields.has("Gqm_best_service_training") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Yes">Yes</SelectItem>
-                            <SelectItem value="No">No</SelectItem>
-                            <SelectItem value="N/A">N/A</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="md:col-span-3">
-                        <Label className="mb-2 block font-semibold">Notes</Label>
-                        <Textarea
-                          value={asString(formData.Notes)}
-                          onChange={(e) => handleFieldChange("Notes" as any, e.target.value)}
-                          className={editedFields.has("Notes") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-                          rows={3}
-                          disabled={isSaving}
-                        />
-                      </div>
-                    </div>
-                  </Card>
-                </TabsContent>
-
-                {/* -------------------- TECHNICIANS / SKILLS / PLACEHOLDERS -------------------- */}
-                {/* (El resto del archivo queda igual que antes; no lo toqué para no meterte ruido) */}
-
-                <TabsContent value="technicians" className="space-y-6">
-                  {/* ... igual que tu versión previa ... */}
-                  <Card className="p-6">
-                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="relative sm:w-80">
-                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input placeholder="Search technicians..." value={techSearch} onChange={(e) => setTechSearch(e.target.value)} className="pl-10" />
-                        </div>
-
                         <Select value={techTypeFilter} onValueChange={(v: any) => setTechTypeFilter(v)}>
-                          <SelectTrigger className="w-44">
-                            <SelectValue placeholder="Type" />
-                          </SelectTrigger>
+                          <SelectTrigger className={`w-36 ${inputCls}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Types</SelectItem>
                             <SelectItem value="Leader">Leader</SelectItem>
@@ -847,377 +883,567 @@ export default function SubcontractorDetailsPage() {
                         </Select>
                       </div>
 
-                      <Button onClick={() => router.push(`/subcontractors/${id}/technicians/create`)} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add New Technician
-                      </Button>
-                    </div>
-
-                    {paginatedTechnicians.length ? (
-                      <>
-                        <div className="grid gap-6 sm:grid-cols-2">
-                          {paginatedTechnicians.map((t) => (
-                            <TechnicianCard
-                              key={t.ID_Technician}
-                              technician={
-                                {
-                                  ID_Technician: t.ID_Technician,
-                                  Name: t.Name ?? "",
-                                  Email: t.Email_Address ?? "",
-                                  Location: t.Location ?? "",
+                      {paginatedTechnicians.length ? (
+                        <>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            {paginatedTechnicians.map((t) => (
+                              <TechnicianCard key={t.ID_Technician}
+                                technician={{
+                                  ID_Technician: t.ID_Technician, Name: t.Name ?? "",
+                                  Email: t.Email_Address ?? "", Location: t.Location ?? "",
                                   Phone_number: t.Phone_Number ?? "",
                                   Type: (t.Type_of_technician as any) ?? "Worker",
-                                  ID_Subcontractor: t.ID_Subcontractor ?? subcontractor.ID_Subcontractor,
-                                } as any
-                              }
-                              onView={(techId) => router.push(`/subcontractors/${id}/technicians/${techId}`)}
-                              onDelete={(techId) => {
-                                const tech = technicians.find((x) => x.ID_Technician === techId) ?? null
-                                if (tech) setDeleteDialog({ open: true, technician: tech })
-                              }}
-                            />
-                          ))}
-                        </div>
-
-                        <div className="mt-6 flex items-center justify-between border-t pt-4">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {filteredTechnicians.length ? techStartIndex + 1 : 0} to {Math.min(techEndIndex, filteredTechnicians.length)} of{" "}
-                            {filteredTechnicians.length} technicians
-                          </p>
-
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setTechPage((p) => Math.max(1, p - 1))} disabled={techPage === 1}>
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
-
-                            <span className="text-sm">
-                              Page {techPage} of {techTotalPages}
-                            </span>
-
-                            <Button variant="outline" size="sm" onClick={() => setTechPage((p) => Math.min(techTotalPages, p + 1))} disabled={techPage === techTotalPages}>
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
+                                  ID_Subcontractor: t.ID_Subcontractor ?? subc.ID_Subcontractor,
+                                } as any}
+                                onView={(tid) => router.push(`/subcontractors/${id}/technicians/${tid}`)}
+                                onDelete={(tid) => {
+                                  const tech = technicians.find(x => x.ID_Technician === tid) ?? null
+                                  if (tech) setDeleteDialog({ open: true, technician: tech })
+                                }}
+                              />
+                            ))}
                           </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-12 text-center">
-                        <p className="text-muted-foreground">No technicians found</p>
-                      </div>
-                    )}
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="skills" className="space-y-6">
-                  {/* ... tu bloque de skills existente (sin cambios) ... */}
-                  <Card className="p-6">
-                    {/* header skills */}
-                    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gqm-yellow/30">
-                          <Wrench className="h-5 w-5 text-gqm-green-dark" />
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-semibold">Skills</h2>
-                          <p className="text-sm text-muted-foreground">Manage the skills linked to this subcontractor.</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-3 rounded-lg border bg-white px-4 py-2">
-                          <div className="space-y-0.5">
-                            <div className="text-sm font-medium">Sync with Podio</div>
-                            <div className="text-xs text-gray-500">Applies to link/unlink</div>
+                          <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                            <p className="text-xs text-slate-500">
+                              {filteredTechnicians.length ? techStart + 1 : 0}–{Math.min(techStart + ITEMS_PER_PAGE, filteredTechnicians.length)} of {filteredTechnicians.length}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
+                                onClick={() => setTechPage(p => Math.max(1, p - 1))} disabled={techPage === 1}>
+                                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                              </Button>
+                              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{techPage}/{techTotalPages}</span>
+                              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
+                                onClick={() => setTechPage(p => Math.min(techTotalPages, p + 1))} disabled={techPage >= techTotalPages}>
+                                Next <ChevronRight className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <Switch checked={skillsSyncWithPodio} onCheckedChange={setSkillsSyncWithPodio} />
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-2 py-12">
+                          <Wrench className="h-8 w-8 text-slate-300" />
+                          <p className="text-sm text-slate-500">No technicians found</p>
                         </div>
+                      )}
+                    </SectionCard>
+                  </TabsContent>
 
-                        <Button onClick={openSkillsModal} className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Link Skill
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* linked list */}
-                    {Array.isArray(subcontractor.skills) && subcontractor.skills.length ? (
-                      <div className="space-y-3">
-                        {subcontractor.skills
-                          .slice()
-                          .sort((a, b) => asString(a.Skill_name).localeCompare(asString(b.Skill_name)))
-                          .map((s) => {
-                            const sid = s.ID_Skill
-                            const busy = isUnlinkingSkillId === sid
+                  {/* ── SKILLS tab ───────────────────────────────────────── */}
+                  <TabsContent value="skills">
+                    <SectionCard icon={Wrench} iconBg="bg-amber-50" iconColor="text-amber-600" title="Skills"
+                      action={
+                        <div className="flex items-center gap-2">
+                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+                            <div className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ${skillsSyncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                              onClick={() => setSkillsSyncPodio(v => !v)}>
+                              <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${skillsSyncPodio ? "translate-x-3" : "translate-x-0.5"}`} />
+                            </div>
+                            Podio
+                          </label>
+                          <Button size="sm" onClick={openSkillsModal}
+                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                            <Plus className="h-3.5 w-3.5" /> Link Skill
+                          </Button>
+                        </div>
+                      }>
+                      {subc.skills?.length ? (
+                        <div className="space-y-2">
+                          {[...(subc.skills)].sort((a, b) => asStr(a.Skill_name).localeCompare(asStr(b.Skill_name))).map((s) => {
+                            const busy = unlinkingSkillId === s.ID_Skill
                             return (
-                              <div key={sid} className="flex flex-col gap-2 rounded-lg border bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                              <div key={s.ID_Skill} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                                 <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <Badge className="bg-gqm-green text-white hover:bg-gqm-green/90">{asString(s.Division_trade) || "No division"}</Badge>
-                                    <div className="truncate font-medium">{asString(s.Skill_name) || "Unnamed skill"}</div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                                      {asStr(s.Division_trade) || "No division"}
+                                    </span>
+                                    <span className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "Unnamed"}</span>
                                   </div>
-                                  <div className="mt-1 text-xs text-muted-foreground">
-                                    ID: <span className="font-mono">{sid}</span>
-                                  </div>
+                                  <p className="mt-0.5 font-mono text-[11px] text-slate-400">{s.ID_Skill}</p>
                                 </div>
-
-                                <Button variant="outline" className="gap-2 text-red-600 hover:text-red-700" onClick={() => unlinkSkill(sid)} disabled={busy}>
-                                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
+                                <Button variant="outline" size="sm" onClick={() => unlinkSkill(s.ID_Skill)} disabled={busy}
+                                  className="gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600">
+                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
                                   Unlink
                                 </Button>
                               </div>
                             )
                           })}
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border bg-white p-8 text-center">
-                        <p className="text-sm text-muted-foreground">No skills linked yet.</p>
-                        <div className="mt-4">
-                          <Button onClick={openSkillsModal} className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Link first skill
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-3 py-12">
+                          <Wrench className="h-8 w-8 text-slate-300" />
+                          <p className="text-sm text-slate-500">No skills linked yet</p>
+                          <Button size="sm" onClick={openSkillsModal} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                            <Plus className="h-3.5 w-3.5" /> Link first skill
                           </Button>
                         </div>
+                      )}
+                    </SectionCard>
+                  </TabsContent>
+
+                  {/* ── JOBS tab ─────────────────────────────────────────── */}
+                  <TabsContent value="jobs">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
+                            <Briefcase className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-slate-800">Jobs</h3>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                            {subc.jobs?.length ?? 0}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </Card>
-
-                  {/* modal skills */}
-                  <Dialog open={skillsModalOpen} onOpenChange={setSkillsModalOpen}>
-                    <DialogContent className="max-w-5xl">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          <Link2 className="h-5 w-5 text-gqm-green" />
-                          Link a Skill
-                        </DialogTitle>
-                        <DialogDescription>Search and link a skill from the database. Already linked skills are disabled.</DialogDescription>
-                      </DialogHeader>
-
-                      <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="relative w-full sm:w-[420px]">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input value={skillsSearch} onChange={(e) => setSkillsSearch(e.target.value)} placeholder="Search by name, division, or ID..." className="pl-10" />
+                      <div className="p-6">
+                        {(subc.jobs ?? []).length === 0 ? (
+                          <div className="flex flex-col items-center justify-center gap-2 py-12">
+                            <Briefcase className="h-8 w-8 text-slate-300" />
+                            <p className="text-sm text-slate-500">No jobs associated with this subcontractor</p>
                           </div>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {(subc.jobs ?? []).map((job: any) => {
+                              const jobId   = job.ID_Jobs ?? ""
+                              const typeMap: Record<string, { cls: string; label: string }> = {
+                                QID: { cls: "bg-violet-100 text-violet-700 border-violet-200", label: "QID" },
+                                WO:  { cls: "bg-amber-100  text-amber-700  border-amber-200",  label: "WO"  },
+                                BID: { cls: "bg-cyan-100   text-cyan-700   border-cyan-200",   label: "BID" },
+                                PAR: { cls: "bg-indigo-100 text-indigo-700 border-indigo-200", label: "PAR" },
+                              }
+                              const typeBadge = typeMap[job.Job_type ?? ""] ?? { cls: "bg-slate-100 text-slate-600 border-slate-200", label: job.Job_type ?? "—" }
 
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" onClick={fetchAllSkills} disabled={skillsDbLoading} className="gap-2">
-                              {skillsDbLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                              Refresh
-                            </Button>
+                              const statusMap: Record<string, string> = {
+                                PAID:       "bg-emerald-100 text-emerald-700 border-emerald-200",
+                                COMPLETED:  "bg-emerald-100 text-emerald-700 border-emerald-200",
+                                ACTIVE:     "bg-blue-100    text-blue-700    border-blue-200",
+                                PENDING:    "bg-yellow-100  text-yellow-700  border-yellow-200",
+                                CANCELLED:  "bg-red-100     text-red-600     border-red-200",
+                              }
+                              const statusCls = statusMap[(job.Job_status ?? "").toUpperCase()] ?? "bg-slate-100 text-slate-500 border-slate-200"
+
+                              const sold    = job.Gqm_final_sold_pricing != null ? Number(job.Gqm_final_sold_pricing) : null
+                              const formula = job.Gqm_formula_pricing     != null ? Number(job.Gqm_formula_pricing)     : null
+                              const cos     = job.Gqm_total_change_orders  != null ? Number(job.Gqm_total_change_orders)  : null
+
+                              const fmtDate = (raw: string | null) => {
+                                if (!raw) return null
+                                const d = new Date(raw)
+                                return isNaN(d.getTime()) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                              }
+
+                              return (
+                                <div key={jobId}
+                                  className="group flex flex-col gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
+
+                                  {/* Header row */}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-slate-800 leading-none">
+                                        {job.Project_name ?? job.Job_Description ?? jobId}
+                                      </p>
+                                      <p className="mt-1 font-mono text-[11px] text-slate-400">{jobId}</p>
+                                    </div>
+                                    <div className="flex flex-shrink-0 items-center gap-1.5">
+                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${typeBadge.cls}`}>
+                                        {typeBadge.label}
+                                      </span>
+                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusCls}`}>
+                                        {job.Job_status ?? "—"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Meta */}
+                                  <div className="space-y-1.5">
+                                    {job.Project_location && (
+                                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                        <MapPin className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                                        <span className="truncate">{job.Project_location}</span>
+                                      </div>
+                                    )}
+                                    {job.Service_type && (
+                                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                        <Wrench className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                                        <span>{job.Service_type}</span>
+                                      </div>
+                                    )}
+                                    {fmtDate(job.Date_assigned) && (
+                                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                        <Calendar className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                                        <span>Assigned {fmtDate(job.Date_assigned)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Pricing row */}
+                                  {(sold != null || formula != null || cos != null) && (
+                                    <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                                      {sold != null && (
+                                        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                                          <DollarSign className="h-3 w-3" />${sold.toLocaleString()}
+                                          <span className="font-normal text-slate-400">sold</span>
+                                        </div>
+                                      )}
+                                      {formula != null && (
+                                        <div className="flex items-center gap-1 text-xs font-semibold text-blue-700">
+                                          <DollarSign className="h-3 w-3" />${formula.toLocaleString()}
+                                          <span className="font-normal text-slate-400">formula</span>
+                                        </div>
+                                      )}
+                                      {cos != null && (
+                                        <div className="flex items-center gap-1 text-xs font-semibold text-orange-600">
+                                          <Tag className="h-3 w-3" />${cos.toLocaleString()}
+                                          <span className="font-normal text-slate-400">COs</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Permit + CTA */}
+                                  <div className="flex items-center justify-between">
+                                    {job.Permit && job.Permit !== "No" && job.Permit !== "N/A" ? (
+                                      <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                        Permit: {job.Permit}
+                                      </span>
+                                    ) : <div />}
+                                    <button
+                                      onClick={() => router.push(`/jobs/${jobId}`)}
+                                      className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
+                                      View Job <ExternalLink className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* ── ORDERS tab ────────────────────────────────────────── */}
+                  <TabsContent value="orders">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
+                            <ClipboardList className="h-4 w-4 text-amber-600" />
+                          </div>
+                          <h3 className="text-sm font-semibold text-slate-800">Orders</h3>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                            {subc.orders?.length ?? 0}
+                          </span>
                         </div>
+                      </div>
+                      <div className="p-6">
+                        {(subc.orders ?? []).length === 0 ? (
+                          <div className="flex flex-col items-center justify-center gap-2 py-12">
+                            <ClipboardList className="h-8 w-8 text-slate-300" />
+                            <p className="text-sm text-slate-500">No orders associated with this subcontractor</p>
+                          </div>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {(subc.orders ?? []).map((order: any) => {
+                              const formula    = order.Formula    != null ? Number(order.Formula)    : null
+                              const adjFormula = order.Adj_formula != null ? Number(order.Adj_formula) : null
+                              const delta      = formula != null && adjFormula != null ? adjFormula - formula : null
 
-                        {skillsDbError ? <div className="rounded-lg border bg-red-50 p-4 text-sm text-red-700">{skillsDbError}</div> : null}
+                              const techFieldMap: Record<string, string> = {
+                                "tech-1-ptl-original-pricing": "PTL Original",
+                                "tech-2-ptl-revised-pricing":  "PTL Revised",
+                                "tech-3-bid-pricing":          "BID Pricing",
+                                "tech-4-wo-pricing":           "WO Pricing",
+                              }
+                              const techLabel = techFieldMap[order.tech_field ?? ""] ?? order.tech_field ?? null
 
-                        <div className="rounded-lg border bg-white">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[160px]">ID</TableHead>
-                                <TableHead>Skill Name</TableHead>
-                                <TableHead className="w-[240px]">Division / Trade</TableHead>
-                                <TableHead className="w-[160px] text-right">Action</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {skillsDbLoading ? (
-                                <TableRow>
-                                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                                    Loading skills...
-                                  </TableCell>
-                                </TableRow>
-                              ) : paginatedSkillsDb.length ? (
-                                paginatedSkillsDb.map((s) => {
-                                  const sid = s.ID_Skill
-                                  const already = linkedSkillIds.has(sid)
-                                  const busy = isLinkingSkillId === sid
-                                  return (
-                                    <TableRow key={sid}>
-                                      <TableCell className="font-mono text-xs">{sid}</TableCell>
-                                      <TableCell className="font-medium">{asString(s.Skill_name) || "-"}</TableCell>
-                                      <TableCell>{asString(s.Division_trade) || "-"}</TableCell>
-                                      <TableCell className="text-right">
-                                        <Button size="sm" className="gap-2" onClick={() => linkSkill(sid)} disabled={already || busy} variant={already ? "outline" : "default"}>
-                                          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                                          {already ? "Linked" : "Link"}
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  )
-                                })
-                              ) : (
-                                <TableRow>
-                                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                                    No skills found.
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
+                              return (
+                                <div key={order.ID_Order}
+                                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
+
+                                  {/* Header */}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-slate-800 leading-none">
+                                        {order.Title ?? "Untitled Order"}
+                                      </p>
+                                      <p className="mt-1 font-mono text-[11px] text-slate-400">{order.ID_Order}</p>
+                                    </div>
+                                    {techLabel && (
+                                      <span className="flex-shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                        {techLabel}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Pricing grid */}
+                                  <div className="grid grid-cols-3 divide-x divide-slate-100 rounded-lg border border-slate-100 bg-slate-50">
+                                    <div className="px-3 py-2.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Formula</p>
+                                      <p className="mt-0.5 text-sm font-bold text-slate-800">
+                                        {formula != null ? `$${formula.toLocaleString()}` : <span className="italic text-slate-400">—</span>}
+                                      </p>
+                                    </div>
+                                    <div className="px-3 py-2.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Adj. Formula</p>
+                                      <p className="mt-0.5 text-sm font-bold text-emerald-700">
+                                        {adjFormula != null ? `$${adjFormula.toLocaleString()}` : <span className="italic text-slate-400">—</span>}
+                                      </p>
+                                    </div>
+                                    <div className="px-3 py-2.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Delta</p>
+                                      {delta != null ? (
+                                        <p className={`mt-0.5 text-sm font-bold ${delta > 0 ? "text-orange-600" : delta < 0 ? "text-red-600" : "text-slate-500"}`}>
+                                          {delta > 0 ? "+" : ""}{delta.toLocaleString()}
+                                        </p>
+                                      ) : <span className="mt-0.5 text-sm italic text-slate-400">—</span>}
+                                    </div>
+                                  </div>
+
+                                  {/* Extra info */}
+                                  <div className="space-y-1.5">
+                                    {order.Ptl_hd_materials != null && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-slate-400 font-medium">HD Materials</span>
+                                        <span className="font-semibold text-slate-700">${Number(order.Ptl_hd_materials).toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {order.job_podio_id && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-slate-400 font-medium">Job Podio ID</span>
+                                        <span className="font-mono text-slate-500">{order.job_podio_id}</span>
+                                      </div>
+                                    )}
+                                    {order.Notes && (
+                                      <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Notes</p>
+                                        <p className="mt-0.5 text-xs text-slate-600">{order.Notes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* ── TIMELINE tab ─────────────────────────────────────── */}
+                  <TabsContent value="timeline">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100">
+                          <Clock className="h-4 w-4 text-slate-500" />
                         </div>
-
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            Showing {filteredSkillsDb.length ? skillsStart + 1 : 0} to {Math.min(skillsEnd, filteredSkillsDb.length)} of {filteredSkillsDb.length} skills
+                        <h3 className="text-sm font-semibold text-slate-800">Timeline</h3>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+                          <Sparkles className="h-6 w-6 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">Coming Soon</p>
+                          <p className="mt-1 max-w-xs text-xs text-slate-400">
+                            The activity timeline will be available in a future update. It will display all actions and changes related to this subcontractor.
                           </p>
+                        </div>
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-600">
+                          In development
+                        </span>
+                      </div>
+                    </div>
+                  </TabsContent>
 
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setSkillsPage((p) => Math.max(1, p - 1))} disabled={skillsPage === 1}>
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
+                </Tabs>
+              </div>
 
-                            <span className="text-sm">
-                              Page {skillsPage} of {skillsTotalPages}
-                            </span>
+              {/* ── RIGHT: sidebar (1/3) ────────────────────────────────── */}
+              <div className="space-y-4">
 
-                            <Button variant="outline" size="sm" onClick={() => setSkillsPage((p) => Math.min(skillsTotalPages, p + 1))} disabled={skillsPage === skillsTotalPages}>
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
+                {/* Leader card */}
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Team Leader</p>
+                  </div>
+                  <div className="p-5">
+                    {leaderTechnician ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500 text-xs font-black text-white">
+                            {(asStr(leaderTechnician.Name)).split(" ").filter(Boolean).slice(0, 2).map(n => n[0]).join("").toUpperCase() || "LT"}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{leaderTechnician.Name ?? "—"}</p>
+                            <p className="font-mono text-[11px] text-slate-400">{leaderTechnician.ID_Technician}</p>
                           </div>
                         </div>
-                      </div>
-
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setSkillsModalOpen(false)}>
-                          Close
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </TabsContent>
-
-                <TabsContent value="attachments" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-2 text-xl font-semibold">Attachments</h2>
-                    <p className="text-sm text-muted-foreground">Base ready. Once you have examples with attachments, we can render previews, downloads, and metadata here.</p>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="opportunities" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-2 text-xl font-semibold">Opportunities</h2>
-                    <p className="text-sm text-muted-foreground">Base ready. When opportunities are present in the JSON, we’ll map them into a table/cards here.</p>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="orders" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-2 text-xl font-semibold">Orders</h2>
-                    <p className="text-sm text-muted-foreground">Base ready. When orders are present in the JSON, we’ll render them here (and enable view/create flows).</p>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="jobs" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-2 text-xl font-semibold">Jobs</h2>
-                    <p className="text-sm text-muted-foreground">Base ready. When jobs are present in the JSON, we’ll render active jobs and related info here.</p>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="timeline" className="space-y-6">
-                  <Card className="p-6">
-                    <h2 className="mb-4 text-xl font-semibold">Timeline</h2>
-                    {Array.isArray(subcontractor.tlactivity) && subcontractor.tlactivity.length ? (
-                      <div className="space-y-3">
-                        {subcontractor.tlactivity.slice(0, 10).map((ev: any, idx: number) => (
-                          <TimelineItem
-                            key={ev?.id ?? ev?.podio_item_id ?? idx}
-                            activity={asString(ev?.activity ?? ev?.Action ?? "Activity")}
-                            date={asString(ev?.date ?? ev?.Created_At ?? new Date().toISOString())}
-                          />
-                        ))}
+                        <div className="space-y-2 text-xs text-slate-600">
+                          {[
+                            { label: "Phone",    value: leaderTechnician.Phone_Number },
+                            { label: "Location", value: leaderTechnician.Location },
+                            { label: "Email",    value: leaderTechnician.Email_Address },
+                            { label: "Type",     value: leaderTechnician.Type_of_technician },
+                          ].map(({ label, value }) => value ? (
+                            <div key={label} className="flex items-start gap-1.5">
+                              <span className="w-14 flex-shrink-0 font-semibold text-slate-400">{label}</span>
+                              <span className="text-slate-700 break-all">{value}</span>
+                            </div>
+                          ) : null)}
+                        </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No timeline activity found for this subcontractor.</p>
+                      <p className="text-sm italic text-slate-400">No leader assigned</p>
                     )}
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
+                  </div>
+                </div>
 
-            <div className="space-y-6">
-              <Card className="p-6">
-                <h2 className="mb-4 text-xl font-semibold">Leader Information</h2>
-
-                {leaderTechnician ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-gqm-yellow text-gqm-green-dark text-lg font-semibold">
-                          {asString(leaderTechnician.Name)
-                            .split(" ")
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase() || "LT"}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div>
-                        <h3 className="font-semibold">{leaderTechnician.Name ?? "-"}</h3>
-                        <p className="text-sm text-muted-foreground">{leaderTechnician.ID_Technician}</p>
+                {/* Quick Summary */}
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Summary</p>
+                  </div>
+                  <div className="divide-y divide-slate-50 px-5">
+                    {[
+                      { label: "ID",           value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
+                      { label: "Status",       value: <StatusBadge status={subc.Status} /> },
+                      { label: "Score",        value: <ScoreBadge score={subc.Score} /> },
+                      { label: "Compliance",   value: <CertBadge value={subc.Gqm_compliance} /> },
+                      { label: "BST",          value: <CertBadge value={subc.Gqm_best_service_training} /> },
+                      { label: "Technicians",  value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
+                      { label: "Skills",       value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
+                      { label: "Orders",       value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
+                      { label: "Jobs",         value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
+                      { label: "Attachments",  value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
+                      { label: "Opportunities",value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
+                      { label: "Podio",        value: subc.podio_item_id
+                          ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                              <CheckCircle className="h-3 w-3" /> Linked
+                            </span>
+                          : <span className="text-[11px] italic text-slate-400">Not linked</span>
+                      },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex items-center justify-between py-2.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                        {value}
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                </div>
 
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="font-medium">Organization:</span> {asString(subcontractor.Organization) || "-"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Phone:</span> {leaderTechnician.Phone_Number ?? "-"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Location:</span> {leaderTechnician.Location ?? "-"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Email:</span> {leaderTechnician.Email_Address ?? "-"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Type:</span> {asString(leaderTechnician.Type_of_technician) || "-"}
-                      </p>
+                {/* Coverage area summary */}
+                {(subc.Coverage_Area ?? []).length > 0 && (
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Coverage Areas</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-5">
+                      {(subc.Coverage_Area ?? []).map((area) => (
+                        <span key={area} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                          <MapPin className="h-2.5 w-2.5 text-slate-400" />{area}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No leader assigned</p>
                 )}
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="mb-2 text-xl font-semibold">Quick Summary</h2>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>
-                    <span className="font-medium text-foreground">Technicians:</span> {technicians.length}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Attachments:</span> {subcontractor.attachments?.length ?? 0}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Orders:</span> {subcontractor.orders?.length ?? 0}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Jobs:</span> {subcontractor.jobs?.length ?? 0}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Opportunities:</span> {subcontractor.opportunities?.length ?? 0}
-                  </p>
-                  <p>
-                    <span className="font-medium text-foreground">Skills:</span> {subcontractor.skills?.length ?? 0}
-                  </p>
-                </div>
-              </Card>
+              </div>
             </div>
           </div>
         </main>
       </div>
 
+      {/* ── Skills modal ───────────────────────────────────────────────────── */}
+      <Dialog open={skillsModalOpen} onOpenChange={setSkillsModalOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-emerald-600" /> Link a Skill
+            </DialogTitle>
+            <DialogDescription>Search and link skills. Already linked ones are disabled.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input value={skillsSearch} onChange={(e) => setSkillsSearch(e.target.value)}
+                  placeholder="Search by name, division, or ID…" className={`pl-9 ${inputCls}`} />
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchAllSkills} disabled={skillsLoading} className="gap-1.5 text-xs border-slate-200">
+                {skillsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Refresh
+              </Button>
+            </div>
+            {skillsError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{skillsError}</div>
+            )}
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-36">ID</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Skill Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-48">Division / Trade</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {skillsLoading ? (
+                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm italic text-slate-400">Loading skills…</TableCell></TableRow>
+                  ) : paginatedSkillsDb.length ? (
+                    paginatedSkillsDb.map((s) => {
+                      const already = linkedSkillIds.has(s.ID_Skill)
+                      const busy = linkingSkillId === s.ID_Skill
+                      return (
+                        <TableRow key={s.ID_Skill} className="hover:bg-slate-50">
+                          <TableCell className="font-mono text-xs text-slate-500">{s.ID_Skill}</TableCell>
+                          <TableCell className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "—"}</TableCell>
+                          <TableCell className="text-sm text-slate-600">{asStr(s.Division_trade) || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" onClick={() => linkSkill(s.ID_Skill)} disabled={already || busy}
+                              variant={already ? "outline" : "default"}
+                              className={`gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                              {already ? "Linked" : "Link"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  ) : (
+                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm italic text-slate-400">No skills found</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                {filteredSkillsDb.length ? skillsStart + 1 : 0}–{Math.min(skillsStart + SKILLS_PAGE_SIZE, filteredSkillsDb.length)} of {filteredSkillsDb.length} skills
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
+                  onClick={() => setSkillsPage(p => Math.max(1, p - 1))} disabled={skillsPage === 1}>
+                  <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                </Button>
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{skillsPage}/{skillsTotalPages}</span>
+                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
+                  onClick={() => setSkillsPage(p => Math.min(skillsTotalPages, p + 1))} disabled={skillsPage >= skillsTotalPages}>
+                  Next <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSkillsModalOpen(false)} className="text-xs border-slate-200">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete technician dialog ──────────────────────────────────────── */}
       <DeleteTechnicianDialog
         open={deleteDialog.open}
-        onOpenChange={(open) => !open && setDeleteDialog({ open: false, technician: null })}
+        onOpenChange={(o) => !o && setDeleteDialog({ open: false, technician: null })}
         technicianName={deleteDialog.technician?.Name || ""}
         onConfirm={confirmDeleteTechnician}
       />
