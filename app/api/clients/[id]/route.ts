@@ -14,11 +14,8 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-      cache: "no-store"
+      cache: "no-store",
     })
-
-    console.log("Aqui el response", response);
-    
 
     if (!response.ok) {
       console.error(`[v0] Proxy: Client fetch failed with status ${response.status}`)
@@ -39,12 +36,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const body = await request.json()
 
-    console.log(`[v0] Proxy: Updating client ${id}`)
+    // ✅ Leer sync_podio del query param y reenviarlo al backend
+    const { searchParams } = new URL(request.url)
+    const syncPodio = searchParams.get("sync_podio") ?? "false"
 
-    const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
+    const upstream = new URL(`${PYTHON_API_BASE_URL}/clients/${id}`)
+    upstream.searchParams.set("sync_podio", syncPodio)
+
+    console.log(`[v0] Proxy: Updating client ${id} — sync_podio:`, syncPodio)
+
+    const response = await fetch(upstream.toString(), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -64,11 +68,19 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 export async function DELETE(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params
-    console.log(`[v0] Proxy: Deleting client ${id}`)
 
-    const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
+    // ✅ Leer sync_podio del query param y reenviarlo al backend
+    const { searchParams } = new URL(request.url)
+    const syncPodio = searchParams.get("sync_podio") ?? "false"
+
+    const upstream = new URL(`${PYTHON_API_BASE_URL}/clients/${id}`)
+    upstream.searchParams.set("sync_podio", syncPodio)
+
+    console.log(`[v0] Proxy: Deleting client ${id} — sync_podio:`, syncPodio)
+
+    const response = await fetch(upstream.toString(), {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     })
 
     if (!response.ok) {
