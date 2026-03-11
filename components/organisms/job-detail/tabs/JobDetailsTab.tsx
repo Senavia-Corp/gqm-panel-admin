@@ -1,19 +1,21 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ClientSelect } from "@/components/organisms/ClientSelect"
+// NOTE: Make sure ClientSelect is the new version that uses /api/clients/table
 import type { UserRole } from "@/lib/types"
+import {
+  Briefcase, MapPin, FileText, Calendar, Clock,
+  Info, Building2, Tag, AlertCircle, CheckCircle2, Hash,
+} from "lucide-react"
 
 type Props = {
   role: UserRole
   job: any
   clients: any[]
   statusOptionsByJobType: Record<string, string[]>
-
   onFieldChange: (field: string, value: any) => void
   isFieldChanged: (field: string) => boolean
 }
@@ -29,18 +31,156 @@ function pick<T = any>(obj: any, keys: string[], fallback: T): T {
 function toDateInputValue(value: any): string {
   if (!value) return ""
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ""
-
   const yyyy = String(d.getUTCFullYear())
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0")
   const dd = String(d.getUTCDate()).padStart(2, "0")
   return `${yyyy}-${mm}-${dd}`
 }
 
-function changedClass(changed: boolean) {
-  return changed ? "border-yellow-400 border-2" : ""
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const JOB_TYPE_COLORS: Record<string, string> = {
+  QID: "bg-violet-50 text-violet-700 border-violet-200",
+  PTL: "bg-sky-50 text-sky-700 border-sky-200",
+  PAR: "bg-amber-50 text-amber-700 border-amber-200",
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  "Assigned/P. Quote": "bg-blue-50 text-blue-700 border-blue-200",
+  "Waiting for Approval": "bg-amber-50 text-amber-700 border-amber-200",
+  "Scheduled / Work in Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed P. INV / POs": "bg-teal-50 text-teal-700 border-teal-200",
+  Invoiced: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  HOLD: "bg-orange-50 text-orange-700 border-orange-200",
+  PAID: "bg-green-50 text-green-700 border-green-200",
+  Warranty: "bg-purple-50 text-purple-700 border-purple-200",
+  Cancelled: "bg-red-50 text-red-700 border-red-200",
+  Archived: "bg-slate-100 text-slate-500 border-slate-200",
+  // PTL
+  "Received-Stand By": "bg-slate-100 text-slate-600 border-slate-200",
+  "Assigned-In progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI": "bg-teal-50 text-teal-700 border-teal-200",
+  Paid: "bg-green-50 text-green-700 border-green-200",
+  // PAR
+  "In Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI / POs": "bg-teal-50 text-teal-700 border-teal-200",
+}
+
+// ── Helper components ─────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
+          <Icon className="h-3.5 w-3.5 text-slate-500" />
+        </div>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  )
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">
+      {children}
+    </label>
+  )
+}
+
+function ReadonlyField({ value }: { value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 min-h-[38px]">
+      {value || <span className="text-slate-300">—</span>}
+    </div>
+  )
+}
+
+function EditableInput({
+  value,
+  onChange,
+  changed,
+  placeholder,
+  type = "text",
+  disabled,
+}: {
+  value: string
+  onChange: (v: string) => void
+  changed?: boolean
+  placeholder?: string
+  type?: string
+  disabled?: boolean
+}) {
+  return (
+    <div className="relative">
+      <Input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`text-sm transition-all ${
+          changed
+            ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
+            : "border-slate-200 bg-slate-50 focus:bg-white"
+        }`}
+      />
+      {changed && (
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+          <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+        </span>
+      )}
+    </div>
+  )
+}
+
+function EditableTextarea({
+  value,
+  onChange,
+  changed,
+  placeholder,
+  rows = 3,
+  disabled,
+}: {
+  value: string
+  onChange: (v: string) => void
+  changed?: boolean
+  placeholder?: string
+  rows?: number
+  disabled?: boolean
+}) {
+  return (
+    <div className="relative">
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        disabled={disabled}
+        className={`text-sm transition-all resize-y ${
+          changed
+            ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
+            : "border-slate-200 bg-slate-50 focus:bg-white"
+        }`}
+      />
+      {changed && (
+        <span className="absolute right-2.5 top-2.5">
+          <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+        </span>
+      )}
+    </div>
+  )
 }
 
 export function JobDetailsTab({
@@ -53,397 +193,306 @@ export function JobDetailsTab({
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
 
-  // Core
+  // Field values
   const idJobs = pick<string>(job, ["ID_Jobs", "idJobs", "jobId"], "")
   const jobType = pick<string>(job, ["jobType", "Job_type"], "")
   const status = pick<string>(job, ["status", "Job_status"], "")
-
-  // QID-only / shared-ish
   const serviceType = pick<string>(job, ["serviceType", "Service_type"], "")
   const projectName = pick<string>(job, ["projectName", "Project_name"], "")
   const projectLocation = pick<string>(job, ["projectLocation", "Project_location"], "")
   const poWtnWo = pick<string>(job, ["poWtnWo", "Po_wtn_wo"], "")
-
-  // Dates / timeline (shared among all 3 per your spec)
   const dateAssigned = toDateInputValue(pick<any>(job, ["dateAssigned", "Date_assigned"], ""))
   const estimatedStartDate = toDateInputValue(pick<any>(job, ["estimatedStartDate", "Estimated_start_date"], ""))
   const dateReceived = toDateInputValue(pick<any>(job, ["dateReceived", "Date_Received"], ""))
-  const estimatedCompletionDate = toDateInputValue(
-    pick<any>(job, ["estimatedCompletionDate", "Estimated_completion_date"], "")
-  )
-
+  const estimatedCompletionDate = toDateInputValue(pick<any>(job, ["estimatedCompletionDate", "Estimated_completion_date"], ""))
   const estimatedProjectDuration = pick<any>(job, ["Estimated_project_duration", "estimatedDuration"], "")
-
-  // Details (shared among all 3)
   const additionalDetail = pick<string>(job, ["additionalDetail", "Additional_detail"], "")
-
-  // PTL-only
   const ptlSuperintendent = pick<string>(job, ["ptlSuperintendent", "Ptl_Superintendent"], "")
   const ptlPropertyId = pick<string>(job, ["ptlPropertyId", "Ptl_property_id"], "")
-
-  // Client (select)
-  const currentClientId =
-    job?.ID_Client ??
-    job?.client?.ID_Client ??
-    job?.client?.id ??
-    ""
+  const currentClientId = job?.ID_Client ?? job?.client?.ID_Client ?? job?.client?.id ?? ""
 
   const isQID = jobType === "QID"
   const isPTL = jobType === "PTL"
   const isPAR = jobType === "PAR"
 
-  // ---- UI blocks ------------------------------------------------------------
+  const jobTypeColor = JOB_TYPE_COLORS[jobType] ?? "bg-slate-100 text-slate-600 border-slate-200"
+  const statusColor = STATUS_COLORS[status] ?? "bg-slate-100 text-slate-500 border-slate-200"
 
-  const JobCharacteristicsCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Job Characteristics</CardTitle>
-      </CardHeader>
+  const durationRaw =
+    typeof estimatedProjectDuration === "string"
+      ? estimatedProjectDuration.replace(/ months?/i, "")
+      : String(estimatedProjectDuration ?? "")
 
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
+  return (
+    <div className="space-y-4">
+      {/* ── 1. Job Characteristics ─────────────────────────────────────── */}
+      <SectionCard icon={Hash} title="Job Characteristics">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {/* Job ID */}
           <div>
-            <Label htmlFor="idJobs" className="mb-2 block">
-              Job ID <span className="text-xs text-muted-foreground">(Non-editable)</span>
-            </Label>
-            <Input id="idJobs" value={idJobs ?? ""} disabled />
+            <FieldLabel>Job ID</FieldLabel>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+              <span className="font-mono text-sm font-bold text-slate-700">{idJobs || "—"}</span>
+              <span className={`ml-auto inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${jobTypeColor}`}>
+                {jobType || "—"}
+              </span>
+            </div>
           </div>
 
+          {/* Job Type (display only) */}
           <div>
-            <Label htmlFor="jobType" className="mb-2 block">
-              Job Type <span className="text-xs text-muted-foreground">(Non-editable)</span>
-            </Label>
-            <Input id="jobType" value={jobType ?? ""} disabled />
+            <FieldLabel>Job Type</FieldLabel>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+              <Briefcase className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <span className="text-sm text-slate-700">{jobType || "—"}</span>
+            </div>
           </div>
 
+          {/* Status */}
           <div>
-            <Label htmlFor="status" className="mb-2 block">
-              Status
-            </Label>
-
+            <FieldLabel>Status</FieldLabel>
             {isTech ? (
-              <div className="rounded-md border bg-gray-50 px-3 py-2">
-                <p className="text-sm">{status || "—"}</p>
+              <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${statusColor}`}>
+                <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="text-sm font-medium">{status || "—"}</span>
               </div>
             ) : (
-              <Select value={status} onValueChange={(value) => onFieldChange("status", value)}>
-                <SelectTrigger className={changedClass(isFieldChanged("status"))}>
+              <Select value={status} onValueChange={(v) => onFieldChange("status", v)}>
+                <SelectTrigger className={`text-sm transition-all ${
+                  isFieldChanged("status")
+                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300"
+                    : "border-slate-200 bg-slate-50"
+                }`}>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {jobType &&
-                    statusOptionsByJobType[jobType]?.map((s: string) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
+                  {jobType && statusOptionsByJobType[jobType]?.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
           </div>
         </div>
 
-        {/* ✅ Service Type only for QID (per your spec) */}
+        {/* Service Type — QID only */}
         {isQID && (
           <div>
-            <Label htmlFor="serviceType" className="mb-2 block">
-              Service Type
-            </Label>
-
+            <FieldLabel>Service Type</FieldLabel>
             {isTech ? (
-              <Input id="serviceType" value={serviceType ?? ""} disabled />
+              <ReadonlyField value={serviceType} />
             ) : (
-              <Input
-                id="serviceType"
-                value={serviceType ?? ""}
-                onChange={(e) => onFieldChange("serviceType", e.target.value)}
-                className={changedClass(isFieldChanged("serviceType"))}
+              <EditableInput
+                value={serviceType}
+                onChange={(v) => onFieldChange("serviceType", v)}
+                changed={isFieldChanged("serviceType")}
+                placeholder="e.g. Plumbing, Electrical…"
               />
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
-  )
+      </SectionCard>
 
-  const WorkInformationCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Work Information</CardTitle>
-      </CardHeader>
+      {/* ── 2. Work Information ────────────────────────────────────────── */}
+      {(isQID || isPTL || isPAR) && (
+        <SectionCard icon={FileText} title="Work Information">
+          {/* Project Name — QID only */}
+          {isQID && (
+            <div>
+              <FieldLabel>Project Name</FieldLabel>
+              {isTech ? (
+                <ReadonlyField value={projectName} />
+              ) : (
+                <EditableInput
+                  value={projectName}
+                  onChange={(v) => onFieldChange("projectName", v)}
+                  changed={isFieldChanged("projectName")}
+                  placeholder="Project name"
+                />
+              )}
+            </div>
+          )}
 
-      <CardContent className="space-y-4">
-        {/* ✅ QID: Project Name */}
-        {isQID && (
+          {/* Project Location — QID + PTL */}
+          {(isQID || isPTL) && (
+            <div>
+              <FieldLabel>Project Location</FieldLabel>
+              {isTech ? (
+                <ReadonlyField value={projectLocation} />
+              ) : (
+                <EditableTextarea
+                  value={projectLocation}
+                  onChange={(v) => onFieldChange("projectLocation", v)}
+                  changed={isFieldChanged("projectLocation")}
+                  placeholder="Full address or location description"
+                  rows={2}
+                />
+              )}
+            </div>
+          )}
+
+          {/* PO/WTN/WO# — QID + PAR */}
+          {(isQID || isPAR) && (
+            <div>
+              <FieldLabel>PO / WTN / WO #</FieldLabel>
+              {isTech ? (
+                <ReadonlyField value={poWtnWo} />
+              ) : (
+                <EditableInput
+                  value={poWtnWo}
+                  onChange={(v) => onFieldChange("poWtnWo", v)}
+                  changed={isFieldChanged("poWtnWo")}
+                  placeholder="e.g. PO-12345"
+                />
+              )}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── 3. Timeline ────────────────────────────────────────────────── */}
+      <SectionCard icon={Calendar} title="Timeline">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="projectName" className="mb-2 block">
-              Project Name
-            </Label>
-
+            <FieldLabel>Date Assigned</FieldLabel>
             {isTech ? (
-              <Input id="projectName" value={projectName ?? ""} disabled />
+              <ReadonlyField value={dateAssigned} />
             ) : (
-              <Input
-                id="projectName"
-                value={projectName ?? ""}
-                onChange={(e) => onFieldChange("projectName", e.target.value)}
-                className={changedClass(isFieldChanged("projectName"))}
-              />
-            )}
-          </div>
-        )}
-
-        {/* ✅ QID + PTL: Project Location */}
-        {(isQID || isPTL) && (
-          <div>
-            <Label htmlFor="projectLocation" className="mb-2 block">
-              Project Location
-            </Label>
-
-            {isTech ? (
-              <Textarea id="projectLocation" value={projectLocation ?? ""} disabled rows={2} />
-            ) : (
-              <Textarea
-                id="projectLocation"
-                value={projectLocation ?? ""}
-                onChange={(e) => onFieldChange("projectLocation", e.target.value)}
-                className={changedClass(isFieldChanged("projectLocation"))}
-                rows={2}
-              />
-            )}
-          </div>
-        )}
-
-        {/* ✅ QID + PAR: PO/WTN/WO# */}
-        {(isQID || isPAR) && (
-          <div>
-            <Label htmlFor="poWtnWo" className="mb-2 block">
-              PO/WTN/WO#
-            </Label>
-
-            {isTech ? (
-              <Input id="poWtnWo" value={poWtnWo ?? ""} disabled />
-            ) : (
-              <Input
-                id="poWtnWo"
-                value={poWtnWo ?? ""}
-                onChange={(e) => onFieldChange("poWtnWo", e.target.value)}
-                className={changedClass(isFieldChanged("poWtnWo"))}
-              />
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-
-  const TimelineCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Timeline</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <Label htmlFor="dateAssigned" className="mb-2 block">
-              Date Assigned
-            </Label>
-
-            {isTech ? (
-              <Input id="dateAssigned" type="date" value={dateAssigned} disabled />
-            ) : (
-              <Input
-                id="dateAssigned"
+              <EditableInput
                 type="date"
                 value={dateAssigned}
-                onChange={(e) => onFieldChange("dateAssigned", e.target.value)}
-                className={changedClass(isFieldChanged("dateAssigned"))}
+                onChange={(v) => onFieldChange("dateAssigned", v)}
+                changed={isFieldChanged("dateAssigned")}
               />
             )}
           </div>
 
           <div>
-            <Label htmlFor="estimatedStartDate" className="mb-2 block">
-              Estimated Start Date
-            </Label>
-
+            <FieldLabel>Estimated Start Date</FieldLabel>
             {isTech ? (
-              <Input id="estimatedStartDate" type="date" value={estimatedStartDate} disabled />
+              <ReadonlyField value={estimatedStartDate} />
             ) : (
-              <Input
-                id="estimatedStartDate"
+              <EditableInput
                 type="date"
                 value={estimatedStartDate}
-                onChange={(e) => onFieldChange("estimatedStartDate", e.target.value)}
-                className={changedClass(isFieldChanged("estimatedStartDate"))}
+                onChange={(v) => onFieldChange("estimatedStartDate", v)}
+                changed={isFieldChanged("estimatedStartDate")}
               />
             )}
           </div>
         </div>
 
         <div>
-          <Label htmlFor="estimatedDuration" className="mb-2 block">
-            Estimated Project Duration (months)
-          </Label>
-
+          <FieldLabel>Estimated Duration (months)</FieldLabel>
           {isTech ? (
-            <div className="py-2 text-base">
-              {typeof estimatedProjectDuration === "string"
-                ? estimatedProjectDuration.replace(" months", "").replace(" month", "") || "N/A"
-                : estimatedProjectDuration ?? "N/A"}
-            </div>
+            <ReadonlyField value={durationRaw || "—"} />
           ) : (
-            <Input
-              id="estimatedDuration"
+            <EditableInput
               type="number"
-              value={
-                typeof estimatedProjectDuration === "string"
-                  ? estimatedProjectDuration.replace(" months", "").replace(" month", "")
-                  : estimatedProjectDuration ?? ""
-              }
-              onChange={(e) => onFieldChange("estimatedDuration", e.target.value)}
-              className={changedClass(isFieldChanged("estimatedDuration"))}
+              value={durationRaw}
+              onChange={(v) => onFieldChange("estimatedDuration", v)}
+              changed={isFieldChanged("estimatedDuration")}
+              placeholder="e.g. 3"
             />
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="dateReceived" className="mb-2 block">
-              Date Received
-            </Label>
-
+            <FieldLabel>Date Received</FieldLabel>
             {isTech ? (
-              <Input id="dateReceived" type="date" value={dateReceived} disabled />
+              <ReadonlyField value={dateReceived} />
             ) : (
-              <Input
-                id="dateReceived"
+              <EditableInput
                 type="date"
                 value={dateReceived}
-                onChange={(e) => onFieldChange("dateReceived", e.target.value)}
-                className={changedClass(isFieldChanged("dateReceived"))}
+                onChange={(v) => onFieldChange("dateReceived", v)}
+                changed={isFieldChanged("dateReceived")}
               />
             )}
           </div>
 
           <div>
-            <Label htmlFor="estimatedCompletionDate" className="mb-2 block">
-              Estimated Completion Date
-            </Label>
-
+            <FieldLabel>Estimated Completion Date</FieldLabel>
             {isTech ? (
-              <Input id="estimatedCompletionDate" type="date" value={estimatedCompletionDate} disabled />
+              <ReadonlyField value={estimatedCompletionDate} />
             ) : (
-              <Input
-                id="estimatedCompletionDate"
+              <EditableInput
                 type="date"
                 value={estimatedCompletionDate}
-                onChange={(e) => onFieldChange("estimatedCompletionDate", e.target.value)}
-                className={changedClass(isFieldChanged("estimatedCompletionDate"))}
+                onChange={(v) => onFieldChange("estimatedCompletionDate", v)}
+                changed={isFieldChanged("estimatedCompletionDate")}
               />
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
-  )
+      </SectionCard>
 
-  const AdditionalDetailsCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle>Additional Details</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Label htmlFor="additionalDetail" className="mb-2 block">
-          Additional Detail
-        </Label>
-
+      {/* ── 4. Additional Details ──────────────────────────────────────── */}
+      <SectionCard icon={Info} title="Additional Details">
         {isTech ? (
-          <Textarea id="additionalDetail" value={additionalDetail ?? ""} disabled rows={4} />
+          <ReadonlyField value={additionalDetail} />
         ) : (
-          <Textarea
-            id="additionalDetail"
-            value={additionalDetail ?? ""}
-            onChange={(e) => onFieldChange("additionalDetail", e.target.value)}
-            className={changedClass(isFieldChanged("additionalDetail"))}
+          <EditableTextarea
+            value={additionalDetail}
+            onChange={(v) => onFieldChange("additionalDetail", v)}
+            changed={isFieldChanged("additionalDetail")}
+            placeholder="Any additional relevant information…"
             rows={4}
           />
         )}
-      </CardContent>
-    </Card>
-  )
+      </SectionCard>
 
-  const PtlDetailsCard = isPTL ? (
-    <Card>
-      <CardHeader>
-        <CardTitle>PTL Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <Label htmlFor="ptlSuperintendent" className="mb-2 block">
-              Superintendent
-            </Label>
-
-            {isTech ? (
-              <Input id="ptlSuperintendent" value={ptlSuperintendent ?? ""} disabled />
-            ) : (
-              <Input
-                id="ptlSuperintendent"
-                value={ptlSuperintendent ?? ""}
-                onChange={(e) => onFieldChange("ptlSuperintendent", e.target.value)}
-                className={changedClass(isFieldChanged("ptlSuperintendent"))}
-              />
-            )}
+      {/* ── 5. PTL Details ────────────────────────────────────────────── */}
+      {isPTL && (
+        <SectionCard icon={Tag} title="PTL Details">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel>Superintendent</FieldLabel>
+              {isTech ? (
+                <ReadonlyField value={ptlSuperintendent} />
+              ) : (
+                <EditableInput
+                  value={ptlSuperintendent}
+                  onChange={(v) => onFieldChange("ptlSuperintendent", v)}
+                  changed={isFieldChanged("ptlSuperintendent")}
+                  placeholder="Superintendent name"
+                />
+              )}
+            </div>
+            <div>
+              <FieldLabel>Property ID</FieldLabel>
+              {isTech ? (
+                <ReadonlyField value={ptlPropertyId} />
+              ) : (
+                <EditableInput
+                  value={ptlPropertyId}
+                  onChange={(v) => onFieldChange("ptlPropertyId", v)}
+                  changed={isFieldChanged("ptlPropertyId")}
+                  placeholder="PTL property identifier"
+                />
+              )}
+            </div>
           </div>
+        </SectionCard>
+      )}
 
-          <div>
-            <Label htmlFor="ptlPropertyId" className="mb-2 block">
-              Property ID
-            </Label>
-
-            {isTech ? (
-              <Input id="ptlPropertyId" value={ptlPropertyId ?? ""} disabled />
-            ) : (
-              <Input
-                id="ptlPropertyId"
-                value={ptlPropertyId ?? ""}
-                onChange={(e) => onFieldChange("ptlPropertyId", e.target.value)}
-                className={changedClass(isFieldChanged("ptlPropertyId"))}
-              />
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  ) : null
-
-  const ClientCard =
-    role !== "LEAD_TECHNICIAN" ? (
-      <Card>
-        <CardHeader>
-          <CardTitle>Client</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Label htmlFor="client" className="mb-2 block">
-            Select Client
-          </Label>
-
+      {/* ── 6. Client ─────────────────────────────────────────────────── */}
+      {role !== "LEAD_TECHNICIAN" && (
+        <SectionCard icon={Building2} title="Client">
           <ClientSelect
             value={currentClientId || ""}
             initialClients={clients}
+            changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
             onChange={(selected) => {
-              console.log("[ClientSelect] selected ->", selected)
               if (!selected) {
                 onFieldChange("client", null)
-                onFieldChange("ID_Client", null) // ✅ clave
+                onFieldChange("ID_Client", null)
                 return
               }
-
-              onFieldChange("ID_Client", selected.id) // ✅ clave (esto es lo que guarda bien)
+              onFieldChange("ID_Client", selected.id)
               onFieldChange("client", {
-                ID_Client: selected.id, // opcional, solo para UI/compat
+                ID_Client: selected.id,
                 id: selected.id,
                 name: selected.name,
                 companyName: selected.companyName,
@@ -455,29 +504,8 @@ export function JobDetailsTab({
               })
             }}
           />
-        </CardContent>
-      </Card>
-    ) : null
-
-  return (
-    <>
-
-      {JobCharacteristicsCard}
-
-      {/* ✅ Work Information varies by Job_type (QID/PTL/PAR rules) */}
-      {WorkInformationCard}
-
-      {/* ✅ Timeline shared among QID/PTL/PAR */}
-      {TimelineCard}
-
-      {/* ✅ Additional detail shared */}
-      {AdditionalDetailsCard}
-
-      {/* ✅ PTL-only extra fields */}
-      {PtlDetailsCard}
-
-      {/* ✅ Client selection for non-tech */}
-      {ClientCard}
-    </>
+        </SectionCard>
+      )}
+    </div>
   )
 }
