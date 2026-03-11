@@ -53,20 +53,20 @@ interface Client {
 
 function normalizeClient(raw: any): Client {
   return {
-    Address:              raw?.Address              ?? raw?.address               ?? "",
-    Client_Community:     raw?.Client_Community     ?? raw?.clientCommunity       ?? raw?.Client_community ?? "",
-    Client_Status:        raw?.Client_Status        ?? raw?.status                ?? "Active",
-    Email_Address:        raw?.Email_Address        ?? raw?.email                 ?? "",
-    ID_Client:            raw?.ID_Client            ?? raw?.id                    ?? raw?.ID ?? "",
+    Address:               raw?.Address              ?? raw?.address               ?? "",
+    Client_Community:      raw?.Client_Community     ?? raw?.clientCommunity       ?? raw?.Client_community ?? "",
+    Client_Status:         raw?.Client_Status        ?? raw?.status                ?? "Active",
+    Email_Address:         raw?.Email_Address        ?? raw?.email                 ?? "",
+    ID_Client:             raw?.ID_Client            ?? raw?.id                    ?? raw?.ID ?? "",
     ID_Community_Tracking: raw?.ID_Community_Tracking ?? raw?.communityTrackingId ?? null,
-    Parent_Company:       raw?.Parent_Company       ?? raw?.companyName           ?? raw?.parentCompany ?? "",
-    Parent_Mgmt_Company:  raw?.Parent_Mgmt_Company  ?? raw?.parentMgmtCompany     ?? raw?.companyName ?? "",
-    Phone_Number:         raw?.Phone_Number         ?? raw?.phone                 ?? "",
-    Prop_Manager:         raw?.Prop_Manager         ?? raw?.name                  ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
-    Website:              raw?.Website              ?? raw?.website               ?? "",
-    jobs:                 raw?.jobs                 ?? [],
-    property_manager:     raw?.property_manager     ?? raw?.propertyManager       ?? [],
-    property_mgmt_co:     raw?.property_mgmt_co     ?? raw?.propertyMgmtCo        ?? null,
+    Parent_Company:        raw?.Parent_Company       ?? raw?.companyName           ?? raw?.parentCompany ?? "",
+    Parent_Mgmt_Company:   raw?.Parent_Mgmt_Company  ?? raw?.parentMgmtCompany     ?? raw?.companyName ?? "",
+    Phone_Number:          raw?.Phone_Number         ?? raw?.phone                 ?? "",
+    Prop_Manager:          raw?.Prop_Manager         ?? raw?.name                  ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
+    Website:               raw?.Website              ?? raw?.website               ?? "",
+    jobs:                  raw?.jobs                 ?? [],
+    property_manager:      raw?.property_manager     ?? raw?.propertyManager       ?? [],
+    property_mgmt_co:      raw?.property_mgmt_co     ?? raw?.propertyMgmtCo        ?? null,
   }
 }
 
@@ -173,7 +173,11 @@ export async function fetchClients(): Promise<Client[]> {
 // ─── WRITE operations ─────────────────────────────────────────────────────────
 
 type CreateJobOptions = { sync_podio?: boolean; year?: number }
-type UpdateJobOptions = { sync_podio?: boolean }
+
+// FIX: added `year` — required by Python backend to resolve Podio workspace.
+// Derive it from the Job ID first numeric digit: QID5xxx→2025, PTL6xxx→2026.
+type UpdateJobOptions = { sync_podio?: boolean; year?: number }
+
 type DeleteJobOptions = { sync_podio?: boolean; year?: number }
 
 export async function createJob(
@@ -183,8 +187,7 @@ export async function createJob(
   const sync = opts?.sync_podio ?? false
   const url  = `${JOBS_API_URL}?sync_podio=${sync ? "true" : "false"}`
 
-  // ── Include year in the body so the proxy can forward it as a query param ──
-  // The proxy strips `year` from the body and appends it to the Python URL.
+  // Include year in the body so the proxy can forward it as a query param
   const body = {
     ...payload,
     ...(sync && opts?.year ? { year: opts.year } : {}),
@@ -208,7 +211,17 @@ export async function updateJob(
   opts?: UpdateJobOptions
 ): Promise<JobDTO> {
   const sync = opts?.sync_podio ?? false
-  const url  = `${JOBS_API_URL}/${encodeURIComponent(idJob)}?sync_podio=${sync ? "true" : "false"}`
+
+  // FIX: include year in query string alongside sync_podio
+  // Before: `?sync_podio=true`          → Python couldn't find Podio workspace → 500
+  // After:  `?sync_podio=true&year=2025` → Python resolves workspace correctly
+  const qs = new URLSearchParams()
+  qs.set("sync_podio", sync ? "true" : "false")
+  if (opts?.year) qs.set("year", String(opts.year))
+
+  const url = `${JOBS_API_URL}/${encodeURIComponent(idJob)}?${qs.toString()}`
+
+  console.log("[jobs-service] updateJob →", url, "| payload keys:", Object.keys(updates))
 
   const response = await apiFetch(url, {
     method: "PATCH",

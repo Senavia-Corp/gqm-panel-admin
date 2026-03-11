@@ -1,19 +1,19 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback, KeyboardEvent } from "react"
 import dynamic from "next/dynamic"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { JobMultipliersManager } from "@/components/molecules/JobMultipliersManager"
 import {
   FileText, Calendar, DollarSign, Info, BanknoteIcon,
-  ChevronDown, ChevronUp, CheckCircle2, RefreshCw, AlertCircle, CloudDownload,
+  ChevronDown, ChevronUp, CheckCircle2, RefreshCw, AlertCircle,
+  CloudDownload, TrendingUp, Layers, Receipt, Wrench, X, Plus,
+  BarChart3, Target, CreditCard, ShieldCheck,
 } from "lucide-react"
 import type { UserRole } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { findApplicableMultiplier } from "@/lib/services/multiplier-service"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -21,34 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-// ✅ NEW: Change Orders CRUD component
 import { ChangeOrdersSection } from "@/components/organisms/ChangeOrdersSection"
 
 const TechnicianJobSidebar = dynamic(
-  () => import("@/components/organisms/TechnicianJobSidebar").then((mod) => mod.TechnicianJobSidebar),
+  () => import("@/components/organisms/TechnicianJobSidebar").then((m) => m.TechnicianJobSidebar),
   { ssr: false },
 )
 const LeadTechnicianPricingView = dynamic(
-  () => import("@/components/organisms/LeadTechnicianPricingView").then((mod) => mod.LeadTechnicianPricingView),
+  () => import("@/components/organisms/LeadTechnicianPricingView").then((m) => m.LeadTechnicianPricingView),
   { ssr: false },
 )
 
-// ---------------------------------------------------------------------------
-// Sync state
-// ---------------------------------------------------------------------------
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type SyncPhase =
-  | "idle"
-  | "checking"
-  | "syncing"
-  | "reloading"
-  | "done"
-  | "error"
-
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+type SyncPhase = "idle" | "checking" | "syncing" | "reloading" | "done" | "error"
 
 type Props = {
   role: UserRole
@@ -62,44 +48,38 @@ type Props = {
   onPricingFieldChange: (field: string, value: number) => void
   onMultipliersChanged: () => void
   onAdjPricingCalculated: (adjPricing: number) => void
-  /** Called after sync completes so the parent can reload the job */
   onSyncComplete?: () => Promise<void>
-  /** Reload job from server (passed down for ChangeOrdersSection) */
   onReload?: () => Promise<void>
-  /** Podio sync toggle state inherited from JobDetailPage */
   syncPodio?: boolean
-  /**
-   * Patch the job in the backend (Gqm_final_sold_pricing).
-   * Maps to useJobDetail.patch(). sync_podio handled by each change-order action individually.
-   */
   onJobUpdate?: (updates: Record<string, any>) => Promise<void>
-  /** Called when Pricing_target selector changes */
   onPricingTargetChange?: (value: string | null) => void
+  onPermitChange?: (value: string | null) => void
+  onTotalMaterialsFeesChange?: (value: number | null) => void
+  onPaidFeesChange?: (value: number | null) => void
+  onBldgDeptFeesChange?: (value: string[]) => void
 }
 
-// ---------------------------------------------------------------------------
-// Utility helpers
-// ---------------------------------------------------------------------------
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
-function getOptionalNumber(sourceObjects: any[], candidates: string[]): number | null {
-  for (const src of sourceObjects) {
+function getOptionalNumber(sources: any[], keys: string[]): number | null {
+  for (const src of sources) {
     if (!src) continue
-    for (const key of candidates) {
+    for (const key of keys) {
       if (Object.prototype.hasOwnProperty.call(src, key)) {
         const v = src[key]
         if (v === null || v === undefined || v === "") return null
-        const num = Number(v)
-        if (!Number.isNaN(num)) return num
+        const n = Number(v)
+        if (!Number.isNaN(n)) return n
       }
     }
   }
   return null
 }
 
-function getOptionalString(sourceObjects: any[], candidates: string[]): string | null {
-  for (const src of sourceObjects) {
+function getOptionalString(sources: any[], keys: string[]): string | null {
+  for (const src of sources) {
     if (!src) continue
-    for (const key of candidates) {
+    for (const key of keys) {
       if (Object.prototype.hasOwnProperty.call(src, key)) {
         const v = src[key]
         if (v === null || v === undefined) return null
@@ -108,6 +88,20 @@ function getOptionalString(sourceObjects: any[], candidates: string[]): string |
     }
   }
   return null
+}
+
+function getOptionalStringArray(sources: any[], keys: string[]): string[] {
+  for (const src of sources) {
+    if (!src) continue
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(src, key)) {
+        const v = src[key]
+        if (Array.isArray(v)) return v.map(String).filter(Boolean)
+        if (v === null || v === undefined) return []
+      }
+    }
+  }
+  return []
 }
 
 function fmtMoney(v: number) {
@@ -120,15 +114,10 @@ function fmtDate(s: any) {
     const d = new Date(s)
     if (Number.isNaN(d.getTime())) return String(s)
     return d.toLocaleDateString()
-  } catch {
-    return String(s)
-  }
+  } catch { return String(s) }
 }
 
-function parseNumberInput(raw: string):
-  | { kind: "empty" }
-  | { kind: "partial" }
-  | { kind: "number"; value: number } {
+function parseNumberInput(raw: string): { kind: "empty" } | { kind: "partial" } | { kind: "number"; value: number } {
   const v = raw.trim()
   if (v === "") return { kind: "empty" }
   if (v === "." || v.endsWith(".")) return { kind: "partial" }
@@ -137,142 +126,267 @@ function parseNumberInput(raw: string):
   return { kind: "number", value: n }
 }
 
-function resolveJobYear(job: any): number | null {
-  const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
-  const dateStr =
-    jobType === "PTL"
-      ? (job?.Estimated_start_date ?? job?.estimated_start_date ?? null)
-      : (job?.Date_assigned ?? job?.date_assigned ?? null)
+// FIX: derive year from Job ID first numeric digit — dates have timezone offsets
+// QID5xxx→2025 | PTL6xxx→2026 | PAR4xxx→2024
+function resolveJobYearFromId(job: any): number | null {
+  const id = String(job?.ID_Jobs ?? job?.idJobs ?? job?.id ?? "").trim()
+  if (id) {
+    const m = id.match(/\d/)
+    if (m) return 2020 + parseInt(m[0], 10)
+  }
+  const jobType = String(job?.Job_type ?? "").toUpperCase()
+  const dateStr = jobType === "PTL" ? (job?.Estimated_start_date ?? null) : (job?.Date_assigned ?? null)
   if (!dateStr) return null
   const y = new Date(dateStr).getFullYear()
   return Number.isFinite(y) ? y : null
 }
 
 function resolveJobCode(job: any): string | null {
-  return job?.ID_Jobs ?? job?.Job_code ?? job?.job_code ?? job?.Code ?? null
+  return job?.ID_Jobs ?? job?.Job_code ?? null
 }
 
 function hasFinancialDocs(job: any): boolean {
-  const docs: any[] = Array.isArray(job?.financial_docs)
-    ? job.financial_docs
-    : Array.isArray(job?.financialDocs)
-    ? job.financialDocs
-    : []
-  return docs.length > 0
+  return (Array.isArray(job?.financial_docs) ? job.financial_docs : []).length > 0
 }
-
-// ---------------------------------------------------------------------------
-// Description / bullet parsers
-// ---------------------------------------------------------------------------
 
 function parseBullets(description: string): string[] {
   if (!description) return []
   const parts = description.split(/\s*[-–]\s+/).map((s) => s.trim()).filter(Boolean)
-  if (parts.length <= 1) return [description.trim()]
-  return parts
+  return parts.length <= 1 ? [description.trim()] : parts
 }
 
-function ItemDescription({ text, maxBullets = 3 }: { text: string; maxBullets?: number }) {
-  const [expanded, setExpanded] = useState(false)
-  const bullets = parseBullets(text)
-  const isList = bullets.length > 1
-  const isLong = bullets.length > maxBullets
-  const visibleBullets = expanded || !isLong ? bullets : bullets.slice(0, maxBullets)
+// ─── Design tokens ────────────────────────────────────────────────────────────
 
-  if (!isList) {
-    const isLongParagraph = text.length > 200
-    return (
-      <div className="text-sm text-muted-foreground">
-        <p className={!expanded && isLongParagraph ? "line-clamp-3" : ""}>{text}</p>
-        {isLongParagraph && (
-          <button onClick={() => setExpanded(!expanded)} className="mt-1 flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            {expanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> Show more</>}
+const CHANGED = "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
+const NORMAL  = "border-slate-200 bg-slate-50 focus:bg-white"
+
+// ─── SectionCard ─────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon, iconBg, iconColor, title, children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  iconBg: string; iconColor: string; title: string; children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
+        </div>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  )
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">
+      {children}
+    </label>
+  )
+}
+
+// ─── Numeric input with amber changed indicator ───────────────────────────────
+
+function NumericField({
+  label, text, setText, fieldKey, isFieldChanged, onCommit, placeholder,
+}: {
+  label: string; text: string; setText: (v: string) => void
+  fieldKey: string; isFieldChanged: (f: string) => boolean
+  onCommit: (t: string) => void; placeholder?: string
+}) {
+  const changed = isFieldChanged(fieldKey)
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative">
+        <Input
+          type="text" inputMode="decimal"
+          value={text} placeholder={placeholder}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => onCommit(text)}
+          className={`text-sm transition-all pr-8 ${changed ? CHANGED : NORMAL}`}
+        />
+        {changed && (
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Chip input for Bldg_dept_fees ───────────────────────────────────────────
+
+function ChipInput({ chips, onChange, changed }: {
+  chips: string[]; onChange: (chips: string[]) => void; changed: boolean
+}) {
+  const [inputValue, setInputValue] = useState("")
+
+  const addChip = useCallback(() => {
+    const v = inputValue.trim()
+    if (!v || chips.includes(v)) { setInputValue(""); return }
+    onChange([...chips, v])
+    setInputValue("")
+  }, [inputValue, chips, onChange])
+
+  const removeChip = useCallback((i: number) => {
+    onChange(chips.filter((_, idx) => idx !== i))
+  }, [chips, onChange])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addChip() }
+    if (e.key === "Backspace" && !inputValue && chips.length) onChange(chips.slice(0, -1))
+  }, [addChip, inputValue, chips, onChange])
+
+  return (
+    <div className={`min-h-[42px] rounded-xl border px-3 py-2 transition-all flex flex-wrap gap-1.5 items-center ${changed ? CHANGED : NORMAL}`}>
+      {chips.map((chip, i) => (
+        <span key={i} className="flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+          {chip}
+          <button type="button" onClick={() => removeChip(i)} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-2.5 w-2.5" />
+          </button>
+        </span>
+      ))}
+      <div className="flex items-center gap-1 flex-1 min-w-[120px]">
+        <input
+          type="text" value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown} onBlur={addChip}
+          placeholder={chips.length ? "Add another…" : "Type and press Enter…"}
+          className="flex-1 bg-transparent text-sm outline-none text-slate-700 placeholder:text-slate-300 min-w-[80px]"
+        />
+        {inputValue.trim() && (
+          <button type="button" onClick={addChip} className="flex-shrink-0 rounded-md bg-slate-100 p-0.5 text-slate-500 hover:bg-slate-200 transition-colors">
+            <Plus className="h-3 w-3" />
           </button>
         )}
       </div>
-    )
-  }
+      {changed && <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
+    </div>
+  )
+}
 
+// ─── Financial doc cards ──────────────────────────────────────────────────────
+
+function FinancialDocItem({ item }: { item: any }) {
+  const [open, setOpen] = useState(false)
+  const bullets = parseBullets(item?.Description ?? "")
   return (
-    <div className="text-sm text-muted-foreground">
-      <ul className="space-y-1 mt-1">
-        {visibleBullets.map((bullet, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-primary/50" />
-            <span>{bullet}</span>
-          </li>
-        ))}
-      </ul>
-      {isLong && (
-        <button onClick={() => setExpanded(!expanded)} className="mt-2 flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          {expanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> +{bullets.length - maxBullets} more items</>}
-        </button>
+    <div className="rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
+      <div className="flex items-center justify-between gap-4 px-3 py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="font-medium text-sm truncate text-slate-700">{item?.Name || item?.Description?.slice(0, 40) || "Item"}</div>
+          <span className="text-xs text-slate-400 flex-shrink-0">× {item?.Quantity ?? 1}</span>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="font-semibold text-sm text-slate-800">{fmtMoney(Number(item?.Amount ?? item?.Unit_price ?? 0))}</span>
+          {item?.Description && (
+            <button onClick={() => setOpen(!open)} className="text-slate-300 hover:text-slate-500 transition-colors">
+              {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+      </div>
+      {open && item?.Description && (
+        <div className="px-3 pb-3 border-t border-slate-100 bg-white pt-2 space-y-1">
+          {bullets.length > 1
+            ? bullets.map((b, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-slate-500">
+                  <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-slate-300" /><span>{b}</span>
+                </div>
+              ))
+            : <p className="text-sm text-slate-500">{item.Description}</p>}
+        </div>
       )}
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// UI atoms
-// ---------------------------------------------------------------------------
-
-function StatusBadge({ status }: { status: string }) {
-  const lower = (status ?? "").toLowerCase()
-  const variant = lower.includes("paid") || lower.includes("closed") ? "default" : lower.includes("partial") ? "secondary" : "outline"
-  return <Badge variant={variant} className="text-xs">{status || "—"}</Badge>
-}
-
-function StatPill({ label, value }: { label: string; value: string }) {
+function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
+  const isInv = type === "invoice"
+  const accent = isInv ? { bg: "bg-emerald-50/50", icon: "bg-emerald-100", iconColor: "text-emerald-600", badge: "bg-emerald-100 border-emerald-200 text-emerald-700", balance: "text-emerald-700" }
+                       : { bg: "bg-orange-50/50",  icon: "bg-orange-100",  iconColor: "text-orange-600",  badge: "bg-orange-100 border-orange-200 text-orange-700",   balance: "text-orange-700" }
+  const DocIcon = isInv ? FileText : DollarSign
   return (
-    <div className="flex flex-col items-end">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className={`flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-100 ${accent.bg}`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`rounded-xl p-2 ${accent.icon}`}><DocIcon className={`h-4 w-4 ${accent.iconColor}`} /></div>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm text-slate-800">{doc?.Job_Ref_QBO || "—"}</div>
+            <div className="text-[10px] text-slate-400 font-mono">ID: {doc?.ID_FinancialDoc ?? "—"}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="flex items-center gap-1 text-xs text-slate-400"><Calendar className="h-3 w-3" /> {fmtDate(doc?.Due_Date)}</div>
+          <div className="text-right"><div className="text-[10px] text-slate-400">Total</div><div className="text-sm font-semibold text-slate-800">{fmtMoney(Number(doc?.Total_Amount || 0))}</div></div>
+          <div className="text-right"><div className="text-[10px] text-slate-400">Balance</div><div className={`text-sm font-semibold ${accent.balance}`}>{fmtMoney(Number(doc?.Balance_Amount || 0))}</div></div>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${accent.badge}`}>{doc?.Percentage_Paid ?? 0}% paid</span>
+        </div>
+      </div>
+      {doc?.Notes && (
+        <div className="px-4 py-2 bg-amber-50/60 border-b border-amber-100 flex items-start gap-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+          <p className="text-xs text-amber-700">{doc.Notes}</p>
+        </div>
+      )}
+      {Array.isArray(doc?.financial_doc_items) && doc.financial_doc_items.length > 0 && (
+        <div className="px-4 py-3 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Line Items</p>
+          {doc.financial_doc_items.map((item: any, idx: number) => <FinancialDocItem key={item?.ID_FDItem ?? idx} item={item} />)}
+        </div>
+      )}
     </div>
   )
 }
 
-function SectionHeader({ icon: Icon, title, total, totalLabel = "Total", colorClass = "text-muted-foreground" }: {
-  icon: React.ElementType; title: string; total: number; totalLabel?: string; colorClass?: string
-}) {
+function TransactionCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
+  const isInv = type === "invoice"
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Icon className={`h-5 w-5 ${colorClass}`} />
-        <h3 className="text-base font-semibold">{title}</h3>
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {totalLabel}: <span className="font-semibold text-foreground">{fmtMoney(total)}</span>
+    <div className={`rounded-2xl border bg-white shadow-sm ${isInv ? "border-emerald-200" : "border-orange-200"}`}>
+      <div className="px-4 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`rounded-xl p-2 ${isInv ? "bg-emerald-50" : "bg-orange-50"}`}>
+            <BanknoteIcon className={`h-4 w-4 ${isInv ? "text-emerald-500" : "text-orange-500"}`} />
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm text-slate-800">{doc?.Reference_number || "—"}</div>
+            <div className="text-[10px] text-slate-400">{doc?.Type_of_transaction || "Payment"} · {doc?.ID_FTransaction ?? "—"}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="text-xs text-slate-400 text-right space-y-0.5">
+            <div className="flex items-center gap-1 justify-end"><Calendar className="h-3 w-3" /> {fmtDate(doc?.Date_of_payment)}</div>
+            <div>{doc?.Type_of_payment || "—"}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] text-slate-400">Amount</div>
+            <div className="text-sm font-semibold text-slate-800">{fmtMoney(Number(doc?.Total_Amount || 0))}</div>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <Card>
-      <CardContent className="py-8 flex flex-col items-center justify-center text-center gap-2">
-        <FileText className="h-8 w-8 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">{message}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Sync banner
-// ---------------------------------------------------------------------------
+// ─── Sync banner ──────────────────────────────────────────────────────────────
 
 function SyncBanner({ phase, jobYear, errorMessage, onRetry }: {
   phase: SyncPhase; jobYear: number | null; errorMessage: string | null; onRetry: () => void
 }) {
   if (phase === "idle" || phase === "done") return null
-
   if (phase === "error") {
     return (
-      <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
         <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-red-800">Failed to sync financial data</p>
+          <p className="text-sm font-semibold text-red-800">Failed to sync financial data</p>
           {errorMessage && <p className="text-xs text-red-600 mt-0.5">{errorMessage}</p>}
         </div>
         <Button size="sm" variant="outline" onClick={onRetry} className="flex-shrink-0 text-red-700 border-red-300 hover:bg-red-100">
@@ -281,308 +395,144 @@ function SyncBanner({ phase, jobYear, errorMessage, onRetry }: {
       </div>
     )
   }
-
   const steps: { phase: SyncPhase; label: string }[] = [
-    { phase: "checking",  label: "Checking for financial data…" },
-    { phase: "syncing",   label: "Importing from QuickBooks…" },
+    { phase: "checking", label: "Checking for financial data…" },
+    { phase: "syncing", label: "Importing from QuickBooks…" },
     { phase: "reloading", label: "Loading documents…" },
   ]
-  const currentStep = steps.findIndex((s) => s.phase === phase)
-  const label = steps[currentStep]?.label ?? "Processing…"
-
+  const cur = steps.findIndex((s) => s.phase === phase)
   return (
-    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+    <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
       <div className="flex items-center gap-3 mb-3">
         <CloudDownload className="h-5 w-5 flex-shrink-0 text-blue-500 animate-pulse" />
         <div>
-          <p className="text-sm font-medium text-blue-900">
-            Importing historical financial data{jobYear ? ` (${jobYear})` : ""}
-          </p>
-          <p className="text-xs text-blue-600 mt-0.5">{label} This may take a moment.</p>
+          <p className="text-sm font-semibold text-blue-900">Importing financial data{jobYear ? ` (${jobYear})` : ""}</p>
+          <p className="text-xs text-blue-600 mt-0.5">{steps[cur]?.label ?? "Processing…"}</p>
         </div>
       </div>
       <div className="flex gap-1.5">
-        {steps.map((step, i) => (
-          <div
-            key={step.phase}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-              i < currentStep ? "bg-blue-500" : i === currentStep ? "bg-blue-400 animate-pulse" : "bg-blue-200"
-            }`}
-          />
+        {steps.map((s, i) => (
+          <div key={s.phase} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${i < cur ? "bg-blue-500" : i === cur ? "bg-blue-400 animate-pulse" : "bg-blue-200"}`} />
         ))}
       </div>
-      <p className="text-xs text-blue-500 mt-2">Step {currentStep + 1} of {steps.length}</p>
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Loading skeletons
-// ---------------------------------------------------------------------------
-
-function SkeletonBox({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-gray-200 ${className ?? ""}`} />
-}
-
-function DocsSkeleton({ accentColor }: { accentColor: string }) {
+function DocsSkeleton({ cls }: { cls: string }) {
   return (
     <div className="space-y-3">
       {[1, 2].map((i) => (
-        <Card key={i} className={`overflow-hidden border-l-4 ${accentColor}`}>
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between gap-4 px-4 py-3 bg-muted/20">
-              <div className="flex items-center gap-3">
-                <SkeletonBox className="h-8 w-8 rounded-md" />
-                <div className="space-y-1.5">
-                  <SkeletonBox className="h-4 w-24" />
-                  <SkeletonBox className="h-3 w-16" />
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <SkeletonBox className="h-3 w-20" />
-                <SkeletonBox className="h-8 w-16" />
-                <SkeletonBox className="h-8 w-16" />
-                <SkeletonBox className="h-5 w-14 rounded-full" />
+        <div key={i} className={`rounded-2xl border bg-white overflow-hidden ${cls}`}>
+          <div className="flex items-center justify-between gap-4 px-4 py-3 bg-slate-50/80">
+            <div className="flex items-center gap-3">
+              <div className="animate-pulse rounded-xl bg-slate-200 h-9 w-9" />
+              <div className="space-y-1.5">
+                <div className="animate-pulse rounded bg-slate-200 h-4 w-24" />
+                <div className="animate-pulse rounded bg-slate-200 h-3 w-16" />
               </div>
             </div>
-            <div className="px-4 py-3 space-y-2">
-              <SkeletonBox className="h-3 w-12" />
-              <SkeletonBox className="h-10 w-full rounded-lg" />
+            <div className="flex items-center gap-4">
+              <div className="animate-pulse rounded bg-slate-200 h-3 w-20" />
+              <div className="animate-pulse rounded-full bg-slate-200 h-5 w-16" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Financial document cards
-// ---------------------------------------------------------------------------
-
-function FinancialDocItem({ item }: { item: any }) {
-  const [open, setOpen] = useState(false)
-  const bullets = parseBullets(item?.Description ?? "")
-  const isList = bullets.length > 1
-
+function SubHeader({ icon: Icon, title, total, color }: {
+  icon: React.ComponentType<{ className?: string }>; title: string; total: number; color: string
+}) {
   return (
-    <div className="rounded-lg border bg-gray-50/70 overflow-hidden">
-      <div className="flex items-center justify-between gap-4 px-3 py-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="font-medium text-sm truncate">{item?.Name || item?.Description?.slice(0, 40) || "Item"}</div>
-          <span className="text-xs text-muted-foreground flex-shrink-0">x {item?.Quantity ?? 1}</span>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="font-semibold text-sm">{fmtMoney(Number(item?.Amount ?? item?.Unit_price ?? 0))}</span>
-          {item?.Description && (
-            <button onClick={() => setOpen(!open)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={open ? "Collapse" : "Expand"}>
-              {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          )}
-        </div>
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className="text-sm font-semibold text-slate-700">{title}</span>
       </div>
-      {open && item?.Description && (
-        <div className="px-3 pb-3 border-t bg-white">
-          <div className="pt-2">
-            {isList ? (
-              <ul className="space-y-1">
-                {bullets.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-primary/40" /><span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">{item.Description}</p>
-            )}
-          </div>
-        </div>
-      )}
+      <span className="text-sm text-slate-500">Total: <span className="font-semibold text-slate-800">{fmtMoney(total)}</span></span>
     </div>
   )
 }
 
-function InvoiceCard({ doc }: { doc: any }) {
+function TabPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Card className="overflow-hidden border-l-4 border-l-emerald-500">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between gap-4 px-4 py-3 bg-muted/40 border-b">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="rounded-md bg-emerald-50 p-1.5 border border-emerald-100">
-              <FileText className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-semibold text-base leading-tight">{doc?.Job_Ref_QBO || "—"}</div>
-              <div className="text-xs text-muted-foreground">QBO ID: {doc?.ID_FinancialDoc ?? "—"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" /> Due: {fmtDate(doc?.Due_Date)}
-            </div>
-            <StatPill label="Total" value={fmtMoney(Number(doc?.Total_Amount || 0))} />
-            <StatPill label="Balance" value={fmtMoney(Number(doc?.Balance_Amount || 0))} />
-            <StatusBadge status={`${doc?.Percentage_Paid ?? 0}% paid`} />
-          </div>
-        </div>
-        {doc?.Notes && (
-          <div className="px-4 py-2 bg-amber-50/50 border-b border-amber-100 flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-            <p className="text-xs text-amber-800">Notes: {doc.Notes}</p>
-          </div>
-        )}
-        {Array.isArray(doc?.financial_doc_items) && doc.financial_doc_items.length > 0 && (
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Items</p>
-            {doc.financial_doc_items.map((item: any, idx: number) => <FinancialDocItem key={item?.ID_FDItem ?? idx} item={item} />)}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <button type="button" onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+        active ? "bg-white text-slate-800 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+      }`}>
+      {children}
+    </button>
   )
 }
-
-function BillCard({ doc }: { doc: any }) {
-  return (
-    <Card className="overflow-hidden border-l-4 border-l-orange-400">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between gap-4 px-4 py-3 bg-muted/40 border-b">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="rounded-md bg-orange-50 p-1.5 border border-orange-100">
-              <DollarSign className="h-4 w-4 text-orange-500" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-semibold text-base leading-tight">{doc?.Job_Ref_QBO || "—"}</div>
-              <div className="text-xs text-muted-foreground">ID: {doc?.ID_FinancialDoc ?? "—"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" /> Due: {fmtDate(doc?.Due_Date)}
-            </div>
-            <StatPill label="Total" value={fmtMoney(Number(doc?.Total_Amount || 0))} />
-            <StatPill label="Balance" value={fmtMoney(Number(doc?.Balance_Amount || 0))} />
-            <StatusBadge status={`${doc?.Percentage_Paid ?? 0}% paid`} />
-          </div>
-        </div>
-        {doc?.Notes && (
-          <div className="px-4 py-2 bg-amber-50/50 border-b border-amber-100 flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-            <p className="text-xs text-amber-800">Notes: {doc.Notes}</p>
-          </div>
-        )}
-        {Array.isArray(doc?.financial_doc_items) && doc.financial_doc_items.length > 0 && (
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Items</p>
-            {doc.financial_doc_items.map((item: any, idx: number) => <FinancialDocItem key={item?.ID_FDItem ?? idx} item={item} />)}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function TransactionCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
-  return (
-    <Card className={`border-l-4 ${type === "invoice" ? "border-l-emerald-300" : "border-l-orange-300"}`}>
-      <CardContent className="px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <BanknoteIcon className={`h-4 w-4 flex-shrink-0 ${type === "invoice" ? "text-emerald-500" : "text-orange-400"}`} />
-            <div className="min-w-0">
-              <div className="font-semibold text-sm">{doc?.Reference_number || "—"}</div>
-              <div className="text-xs text-muted-foreground">{doc?.Type_of_transaction || "Payment"} · ID: {doc?.ID_FTransaction ?? "—"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="text-xs text-muted-foreground space-y-0.5 text-right">
-              <div className="flex items-center gap-1.5 justify-end">
-                <Calendar className="h-3 w-3" /> Payment Date: {fmtDate(doc?.Date_of_payment)}
-              </div>
-              <div>Payment Type: {doc?.Type_of_payment || "—"}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Amount</div>
-              <div className="text-base font-semibold">{fmtMoney(Number(doc?.Total_Amount || 0))}</div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 const PRICING_TARGET_OPTIONS = ["Yes", "No", "Leadership Approval"] as const
+const PERMIT_OPTIONS = ["Yes", "No"] as const
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function JobPricingTab({
   role, jobId, job, isFieldChanged, onPricingFieldChange,
   onMultipliersChanged, onAdjPricingCalculated, onSyncComplete,
   onReload, syncPodio = false, onJobUpdate: onPatchJob,
-  onPricingTargetChange,
+  onPricingTargetChange, onPermitChange,
+  onTotalMaterialsFeesChange, onPaidFeesChange, onBldgDeptFeesChange,
 }: Props) {
-  const pricingSources = [job?.pricingData ?? job, job]
+  const src = [job?.pricingData ?? job, job]
 
-  // ── Existing pricing fields ───────────────────────────────────────────────
-  const gqmFormula            = getOptionalNumber(pricingSources, ["Gqm_formula_pricing"])
-  const gqmAdjFormula         = getOptionalNumber(pricingSources, ["Gqm_adj_formula_pricing"])
-  const gqmTargetReturnRaw    = getOptionalNumber(pricingSources, ["Gqm_target_return"])
-  const gqmTargetSold         = getOptionalNumber(pricingSources, ["Gqm_target_sold_pricing"])
-  const gqmPremium            = getOptionalNumber(pricingSources, ["Gqm_premium_in_money"])
-  const gqmFinalSold          = getOptionalNumber(pricingSources, ["Gqm_final_sold_pricing"])
-  const gqmFinalPercentageRaw = getOptionalNumber(pricingSources, ["Gqm_final_percentage"])
+  const gqmFormula            = getOptionalNumber(src, ["Gqm_formula_pricing"])
+  const gqmAdjFormula         = getOptionalNumber(src, ["Gqm_adj_formula_pricing"])
+  const gqmTargetReturnRaw    = getOptionalNumber(src, ["Gqm_target_return"])
+  const gqmTargetSold         = getOptionalNumber(src, ["Gqm_target_sold_pricing"])
+  const gqmPremium            = getOptionalNumber(src, ["Gqm_premium_in_money"])
+  const gqmFinalSold          = getOptionalNumber(src, ["Gqm_final_sold_pricing"])
+  const gqmFinalPercentageRaw = getOptionalNumber(src, ["Gqm_final_percentage"])
+  const estimatedRent         = getOptionalNumber(src, ["Estimated_rent"])
+  const estimatedMaterial     = getOptionalNumber(src, ["Estimated_material"])
+  const estimatedCity         = getOptionalNumber(src, ["Estimated_city"])
+  const techFormulaPricing    = getOptionalNumber(src, ["Tech_formula_pricing"])
+  const pricingTarget         = getOptionalString(src, ["Pricing_target"])
+  const permit                = getOptionalString(src, ["Permit"])
+  const accReceivable         = getOptionalNumber(src, ["Acc_receivable"])
+  const gqmFinalFormPricing   = getOptionalNumber(src, ["Gqm_final_form_pricing"])
+  const gqmFinalAdjForm       = getOptionalNumber(src, ["Gqm_final_adj_form_pricing"])
+  const gqmFinalTargetReturn  = getOptionalNumber(src, ["Gqm_final_target_return"])
+  const gqmFinalPremInMoney   = getOptionalNumber(src, ["Gqm_final_prem_in_money"])
+  const totalMaterialsFees    = getOptionalNumber(src, ["Gqm_total_materials_fees"])
+  const paidFees              = getOptionalNumber(src, ["Gqm_paid_fees"])
+  const bldgDeptFees          = getOptionalStringArray(src, ["Bldg_dept_fees"])
 
-  // ── NEW: Initial Proposal fields ─────────────────────────────────────────
-  const estimatedRent      = getOptionalNumber(pricingSources, ["Estimated_rent"])
-  const estimatedMaterial  = getOptionalNumber(pricingSources, ["Estimated_material"])
-  const estimatedCity      = getOptionalNumber(pricingSources, ["Estimated_city"])
-  const techFormulaPricing = getOptionalNumber(pricingSources, ["Tech_formula_pricing"])
-
-  // ── NEW: Pricing Target ──────────────────────────────────────────────────
-  const pricingTarget = getOptionalString(pricingSources, ["Pricing_target"])
-
-  // ── NEW: Accounts Receivable fields ──────────────────────────────────────
-  const accReceivable        = getOptionalNumber(pricingSources, ["Acc_receivable"])
-  const gqmFinalFormPricing  = getOptionalNumber(pricingSources, ["Gqm_final_form_pricing"])
-  const gqmFinalAdjForm      = getOptionalNumber(pricingSources, ["Gqm_final_adj_form_pricing"])
-  const gqmFinalTargetReturn = getOptionalNumber(pricingSources, ["Gqm_final_target_return"])
-  const gqmFinalPremInMoney  = getOptionalNumber(pricingSources, ["Gqm_final_prem_in_money"])
-
-  // ── Text states: existing ─────────────────────────────────────────────────
-  const [gqmFormulaText,         setGqmFormulaText]         = useState(gqmFormula?.toString() ?? "")
-  const [gqmAdjFormulaText,      setGqmAdjFormulaText]      = useState(gqmAdjFormula?.toString() ?? "")
-  const [gqmTargetReturnText,    setGqmTargetReturnText]    = useState(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : "")
-  const [gqmTargetSoldText,      setGqmTargetSoldText]      = useState(gqmTargetSold?.toString() ?? "")
-  const [gqmPremiumText,         setGqmPremiumText]         = useState(gqmPremium?.toString() ?? "")
-  const [gqmFinalSoldText,       setGqmFinalSoldText]       = useState(gqmFinalSold?.toString() ?? "")
-  const [gqmFinalPercentageText, setGqmFinalPercentageText] = useState(gqmFinalPercentageRaw != null ? String(gqmFinalPercentageRaw * 100) : "")
-
-  // ── Text states: NEW Initial Proposal ────────────────────────────────────
-  const [estimatedRentText,      setEstimatedRentText]      = useState(estimatedRent?.toString() ?? "")
-  const [estimatedMaterialText,  setEstimatedMaterialText]  = useState(estimatedMaterial?.toString() ?? "")
-  const [estimatedCityText,      setEstimatedCityText]      = useState(estimatedCity?.toString() ?? "")
-  const [techFormulaText,        setTechFormulaText]        = useState(techFormulaPricing?.toString() ?? "")
-
-  // ── Text states: NEW Accounts Receivable ─────────────────────────────────
+  // text states
+  const [gqmFormulaText,           setGqmFormulaText]           = useState(gqmFormula?.toString() ?? "")
+  const [gqmAdjFormulaText,        setGqmAdjFormulaText]        = useState(gqmAdjFormula?.toString() ?? "")
+  const [gqmTargetReturnText,      setGqmTargetReturnText]      = useState(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : "")
+  const [gqmTargetSoldText,        setGqmTargetSoldText]        = useState(gqmTargetSold?.toString() ?? "")
+  const [gqmPremiumText,           setGqmPremiumText]           = useState(gqmPremium?.toString() ?? "")
+  const [gqmFinalSoldText,         setGqmFinalSoldText]         = useState(gqmFinalSold?.toString() ?? "")
+  const [gqmFinalPercentageText,   setGqmFinalPercentageText]   = useState(gqmFinalPercentageRaw != null ? String(gqmFinalPercentageRaw * 100) : "")
+  const [estimatedRentText,        setEstimatedRentText]        = useState(estimatedRent?.toString() ?? "")
+  const [estimatedMaterialText,    setEstimatedMaterialText]    = useState(estimatedMaterial?.toString() ?? "")
+  const [estimatedCityText,        setEstimatedCityText]        = useState(estimatedCity?.toString() ?? "")
+  const [techFormulaText,          setTechFormulaText]          = useState(techFormulaPricing?.toString() ?? "")
   const [accReceivableText,        setAccReceivableText]        = useState(accReceivable?.toString() ?? "")
   const [gqmFinalFormText,         setGqmFinalFormText]         = useState(gqmFinalFormPricing?.toString() ?? "")
   const [gqmFinalAdjFormText,      setGqmFinalAdjFormText]      = useState(gqmFinalAdjForm?.toString() ?? "")
   const [gqmFinalTargetReturnText, setGqmFinalTargetReturnText] = useState(gqmFinalTargetReturn?.toString() ?? "")
   const [gqmFinalPremText,         setGqmFinalPremText]         = useState(gqmFinalPremInMoney?.toString() ?? "")
+  const [totalMaterialsFeesText,   setTotalMaterialsFeesText]   = useState(totalMaterialsFees?.toString() ?? "")
+  const [paidFeesText,             setPaidFeesText]             = useState(paidFees?.toString() ?? "")
+  const [bldgDeptFeesChips,        setBldgDeptFeesChips]        = useState<string[]>(bldgDeptFees)
 
-  // ── Sync text states when job reloads: existing ──────────────────────────
-  useEffect(() => setGqmFormulaText(gqmFormula?.toString() ?? ""),                                             [gqmFormula])
-  useEffect(() => setGqmAdjFormulaText(gqmAdjFormula?.toString() ?? ""),                                      [gqmAdjFormula])
-  useEffect(() => setGqmTargetReturnText(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : ""), [gqmTargetReturnRaw])
-  useEffect(() => setGqmTargetSoldText(gqmTargetSold?.toString() ?? ""),                                      [gqmTargetSold])
-  useEffect(() => setGqmPremiumText(gqmPremium?.toString() ?? ""),                                            [gqmPremium])
-  useEffect(() => setGqmFinalSoldText(gqmFinalSold?.toString() ?? ""),                                        [gqmFinalSold])
+  // sync on reload
+  useEffect(() => setGqmFormulaText(gqmFormula?.toString() ?? ""),                                              [gqmFormula])
+  useEffect(() => setGqmAdjFormulaText(gqmAdjFormula?.toString() ?? ""),                                       [gqmAdjFormula])
+  useEffect(() => setGqmTargetReturnText(gqmTargetReturnRaw != null ? String(gqmTargetReturnRaw * 100) : ""),  [gqmTargetReturnRaw])
+  useEffect(() => setGqmTargetSoldText(gqmTargetSold?.toString() ?? ""),                                       [gqmTargetSold])
+  useEffect(() => setGqmPremiumText(gqmPremium?.toString() ?? ""),                                             [gqmPremium])
+  useEffect(() => setGqmFinalSoldText(gqmFinalSold?.toString() ?? ""),                                         [gqmFinalSold])
   useEffect(() => setGqmFinalPercentageText(gqmFinalPercentageRaw != null ? String(gqmFinalPercentageRaw * 100) : ""), [gqmFinalPercentageRaw])
-
-  // ── Sync text states when job reloads: NEW ───────────────────────────────
   useEffect(() => setEstimatedRentText(estimatedRent?.toString() ?? ""),         [estimatedRent])
   useEffect(() => setEstimatedMaterialText(estimatedMaterial?.toString() ?? ""), [estimatedMaterial])
   useEffect(() => setEstimatedCityText(estimatedCity?.toString() ?? ""),         [estimatedCity])
@@ -592,31 +542,29 @@ export function JobPricingTab({
   useEffect(() => setGqmFinalAdjFormText(gqmFinalAdjForm?.toString() ?? ""),     [gqmFinalAdjForm])
   useEffect(() => setGqmFinalTargetReturnText(gqmFinalTargetReturn?.toString() ?? ""), [gqmFinalTargetReturn])
   useEffect(() => setGqmFinalPremText(gqmFinalPremInMoney?.toString() ?? ""),    [gqmFinalPremInMoney])
+  useEffect(() => setTotalMaterialsFeesText(totalMaterialsFees?.toString() ?? ""), [totalMaterialsFees])
+  useEffect(() => setPaidFeesText(paidFees?.toString() ?? ""),                   [paidFees])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setBldgDeptFeesChips(bldgDeptFees), [JSON.stringify(bldgDeptFees)])
 
-  // financial docs
-  const financialDocs: any[] = Array.isArray(job?.financial_docs) ? job.financial_docs : Array.isArray(job?.financialDocs) ? job.financialDocs : []
-  const invoices = financialDocs.filter((d) => String(d?.Type_of_document ?? d?.type ?? "").toLowerCase() === "invoice")
-  const bills    = financialDocs.filter((d) => String(d?.Type_of_document ?? d?.type ?? "").toLowerCase() === "bill")
-  const invoicesTotal              = invoices.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
-  const billsTotal                 = bills.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
-  const invoicesTransactions       = invoices.flatMap((d) => d?.financial_transactions ?? [])
-  const billsTransactions          = bills.flatMap((d) => d?.financial_transactions ?? [])
-  const invoicesTransactionsTotal  = invoicesTransactions.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
-  const billsTransactionsTotal     = billsTransactions.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const financialDocs: any[] = Array.isArray(job?.financial_docs) ? job.financial_docs : []
+  const invoices   = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "invoice")
+  const bills      = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "bill")
+  const invTotal   = invoices.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const billTotal  = bills.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const invTx      = invoices.flatMap((d) => d?.financial_transactions ?? [])
+  const billTx     = bills.flatMap((d) => d?.financial_transactions ?? [])
+  const invTxTotal = invTx.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const billTxTotal= billTx.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
 
-  // inner tabs
   const [activeTab, setActiveTab] = useState<"analysis" | "invoices" | "bills">("analysis")
-
-  // QBO auto-sync state
   const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle")
   const [syncError, setSyncError] = useState<string | null>(null)
 
-  const jobYear = useMemo(() => resolveJobYear(job), [job])
-  const jobCode = useMemo(() => resolveJobCode(job), [job])
-
+  // FIX: derive year from ID
+  const jobYear = useMemo(() => resolveJobYearFromId(job), [job])
   const onSyncCompleteRef = useRef(onSyncComplete)
   useEffect(() => { onSyncCompleteRef.current = onSyncComplete }, [onSyncComplete])
-
   const syncAttemptedRef = useRef(false)
 
   const runSync = async (code: string) => {
@@ -632,7 +580,7 @@ export function JobPricingTab({
       if (onSyncCompleteRef.current) await onSyncCompleteRef.current()
       setSyncPhase("done")
     } catch (err) {
-      console.error("[QBO sync] error:", err)
+      console.error("[QBO sync]:", err)
       setSyncError(err instanceof Error ? err.message : "Unknown error")
       setSyncPhase("error")
     }
@@ -641,24 +589,16 @@ export function JobPricingTab({
   useEffect(() => {
     if (activeTab !== "invoices" && activeTab !== "bills") return
     if (syncAttemptedRef.current) return
-
     const code = resolveJobCode(job)
-    const year = resolveJobYear(job)
-    const hasDocs = hasFinancialDocs(job)
-
-    if (!code) return
-    if (year === null || year >= 2026) return
-    if (hasDocs) return
-
+    const year = resolveJobYearFromId(job)
+    if (!code || year === null || year >= 2026 || hasFinancialDocs(job)) return
     syncAttemptedRef.current = true
     setSyncPhase("checking")
-
-    const timer = setTimeout(() => { void runSync(code) }, 600)
-    return () => clearTimeout(timer)
+    const t = setTimeout(() => { void runSync(code) }, 600)
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  // ── Early return for LEAD_TECHNICIAN ─────────────────────────────────────
   if (role === "LEAD_TECHNICIAN") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -668,7 +608,6 @@ export function JobPricingTab({
     )
   }
 
-  // pricing derived values
   const formula = gqmFormula ?? null
   const applicableMultiplier = formula != null ? findApplicableMultiplier(formula, job?.multipliers || []) : null
   const recommendedAdj = formula != null && applicableMultiplier ? formula * Number(applicableMultiplier.Multiplier) : null
@@ -676,277 +615,252 @@ export function JobPricingTab({
     ? (gqmTargetSold - (gqmAdjFormula ?? recommendedAdj!)) / gqmTargetSold : null
   const recommendedPremium = gqmTargetSold != null && (gqmAdjFormula ?? recommendedAdj) != null
     ? gqmTargetSold - (gqmAdjFormula ?? recommendedAdj!) : null
-  const recommendedFinalPercentage = gqmFinalSold != null && gqmFinalSold > 0 && (gqmAdjFormula ?? recommendedAdj) != null
+  const recommendedFinalPct = gqmFinalSold != null && gqmFinalSold > 0 && (gqmAdjFormula ?? recommendedAdj) != null
     ? (gqmFinalSold - (gqmAdjFormula ?? recommendedAdj!)) / gqmFinalSold : null
 
-  const commitNumber = (field: string, text: string, transform?: (n: number) => number) => {
-    const parsed = parseNumberInput(text)
-    if (parsed.kind !== "number") return
-    onPricingFieldChange(field, transform ? transform(parsed.value) : parsed.value)
+  const commit = (field: string, text: string, transform?: (n: number) => number) => {
+    const p = parseNumberInput(text)
+    if (p.kind !== "number") return
+    onPricingFieldChange(field, transform ? transform(p.value) : p.value)
   }
 
-  const isSyncing = syncPhase === "checking" || syncPhase === "syncing" || syncPhase === "reloading"
+  const commitFee = (text: string, handler?: (v: number | null) => void) => {
+    if (!handler) return
+    const p = parseNumberInput(text)
+    if (p.kind === "number") handler(p.value)
+    else if (p.kind === "empty") handler(null)
+  }
 
-  // ── Fallback noops ────────────────────────────────────────────────────────
+  const isSyncing = ["checking", "syncing", "reloading"].includes(syncPhase)
   const handleJobUpdate = onPatchJob ?? (async () => {})
   const handleReload    = onReload   ?? (async () => {})
 
   return (
     <>
-      {/* Tab bar */}
-      <div className="mb-4">
-        <div className="inline-flex rounded-lg border bg-gray-50 p-1 gap-1">
-          {(["analysis", "invoices", "bills"] as const).map((tab) => (
-            <Button key={tab} variant={activeTab === tab ? "default" : "ghost"} size="sm" onClick={() => setActiveTab(tab)} className="capitalize">
-              {tab}
-              {tab === "invoices" && invoices.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs px-1.5 py-0">{invoices.length}</Badge>}
-              {tab === "bills" && bills.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs px-1.5 py-0">{bills.length}</Badge>}
-            </Button>
-          ))}
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className="mb-5">
+        <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1 gap-0.5">
+          <TabPill active={activeTab === "analysis"} onClick={() => setActiveTab("analysis")}>
+            <BarChart3 className="h-3.5 w-3.5" /> Analysis
+          </TabPill>
+          <TabPill active={activeTab === "invoices"} onClick={() => setActiveTab("invoices")}>
+            <Receipt className="h-3.5 w-3.5" /> Invoices
+            {invoices.length > 0 && <span className="ml-0.5 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[10px] font-bold">{invoices.length}</span>}
+          </TabPill>
+          <TabPill active={activeTab === "bills"} onClick={() => setActiveTab("bills")}>
+            <DollarSign className="h-3.5 w-3.5" /> Bills
+            {bills.length > 0 && <span className="ml-0.5 rounded-full bg-orange-100 text-orange-700 px-1.5 py-0.5 text-[10px] font-bold">{bills.length}</span>}
+          </TabPill>
         </div>
       </div>
 
-      {/* ── Analysis tab ─────────────────────────────────────────────────── */}
+      {/* ── Analysis ─────────────────────────────────────────────────────── */}
       {activeTab === "analysis" && (
-        <>
-          {job?.ID_Jobs && gqmFormula != null && (
-            <JobMultipliersManager jobId={job.ID_Jobs} formulaPricing={gqmFormula} multipliers={job?.multipliers || []} onMultipliersChanged={onMultipliersChanged} onAdjPricingCalculated={onAdjPricingCalculated} />
+        <div className="space-y-4">
+          {job?.ID_Jobs && formula != null && (
+            <JobMultipliersManager jobId={job.ID_Jobs} formulaPricing={formula} multipliers={job?.multipliers || []}
+              onMultipliersChanged={onMultipliersChanged} onAdjPricingCalculated={onAdjPricingCalculated} />
           )}
 
-          {/* ── NEW: Initial Proposal Pricing ────────────────────────────── */}
-          <Card>
-            <CardHeader><CardTitle>Initial Proposal Pricing</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label className="mb-2 block text-sm">Estimated Rent</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={estimatedRentText}
-                  onChange={(e) => setEstimatedRentText(e.target.value)}
-                  onBlur={() => commitNumber("estimatedRent", estimatedRentText)}
-                  className={isFieldChanged("pricing.estimatedRent") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-              <div>
-                <Label className="mb-2 block text-sm">Estimated Materials</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={estimatedMaterialText}
-                  onChange={(e) => setEstimatedMaterialText(e.target.value)}
-                  onBlur={() => commitNumber("estimatedMaterial", estimatedMaterialText)}
-                  className={isFieldChanged("pricing.estimatedMaterial") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-              <div>
-                <Label className="mb-2 block text-sm">Estimated City</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={estimatedCityText}
-                  onChange={(e) => setEstimatedCityText(e.target.value)}
-                  onBlur={() => commitNumber("estimatedCity", estimatedCityText)}
-                  className={isFieldChanged("pricing.estimatedCity") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-              <div>
-                <Label className="mb-2 block text-sm">Tech Formula Pricing</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={techFormulaText}
-                  onChange={(e) => setTechFormulaText(e.target.value)}
-                  onBlur={() => commitNumber("techFormulaPricing", techFormulaText)}
-                  className={isFieldChanged("pricing.techFormulaPricing") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* 1. Initial Proposal */}
+          <SectionCard icon={Layers} iconBg="bg-sky-100" iconColor="text-sky-600" title="Initial Proposal Pricing">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <NumericField label="Estimated Rent" text={estimatedRentText} setText={setEstimatedRentText}
+                fieldKey="pricing.estimatedRent" isFieldChanged={isFieldChanged} onCommit={(t) => commit("estimatedRent", t)} />
+              <NumericField label="Estimated Materials" text={estimatedMaterialText} setText={setEstimatedMaterialText}
+                fieldKey="pricing.estimatedMaterial" isFieldChanged={isFieldChanged} onCommit={(t) => commit("estimatedMaterial", t)} />
+              <NumericField label="Estimated City" text={estimatedCityText} setText={setEstimatedCityText}
+                fieldKey="pricing.estimatedCity" isFieldChanged={isFieldChanged} onCommit={(t) => commit("estimatedCity", t)} />
+              <NumericField label="Tech Formula Pricing" text={techFormulaText} setText={setTechFormulaText}
+                fieldKey="pricing.techFormulaPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("techFormulaPricing", t)} />
+            </div>
+          </SectionCard>
 
-          {/* ── Existing: Pricing Analysis ───────────────────────────────── */}
-          <Card>
-            <CardHeader><CardTitle>Pricing Analysis</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Base Project Costs</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Formula) Pricing</Label>
-                    <Input type="text" inputMode="decimal" value={gqmFormulaText} onChange={(e) => setGqmFormulaText(e.target.value)} onBlur={() => commitNumber("gqmFormulaPricing", gqmFormulaText)} className={isFieldChanged("pricing.gqmFormulaPricing") ? "border-yellow-400 border-2" : ""} />
-                  </div>
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Adj Formula) Pricing</Label>
-                    <Input type="text" inputMode="decimal" value={gqmAdjFormulaText} placeholder={recommendedAdj != null ? String(recommendedAdj.toFixed(2)) : ""} onChange={(e) => setGqmAdjFormulaText(e.target.value)} onBlur={() => commitNumber("gqmAdjFormulaPricing", gqmAdjFormulaText)} className={isFieldChanged("pricing.gqmAdjFormulaPricing") ? "border-yellow-400 border-2" : ""} />
-                    {formula != null && !applicableMultiplier && (
-                      <p className="text-xs text-muted-foreground mt-1">No multiplier applies to this Formula Pricing. Create one in the correct range to see the recommended Adj Formula.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Target Pricing & Returns</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Target) Return %</Label>
-                    <Input type="text" inputMode="decimal" value={gqmTargetReturnText} placeholder={recommendedTargetReturn != null ? String((recommendedTargetReturn * 100).toFixed(2)) : ""} onChange={(e) => setGqmTargetReturnText(e.target.value)} onBlur={() => commitNumber("gqmTargetReturn", gqmTargetReturnText, (n) => n / 100)} className={isFieldChanged("pricing.gqmTargetReturn") ? "border-yellow-400 border-2" : ""} />
-                  </div>
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Target) Sold Pricing</Label>
-                    <Input type="text" inputMode="decimal" value={gqmTargetSoldText} onChange={(e) => setGqmTargetSoldText(e.target.value)} onBlur={() => commitNumber("gqmTargetSoldPricing", gqmTargetSoldText)} className={isFieldChanged("pricing.gqmTargetSoldPricing") ? "border-yellow-400 border-2" : ""} />
-                  </div>
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Premium in $)</Label>
-                    <Input type="text" inputMode="decimal" value={gqmPremiumText} placeholder={recommendedPremium != null ? String(recommendedPremium.toFixed(2)) : ""} onChange={(e) => setGqmPremiumText(e.target.value)} onBlur={() => commitNumber("gqmPremiumInMoney", gqmPremiumText)} className={isFieldChanged("pricing.gqmPremiumInMoney") ? "border-yellow-400 border-2" : ""} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Final Pricing & Returns</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Final Sold) Pricing</Label>
-                    <Input
-                      type="text" inputMode="decimal"
-                      value={gqmFinalSoldText}
-                      onChange={(e) => setGqmFinalSoldText(e.target.value)}
-                      onBlur={() => commitNumber("gqmFinalSoldPricing", gqmFinalSoldText)}
-                      className={isFieldChanged("pricing.gqmFinalSoldPricing") ? "border-yellow-400 border-2" : ""}
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Automatically adjusted when Change Orders are created, edited, or deleted.
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="mb-2 block text-sm">GQM (Final) %</Label>
-                    <Input type="text" inputMode="decimal" value={gqmFinalPercentageText} placeholder={recommendedFinalPercentage != null ? String((recommendedFinalPercentage * 100).toFixed(2)) : ""} onChange={(e) => setGqmFinalPercentageText(e.target.value)} onBlur={() => commitNumber("gqmFinalPercentage", gqmFinalPercentageText, (n) => n / 100)} className={isFieldChanged("pricing.gqmFinalPercentage") ? "border-yellow-400 border-2" : ""} />
-                  </div>
-                </div>
-              </div>
-
-              {/* ── NEW: Pricing Target ─────────────────────────────────── */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Target</h3>
+          {/* 2. Pricing Analysis */}
+          <SectionCard icon={TrendingUp} iconBg="bg-violet-100" iconColor="text-violet-600" title="Pricing Analysis">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Base Project Costs</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <NumericField label="GQM (Formula) Pricing" text={gqmFormulaText} setText={setGqmFormulaText}
+                  fieldKey="pricing.gqmFormulaPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFormulaPricing", t)} />
                 <div>
-                  <Label className="mb-2 block text-sm">Pricing Target</Label>
-                  <Select
-                    value={pricingTarget ?? ""}
-                    onValueChange={(v) => onPricingTargetChange?.(v || null)}
-                  >
-                    <SelectTrigger className={isFieldChanged("pricing.pricingTarget") ? "border-yellow-400 border-2" : ""}>
-                      <SelectValue placeholder="Select…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRICING_TARGET_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <NumericField label="GQM (Adj Formula) Pricing" text={gqmAdjFormulaText} setText={setGqmAdjFormulaText}
+                    fieldKey="pricing.gqmAdjFormulaPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmAdjFormulaPricing", t)}
+                    placeholder={recommendedAdj != null ? recommendedAdj.toFixed(2) : undefined} />
+                  {formula != null && !applicableMultiplier && (
+                    <p className="text-[11px] text-slate-400 mt-1">No multiplier in range — create one to see the recommended value.</p>
+                  )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Target Pricing & Returns</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <NumericField label="GQM Target Return %" text={gqmTargetReturnText} setText={setGqmTargetReturnText}
+                  fieldKey="pricing.gqmTargetReturn" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmTargetReturn", t, (n) => n / 100)}
+                  placeholder={recommendedTargetReturn != null ? (recommendedTargetReturn * 100).toFixed(2) : undefined} />
+                <NumericField label="GQM Target Sold Pricing" text={gqmTargetSoldText} setText={setGqmTargetSoldText}
+                  fieldKey="pricing.gqmTargetSoldPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmTargetSoldPricing", t)} />
+                <NumericField label="GQM Premium in $" text={gqmPremiumText} setText={setGqmPremiumText}
+                  fieldKey="pricing.gqmPremiumInMoney" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmPremiumInMoney", t)}
+                  placeholder={recommendedPremium != null ? recommendedPremium.toFixed(2) : undefined} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Final Pricing & Returns</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <NumericField label="GQM Final Sold Pricing" text={gqmFinalSoldText} setText={setGqmFinalSoldText}
+                    fieldKey="pricing.gqmFinalSoldPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalSoldPricing", t)} />
+                  <p className="text-[11px] text-slate-400 mt-1">Auto-adjusted when change orders are saved.</p>
+                </div>
+                <NumericField label="GQM Final %" text={gqmFinalPercentageText} setText={setGqmFinalPercentageText}
+                  fieldKey="pricing.gqmFinalPercentage" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalPercentage", t, (n) => n / 100)}
+                  placeholder={recommendedFinalPct != null ? (recommendedFinalPct * 100).toFixed(2) : undefined} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Target</p>
+              <div className="max-w-xs">
+                <FieldLabel>Pricing Target</FieldLabel>
+                <Select value={pricingTarget ?? ""} onValueChange={(v) => onPricingTargetChange?.(v || null)}>
+                  <SelectTrigger className={`text-sm transition-all ${isFieldChanged("pricingTarget") ? CHANGED : NORMAL}`}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRICING_TARGET_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </SectionCard>
 
-          {/* ── Change Orders CRUD ────────────────────────────────────────── */}
-          <ChangeOrdersSection
-            job={job}
-            syncPodio={syncPodio}
-            jobYear={jobYear ?? undefined}
-            onReload={handleReload}
-            onPatchJob={handleJobUpdate}
-          />
+          {/* 3. Change Orders */}
+          <ChangeOrdersSection job={job} syncPodio={syncPodio} jobYear={jobYear ?? undefined}
+            onReload={handleReload} onPatchJob={handleJobUpdate} />
 
-          {/* ── NEW: Accounts Receivable ─────────────────────────────────── */}
-          <Card>
-            <CardHeader><CardTitle>Accounts Receivable</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+          {/* 4. Fees Paid */}
+          <SectionCard icon={ShieldCheck} iconBg="bg-teal-100" iconColor="text-teal-600" title="Fees Paid">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Permit */}
               <div>
-                <Label className="mb-2 block text-sm">Accounts Receivable</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={accReceivableText}
-                  onChange={(e) => setAccReceivableText(e.target.value)}
-                  onBlur={() => commitNumber("accReceivable", accReceivableText)}
-                  className={isFieldChanged("pricing.accReceivable") ? "border-yellow-400 border-2" : ""}
-                />
+                <FieldLabel>Permit</FieldLabel>
+                <Select value={permit ?? ""} onValueChange={(v) => onPermitChange?.(v || null)}>
+                  <SelectTrigger className={`text-sm transition-all ${isFieldChanged("permit") ? CHANGED : NORMAL}`}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERMIT_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Total Materials Fees */}
               <div>
-                <Label className="mb-2 block text-sm">GQM Final Form Pricing</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={gqmFinalFormText}
-                  onChange={(e) => setGqmFinalFormText(e.target.value)}
-                  onBlur={() => commitNumber("gqmFinalFormPricing", gqmFinalFormText)}
-                  className={isFieldChanged("pricing.gqmFinalFormPricing") ? "border-yellow-400 border-2" : ""}
-                />
+                <FieldLabel>Total Materials Fees</FieldLabel>
+                <div className="relative">
+                  <Input type="text" inputMode="decimal" value={totalMaterialsFeesText}
+                    onChange={(e) => setTotalMaterialsFeesText(e.target.value)}
+                    onBlur={() => commitFee(totalMaterialsFeesText, onTotalMaterialsFeesChange)}
+                    className={`text-sm transition-all pr-8 ${isFieldChanged("pricing.totalMaterialsFees") ? CHANGED : NORMAL}`}
+                  />
+                  {isFieldChanged("pricing.totalMaterialsFees") && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2"><AlertCircle className="h-3.5 w-3.5 text-amber-500" /></span>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label className="mb-2 block text-sm">GQM Final Adj. Form Pricing</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={gqmFinalAdjFormText}
-                  onChange={(e) => setGqmFinalAdjFormText(e.target.value)}
-                  onBlur={() => commitNumber("gqmFinalAdjFormPricing", gqmFinalAdjFormText)}
-                  className={isFieldChanged("pricing.gqmFinalAdjFormPricing") ? "border-yellow-400 border-2" : ""}
+            </div>
+
+            {/* Paid Fees */}
+            <div className="max-w-xs">
+              <FieldLabel>GQM Paid Fees</FieldLabel>
+              <div className="relative">
+                <Input type="text" inputMode="decimal" value={paidFeesText}
+                  onChange={(e) => setPaidFeesText(e.target.value)}
+                  onBlur={() => commitFee(paidFeesText, onPaidFeesChange)}
+                  className={`text-sm transition-all pr-8 ${isFieldChanged("pricing.paidFees") ? CHANGED : NORMAL}`}
                 />
+                {isFieldChanged("pricing.paidFees") && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2"><AlertCircle className="h-3.5 w-3.5 text-amber-500" /></span>
+                )}
               </div>
-              <div>
-                <Label className="mb-2 block text-sm">GQM Final Target Return</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={gqmFinalTargetReturnText}
-                  onChange={(e) => setGqmFinalTargetReturnText(e.target.value)}
-                  onBlur={() => commitNumber("gqmFinalTargetReturn", gqmFinalTargetReturnText)}
-                  className={isFieldChanged("pricing.gqmFinalTargetReturn") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-              <div>
-                <Label className="mb-2 block text-sm">GQM Final Premium in Money</Label>
-                <Input
-                  type="text" inputMode="decimal"
-                  value={gqmFinalPremText}
-                  onChange={(e) => setGqmFinalPremText(e.target.value)}
-                  onBlur={() => commitNumber("gqmFinalPremInMoney", gqmFinalPremText)}
-                  className={isFieldChanged("pricing.gqmFinalPremInMoney") ? "border-yellow-400 border-2" : ""}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </>
+            </div>
+
+            {/* Building Dept Fees */}
+            <div>
+              <FieldLabel>Building Dept Fees</FieldLabel>
+              <ChipInput
+                chips={bldgDeptFeesChips}
+                changed={isFieldChanged("pricing.bldgDeptFees")}
+                onChange={(chips) => {
+                  setBldgDeptFeesChips(chips)
+                  onBldgDeptFeesChange?.(chips)
+                }}
+              />
+              <p className="mt-1.5 text-[11px] text-slate-400">Type a fee and press Enter or comma to add it as a chip.</p>
+            </div>
+          </SectionCard>
+
+          {/* 5. Accounts Receivable */}
+          <SectionCard icon={CreditCard} iconBg="bg-indigo-100" iconColor="text-indigo-600" title="Accounts Receivable">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <NumericField label="Accounts Receivable" text={accReceivableText} setText={setAccReceivableText}
+                fieldKey="pricing.accReceivable" isFieldChanged={isFieldChanged} onCommit={(t) => commit("accReceivable", t)} />
+              <NumericField label="GQM Final Form Pricing" text={gqmFinalFormText} setText={setGqmFinalFormText}
+                fieldKey="pricing.gqmFinalFormPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalFormPricing", t)} />
+              <NumericField label="GQM Final Adj. Form Pricing" text={gqmFinalAdjFormText} setText={setGqmFinalAdjFormText}
+                fieldKey="pricing.gqmFinalAdjFormPricing" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalAdjFormPricing", t)} />
+              <NumericField label="GQM Final Target Return" text={gqmFinalTargetReturnText} setText={setGqmFinalTargetReturnText}
+                fieldKey="pricing.gqmFinalTargetReturn" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalTargetReturn", t)} />
+              <NumericField label="GQM Final Premium in $" text={gqmFinalPremText} setText={setGqmFinalPremText}
+                fieldKey="pricing.gqmFinalPremInMoney" isFieldChanged={isFieldChanged} onCommit={(t) => commit("gqmFinalPremInMoney", t)} />
+            </div>
+          </SectionCard>
+        </div>
       )}
 
-      {/* ── Invoices tab ─────────────────────────────────────────────────── */}
+      {/* ── Invoices ─────────────────────────────────────────────────────── */}
       {activeTab === "invoices" && (
-        <div className="space-y-6">
-          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
-          {isSyncing ? (
-            <DocsSkeleton accentColor="border-l-emerald-200" />
-          ) : (
+        <div className="space-y-5">
+          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError}
+            onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
+          {isSyncing ? <DocsSkeleton cls="border-emerald-200" /> : (
             <>
               <div className="space-y-3">
-                <SectionHeader icon={FileText} title="Invoices" total={invoicesTotal} colorClass="text-emerald-500" />
-                {invoices.length === 0 ? <EmptyState message="No invoices for this job" /> : invoices.map((doc: any) => <InvoiceCard key={doc?.ID_FinancialDoc ?? doc?.qbo_id ?? Math.random()} doc={doc} />)}
+                <SubHeader icon={FileText} title="Invoices" total={invTotal} color="text-emerald-500" />
+                {invoices.length === 0
+                  ? <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">No invoices for this job</div>
+                  : invoices.map((d: any) => <DocCard key={d?.ID_FinancialDoc ?? Math.random()} doc={d} type="invoice" />)}
               </div>
               <div className="space-y-3">
-                <SectionHeader icon={BanknoteIcon} title="Invoice Payments" total={invoicesTransactionsTotal} totalLabel="Total Payments" colorClass="text-emerald-400" />
-                {invoicesTransactions.length === 0 ? <EmptyState message="No payments yet for this job" /> : invoicesTransactions.map((doc: any) => <TransactionCard key={doc?.ID_FTransaction ?? Math.random()} doc={doc} type="invoice" />)}
+                <SubHeader icon={BanknoteIcon} title="Invoice Payments" total={invTxTotal} color="text-emerald-400" />
+                {invTx.length === 0
+                  ? <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">No payments yet</div>
+                  : invTx.map((d: any) => <TransactionCard key={d?.ID_FTransaction ?? Math.random()} doc={d} type="invoice" />)}
               </div>
             </>
           )}
         </div>
       )}
 
-      {/* ── Bills tab ────────────────────────────────────────────────────── */}
+      {/* ── Bills ────────────────────────────────────────────────────────── */}
       {activeTab === "bills" && (
-        <div className="space-y-6">
-          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError} onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
-          {isSyncing ? (
-            <DocsSkeleton accentColor="border-l-orange-200" />
-          ) : (
+        <div className="space-y-5">
+          <SyncBanner phase={syncPhase} jobYear={jobYear} errorMessage={syncError}
+            onRetry={() => { syncAttemptedRef.current = false; setSyncPhase("idle") }} />
+          {isSyncing ? <DocsSkeleton cls="border-orange-200" /> : (
             <>
               <div className="space-y-3">
-                <SectionHeader icon={DollarSign} title="Bills" total={billsTotal} colorClass="text-orange-500" />
-                {bills.length === 0 ? <EmptyState message="No bills for this job" /> : bills.map((doc: any) => <BillCard key={doc?.ID_FinancialDoc ?? doc?.qbo_id ?? Math.random()} doc={doc} />)}
+                <SubHeader icon={DollarSign} title="Bills" total={billTotal} color="text-orange-500" />
+                {bills.length === 0
+                  ? <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">No bills for this job</div>
+                  : bills.map((d: any) => <DocCard key={d?.ID_FinancialDoc ?? Math.random()} doc={d} type="bill" />)}
               </div>
               <div className="space-y-3">
-                <SectionHeader icon={BanknoteIcon} title="Bill Payments" total={billsTransactionsTotal} totalLabel="Total Bill Payments" colorClass="text-orange-400" />
-                {billsTransactions.length === 0 ? <EmptyState message="No bill payments for this job" /> : billsTransactions.map((doc: any) => <TransactionCard key={doc?.ID_FTransaction ?? Math.random()} doc={doc} type="bill" />)}
+                <SubHeader icon={BanknoteIcon} title="Bill Payments" total={billTxTotal} color="text-orange-400" />
+                {billTx.length === 0
+                  ? <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">No bill payments yet</div>
+                  : billTx.map((d: any) => <TransactionCard key={d?.ID_FTransaction ?? Math.random()} doc={d} type="bill" />)}
               </div>
             </>
           )}
