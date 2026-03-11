@@ -49,6 +49,29 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<JobType, JobStatus[]> = {
 
 const PODIO_YEAR_OPTIONS = ["2026", "2025", "2024", "2023"]
 
+const SERVICE_TYPE_OPTIONS = [
+  "Appliances",
+  "Cabinets/Countertops",
+  "Drywall",
+  "Discoloration",
+  "Driveways & sidewalks",
+  "Doors/Windows/Siding",
+  "Electrical/Lighting",
+  "Flooring",
+  "Garage/Garage Door",
+  "General Maintenance",
+  "Landscape/Irrigation",
+  "Masonry/Fencing/Gates",
+  "Paint",
+  "Plumbing",
+  "Violations - City / HOA",
+  "Showers / Tub",
+  "Stucco / Exterior",
+  "Violations",
+  "Roof Service/Repair",
+  "Interior Remodel",
+]
+
 export default function CreateJobPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -70,9 +93,9 @@ export default function CreateJobPage() {
     projectLocation: string
     status: JobStatus | ""
     dateAssigned: string
-    dateAssignedEnd: string         // ← NEW
+    dateAssignedEnd: string
     estimatedStartDate: string
-    estimatedStartDateEnd: string   // ← NEW
+    estimatedStartDateEnd: string
     estimatedDuration: string
     dateReceived: string
     additionalDetail: string
@@ -84,9 +107,9 @@ export default function CreateJobPage() {
     projectLocation: "",
     status: "",
     dateAssigned: "",
-    dateAssignedEnd: "",            // ← NEW
+    dateAssignedEnd: "",
     estimatedStartDate: "",
-    estimatedStartDateEnd: "",      // ← NEW
+    estimatedStartDateEnd: "",
     estimatedDuration: "",
     dateReceived: "",
     additionalDetail: "",
@@ -142,7 +165,6 @@ export default function CreateJobPage() {
       return
     }
 
-    // ← NEW
     if (isDateAssignedRequired && !formData.dateAssignedEnd) {
       toast({ title: "Error", description: "Date Assigned End is required for QID and PAR.", variant: "destructive" })
       return
@@ -153,7 +175,6 @@ export default function CreateJobPage() {
       return
     }
 
-    // ← NEW
     if (isEstimatedStartRequired && !formData.estimatedStartDateEnd) {
       toast({ title: "Error", description: "Estimated Start Date End is required for PTL.", variant: "destructive" })
       return
@@ -173,9 +194,9 @@ export default function CreateJobPage() {
         Project_name:                formData.projectName           || null,
         Project_location:            formData.projectLocation        || null,
         Date_assigned:               formData.dateAssigned           || null,
-        Date_assigned_end:           formData.dateAssignedEnd        || null,   // ← NEW
+        Date_assigned_end:           formData.dateAssignedEnd        || null,
         Estimated_start_date:        formData.estimatedStartDate     || null,
-        Estimated_start_date_end:    formData.estimatedStartDateEnd  || null,   // ← NEW
+        Estimated_start_date_end:    formData.estimatedStartDateEnd  || null,
         Estimated_project_duration:  formData.estimatedDuration      || null,
         Date_Received:               formData.dateReceived           || null,
         Additional_detail:           formData.additionalDetail       || null,
@@ -346,12 +367,19 @@ export default function CreateJobPage() {
 
                 <div>
                   <Label htmlFor="serviceType" className="mb-2 block">Service Type</Label>
-                  <Input
-                    id="serviceType"
-                    placeholder="e.g., Roof Repair"
+                  <Select
                     value={formData.serviceType}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, serviceType: e.target.value }))}
-                  />
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, serviceType: value }))}
+                  >
+                    <SelectTrigger id="serviceType">
+                      <SelectValue placeholder="Select service type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_TYPE_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -430,7 +458,6 @@ export default function CreateJobPage() {
                     />
                   </div>
 
-                  {/* ← NEW */}
                   <div>
                     <Label htmlFor="dateAssignedEnd" className="mb-2 block">
                       Date Assigned End{" "}
@@ -472,7 +499,6 @@ export default function CreateJobPage() {
                     />
                   </div>
 
-                  {/* ← NEW */}
                   <div>
                     <Label htmlFor="estimatedStartEnd" className="mb-2 block">
                       Estimated Start Date End{" "}

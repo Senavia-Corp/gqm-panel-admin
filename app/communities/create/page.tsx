@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -11,12 +11,26 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
 import {
   ArrowLeft, Save, Loader2, Users, MapPin, Mail, Phone,
-  Globe, ShieldCheck, AlertCircle, Plus, X, Building2, FileText,
-  CreditCard, Wrench,
+  Globe, ShieldCheck, Plus, X, Building2, FileText,
+  CreditCard, Search, ChevronRight, ExternalLink,
 } from "lucide-react"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ParentMgmtCo {
+  ID_Community_Tracking: string
+  Property_mgmt_co: string | null
+  Company_abbrev: string | null
+  Main_office_hq: string | null
+  State: string | null
+  podio_item_id: string | null
+}
 
 // ─── Array input helper ───────────────────────────────────────────────────────
 
@@ -75,7 +89,7 @@ function Section({ icon: Icon, title, iconBg, iconColor, children }: {
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className={`flex items-center gap-3 border-b border-slate-100 px-6 py-4`}>
+      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
@@ -102,10 +116,163 @@ function Field({ label, required, hint, children }: {
   )
 }
 
-// ─── Styled input ─────────────────────────────────────────────────────────────
+// ─── Styled classes ───────────────────────────────────────────────────────────
 
 const inputCls = "border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
 const textareaCls = `${inputCls} resize-none`
+
+// ─── Company Avatar ───────────────────────────────────────────────────────────
+
+function CompanyAvatar({ name, abbrev }: { name: string | null; abbrev: string | null }) {
+  const initials = abbrev?.slice(0, 2) ?? (name ?? "?").slice(0, 2).toUpperCase()
+  const COLORS = [
+    ["#ECFDF5", "#059669"], ["#EFF6FF", "#2563EB"], ["#FFF7ED", "#EA580C"],
+    ["#F5F3FF", "#7C3AED"], ["#FEF2F2", "#DC2626"], ["#F0FDF4", "#16A34A"],
+  ]
+  const [bg, fg] = COLORS[(initials.charCodeAt(0) ?? 0) % COLORS.length]
+  return (
+    <div style={{ background: bg, color: fg }}
+      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-black">
+      {initials}
+    </div>
+  )
+}
+
+// ─── Parent Company Selector Modal ───────────────────────────────────────────
+
+function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onSelect: (company: ParentMgmtCo) => void
+}) {
+  const [companies, setCompanies] = useState<ParentMgmtCo[]>([])
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchCompanies = useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      // Primer fetch para saber total, luego traer todos
+      const first = await fetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
+      if (!first.ok) throw new Error(`Error ${first.status}`)
+      const firstData = await first.json()
+      const total: number = firstData.total ?? 0
+      const limit = total > 0 ? total : 200
+
+      const r = await fetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
+      if (!r.ok) throw new Error(`Error ${r.status}`)
+      const d = await r.json()
+      setCompanies(d.results ?? [])
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load companies")
+    } finally { setLoading(false) }
+  }, [])
+
+  // Cargar cuando se abre el modal
+  useEffect(() => {
+    if (open) { setSearch(""); fetchCompanies() }
+  }, [open, fetchCompanies])
+
+  const filtered = companies.filter((c) => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return [c.Property_mgmt_co, c.Company_abbrev, c.ID_Community_Tracking, c.State]
+      .filter(Boolean).join(" ").toLowerCase().includes(q)
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-emerald-600" />
+            Select Parent Company
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, abbrev, state…"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400/20"
+          />
+        </div>
+
+        {/* List */}
+        <div className="max-h-80 overflow-y-auto space-y-1.5 pr-0.5">
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <p className="text-sm text-red-500">{error}</p>
+              <button onClick={fetchCompanies} className="text-xs text-emerald-600 hover:underline">Retry</button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">
+              {search ? `No results for "${search}"` : "No companies available"}
+            </p>
+          ) : (
+            filtered.map((company) => (
+              <button
+                key={company.ID_Community_Tracking}
+                onClick={() => { onSelect(company); onOpenChange(false) }}
+                className="group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 text-left transition-all hover:border-emerald-200 hover:bg-emerald-50/40 hover:shadow-sm"
+              >
+                <CompanyAvatar name={company.Property_mgmt_co} abbrev={company.Company_abbrev} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-emerald-800">
+                      {company.Property_mgmt_co ?? <span className="font-normal italic text-slate-400">Unnamed</span>}
+                    </p>
+                    {company.Company_abbrev && (
+                      <span className="flex-shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700">
+                        {company.Company_abbrev}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-slate-400">{company.ID_Community_Tracking}</span>
+                    {company.State && (
+                      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-slate-500">
+                        {company.State}
+                      </span>
+                    )}
+                    {company.podio_item_id && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-violet-500">
+                        <ExternalLink className="h-2.5 w-2.5" />Podio
+                      </span>
+                    )}
+                  </div>
+                  {company.Main_office_hq && (
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-400">
+                      <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                      {company.Main_office_hq}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Footer count */}
+        {!loading && !error && filtered.length > 0 && (
+          <p className="text-right text-xs text-slate-400">
+            {filtered.length} of {companies.length} companies
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -114,13 +281,15 @@ export default function CreateCommunityPage() {
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [syncPodio, setSyncPodio] = useState(false)
+  const [parentSelectorOpen, setParentSelectorOpen] = useState(false)
+  const [selectedParent, setSelectedParent] = useState<ParentMgmtCo | null>(null)
 
   const [form, setForm] = useState({
     Client_Community:       "",
     Address:                "",
     Website:                "",
     ID_Community_Tracking:  "",
-    Client_Status:          "Active",
+    Client_Status:          "New Client",
     Compliance_Partner:     "",
     Risk_Value:             "Low",
     Maintenance_Sup:        "",
@@ -141,6 +310,16 @@ export default function CreateCommunityPage() {
     if (!u) { router.push("/login"); return }
     setUser(JSON.parse(u))
   }, [router])
+
+  const handleSelectParent = (company: ParentMgmtCo) => {
+    setSelectedParent(company)
+    set("ID_Community_Tracking", company.ID_Community_Tracking)
+  }
+
+  const handleClearParent = () => {
+    setSelectedParent(null)
+    set("ID_Community_Tracking", "")
+  }
 
   const handleSubmit = async () => {
     if (!form.Client_Community.trim()) {
@@ -211,7 +390,7 @@ export default function CreateCommunityPage() {
                 </button>
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
-                    <Users className="h-4.5 w-4.5 text-white" />
+                    <Users className="h-4 w-4 text-white" />
                   </div>
                   <div>
                     <h1 className="text-lg font-bold text-slate-900 leading-none">New Community</h1>
@@ -302,16 +481,43 @@ export default function CreateCommunityPage() {
                     </div>
                   </Field>
 
-                  <Field label="Parent Company ID" hint="Optional — link to a parent management company">
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        value={form.ID_Community_Tracking}
-                        onChange={(e) => set("ID_Community_Tracking", e.target.value)}
-                        placeholder="PMC…"
-                        className={`pl-8 font-mono ${inputCls}`}
-                      />
-                    </div>
+                  {/* ✅ Parent Company selector */}
+                  <Field label="Parent Company" hint="Optional — link to a parent management company">
+                    {selectedParent ? (
+                      // Selected state: show company card with clear button
+                      <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
+                        <CompanyAvatar
+                          name={selectedParent.Property_mgmt_co}
+                          abbrev={selectedParent.Company_abbrev}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-800">
+                            {selectedParent.Property_mgmt_co ?? "Unnamed"}
+                          </p>
+                          <p className="font-mono text-[11px] text-slate-500">
+                            {selectedParent.ID_Community_Tracking}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearParent}
+                          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          title="Remove parent company"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      // Empty state: button to open modal
+                      <button
+                        type="button"
+                        onClick={() => setParentSelectorOpen(true)}
+                        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-400 transition-all hover:border-emerald-300 hover:bg-emerald-50/40 hover:text-emerald-600"
+                      >
+                        <Building2 className="h-4 w-4 flex-shrink-0" />
+                        <span>Click to select a parent company…</span>
+                      </button>
+                    )}
                   </Field>
                 </div>
               </div>
@@ -343,15 +549,16 @@ export default function CreateCommunityPage() {
             {/* ── 3. Status & Compliance ── */}
             <Section icon={ShieldCheck} title="Status & Compliance" iconBg="bg-violet-50" iconColor="text-violet-600">
               <div className="grid gap-5 md:grid-cols-3">
+                {/* ✅ Updated status options */}
                 <Field label="Client Status">
                   <Select value={form.Client_Status} onValueChange={(v) => set("Client_Status", v)}>
                     <SelectTrigger className={inputCls}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {["Active", "Inactive", "Pending", "On Hold"].map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
+                      <SelectItem value="New Client">New Client</SelectItem>
+                      <SelectItem value="Current Client">Current Client</SelectItem>
+                      <SelectItem value="No Longer a Client">No Longer a Client</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -480,6 +687,13 @@ export default function CreateCommunityPage() {
           </div>
         </main>
       </div>
+
+      {/* ── Parent Company Selector Modal ── */}
+      <ParentCompanySelectorModal
+        open={parentSelectorOpen}
+        onOpenChange={setParentSelectorOpen}
+        onSelect={handleSelectParent}
+      />
     </div>
   )
 }

@@ -85,7 +85,7 @@ export function Sidebar() {
 
       {/* Notifications */}
       <div className="border-b px-4 py-3">
-        <Button variant="ghost" className="w-full justify-start gap-3" size={collapsed ? "icon" : "default"}>
+        {/* <Button variant="ghost" className="w-full justify-start gap-3" size={collapsed ? "icon" : "default"}>
           <Bell className="h-5 w-5" />
           {!collapsed && <span>Notifications</span>}
           {!collapsed && (
@@ -93,7 +93,7 @@ export function Sidebar() {
               {userRole === "LEAD_TECHNICIAN" ? "1" : "4"}
             </span>
           )}
-        </Button>
+        </Button> */}
       </div>
 
       {/* Main Navigation */}
