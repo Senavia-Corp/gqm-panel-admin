@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Save } from "lucide-react"
+import { Save, RefreshCcw, Zap, ZapOff, Calendar, Hash } from "lucide-react"
 
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -42,6 +42,8 @@ import { JobEstimateTab } from "@/components/organisms/job-detail/tabs/JobEstima
 import { JobDetailTabs } from "@/components/organisms/JobDetailTabs"
 import { JobSubcontractorsTab } from "@/components/organisms/job-detail/tabs/JobSubcontractorsTab"
 import { JobTechniciansTab } from "@/components/organisms/job-detail/tabs/JobTechniciansTab"
+import { JobPurchasesTab } from "@/components/organisms/job-detail/tabs/JobPurchasesTab"
+
 import { useParams } from "next/navigation"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -169,6 +171,33 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<string, string[]> = {
   PAR: ["In Progress", "Completed PVI / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
+// ── Job type → header color ────────────────────────────────────────────────
+const JOB_TYPE_BADGE: Record<string, string> = {
+  QID: "bg-violet-100 text-violet-700",
+  PTL: "bg-sky-100 text-sky-700",
+  PAR: "bg-amber-100 text-amber-700",
+}
+
+// ── Status → semantic color ────────────────────────────────────────────────
+const STATUS_BADGE: Record<string, string> = {
+  "Assigned/P. Quote": "bg-blue-50 text-blue-700 border-blue-200",
+  "Waiting for Approval": "bg-amber-50 text-amber-700 border-amber-200",
+  "Scheduled / Work in Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed P. INV / POs": "bg-teal-50 text-teal-700 border-teal-200",
+  "Invoiced": "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "HOLD": "bg-orange-50 text-orange-700 border-orange-200",
+  "PAID": "bg-green-50 text-green-700 border-green-200",
+  "Paid": "bg-green-50 text-green-700 border-green-200",
+  "Warranty": "bg-purple-50 text-purple-700 border-purple-200",
+  "Cancelled": "bg-red-50 text-red-700 border-red-200",
+  "Archived": "bg-slate-100 text-slate-500 border-slate-200",
+  "Received-Stand By": "bg-slate-100 text-slate-600 border-slate-200",
+  "Assigned-In progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI": "bg-teal-50 text-teal-700 border-teal-200",
+  "In Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI / POs": "bg-teal-50 text-teal-700 border-teal-200",
+}
+
 type JobDetailPageProps = {
   params: { id: string }
 }
@@ -183,10 +212,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [mounted, setMounted] = useState(false)
 
   const [activeTab, setActiveTab] = useState("details")
-
-  const [documentFilter, setDocumentFilter] = useState<string>("all")
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
 
   const [activeChat, setActiveChat] = useState("general")
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -224,17 +249,25 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   // ---------------------------
   // helpers basados en jobDetail
   // ---------------------------
-  const getChangedFieldsSet = (): Set<string> => {
-    const anyDetail = jobDetail as any
-    if (anyDetail?.changedFields instanceof Set) return anyDetail.changedFields as Set<string>
-    return new Set()
-  }
+  // Read changedFields directly from the hook — do NOT wrap in a helper fn
+  // called inside useCallback([]). That pattern creates a stale closure:
+  // the callback is created once and always sees the initial (empty) Set,
+  // so fields stay highlighted amber even after saving.
+  const changedFields: Set<string> = (jobDetail as any).changedFields instanceof Set
+    ? (jobDetail as any).changedFields as Set<string>
+    : new Set<string>()
 
-  const isFieldChanged = useCallback((field: string) => getChangedFieldsSet().has(field), [])
+  // Depends on `changedFields` — re-memoized every time the Set reference
+  // changes (i.e. after every save/reload), so the UI reflects reality.
+  const isFieldChanged = useCallback(
+    (field: string) => changedFields.has(field),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [changedFields],
+  )
 
   const hasTabChanges = useCallback(
     (tabId: string) => {
-      const changed = getChangedFieldsSet()
+      const changed = changedFields
 
       if (tabId === "details") {
         return [
@@ -295,7 +328,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           setEstimateItems(items)
           setHasSavedEstimates(hasSaved)
 
-          loadDocuments()
           loadTasks()
           setOrders(mockOrders.filter((order) => order.ID_Jobs === jobId))
         } catch (err) {
@@ -318,20 +350,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[jobs] loadClients error:", error)
       setClients([])
       setLoadError(error instanceof Error ? error.message : "Unexpected error loading clients")
-    }
-  }
-
-  const loadDocuments = async () => {
-    const jobsId = jobId as string
-    if (jobsId === "create") return
-
-    setIsLoadingDocuments(true)
-    try {
-      setDocuments(mockDocuments as any)
-    } catch (error) {
-      console.error("[docs] loadDocuments error:", error)
-    } finally {
-      setIsLoadingDocuments(false)
     }
   }
 
@@ -474,60 +492,77 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       ; (jobDetail as any).markChanged?.(field)
   }
 
-  // ── PATCH A: handlePricingFieldChange — extended with 9 new fields ────────
   const handlePricingFieldChange = (field: string, value: number) => {
     if (!job) return
     const next: any = { ...(job as any) }
     const mark = (f: string) => (jobDetail as any).markChanged?.(`pricing.${f}`)
 
     switch (field) {
-      // Existing
       case "gqmFormulaPricing":
-        next.Gqm_formula_pricing = value;         mark("gqmFormulaPricing");      break
+        next.Gqm_formula_pricing = value; mark("gqmFormulaPricing"); break
       case "gqmAdjFormulaPricing":
-        next.Gqm_adj_formula_pricing = value;     mark("gqmAdjFormulaPricing");   break
+        next.Gqm_adj_formula_pricing = value; mark("gqmAdjFormulaPricing"); break
       case "gqmTargetReturn":
-        next.Gqm_target_return = value;           mark("gqmTargetReturn");         break
+        next.Gqm_target_return = value; mark("gqmTargetReturn"); break
       case "gqmTargetSoldPricing":
-        next.Gqm_target_sold_pricing = value;     mark("gqmTargetSoldPricing");   break
+        next.Gqm_target_sold_pricing = value; mark("gqmTargetSoldPricing"); break
       case "gqmPremiumInMoney":
-        next.Gqm_premium_in_money = value;        mark("gqmPremiumInMoney");      break
+        next.Gqm_premium_in_money = value; mark("gqmPremiumInMoney"); break
       case "gqmFinalSoldPricing":
-        next.Gqm_final_sold_pricing = value;      mark("gqmFinalSoldPricing");    break
+        next.Gqm_final_sold_pricing = value; mark("gqmFinalSoldPricing"); break
       case "gqmFinalPercentage":
-        next.Gqm_final_percentage = value;        mark("gqmFinalPercentage");     break
-
-      // NEW: Initial Proposal Pricing
+        next.Gqm_final_percentage = value; mark("gqmFinalPercentage"); break
       case "estimatedRent":
-        next.Estimated_rent = value;              mark("estimatedRent");           break
+        next.Estimated_rent = value; mark("estimatedRent"); break
       case "estimatedMaterial":
-        next.Estimated_material = value;          mark("estimatedMaterial");       break
+        next.Estimated_material = value; mark("estimatedMaterial"); break
       case "estimatedCity":
-        next.Estimated_city = value;              mark("estimatedCity");           break
+        next.Estimated_city = value; mark("estimatedCity"); break
       case "techFormulaPricing":
-        next.Tech_formula_pricing = value;        mark("techFormulaPricing");      break
-
-      // NEW: Accounts Receivable
+        next.Tech_formula_pricing = value; mark("techFormulaPricing"); break
       case "accReceivable":
-        next.Acc_receivable = value;              mark("accReceivable");           break
+        next.Acc_receivable = value; mark("accReceivable"); break
       case "gqmFinalFormPricing":
-        next.Gqm_final_form_pricing = value;      mark("gqmFinalFormPricing");    break
+        next.Gqm_final_form_pricing = value; mark("gqmFinalFormPricing"); break
       case "gqmFinalAdjFormPricing":
-        next.Gqm_final_adj_form_pricing = value;  mark("gqmFinalAdjFormPricing"); break
+        next.Gqm_final_adj_form_pricing = value; mark("gqmFinalAdjFormPricing"); break
       case "gqmFinalTargetReturn":
-        next.Gqm_final_target_return = value;     mark("gqmFinalTargetReturn");   break
+        next.Gqm_final_target_return = value; mark("gqmFinalTargetReturn"); break
       case "gqmFinalPremInMoney":
-        next.Gqm_final_prem_in_money = value;     mark("gqmFinalPremInMoney");    break
+        next.Gqm_final_prem_in_money = value; mark("gqmFinalPremInMoney"); break
     }
 
     jobDetail.setJob(next)
   }
 
-  // ── PATCH B: handlePricingTargetChange — new handler for string selector ──
   const handlePricingTargetChange = useCallback((value: string | null) => {
     if (!job) return
     jobDetail.setJob({ ...(job as any), Pricing_target: value } as any)
-    ;(jobDetail as any).markChanged?.("pricingTarget")
+      ; (jobDetail as any).markChanged?.("pricingTarget")
+  }, [job, jobDetail])
+
+  const handlePermitChange = useCallback((value: string | null) => {
+    if (!job) return
+    jobDetail.setJob({ ...(job as any), Permit: value } as any)
+      ; (jobDetail as any).markChanged?.("permit")
+  }, [job, jobDetail])
+
+  const handleTotalMaterialsFeesChange = useCallback((value: number | null) => {
+    if (!job) return
+    jobDetail.setJob({ ...(job as any), Gqm_total_materials_fees: value } as any)
+      ; (jobDetail as any).markChanged?.("pricing.totalMaterialsFees")
+  }, [job, jobDetail])
+
+  const handlePaidFeesChange = useCallback((value: number | null) => {
+    if (!job) return
+    jobDetail.setJob({ ...(job as any), Gqm_paid_fees: value } as any)
+      ; (jobDetail as any).markChanged?.("pricing.paidFees")
+  }, [job, jobDetail])
+
+  const handleBldgDeptFeesChange = useCallback((value: string[]) => {
+    if (!job) return
+    jobDetail.setJob({ ...(job as any), Bldg_dept_fees: value } as any)
+      ; (jobDetail as any).markChanged?.("pricing.bldgDeptFees")
   }, [job, jobDetail])
 
   const handleAdjPricingCalculated = async (adjPricing: number) => {
@@ -551,7 +586,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const anyDetail = jobDetail as any
     try {
       if (typeof anyDetail.save === "function") {
-        console.log("[JobDetail] job.ID_Client before save ->", (job as any)?.ID_Client)
         await anyDetail.save({ sync_podio: syncPodio })
         toast({ title: "Saved", description: "Changes saved successfully." })
         await jobDetail.reload()
@@ -673,7 +707,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
         if (isTransientStatus(response.status) && attempt < ESTIMATE_RETRY_MAX) {
           const backoff = 900 * Math.pow(2, attempt) + Math.floor(Math.random() * 500)
-          console.warn("[estimate] transient error, retrying...", { attempt: attempt + 1, status: response.status, backoff })
           await sleep(backoff)
           continue
         }
@@ -683,7 +716,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         lastErr = err
         if (isNetworkError(err) && attempt < ESTIMATE_RETRY_MAX) {
           const backoff = 400 * Math.pow(2, attempt) + Math.floor(Math.random() * 200)
-          console.warn("[estimate] network error, retrying...", { attempt: attempt + 1, backoff, err: String(err) })
           await sleep(backoff)
           continue
         }
@@ -771,24 +803,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const failed = results.filter((r) => r.status === "rejected") as Array<PromiseRejectedResult>
 
     if (failed.length) {
-      const failedReport = failed.map((f, i) => {
-        const idx = results.findIndex((r) => r === f)
-        const it = toCreate[idx]
-        return {
-          idx,
-          Title: it?.Title,
-          Cost_Code: it?.Cost_Code,
-          Parent_Group: it?.Parent_Group,
-          error: String((f as any).reason),
-        }
-      })
-      console.error("[estimate] failed items report:", failedReport)
+      console.error("[estimate] failed items:", failed)
     }
 
     await jobDetail.reload()
 
-    const skippedDupImport = duplicates.length
-    const skipped = skippedExisting + skippedDupImport
+    const skipped = skippedExisting + duplicates.length
 
     if (!failed.length) {
       toast({
@@ -935,16 +955,17 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           { id: "members", label: "Members" },
           { id: "tasks", label: "Tasks" },
           { id: "technicians", label: "Technicians" },
+          { id: "purchases", label: "Purchases" },
         ]
         : [
           { id: "details", label: "Details" },
           { id: "subcontractors", label: "Subcontractors" },
           { id: "documents", label: "Documents" },
-          /* { id: "chat", label: "Chat" }, */
           { id: "pricing", label: "Pricing" },
           { id: "members", label: "Members" },
           { id: "tasks", label: "Tasks" },
           { id: "estimate", label: "Estimate" },
+          { id: "purchases", label: "Purchases" },
         ],
     [user?.role],
   )
@@ -976,7 +997,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const Technicians: React.ComponentType<any> = JobTechniciansTab as any
 
     if (activeTab === "details") {
-      console.log("Job passing in props", job);
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Details
@@ -994,15 +1014,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "documents") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
-          <Docs
-            role={user.role}
+          <JobDocumentsTab
             job={job}
-            jobId={jobId}
-            documentFilter={documentFilter}
-            setDocumentFilter={setDocumentFilter}
-            documents={documents}
-            isLoadingDocuments={isLoadingDocuments}
-            onReload={jobDetail.reload}
+            onRefresh={async () => {
+              // FIX: recargar el job completo para que job.attachments se actualice
+              await jobDetail.reload()
+            }}
           />
         </JobTabLayout>
       )
@@ -1057,7 +1074,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         )
       }
 
-      // ── PATCH C: <Pricing /> with onPricingTargetChange added ─────────────
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Pricing
@@ -1080,6 +1096,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               await jobDetail.patch(updates, { sync_podio: false })
             }}
             onPricingTargetChange={handlePricingTargetChange}
+            onPermitChange={handlePermitChange}
+            onTotalMaterialsFeesChange={handleTotalMaterialsFeesChange}
+            onPaidFeesChange={handlePaidFeesChange}
+            onBldgDeptFeesChange={handleBldgDeptFeesChange}
           />
         </JobTabLayout>
       )
@@ -1147,6 +1167,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       )
     }
 
+    if (activeTab === "purchases") {
+      return (
+        <JobTabLayout sidebar={rightSidebar}>
+          <JobPurchasesTab jobId={jobId} userRole={user.role} />
+        </JobTabLayout>
+      )
+    }
+
     return (
       <div className="rounded-lg border bg-white p-8 text-center text-muted-foreground">
         <div className="text-lg font-medium">{tabs.find((t) => t.id === activeTab)?.label} Section</div>
@@ -1162,6 +1190,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   if (jobId === "create") return null
 
   const resolvedJobId = String((job as any)?.ID_Jobs ?? (job as any)?.id ?? "")
+
+  // ── Derive year from Job ID for display and Podio sync ────────────────────
+  const resolvedYear = job ? resolveJobYearForPodioSync(job) : undefined
 
   if (loadError) {
     return (
@@ -1191,12 +1222,18 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar user={user} />
           <main className="flex flex-1 items-center justify-center">
-            <div className="text-lg text-gray-500">Loading job details...</div>
+            <div className="flex items-center gap-2 text-slate-400">
+              <RefreshCcw className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading job details…</span>
+            </div>
           </main>
         </div>
       </div>
     )
   }
+
+  const jobType = String((job as any)?.Job_type ?? "")
+  const jobStatus = String((job as any)?.Job_status ?? "")
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -1204,36 +1241,90 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Job Detail</h1>
-              <p className="text-lg text-muted-foreground">Job ID: {(job as any).ID_Jobs}</p>
-            </div>
 
-            {jobDetail.hasChanges && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 rounded-lg border bg-white px-3 py-2">
-                  <div className="leading-tight">
-                    <Label htmlFor="sync-podio" className="text-sm">Sync Podio</Label>
-                    <p className="text-xs text-muted-foreground">{syncPodio ? "Enabled" : "Disabled"}</p>
-                  </div>
-                  <Switch
-                    id="sync-podio"
-                    checked={syncPodio}
-                    onCheckedChange={setSyncPodio}
-                    disabled={jobDetail.isSaving}
-                  />
+          {/* ── Page header ────────────────────────────────────────────────── */}
+          <div className="mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+              {/* Left: job identity */}
+              <div className="flex items-start gap-3">
+                {/* Job type pill */}
+                <div className={`flex-shrink-0 flex h-11 w-11 items-center justify-center rounded-xl text-xs font-bold tracking-wide shadow-sm ${JOB_TYPE_BADGE[jobType] ?? "bg-slate-100 text-slate-600"}`}>
+                  {jobType || "—"}
                 </div>
-                <Button
-                  onClick={handleSaveChanges}
-                  disabled={jobDetail.isSaving}
-                  className="bg-gqm-green hover:bg-gqm-green/90"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  {jobDetail.isSaving ? "Saving..." : "Save Changes"}
-                </Button>
+
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">Job Detail</h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {/* ID */}
+                    <span className="flex items-center gap-1 font-mono text-sm text-slate-500">
+                      <Hash className="h-3.5 w-3.5" />
+                      {(job as any).ID_Jobs}
+                    </span>
+
+                    {/* Year derived from ID */}
+                    {resolvedYear && (
+                      <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                        <Calendar className="h-3 w-3" />
+                        {resolvedYear}
+                      </span>
+                    )}
+
+                    {/* Status badge */}
+                    {jobStatus && (
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[jobStatus] ?? "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                        {jobStatus}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Right: Podio sync toggle + Save button (only when there are changes) */}
+              {jobDetail.hasChanges && (
+                <div className="flex items-center gap-3 flex-shrink-0">
+
+                  {/* Podio toggle — styled button instead of Switch */}
+                  <button
+                    type="button"
+                    onClick={() => setSyncPodio((v) => !v)}
+                    disabled={jobDetail.isSaving}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${syncPodio
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+                      }`}
+                    title={syncPodio ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
+                  >
+                    {syncPodio
+                      ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500" />
+                      : <ZapOff className="h-4 w-4" />
+                    }
+                    <span className="text-xs font-semibold">
+                      Podio {syncPodio ? "ON" : "OFF"}
+                    </span>
+                    {/* Show the year being used when sync is on */}
+                    {syncPodio && resolvedYear && (
+                      <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                        {resolvedYear}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Save button */}
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={jobDetail.isSaving}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                  >
+                    {jobDetail.isSaving
+                      ? <RefreshCcw className="h-4 w-4 animate-spin" />
+                      : <Save className="h-4 w-4" />
+                    }
+                    {jobDetail.isSaving ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <JobDetailTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} hasTabChanges={hasTabChanges} />
@@ -1300,7 +1391,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         />
       )}
 
-      <CreateTaskDialog open={createTaskOpen} onOpenChange={setCreateTaskOpen} jobId={jobId} jobData={job as any} onTaskCreated={handleTaskCreated} />
+      <CreateTaskDialog
+        open={createTaskOpen}
+        onOpenChange={setCreateTaskOpen}
+        jobId={jobId}
+        jobData={job as any}
+        onTaskCreated={handleTaskCreated}
+      />
 
       <LinkSubcontractorDialog
         open={linkSubcontractorOpen}
@@ -1345,28 +1442,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   )
 }
 
-function normalizeJobClient(c: any) {
-  if (!c) return null
-  return {
-    ID_Client: c.ID_Client ?? c.id ?? c.ID ?? null,
-    Client_Community: c.Client_Community ?? c.clientCommunity ?? c.Prop_Manager ?? c.name ?? "",
-    Parent_Company: c.Parent_Company ?? c.companyName ?? "",
-    Email_Address: c.Email_Address ?? (c.email ? (Array.isArray(c.email) ? c.email : [c.email]) : []),
-    Phone_Number: c.Phone_Number ?? c.phone ?? "",
-    Address: c.Address ?? c.address ?? "",
-    Client_Status: c.Client_Status ?? c.Client_Status ?? c.status ?? "",
-    ...c,
-  }
-}
-
-function resolveJobYear(job: any): number | undefined {
-  const v =
-    job?.Year ?? job?.year ?? job?.Job_year ?? job?.job_year ?? job?.Job_Year ?? job?.JOB_YEAR
-  const asNum = Number(v)
-  return Number.isFinite(asNum) && asNum > 0 ? asNum : undefined
-}
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Year resolver — extracts first numeric digit from Job ID
+// QID5123 → 2025 | PTL6001 → 2026 | PAR4567 → 2024 | PAR60039 → 2026
+// ─────────────────────────────────────────────────────────────────────────────
 function resolveJobYearForPodioSync(job: any): number | undefined {
+  const idJobs = String(job?.ID_Jobs ?? job?.idJobs ?? job?.id ?? "").trim()
+
+  if (idJobs) {
+    const match = idJobs.match(/\d/)
+    if (match) return 2020 + parseInt(match[0], 10)
+  }
+
+  // Fallback: date-based (less reliable due to date offsets)
   const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
   const pickDate =
     jobType === "PTL"
@@ -1376,5 +1464,23 @@ function resolveJobYearForPodioSync(job: any): number | undefined {
   if (!pickDate) return undefined
   const d = new Date(pickDate)
   const y = d.getFullYear()
-  return Number.isFinite(y) ? y : undefined
+  return Number.isFinite(y) && y > 2000 ? y : undefined
+}
+
+function resolveJobYear(job: any): number | undefined {
+  return resolveJobYearForPodioSync(job)
+}
+
+function normalizeJobClient(c: any) {
+  if (!c) return null
+  return {
+    ID_Client: c.ID_Client ?? c.id ?? c.ID ?? null,
+    Client_Community: c.Client_Community ?? c.clientCommunity ?? c.Prop_Manager ?? c.name ?? "",
+    Parent_Company: c.Parent_Company ?? c.companyName ?? "",
+    Email_Address: c.Email_Address ?? (c.email ? (Array.isArray(c.email) ? c.email : [c.email]) : []),
+    Phone_Number: c.Phone_Number ?? c.phone ?? "",
+    Address: c.Address ?? c.address ?? "",
+    Client_Status: c.Client_Status ?? c.status ?? "",
+    ...c,
+  }
 }

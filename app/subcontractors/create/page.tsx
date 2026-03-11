@@ -1,591 +1,563 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
+import { toast } from "@/components/ui/use-toast"
 import {
-  ArrowLeft,
-  Plus,
-  X,
-  Loader2,
-  User,
-  Building2,
-  Briefcase,
-  BadgeCheck,
-  Mail,
-  Phone,
-  Globe,
-  MapPin,
-  Map,
-  ShieldCheck,
-  GraduationCap,
-  ClipboardList,
-  Link as LinkIcon,
+  ArrowLeft, Plus, X, Loader2, User, Building2, Briefcase,
+  Mail, Phone, Globe, MapPin, Map, ShieldCheck, GraduationCap,
+  ClipboardList, Save, Star, Wrench,
 } from "lucide-react"
 
-type SubcontractorCreatePayload = {
-  Organization?: string | null
-  Name?: string | null
-  Email_Address?: string | null
-  Phone_Number?: string | null
-  Organization_Website?: string | null
-  Address?: string | null
-  Status?: string | null
-  Score?: number | null
-  Gqm_compliance?: string | null
-  Gqm_best_service_training?: string | null
-  Specialty?: string | null
-  Coverage_Area?: string[] | null
-  Notes?: string | null
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type FormState = {
-  Name: string
-  Organization: string
-  Email_Address: string
-  Phone_Number: string
-  Organization_Website: string
-  Address: string
-  Status: "Active" | "Inactive"
-  Score: number
-  Gqm_compliance: "Active" | "Inactive"
-  Gqm_best_service_training: "Active" | "Inactive"
-  Specialty: string
-  Notes: string
-  Coverage_Area: string[]
+  Name:                     string
+  Organization:             string
+  Email_Address:            string[]
+  Phone_Number:             string[]
+  Organization_Website:     string
+  Address:                  string
+  Status:                   string
+  Score:                    string
+  Gqm_compliance:           string
+  Gqm_best_service_training:string
+  Specialty:                string
+  Notes:                    string
+  Coverage_Area:            string[]
 }
 
-type GqmOption = "Yes" | "No" | "N/A"
-
 const COVERAGE_AREA_OPTIONS = [
-  "Dade County",
-  "Broward County",
-  "Palm Beach County",
-  "St. Lucie County",
-  "Orange County",
-  "Seminole County",
-  "Pinellas County (St Pete)",
-  "Hillsborough County (Tampa)",
-  "Osceola County",
+  "Dade County", "Broward County", "Palm Beach County", "St. Lucie County",
+  "Orange County", "Seminole County", "Pinellas County (St Pete)",
+  "Hillsborough County (Tampa)", "Osceola County",
 ] as const
 
 const clean = (s: string) => s.trim().replace(/\s+/g, " ")
 
-function Field({
-  label,
-  htmlFor,
-  required,
-  children,
+// Serialize string[] → Postgres format for subcontractor model
+function serializeArrayField(values: string[]): string | null {
+  const clean = values.filter((v) => v.trim())
+  if (!clean.length) return null
+  if (clean.length === 1) return clean[0]
+  return `{${clean.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",")}}`
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon, iconBg, iconColor, title, children,
 }: {
-  label: string
-  htmlFor?: string
-  required?: boolean
-  children: React.ReactNode
+  icon: React.ElementType; iconBg: string; iconColor: string
+  title: string; children: React.ReactNode
 }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor} className="block text-sm font-medium">
-        {label} {required ? <span className="text-red-500">*</span> : null}
-      </Label>
-      {children}
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </div>
+        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      </div>
+      <div className="p-6">{children}</div>
     </div>
   )
 }
 
-function IconInput({
-  icon,
-  input,
-}: {
-  icon: React.ReactNode
-  input: React.ReactNode
+function FieldLabel({ htmlFor, required, children }: {
+  htmlFor?: string; required?: boolean; children: React.ReactNode
 }) {
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-        {icon}
-      </div>
-      {input}
+    <Label htmlFor={htmlFor} className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+      {children}{required && <span className="ml-0.5 text-red-500">*</span>}
+    </Label>
+  )
+}
+
+const inputCls = "border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+
+function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
+  values: string[]; icon: React.ElementType; placeholder: string
+  onChange: (v: string[]) => void
+}) {
+  const items = values.length ? values : [""]
+  return (
+    <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
+      {items.map((item, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <input
+            type="text" value={item} placeholder={placeholder}
+            onChange={(e) => { const n = [...items]; n[idx] = e.target.value; onChange(n) }}
+            className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (items.length === 1) { onChange([""]); return }
+              onChange(items.filter((_, i) => i !== idx))
+            }}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-400 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
+      >
+        <Plus className="h-3 w-3" /> Add another
+      </button>
     </div>
   )
 }
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CreateSubcontractorPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-
-  // Toggle Podio (default true)
-  const [syncWithPodio, setSyncWithPodio] = useState(true)
-
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Form state (NO nulls here -> fixes the TS "null is not assignable" errors)
-  const [form, setForm] = useState<FormState>({
-    Name: "",
-    Organization: "",
-    Email_Address: "",
-    Phone_Number: "",
-    Organization_Website: "",
-    Address: "",
-    Status: "Active",
-    Score: 100,
-    Gqm_compliance: "Active",
-    Gqm_best_service_training: "Inactive",
-    Specialty: "",
-    Notes: "",
-    Coverage_Area: [],
-  })
-
+  const [user, setUser]           = useState<any>(null)
+  const [syncPodio, setSyncPodio] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [coveragePick, setCoveragePick] = useState<string>("")
 
-  // Coverage area input
-  const [coverageInput, setCoverageInput] = useState("")
+  const [form, setForm] = useState<FormState>({
+    Name:                     "",
+    Organization:             "",
+    Email_Address:            [""],
+    Phone_Number:             [""],
+    Organization_Website:     "",
+    Address:                  "",
+    Status:                   "Active",
+    Score:                    "",
+    Gqm_compliance:           "N/A",
+    Gqm_best_service_training:"N/A",
+    Specialty:                "",
+    Notes:                    "",
+    Coverage_Area:            [],
+  })
 
-  const canSubmit = useMemo(() => {
-    const nameOk = clean(form.Name).length > 0
-    const orgOk = clean(form.Organization).length > 0
-    const emailOk = clean(form.Email_Address).length > 0
-    return nameOk && orgOk && emailOk && !isSubmitting
-  }, [form.Name, form.Organization, form.Email_Address, isSubmitting])
+  const setField = (k: keyof FormState, v: any) => setForm((p) => ({ ...p, [k]: v }))
 
   useEffect(() => {
-    const userData = localStorage.getItem("user_data")
-    if (!userData) {
-      router.push("/login")
-      return
-    }
-    setUser(JSON.parse(userData))
+    const u = localStorage.getItem("user_data")
+    if (!u) { router.push("/login"); return }
+    setUser(JSON.parse(u))
   }, [router])
 
-  const addCoverageArea = (valueRaw?: string) => {
-    const value = clean(valueRaw ?? coveragePick)
-    if (!value) return
+  const canSubmit = useMemo(() =>
+    clean(form.Name).length > 0 && clean(form.Organization).length > 0 && !submitting,
+    [form.Name, form.Organization, submitting]
+  )
 
-    setForm((prev) => {
-      const exists = prev.Coverage_Area.some((x) => x.toLowerCase() === value.toLowerCase())
-      if (exists) return prev
-      return { ...prev, Coverage_Area: [...prev.Coverage_Area, value] }
-    })
-
+  const addCoverageArea = (val?: string) => {
+    const v = clean(val ?? coveragePick)
+    if (!v) return
+    if (form.Coverage_Area.some((x) => x.toLowerCase() === v.toLowerCase())) return
+    setField("Coverage_Area", [...form.Coverage_Area, v])
     setCoveragePick("")
   }
 
-  const removeCoverageArea = (value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      Coverage_Area: prev.Coverage_Area.filter((x) => x !== value),
-    }))
-  }
+  const removeCoverageArea = (val: string) =>
+    setField("Coverage_Area", form.Coverage_Area.filter((x) => x !== val))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
-
-    const payload: SubcontractorCreatePayload = {
-      Name: clean(form.Name) || null,
-      Organization: clean(form.Organization) || null,
-      Email_Address: clean(form.Email_Address) || null,
-      Phone_Number: clean(form.Phone_Number) || null,
-      Organization_Website: clean(form.Organization_Website) || null,
-      Address: form.Address.trim() || null,
-      Status: form.Status || null,
-      Score: typeof form.Score === "number" ? form.Score : null,
-      Gqm_compliance: form.Gqm_compliance || null,
-      Gqm_best_service_training: form.Gqm_best_service_training || null,
-      Specialty: clean(form.Specialty) || null,
-      Coverage_Area: form.Coverage_Area.length ? form.Coverage_Area : null,
-      Notes: form.Notes.trim() || null,
-    }
+    setSubmitting(true)
 
     try {
-      setIsSubmitting(true)
+      const payload = {
+        Name:                     clean(form.Name)             || null,
+        Organization:             clean(form.Organization)     || null,
+        Email_Address:            serializeArrayField(form.Email_Address),
+        Phone_Number:             serializeArrayField(form.Phone_Number),
+        Organization_Website:     clean(form.Organization_Website) || null,
+        Address:                  form.Address.trim()          || null,
+        Status:                   form.Status                  || null,
+        Score:                    form.Score !== "" ? parseFloat(form.Score) : null,
+        Gqm_compliance:           form.Gqm_compliance          || null,
+        Gqm_best_service_training:form.Gqm_best_service_training || null,
+        Specialty:                clean(form.Specialty)        || null,
+        Coverage_Area:            form.Coverage_Area.length    ? form.Coverage_Area : null,
+        Notes:                    form.Notes.trim()            || null,
+      }
 
-      const res = await fetch(`/api/subcontractors?sync_podio=${syncWithPodio ? "true" : "false"}`, {
+      const res = await fetch(`/api/subcontractors?sync_podio=${syncPodio}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        cache: "no-store",
         body: JSON.stringify(payload),
+        cache: "no-store",
       })
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const detail = body?.detail || body?.error || body?.message || `Failed (${res.status})`
-        throw new Error(detail)
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.detail || body?.error || `Error ${res.status}`)
       }
 
-      router.push("/subcontractors")
+      const created = await res.json()
+      const newId   = created?.ID_Subcontractor
+
+      toast({ title: "Created", description: "Subcontractor created successfully." })
+      router.push(newId ? `/subcontractors/${newId}` : "/subcontractors")
     } catch (err: any) {
-      console.error("Create subcontractor error:", err)
-      alert(err?.message ?? "Failed to create subcontractor")
+      toast({ title: "Error", description: err?.message ?? "Failed to create subcontractor.", variant: "destructive" })
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
   }
 
   if (!user) return null
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar />
-
-      {/* min-h-0 is key to prevent body scroll chaining / extra blank scroll */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
 
-        {/* overscroll-contain prevents scrolling beyond this container */}
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
-          <Button variant="ghost" onClick={() => router.push("/subcontractors")} className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Subcontractors
-          </Button>
-
-          <div className="mx-auto max-w-4xl pb-6">
-            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">Create New Subcontractor</h1>
-                <p className="mt-2 text-sm text-gray-500">Fields marked with * are required.</p>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-2 text-gray-700">
-                  <LinkIcon className="h-4 w-4" />
-                  <div className="space-y-0.5">
-                    <div className="text-sm font-medium">Sync with Podio</div>
-                    <div className="text-xs text-gray-500">Create item in Podio on submit</div>
+          {/* ── Sticky header ─────────────────────────────────────────────── */}
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => router.push("/subcontractors")}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-slate-900 leading-none">New Subcontractor</h1>
+                    <p className="mt-0.5 text-xs text-slate-400">Fields marked * are required</p>
                   </div>
                 </div>
-                <Switch checked={syncWithPodio} onCheckedChange={setSyncWithPodio} disabled={isSubmitting} />
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                {/* Podio toggle */}
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+                  <div
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                    onClick={() => setSyncPodio((v) => !v)}
+                  >
+                    <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                  </div>
+                  Sync Podio
+                </label>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/subcontractors")}
+                  disabled={submitting}
+                  className="gap-1.5 text-xs border-slate-200"
+                >
+                  <X className="h-3.5 w-3.5" /> Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  form="create-subc-form"
+                  size="sm"
+                  disabled={!canSubmit}
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
+                >
+                  {submitting
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
+                    : <><Save className="h-3.5 w-3.5" /> Create Subcontractor</>
+                  }
+                </Button>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <Card className="p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <BadgeCheck className="h-5 w-5 text-gray-700" />
-                  <h2 className="text-xl font-semibold">Basic Information</h2>
-                </div>
+            {syncPodio && (
+              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-xs font-medium text-emerald-700">Podio sync enabled — a new item will be created in Podio on submit</p>
+              </div>
+            )}
+          </div>
 
+          {/* ── Form body ─────────────────────────────────────────────────── */}
+          <form id="create-subc-form" onSubmit={handleSubmit}>
+            <div className="mx-auto max-w-4xl space-y-5 p-6 pb-12">
+
+              {/* Basic Information */}
+              <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Basic Information">
                 <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Name" htmlFor="Name" required>
-                    <IconInput
-                      icon={<User className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Name"
-                          required
-                          value={form.Name}
-                          onChange={(e) => setForm({ ...form, Name: e.target.value })}
-                          placeholder="John Doe"
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Organization" htmlFor="Organization" required>
-                    <IconInput
-                      icon={<Building2 className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Organization"
-                          required
-                          value={form.Organization}
-                          onChange={(e) => setForm({ ...form, Organization: e.target.value })}
-                          placeholder="ABC Construction LLC"
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Specialty" htmlFor="Specialty">
-                    <IconInput
-                      icon={<Briefcase className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Specialty"
-                          value={form.Specialty}
-                          onChange={(e) => setForm({ ...form, Specialty: e.target.value })}
-                          placeholder="Electrical / Plumbing / HVAC..."
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Status" htmlFor="Status">
-                    <Select value={form.Status} onValueChange={(value: "Active" | "Inactive") => setForm({ ...form, Status: value })}>
-                      <SelectTrigger id="Status" className="h-10">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
-              </Card>
-
-              <Card className="p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-gray-700" />
-                  <h2 className="text-xl font-semibold">Contact Information</h2>
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Email" htmlFor="Email_Address" required>
-                    <IconInput
-                      icon={<Mail className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Email_Address"
-                          type="email"
-                          required
-                          value={form.Email_Address}
-                          onChange={(e) => setForm({ ...form, Email_Address: e.target.value })}
-                          placeholder="john@example.com"
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Phone Number" htmlFor="Phone_Number">
-                    <IconInput
-                      icon={<Phone className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Phone_Number"
-                          value={form.Phone_Number}
-                          onChange={(e) => setForm({ ...form, Phone_Number: e.target.value })}
-                          placeholder="+1 234 567 8900"
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Organization Website" htmlFor="Organization_Website">
-                    <IconInput
-                      icon={<Globe className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Organization_Website"
-                          value={form.Organization_Website}
-                          onChange={(e) => setForm({ ...form, Organization_Website: e.target.value })}
-                          placeholder="www.example.com"
-                          className="pl-10"
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="Address" htmlFor="Address">
+                  <div>
+                    <FieldLabel htmlFor="Name" required>Name</FieldLabel>
                     <div className="relative">
-                      <div className="pointer-events-none absolute left-3 top-3 text-gray-400">
-                        <MapPin className="h-4 w-4" />
-                      </div>
-                      <Textarea
-                        id="Address"
-                        value={form.Address}
-                        onChange={(e) => setForm({ ...form, Address: e.target.value })}
-                        placeholder="123 Main St, City, State, ZIP"
-                        rows={3}
-                        className="pl-10"
+                      <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="Name" required
+                        value={form.Name} onChange={(e) => setField("Name", e.target.value)}
+                        placeholder="John Doe"
+                        className={`pl-9 ${inputCls}`}
+                        disabled={submitting}
                       />
                     </div>
-                  </Field>
-                </div>
-              </Card>
+                  </div>
 
-              <Card className="p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <Map className="h-5 w-5 text-gray-700" />
-                  <h2 className="text-xl font-semibold">Coverage Area</h2>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                  <div>
+                    <FieldLabel htmlFor="Organization" required>Organization</FieldLabel>
                     <div className="relative">
-                      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <MapPin className="h-4 w-4" />
-                      </div>
-
-                      <Select
-                        value={coveragePick || undefined}
-                        onValueChange={(v) => {
-                          setCoveragePick(v)
-                          // auto-add to chips for speed
-                          addCoverageArea(v)
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger className="h-10 pl-10">
-                          <SelectValue placeholder="Select a county..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COVERAGE_AREA_OPTIONS.map((opt) => (
-                            <SelectItem
-                              key={opt}
-                              value={opt}
-                              disabled={form.Coverage_Area.some((x) => x.toLowerCase() === opt.toLowerCase())}
-                            >
-                              {opt}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Building2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="Organization" required
+                        value={form.Organization} onChange={(e) => setField("Organization", e.target.value)}
+                        placeholder="ABC Construction LLC"
+                        className={`pl-9 ${inputCls}`}
+                        disabled={submitting}
+                      />
                     </div>
+                  </div>
 
-                    <Button
-                      type="button"
-                      onClick={() => addCoverageArea()}
-                      className="gap-2"
-                      disabled={isSubmitting || !coveragePick}
+                  <div>
+                    <FieldLabel htmlFor="Specialty">Specialty</FieldLabel>
+                    <div className="relative">
+                      <Wrench className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="Specialty"
+                        value={form.Specialty} onChange={(e) => setField("Specialty", e.target.value)}
+                        placeholder="Electrical, Plumbing, HVAC…"
+                        className={`pl-9 ${inputCls}`}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel htmlFor="Status">Status</FieldLabel>
+                    <Select value={form.Status} onValueChange={(v) => setField("Status", v)} disabled={submitting}>
+                      <SelectTrigger id="Status" className={inputCls}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["Active","Inactive","Pending","Banned"].map(s =>
+                          <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <FieldLabel htmlFor="Address">Address</FieldLabel>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
+                      <Textarea
+                        id="Address"
+                        value={form.Address} onChange={(e) => setField("Address", e.target.value)}
+                        placeholder="123 Main St, City, State, ZIP"
+                        rows={2}
+                        className={`pl-9 resize-none ${inputCls}`}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+
+              {/* Contact Information */}
+              <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title="Contact Information">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel>Email Address</FieldLabel>
+                    <ArrayEditField
+                      values={form.Email_Address}
+                      icon={Mail}
+                      placeholder="email@example.com"
+                      onChange={(v) => setField("Email_Address", v)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Phone Number</FieldLabel>
+                    <ArrayEditField
+                      values={form.Phone_Number}
+                      icon={Phone}
+                      placeholder="(555) 000-0000"
+                      onChange={(v) => setField("Phone_Number", v)}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <FieldLabel htmlFor="Organization_Website">Website</FieldLabel>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="Organization_Website"
+                        value={form.Organization_Website} onChange={(e) => setField("Organization_Website", e.target.value)}
+                        placeholder="https://example.com"
+                        className={`pl-9 ${inputCls}`}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+
+              {/* Coverage Area */}
+              <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title="Coverage Area">
+                <div className="space-y-3">
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <Select
+                      value={coveragePick || undefined}
+                      onValueChange={(v) => { setCoveragePick(v); addCoverageArea(v) }}
+                      disabled={submitting}
                     >
-                      <Plus className="h-4 w-4" />
-                      Add
-                    </Button>
+                      <SelectTrigger className={`pl-9 ${inputCls}`}>
+                        <SelectValue placeholder="Select a county…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COVERAGE_AREA_OPTIONS.map((opt) => (
+                          <SelectItem
+                            key={opt} value={opt}
+                            disabled={form.Coverage_Area.some(x => x.toLowerCase() === opt.toLowerCase())}
+                          >
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {form.Coverage_Area.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2">
                       {form.Coverage_Area.map((area) => (
-                        <Badge key={area} variant="secondary" className="flex items-center gap-2 py-1">
-                          {area}
+                        <span
+                          key={area}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700"
+                        >
+                          <MapPin className="h-3 w-3 text-slate-400" />{area}
                           <button
                             type="button"
                             onClick={() => removeCoverageArea(area)}
-                            className="rounded p-0.5 hover:bg-black/10"
-                            aria-label={`Remove ${area}`}
-                            disabled={isSubmitting}
+                            className="ml-0.5 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                            disabled={submitting}
                           >
                             <X className="h-3 w-3" />
                           </button>
-                        </Badge>
+                        </span>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">No coverage areas added yet.</p>
+                    <p className="text-xs italic text-slate-400">No coverage areas added yet</p>
                   )}
                 </div>
-              </Card>
+              </SectionCard>
 
-              <Card className="p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-gray-700" />
-                  <h2 className="text-xl font-semibold">GQM Information</h2>
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Score" htmlFor="Score">
-                    <IconInput
-                      icon={<ClipboardList className="h-4 w-4" />}
-                      input={
-                        <Input
-                          id="Score"
-                          type="number"
-                          min={0}
-                          max={300}
-                          value={Number.isFinite(form.Score) ? form.Score : 0}
-                          onChange={(e) => setForm({ ...form, Score: Number(e.target.value) })}
-                          className="pl-10"
-                          disabled={isSubmitting}
-                        />
-                      }
-                    />
-                  </Field>
-
-                  <Field label="GQM Compliance" htmlFor="Gqm_compliance">
+              {/* GQM Information */}
+              <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title="GQM Information">
+                <div className="grid gap-5 md:grid-cols-3">
+                  <div>
+                    <FieldLabel htmlFor="Score">Score</FieldLabel>
                     <div className="relative">
-                      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <ShieldCheck className="h-4 w-4" />
-                      </div>
+                      <Star className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="Score"
+                        type="number" min={0} max={300}
+                        value={form.Score}
+                        onChange={(e) => setField("Score", e.target.value)}
+                        placeholder="0–300"
+                        className={`pl-9 ${inputCls}`}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel htmlFor="Gqm_compliance">GQM Compliance</FieldLabel>
+                    <div className="relative">
+                      <ShieldCheck className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <Select
                         value={form.Gqm_compliance}
-                        onValueChange={(v: GqmOption) => setForm({ ...form, Gqm_compliance: v })}
-                        disabled={isSubmitting}
+                        onValueChange={(v) => setField("Gqm_compliance", v)}
+                        disabled={submitting}
                       >
-                        <SelectTrigger id="Gqm_compliance" className="h-10 pl-10">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger id="Gqm_compliance" className={`pl-9 ${inputCls}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                          <SelectItem value="N/A">N/A</SelectItem>
+                          {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </Field>
+                  </div>
 
-                  <Field label="GQM Best Service Training" htmlFor="Gqm_best_service_training">
+                  <div>
+                    <FieldLabel htmlFor="Gqm_best_service_training">Best Service Training</FieldLabel>
                     <div className="relative">
-                      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <GraduationCap className="h-4 w-4" />
-                      </div>
+                      <GraduationCap className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <Select
                         value={form.Gqm_best_service_training}
-                        onValueChange={(v: GqmOption) => setForm({ ...form, Gqm_best_service_training: v })}
-                        disabled={isSubmitting}
+                        onValueChange={(v) => setField("Gqm_best_service_training", v)}
+                        disabled={submitting}
                       >
-                        <SelectTrigger id="Gqm_best_service_training" className="h-10 pl-10">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger id="Gqm_best_service_training" className={`pl-9 ${inputCls}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                          <SelectItem value="N/A">N/A</SelectItem>
+                          {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </Field>
+                  </div>
                 </div>
-              </Card>
+              </SectionCard>
 
-              <Card className="p-6 shadow-sm">
-                <div className="mb-5 flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-gray-700" />
-                  <h2 className="text-xl font-semibold">Notes</h2>
-                </div>
-
+              {/* Notes */}
+              <SectionCard icon={ClipboardList} iconBg="bg-slate-100" iconColor="text-slate-500" title="Notes">
                 <Textarea
                   value={form.Notes}
-                  onChange={(e) => setForm({ ...form, Notes: e.target.value })}
-                  placeholder="Additional notes..."
+                  onChange={(e) => setField("Notes", e.target.value)}
+                  placeholder="Additional notes about this subcontractor…"
                   rows={4}
-                  disabled={isSubmitting}
+                  className={`resize-none ${inputCls}`}
+                  disabled={submitting}
                 />
-              </Card>
+              </SectionCard>
 
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.push("/subcontractors")} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-
-                <Button type="submit" disabled={!canSubmit}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Subcontractor"
-                  )}
-                </Button>
+              {/* Bottom action bar */}
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+                <p className="text-xs text-slate-400">
+                  {canSubmit
+                    ? "Ready to create — review fields above before submitting"
+                    : <span className="text-amber-600">Name and Organization are required</span>
+                  }
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button" variant="outline" size="sm"
+                    onClick={() => router.push("/subcontractors")}
+                    disabled={submitting}
+                    className="text-xs border-slate-200"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit" size="sm"
+                    disabled={!canSubmit}
+                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
+                  >
+                    {submitting
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
+                      : <><Save className="h-3.5 w-3.5" /> Create Subcontractor</>
+                    }
+                  </Button>
+                </div>
               </div>
-            </form>
-          </div>
+
+            </div>
+          </form>
         </main>
       </div>
     </div>
