@@ -1,6 +1,5 @@
 "use client"
 
-// ✅ FIX 1: import { use } de react — API correcta para unwrap Promise params en Client Components
 import React, { use, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
@@ -10,16 +9,16 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X } from "lucide-react"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X, Trash2, Zap, ZapOff } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { CommunityDetailsCard, type CommunityClient } from "@/components/organisms/CommunityDetailsCard"
 
 // ─── Array field helpers ─────────────────────────────────────────────────────
 
-/**
- * Parse a Postgres array literal like {"a","b"} or a plain string.
- * Returns an array of trimmed, non-empty strings.
- */
 function parseArrayField(raw: string | null | undefined): string[] {
   if (!raw) return []
   const trimmed = raw.trim()
@@ -40,17 +39,68 @@ function parseArrayField(raw: string | null | undefined): string[] {
   return trimmed ? [trimmed] : []
 }
 
-/**
- * Serialize a string[] back to Postgres array literal: {"a","b"}
- * Used when sending PATCH payload to the backend.
- */
 export function serializeArrayField(values: string[]): string {
   if (values.length === 0) return ""
   if (values.length === 1) return values[0]
   return '{' + values.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",") + '}'
 }
 
+// ─── Podio Sync Toggle ────────────────────────────────────────────────────────
+
+function PodioSyncToggle({ value, onChange, danger }: {
+  value: boolean; onChange: (v: boolean) => void; danger?: boolean
+}) {
+  const activeColor = danger
+    ? "border-red-400 bg-gradient-to-r from-red-50 to-rose-50"
+    : "border-violet-400 bg-gradient-to-r from-violet-50 to-indigo-50"
+  const iconBg = danger ? "bg-red-600" : "bg-violet-600"
+  const textActive = danger ? "text-red-800" : "text-violet-800"
+  const subActive = danger ? "text-red-600" : "text-violet-600"
+  const pillActive = danger ? "bg-red-500" : "bg-violet-600"
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`flex w-full items-center gap-3 overflow-hidden rounded-xl border-2 px-4 py-3 text-left transition-all duration-200 ${
+        value ? activeColor : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+      }`}
+    >
+      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+        value ? iconBg : "bg-slate-200"
+      }`}>
+        {value
+          ? <Zap className="h-4 w-4 text-white" />
+          : <ZapOff className="h-4 w-4 text-slate-400" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold transition-colors ${value ? textActive : "text-slate-600"}`}>
+          {value
+            ? (danger ? "También eliminar de Podio: ON" : "Sincronizar con Podio: ON")
+            : (danger ? "También eliminar de Podio: OFF" : "Sincronizar con Podio: OFF")
+          }
+        </p>
+        <p className={`text-xs transition-colors ${value ? subActive : "text-slate-400"}`}>
+          {danger
+            ? "El item de Podio también será eliminado"
+            : "Los cambios se propagarán a Podio"
+          }
+        </p>
+      </div>
+      <div className={`relative flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-all duration-200 ${
+        value ? pillActive : "bg-slate-300"
+      }`}>
+        <span className={`absolute inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-all duration-200 ${
+          value ? "left-[18px]" : "left-[3px]"
+        }`} />
+      </div>
+    </button>
+  )
+}
+
 // ─── Read-only display: chips with icon ──────────────────────────────────────
+
 function ArrayDisplayField({
   raw, icon: Icon, linkPrefix, emptyLabel, changed,
 }: {
@@ -91,8 +141,7 @@ function ArrayDisplayField({
 }
 
 // ─── Edit mode: one input per item + add/remove ───────────────────────────────
-// Ready for when edit is implemented.
-// onChange receives the new serialized string (Postgres array literal or plain string).
+
 function ArrayEditField({
   raw, icon: Icon, placeholder, onChange, changed,
 }: {
@@ -107,7 +156,6 @@ function ArrayEditField({
     return parsed.length > 0 ? parsed : [""]
   })
 
-  // Sync from outside (e.g. on reload) — only on raw prop change
   React.useEffect(() => {
     const parsed = parseArrayField(raw)
     setItems(parsed.length > 0 ? parsed : [""])
@@ -121,9 +169,7 @@ function ArrayEditField({
   }
 
   const handleChange = (idx: number, val: string) => {
-    const next = [...items]
-    next[idx] = val
-    update(next)
+    const next = [...items]; next[idx] = val; update(next)
   }
 
   const handleAdd = () => update([...items, ""])
@@ -149,7 +195,6 @@ function ArrayEditField({
             type="button"
             onClick={() => handleRemove(idx)}
             className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-            title="Remove"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -166,6 +211,7 @@ function ArrayEditField({
   )
 }
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type ClientCommunity = CommunityClient
 
@@ -182,18 +228,80 @@ type ParentMgmtCo = {
   managers?: any[]
 }
 
-// ✅ FIX 1: params es Promise en Next.js 15 page components
 type ParentMgmtCoDetailsPageProps = {
   params: Promise<{ id: string }>
 }
 
-// ✅ FIX 2: campos relacionales que NO se envían en PATCH (no son columnas del modelo Python)
 const SKIP_ON_PATCH: Array<keyof ParentMgmtCo> = ["clients", "managers", "ID_Community_Tracking"]
+
+// ─── Delete dialog ────────────────────────────────────────────────────────────
+
+function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
+  open: boolean; onOpenChange: (v: boolean) => void
+  item: ParentMgmtCo | null; onDeleted: () => void
+}) {
+  const [syncPodio, setSyncPodio] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => { if (open) setSyncPodio(false) }, [open])
+
+  const doDelete = async () => {
+    if (!item) return
+    setDeleting(true)
+    try {
+      // ✅ Pasar sync_podio como query param
+      const res = await fetch(
+        `/api/parent_mgmt_co/${item.ID_Community_Tracking}?sync_podio=${syncPodio}`,
+        { method: "DELETE" }
+      )
+      if (!res.ok) throw new Error(await res.text())
+      onDeleted()
+      onOpenChange(false)
+      toast({
+        title: "Compañía eliminada",
+        description: `${item.Property_mgmt_co ?? item.ID_Community_Tracking} eliminada${syncPodio ? " y removida de Podio" : ""}.`,
+      })
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message, variant: "destructive" })
+    } finally { setDeleting(false) }
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminar Compañía Padre</AlertDialogTitle>
+          <AlertDialogDescription>
+            ¿Estás seguro de que deseas eliminar{" "}
+            <span className="font-semibold text-slate-800">
+              {item?.Property_mgmt_co ?? item?.ID_Community_Tracking}
+            </span>? Esta acción no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {/* ✅ Solo mostrar si tiene conexión con Podio */}
+        {item?.podio_item_id && (
+          <div className="my-2">
+            <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} danger />
+          </div>
+        )}
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={doDelete} disabled={deleting}
+            className="bg-red-600 hover:bg-red-700">
+            {deleting ? "Eliminando…" : "Eliminar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsPageProps) {
   const router = useRouter()
-
-  // ✅ FIX 1: use() en lugar de (React as any).use() — sin hack de cast
   const { id: parentMgmtCoId } = use(params)
 
   const [user, setUser] = useState<any>(null)
@@ -204,8 +312,10 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
   const [isEditing, setIsEditing] = useState(false)
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState<Partial<ParentMgmtCo>>({})
+  const [syncPodio, setSyncPodio] = useState(false)  // ✅ Estado del toggle de Podio para edición
 
   const [communitySearch, setCommunitySearch] = useState("")
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const handleOpenCommunityDetails = (clientId: string) => {
     router.push(`/communities/${clientId}`)
@@ -263,8 +373,6 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
   const handleSaveChanges = async () => {
     if (!parentMgmtCoId) return
 
-    // ✅ FIX 2: strip campos relacionales — PaMgmtCoUpdate solo acepta PaMgmtCoBase fields.
-    // Enviar clients[] o managers[] hace que Pydantic lance ValidationError en el backend.
     const patchPayload: Record<string, any> = {}
     for (const [key, value] of Object.entries(formData)) {
       if (!SKIP_ON_PATCH.includes(key as keyof ParentMgmtCo)) {
@@ -273,7 +381,8 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
     }
 
     try {
-      const response = await fetch(`/api/parent_mgmt_co/${parentMgmtCoId}`, {
+      // ✅ Pasar sync_podio como query param
+      const response = await fetch(`/api/parent_mgmt_co/${parentMgmtCoId}?sync_podio=${syncPodio}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patchPayload),
@@ -285,10 +394,6 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       }
 
       const updated = (await response.json()) as ParentMgmtCo
-
-      // ✅ FIX 3: el PATCH response de Python es obj.model_dump() — no incluye Relationships.
-      // Si sobreescribimos con updated directamente, clients queda undefined → contador en 0.
-      // Preservamos clients/managers del estado anterior.
       const normalized: ParentMgmtCo = {
         ...updated,
         clients: parentMgmtCo?.clients ?? [],
@@ -299,8 +404,12 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       setFormData(normalized)
       setIsEditing(false)
       setEditedFields(new Set())
+      setSyncPodio(false)  // ✅ Reset del toggle tras guardar
 
-      toast({ title: "Success", description: "Parent management company updated successfully" })
+      toast({
+        title: "Success",
+        description: `Parent management company updated successfully${syncPodio ? " and synced with Podio" : ""}`,
+      })
     } catch (error: any) {
       console.error("Error updating parent mgmt co:", error)
       toast({
@@ -388,6 +497,16 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
               <Button variant="outline" onClick={() => router.push("/clients")} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
+
+              {/* ✅ Botón eliminar — abre el DeleteParentDialog */}
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(true)}
+                className="gap-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+
               {!isEditing ? (
                 <Button
                   variant="outline"
@@ -400,7 +519,12 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => { setIsEditing(false); setEditedFields(new Set()); setFormData(parentMgmtCo ?? {}) }}
+                    onClick={() => {
+                      setIsEditing(false)
+                      setEditedFields(new Set())
+                      setFormData(parentMgmtCo ?? {})
+                      setSyncPodio(false)  // ✅ Reset al cancelar
+                    }}
                     className="gap-2 border-slate-200 text-slate-500"
                   >
                     <X className="h-4 w-4" /> Cancel
@@ -425,6 +549,13 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     {associatedClientsCount} communities
                   </span>
                 </div>
+
+                {/* ✅ Toggle de Podio — visible solo en modo edición */}
+                {isEditing && (
+                  <div className="mb-6">
+                    <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} />
+                  </div>
+                )}
 
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="md:col-span-2">
@@ -528,7 +659,6 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                   )}
                 </div>
 
-                {/* Search bar — only shown when there are communities */}
                 {associatedClientsCount > 0 && (
                   <div className="relative mb-4">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -589,6 +719,14 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
 
         </main>
       </div>
+
+      {/* ✅ Delete dialog */}
+      <DeleteParentDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        item={parentMgmtCo}
+        onDeleted={() => router.push("/clients")}
+      />
     </div>
   )
 }

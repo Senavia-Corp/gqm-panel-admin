@@ -738,10 +738,10 @@ export function SubcontractorDetails({
           </CardContent>
         </Card>
 
-        <TechniciansTable
+        {/* <TechniciansTable
           technicians={subcontractor.technicians || []}
           onViewDetails={(technician) => setSelectedTechnician(technician)}
-        />
+        /> */}
       </div>
     </div>
   )

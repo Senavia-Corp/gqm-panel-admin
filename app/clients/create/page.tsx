@@ -14,7 +14,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import {
   ArrowLeft, Save, Loader2, Building2, MapPin, Mail, Phone,
-  Globe, Hash, FileText, Plus, X, User,
+  Globe, FileText, Plus, X, Zap, ZapOff,
 } from "lucide-react"
 
 // ─── Array input helper ───────────────────────────────────────────────────────
@@ -27,36 +27,24 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
 }) {
   const items = values.length ? values : [""]
   return (
-    <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
+    <div className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-2.5">
       {items.map((item, idx) => (
         <div key={idx} className="flex items-center gap-2">
           <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
           <input
-            type="text"
-            value={item}
-            placeholder={placeholder}
-            onChange={(e) => {
-              const n = [...items]; n[idx] = e.target.value; onChange(n)
-            }}
-            className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+            type="text" value={item} placeholder={placeholder}
+            onChange={(e) => { const n = [...items]; n[idx] = e.target.value; onChange(n) }}
+            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/20 transition-all"
           />
-          <button
-            type="button"
-            onClick={() => {
-              if (items.length === 1) { onChange([""]); return }
-              onChange(items.filter((_, i) => i !== idx))
-            }}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-400 transition-colors"
-          >
+          <button type="button"
+            onClick={() => { if (items.length === 1) { onChange([""]); return }; onChange(items.filter((_, i) => i !== idx)) }}
+            className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-400 transition-colors">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => onChange([...items, ""])}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
-      >
+      <button type="button" onClick={() => onChange([...items, ""])}
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
         <Plus className="h-3 w-3" /> Add another
       </button>
     </div>
@@ -65,20 +53,17 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
 
 // ─── Section card ─────────────────────────────────────────────────────────────
 
-function Section({ icon: Icon, title, iconBg, iconColor, children }: {
+function Section({ icon: Icon, title, accent, children }: {
   icon: React.ElementType
   title: string
-  iconBg: string
-  iconColor: string
+  accent: string
   children: React.ReactNode
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
-        </div>
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+      <div className={`flex items-center gap-3 border-b border-slate-100 px-6 py-4 ${accent}`}>
+        <Icon className="h-4 w-4" />
+        <h2 className="text-sm font-semibold">{title}</h2>
       </div>
       <div className="p-6">{children}</div>
     </div>
@@ -90,8 +75,8 @@ function Field({ label, required, hint, children }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="block text-sm font-medium text-slate-700">
-        {label}{required && <span className="ml-0.5 text-red-500">*</span>}
+      <Label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+        {label}{required && <span className="ml-0.5 text-red-400">*</span>}
       </Label>
       {children}
       {hint && <p className="text-xs text-slate-400">{hint}</p>}
@@ -99,8 +84,56 @@ function Field({ label, required, hint, children }: {
   )
 }
 
-const inputCls = "border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+const inputCls = "rounded-xl border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-400/20 transition-all"
 const textareaCls = `${inputCls} resize-none`
+
+// ─── Podio Sync Toggle ────────────────────────────────────────────────────────
+
+function PodioSyncToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border-2 px-5 py-4 text-left transition-all duration-300 ${
+        value
+          ? "border-violet-400 bg-gradient-to-r from-violet-50 to-indigo-50 shadow-sm shadow-violet-100"
+          : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+      }`}
+    >
+      {/* Icon */}
+      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all duration-300 ${
+        value ? "bg-violet-600 shadow-md shadow-violet-200" : "bg-slate-200"
+      }`}>
+        {value
+          ? <Zap className="h-5 w-5 text-white" />
+          : <ZapOff className="h-5 w-5 text-slate-400" />
+        }
+      </div>
+
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold transition-colors ${value ? "text-violet-800" : "text-slate-600"}`}>
+          {value ? "Sincronización con Podio activada" : "Sincronizar con Podio"}
+        </p>
+        <p className={`mt-0.5 text-xs transition-colors ${value ? "text-violet-600" : "text-slate-400"}`}>
+          {value
+            ? "Este registro se creará simultáneamente en Podio"
+            : "El registro se creará solo en la base de datos local"
+          }
+        </p>
+      </div>
+
+      {/* Toggle pill */}
+      <div className={`relative flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-all duration-300 ${
+        value ? "bg-violet-600" : "bg-slate-300"
+      }`}>
+        <span className={`absolute inline-block h-4 w-4 rounded-full bg-white shadow transition-all duration-300 ${
+          value ? "left-6" : "left-1"
+        }`} />
+      </div>
+    </button>
+  )
+}
 
 // ─── US States ────────────────────────────────────────────────────────────────
 
@@ -118,6 +151,7 @@ export default function CreateParentCoPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(false)
 
   const [form, setForm] = useState({
     Property_mgmt_co:    "",
@@ -139,7 +173,6 @@ export default function CreateParentCoPage() {
     setUser(JSON.parse(u))
   }, [router])
 
-  // Serialize array to Postgres literal or plain string
   const serializeArray = (values: string[]): string | null => {
     const clean = values.filter((v) => v.trim())
     if (!clean.length) return null
@@ -149,7 +182,7 @@ export default function CreateParentCoPage() {
 
   const handleSubmit = async () => {
     if (!form.Property_mgmt_co.trim()) {
-      toast({ title: "Required field", description: "Company name is required.", variant: "destructive" })
+      toast({ title: "Campo requerido", description: "El nombre de la compañía es obligatorio.", variant: "destructive" })
       return
     }
 
@@ -166,7 +199,8 @@ export default function CreateParentCoPage() {
         Notes:              form.Notes.trim()              || null,
       }
 
-      const res = await fetch("/api/parent_mgmt_co", {
+      // ✅ Incluir sync_podio como query param
+      const res = await fetch(`/api/parent_mgmt_co?sync_podio=${syncPodio}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -175,10 +209,13 @@ export default function CreateParentCoPage() {
       if (!res.ok) throw new Error(await res.text())
 
       const created = await res.json()
-      toast({ title: "Company created", description: `${form.Property_mgmt_co} was created successfully.` })
+      toast({
+        title: "Compañía creada",
+        description: `${form.Property_mgmt_co} fue creada exitosamente${syncPodio ? " y sincronizada con Podio" : ""}.`,
+      })
       router.push(`/clients/${created.ID_Community_Tracking}`)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to create company.", variant: "destructive" })
+      toast({ title: "Error", description: e?.message ?? "No se pudo crear la compañía.", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -198,38 +235,38 @@ export default function CreateParentCoPage() {
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => router.back()}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                >
+                <button onClick={() => router.back()}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm shadow-emerald-200">
                     <Building2 className="h-4.5 w-4.5 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">New Parent Company</h1>
-                    <p className="mt-0.5 text-xs text-slate-500">Fill in the details to register a parent management company</p>
+                    <h1 className="text-lg font-bold text-slate-900 leading-none">Nueva Compañía Padre</h1>
+                    <p className="mt-0.5 text-xs text-slate-500">Completa los datos para registrar la compañía</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2.5">
-                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 gap-2 text-sm">
-                  Cancel
+                {syncPodio && (
+                  <span className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                    <Zap className="h-3 w-3" /> Podio activo
+                  </span>
+                )}
+                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 text-sm rounded-xl">
+                  Cancelar
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={saving}
-                  className="h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700"
-                >
+                <Button onClick={handleSubmit} disabled={saving}
+                  className="h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 shadow-sm shadow-emerald-200">
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-                    : <><Save className="h-3.5 w-3.5" /> Create Company</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…</>
+                    : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>
                   }
                 </Button>
               </div>
@@ -239,131 +276,103 @@ export default function CreateParentCoPage() {
           {/* ── Form body ── */}
           <div className="mx-auto max-w-4xl space-y-5 p-6">
 
-            {/* ── 1. Company Identity ── */}
-            <Section icon={Building2} title="Company Identity" iconBg="bg-emerald-50" iconColor="text-emerald-600">
+            {/* ── Podio Sync ── */}
+            <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} />
+
+            {/* ── 1. Identidad ── */}
+            <Section icon={Building2} title="Identidad de la Compañía"
+              accent="text-emerald-700 bg-emerald-50/60">
               <div className="grid gap-5">
                 <div className="grid gap-5 md:grid-cols-3">
                   <div className="md:col-span-2">
-                    <Field label="Company Name" required>
-                      <Input
-                        value={form.Property_mgmt_co}
+                    <Field label="Nombre de la Compañía" required>
+                      <Input value={form.Property_mgmt_co}
                         onChange={(e) => set("Property_mgmt_co", e.target.value)}
-                        placeholder="e.g. Suncoast Property Management"
-                        className={inputCls}
-                      />
+                        placeholder="ej. Suncoast Property Management" className={inputCls} />
                     </Field>
                   </div>
-                  <Field label="Abbreviation" hint="Short code used as identifier">
-                    <Input
-                      value={form.Company_abbrev}
+                  <Field label="Abreviatura" hint="Código corto identificador">
+                    <Input value={form.Company_abbrev}
                       onChange={(e) => set("Company_abbrev", e.target.value.toUpperCase())}
-                      placeholder="e.g. SPM"
-                      className={`font-mono tracking-wider ${inputCls}`}
-                      maxLength={10}
-                    />
+                      placeholder="ej. SPM" className={`font-mono tracking-wider ${inputCls}`} maxLength={10} />
                   </Field>
                 </div>
-
                 <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="State">
+                  <Field label="Estado">
                     <Select value={form.State || "none"} onValueChange={(v) => set("State", v === "none" ? "" : v)}>
                       <SelectTrigger className={inputCls}>
-                        <SelectValue placeholder="Select state…" />
+                        <SelectValue placeholder="Seleccionar estado…" />
                       </SelectTrigger>
                       <SelectContent className="max-h-64">
-                        <SelectItem value="none">— None —</SelectItem>
-                        {US_STATES.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
+                        <SelectItem value="none">— Ninguno —</SelectItem>
+                        {US_STATES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </Field>
-
-                  <Field label="Website">
+                  <Field label="Sitio Web">
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        value={form.Website}
-                        onChange={(e) => set("Website", e.target.value)}
-                        placeholder="https://…"
-                        className={`pl-8 ${inputCls}`}
-                      />
+                      <Input value={form.Website} onChange={(e) => set("Website", e.target.value)}
+                        placeholder="https://…" className={`pl-8 ${inputCls}`} />
                     </div>
                   </Field>
                 </div>
               </div>
             </Section>
 
-            {/* ── 2. Location ── */}
-            <Section icon={MapPin} title="Location" iconBg="bg-blue-50" iconColor="text-blue-600">
-              <Field label="Main Office HQ Address">
-                <Textarea
-                  value={form.Main_office_hq}
+            {/* ── 2. Ubicación ── */}
+            <Section icon={MapPin} title="Ubicación" accent="text-blue-700 bg-blue-50/60">
+              <Field label="Dirección de la Oficina Principal">
+                <Textarea value={form.Main_office_hq}
                   onChange={(e) => set("Main_office_hq", e.target.value)}
-                  placeholder="Full street address of the main office"
-                  rows={2}
-                  className={textareaCls}
-                />
+                  placeholder="Dirección completa de la sede principal" rows={2} className={textareaCls} />
               </Field>
             </Section>
 
-            {/* ── 3. Contact ── */}
-            <Section icon={Mail} title="Contact Information" iconBg="bg-violet-50" iconColor="text-violet-600">
+            {/* ── 3. Contacto ── */}
+            <Section icon={Mail} title="Información de Contacto" accent="text-violet-700 bg-violet-50/60">
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Office Email">
-                  <ArrayInputField
-                    values={form.Main_office_email}
-                    icon={Mail}
-                    placeholder="office@company.com"
-                    onChange={(v) => set("Main_office_email", v)}
-                  />
+                <Field label="Email de Oficina">
+                  <ArrayInputField values={form.Main_office_email} icon={Mail}
+                    placeholder="oficina@compañia.com"
+                    onChange={(v) => set("Main_office_email", v)} />
                 </Field>
-                <Field label="Office Phone">
-                  <ArrayInputField
-                    values={form.Main_office_number}
-                    icon={Phone}
+                <Field label="Teléfono de Oficina">
+                  <ArrayInputField values={form.Main_office_number} icon={Phone}
                     placeholder="(555) 000-0000"
-                    onChange={(v) => set("Main_office_number", v)}
-                  />
+                    onChange={(v) => set("Main_office_number", v)} />
                 </Field>
               </div>
             </Section>
 
-            {/* ── 4. Notes ── */}
-            <Section icon={FileText} title="Additional Notes" iconBg="bg-slate-100" iconColor="text-slate-500">
-              <Field label="Notes">
-                <Textarea
-                  value={form.Notes}
+            {/* ── 4. Notas ── */}
+            <Section icon={FileText} title="Notas Adicionales" accent="text-slate-600 bg-slate-50">
+              <Field label="Notas">
+                <Textarea value={form.Notes}
                   onChange={(e) => set("Notes", e.target.value)}
-                  placeholder="Any additional notes about this company…"
-                  rows={3}
-                  className={textareaCls}
-                />
+                  placeholder="Cualquier información adicional sobre esta compañía…"
+                  rows={3} className={textareaCls} />
               </Field>
             </Section>
 
-            {/* ── Bottom action bar ── */}
+            {/* ── Bottom bar ── */}
             <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Fields marked with <span className="text-red-500">*</span> are required
+              <p className="text-sm text-slate-400">
+                Los campos con <span className="text-red-400">*</span> son obligatorios
               </p>
               <div className="flex items-center gap-2.5">
-                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 text-sm">
-                  Cancel
+                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 rounded-xl text-sm">
+                  Cancelar
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={saving}
-                  className="h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700"
-                >
+                <Button onClick={handleSubmit} disabled={saving}
+                  className="h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700">
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
-                    : <><Save className="h-3.5 w-3.5" /> Create Company</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creando…</>
+                    : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>
                   }
                 </Button>
               </div>
             </div>
-
           </div>
         </main>
       </div>

@@ -157,9 +157,9 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 function StatusBadge({ status }: { status?: string | null }) {
   if (!status) return <span className="text-xs italic text-slate-400">No status</span>
   const map: Record<string, string> = {
-    active:   "bg-emerald-100 text-emerald-700 border-emerald-200",
+    active: "bg-emerald-100 text-emerald-700 border-emerald-200",
     inactive: "bg-slate-100 text-slate-500 border-slate-200",
-    pending:  "bg-yellow-100 text-yellow-700 border-yellow-200",
+    pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
   }
   const cls = map[status.toLowerCase()] ?? "bg-blue-100 text-blue-700 border-blue-200"
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>{status}</span>
@@ -169,8 +169,8 @@ function ScoreBadge({ score }: { score?: number | null }) {
   if (score == null) return <span className="text-xs italic text-slate-400">No score</span>
   const pct = Math.min(100, Math.max(0, score))
   const cls = pct >= 80 ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-            : pct >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                        : "bg-red-100 text-red-600 border-red-200"
+    : pct >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+      : "bg-red-100 text-red-600 border-red-200"
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
       <Star className="h-2.5 w-2.5 fill-current" />
@@ -227,11 +227,11 @@ function ArrayDisplayChips({ values, icon: Icon, href, emptyLabel }: {
     <div className="flex flex-col gap-1">
       {values.map((v, i) => href
         ? <a key={i} href={href(v)} className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline">
-            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
-          </a>
+          <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
+        </a>
         : <span key={i} className="flex items-center gap-1.5 text-sm text-slate-700">
-            <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
-          </span>
+          <Icon className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{v}
+        </span>
       )}
     </div>
   )
@@ -251,7 +251,7 @@ function PageSkeleton({ user }: { user: any }) {
             <div className="h-10 animate-pulse rounded-xl bg-white border border-slate-200" />
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="space-y-4 lg:col-span-2">
-                {[1,2,3].map(i => <div key={i} className={`animate-pulse rounded-2xl border border-slate-200 bg-white`} style={{height: `${120 + i * 20}px`}} />)}
+                {[1, 2, 3].map(i => <div key={i} className={`animate-pulse rounded-2xl border border-slate-200 bg-white`} style={{ height: `${120 + i * 20}px` }} />)}
               </div>
               <div className="space-y-4">
                 <div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" />
@@ -268,39 +268,39 @@ function PageSkeleton({ user }: { user: any }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SubcontractorDetailsPage() {
-  const router       = useRouter()
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const params       = useParams<{ id: string }>()
-  const id           = params.id as string
-  const activeTab    = searchParams.get("tab") || "details"
+  const params = useParams<{ id: string }>()
+  const id = params.id as string
+  const activeTab = searchParams.get("tab") || "details"
 
   const [user, setUser] = useState<any>(null)
 
   // ── Data state ─────────────────────────────────────────────────────────────
-  const [subc, setSubc]           = useState<SubcFull | null>(null)
-  const [loading, setLoading]     = useState(true)
+  const [subc, setSubc] = useState<SubcFull | null>(null)
+  const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   // ── Edit state ─────────────────────────────────────────────────────────────
-  const [editing, setEditing]     = useState(false)
-  const [saving, setSaving]       = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [syncPodio, setSyncPodio] = useState(true)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
 
   const [form, setForm] = useState({
-    Name:                     "",
-    Organization:             "",
-    Organization_Website:     "",
-    Address:                  "",
-    Specialty:                "",
-    Status:                   "",
-    Score:                    "",
-    Gqm_compliance:           "",
-    Gqm_best_service_training:"",
-    Notes:                    "",
-    Email_Address:            [""] as string[],
-    Phone_Number:             [""] as string[],
-    Coverage_Area:            [] as string[],
+    Name: "",
+    Organization: "",
+    Organization_Website: "",
+    Address: "",
+    Specialty: "",
+    Status: "",
+    Score: "",
+    Gqm_compliance: "",
+    Gqm_best_service_training: "",
+    Notes: "",
+    Email_Address: [""] as string[],
+    Phone_Number: [""] as string[],
+    Coverage_Area: [] as string[],
   })
 
   const setField = (k: string, v: any) => {
@@ -310,20 +310,20 @@ export default function SubcontractorDetailsPage() {
 
   // ── Technicians state ──────────────────────────────────────────────────────
   const [technicians, setTechnicians] = useState<SubcTechnician[]>([])
-  const [techSearch, setTechSearch]   = useState("")
+  const [techSearch, setTechSearch] = useState("")
   const [techTypeFilter, setTechTypeFilter] = useState<"all" | "Leader" | "Worker">("all")
-  const [techPage, setTechPage]       = useState(1)
+  const [techPage, setTechPage] = useState(1)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; technician: SubcTechnician | null }>({ open: false, technician: null })
 
   // ── Skills state ───────────────────────────────────────────────────────────
   const [skillsSyncPodio, setSkillsSyncPodio] = useState(true)
   const [skillsModalOpen, setSkillsModalOpen] = useState(false)
-  const [skillsLoading, setSkillsLoading]     = useState(false)
-  const [skillsError, setSkillsError]         = useState<string | null>(null)
-  const [allSkills, setAllSkills]             = useState<Skill[]>([])
-  const [skillsSearch, setSkillsSearch]       = useState("")
-  const [skillsPage, setSkillsPage]           = useState(1)
-  const [linkingSkillId, setLinkingSkillId]   = useState<string | null>(null)
+  const [skillsLoading, setSkillsLoading] = useState(false)
+  const [skillsError, setSkillsError] = useState<string | null>(null)
+  const [allSkills, setAllSkills] = useState<Skill[]>([])
+  const [skillsSearch, setSkillsSearch] = useState("")
+  const [skillsPage, setSkillsPage] = useState(1)
+  const [linkingSkillId, setLinkingSkillId] = useState<string | null>(null)
   const [unlinkingSkillId, setUnlinkingSkillId] = useState<string | null>(null)
 
   // ── Coverage picker ────────────────────────────────────────────────────────
@@ -338,19 +338,19 @@ export default function SubcontractorDetailsPage() {
 
   // ── Helpers to init form from subc ─────────────────────────────────────────
   const initForm = (s: SubcFull) => setForm({
-    Name:                     s.Name ?? "",
-    Organization:             normalizeOrg(s.Organization),
-    Organization_Website:     s.Organization_Website ?? "",
-    Address:                  s.Address ?? "",
-    Specialty:                s.Specialty ?? "",
-    Status:                   s.Status ?? "",
-    Score:                    s.Score != null ? String(s.Score) : "",
-    Gqm_compliance:           s.Gqm_compliance ?? "",
+    Name: s.Name ?? "",
+    Organization: normalizeOrg(s.Organization),
+    Organization_Website: s.Organization_Website ?? "",
+    Address: s.Address ?? "",
+    Specialty: s.Specialty ?? "",
+    Status: s.Status ?? "",
+    Score: s.Score != null ? String(s.Score) : "",
+    Gqm_compliance: s.Gqm_compliance ?? "",
     Gqm_best_service_training: s.Gqm_best_service_training ?? "",
-    Notes:                    s.Notes ?? "",
-    Email_Address:            parseArrayField(s.Email_Address),
-    Phone_Number:             parseArrayField(s.Phone_Number),
-    Coverage_Area:            Array.isArray(s.Coverage_Area) ? s.Coverage_Area : [],
+    Notes: s.Notes ?? "",
+    Email_Address: parseArrayField(s.Email_Address),
+    Phone_Number: parseArrayField(s.Phone_Number),
+    Coverage_Area: Array.isArray(s.Coverage_Area) ? s.Coverage_Area : [],
   })
 
   // ── Fetch subcontractor ────────────────────────────────────────────────────
@@ -364,13 +364,13 @@ export default function SubcontractorDetailsPage() {
       const normalized: SubcFull = {
         ...data,
         Organization: normalizeOrg(data.Organization),
-        technicians:  Array.isArray(data.technicians)  ? data.technicians  : [],
-        attachments:  Array.isArray(data.attachments)  ? data.attachments  : [],
+        technicians: Array.isArray(data.technicians) ? data.technicians : [],
+        attachments: Array.isArray(data.attachments) ? data.attachments : [],
         opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
-        orders:       Array.isArray(data.orders)       ? data.orders       : [],
-        jobs:         Array.isArray(data.jobs)         ? data.jobs         : [],
-        skills:       Array.isArray(data.skills)       ? data.skills       : [],
-        tlactivity:   Array.isArray(data.tlactivity)   ? data.tlactivity   : [],
+        orders: Array.isArray(data.orders) ? data.orders : [],
+        jobs: Array.isArray(data.jobs) ? data.jobs : [],
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        tlactivity: Array.isArray(data.tlactivity) ? data.tlactivity : [],
         Coverage_Area: Array.isArray(data.Coverage_Area) ? data.Coverage_Area : [],
       }
       setSubc(normalized)
@@ -393,19 +393,19 @@ export default function SubcontractorDetailsPage() {
     try {
       const payload: Record<string, any> = {}
       const allFields: Record<string, any> = {
-        Name:                     form.Name.trim() || null,
-        Organization:             form.Organization.trim() || null,
-        Organization_Website:     form.Organization_Website.trim() || null,
-        Address:                  form.Address.trim() || null,
-        Specialty:                form.Specialty.trim() || null,
-        Status:                   form.Status || null,
-        Score:                    form.Score !== "" ? parseFloat(form.Score) : null,
-        Gqm_compliance:           form.Gqm_compliance.trim() || null,
+        Name: form.Name.trim() || null,
+        Organization: form.Organization.trim() || null,
+        Organization_Website: form.Organization_Website.trim() || null,
+        Address: form.Address.trim() || null,
+        Specialty: form.Specialty.trim() || null,
+        Status: form.Status || null,
+        Score: form.Score !== "" ? parseFloat(form.Score) : null,
+        Gqm_compliance: form.Gqm_compliance.trim() || null,
         Gqm_best_service_training: form.Gqm_best_service_training.trim() || null,
-        Notes:                    form.Notes.trim() || null,
-        Email_Address:            serializeArrayField(form.Email_Address),
-        Phone_Number:             serializeArrayField(form.Phone_Number),
-        Coverage_Area:            form.Coverage_Area.length ? form.Coverage_Area : null,
+        Notes: form.Notes.trim() || null,
+        Email_Address: serializeArrayField(form.Email_Address),
+        Phone_Number: serializeArrayField(form.Phone_Number),
+        Coverage_Area: form.Coverage_Area.length ? form.Coverage_Area : null,
       }
       for (const [k, v] of Object.entries(allFields)) {
         if (!SKIP_ON_PATCH.has(k)) payload[k] = v
@@ -422,14 +422,14 @@ export default function SubcontractorDetailsPage() {
       const updated = await res.json() as SubcFull
       const normalized: SubcFull = {
         ...updated,
-        Organization:  normalizeOrg(updated.Organization),
-        technicians:   Array.isArray(updated.technicians)   ? updated.technicians   : technicians,
-        attachments:   Array.isArray(updated.attachments)   ? updated.attachments   : subc.attachments ?? [],
+        Organization: normalizeOrg(updated.Organization),
+        technicians: Array.isArray(updated.technicians) ? updated.technicians : technicians,
+        attachments: Array.isArray(updated.attachments) ? updated.attachments : subc.attachments ?? [],
         opportunities: Array.isArray(updated.opportunities) ? updated.opportunities : subc.opportunities ?? [],
-        orders:        Array.isArray(updated.orders)        ? updated.orders        : subc.orders ?? [],
-        jobs:          Array.isArray(updated.jobs)          ? updated.jobs          : subc.jobs ?? [],
-        skills:        Array.isArray(updated.skills)        ? updated.skills        : subc.skills ?? [],
-        tlactivity:    Array.isArray(updated.tlactivity)    ? updated.tlactivity    : subc.tlactivity ?? [],
+        orders: Array.isArray(updated.orders) ? updated.orders : subc.orders ?? [],
+        jobs: Array.isArray(updated.jobs) ? updated.jobs : subc.jobs ?? [],
+        skills: Array.isArray(updated.skills) ? updated.skills : subc.skills ?? [],
+        tlactivity: Array.isArray(updated.tlactivity) ? updated.tlactivity : subc.tlactivity ?? [],
         Coverage_Area: Array.isArray(updated.Coverage_Area) ? updated.Coverage_Area : [],
       }
       setSubc(normalized)
@@ -582,9 +582,9 @@ export default function SubcontractorDetailsPage() {
 
   const displayEmails = parseArrayField(subc.Email_Address)
   const displayPhones = parseArrayField(subc.Phone_Number)
-  const displayOrg    = normalizeOrg(subc.Organization)
-  const inputCls      = "border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
-  const changedCls    = (field: string) => changedFields.has(field) ? "border-amber-400 ring-1 ring-amber-400/30" : ""
+  const displayOrg = normalizeOrg(subc.Organization)
+  const inputCls = "border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
+  const changedCls = (field: string) => changedFields.has(field) ? "border-amber-400 ring-1 ring-amber-400/30" : ""
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -671,12 +671,12 @@ export default function SubcontractorDetailsPage() {
                   <div className="mb-5 overflow-x-auto">
                     <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {[
-                        { value: "details",     label: "Details",     count: null },
-                        { value: "technicians", label: "Technicians", count: technicians.length },
-                        { value: "orders",      label: "Orders",      count: subc.orders?.length ?? 0 },
-                        { value: "jobs",        label: "Jobs",        count: subc.jobs?.length ?? 0 },
-                        { value: "skills",      label: "Skills",      count: subc.skills?.length ?? 0 },
-                        { value: "timeline",    label: "Timeline",    count: subc.tlactivity?.length ?? 0 },
+                        { value: "details", label: "Details", count: null },
+                        /* { value: "technicians", label: "Technicians", count: technicians.length }, */
+                        { value: "orders", label: "Orders", count: subc.orders?.length ?? 0 },
+                        { value: "jobs", label: "Jobs", count: subc.jobs?.length ?? 0 },
+                        { value: "skills", label: "Skills", count: subc.skills?.length ?? 0 },
+                        { value: "timeline", label: "Timeline", count: subc.tlactivity?.length ?? 0 },
                       ].map(({ value, label, count }) => (
                         <TabsTrigger key={value} value={value}
                           className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm">
@@ -717,9 +717,9 @@ export default function SubcontractorDetailsPage() {
                             ? <Input value={form.Organization_Website} onChange={(e) => setField("Organization_Website", e.target.value)} className={`${inputCls} ${changedCls("Organization_Website")}`} placeholder="https://…" />
                             : safeUrl(subc.Organization_Website)
                               ? <a href={safeUrl(subc.Organization_Website)!} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline">
-                                  <Globe className="h-3.5 w-3.5" />{subc.Organization_Website}
-                                </a>
+                                className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline">
+                                <Globe className="h-3.5 w-3.5" />{subc.Organization_Website}
+                              </a>
                               : <span className="text-sm italic text-slate-400">—</span>
                           }
                         </div>
@@ -727,12 +727,12 @@ export default function SubcontractorDetailsPage() {
                           <FieldLabel>Status</FieldLabel>
                           {editing
                             ? <Select value={form.Status || "Active"} onValueChange={(v) => setField("Status", v)}>
-                                <SelectTrigger className={`${inputCls} ${changedCls("Status")}`}><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {["Active","Inactive","Pending","Banned"].map(s =>
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <SelectTrigger className={`${inputCls} ${changedCls("Status")}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {["Active", "Inactive", "Pending", "Banned"].map(s =>
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                             : <StatusBadge status={subc.Status} />
                           }
                         </div>
@@ -741,8 +741,8 @@ export default function SubcontractorDetailsPage() {
                           {editing
                             ? <Textarea value={form.Address} onChange={(e) => setField("Address", e.target.value)} className={`${inputCls} resize-none ${changedCls("Address")}`} rows={2} placeholder="Full address" />
                             : <p className="flex items-start gap-1.5 text-sm text-slate-800">
-                                {subc.Address ? <><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{subc.Address}</> : <span className="italic text-slate-400">—</span>}
-                              </p>
+                              {subc.Address ? <><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{subc.Address}</> : <span className="italic text-slate-400">—</span>}
+                            </p>
                           }
                         </div>
                       </div>
@@ -826,11 +826,11 @@ export default function SubcontractorDetailsPage() {
                           <FieldLabel>GQM Compliance</FieldLabel>
                           {editing
                             ? <Select value={form.Gqm_compliance || "N/A"} onValueChange={(v) => setField("Gqm_compliance", v)}>
-                                <SelectTrigger className={`${inputCls} ${changedCls("Gqm_compliance")}`}><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <SelectTrigger className={`${inputCls} ${changedCls("Gqm_compliance")}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {["Yes", "No", "N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                             : <CertBadge value={subc.Gqm_compliance} />
                           }
                         </div>
@@ -838,11 +838,11 @@ export default function SubcontractorDetailsPage() {
                           <FieldLabel>Best Service Training</FieldLabel>
                           {editing
                             ? <Select value={form.Gqm_best_service_training || "N/A"} onValueChange={(v) => setField("Gqm_best_service_training", v)}>
-                                <SelectTrigger className={`${inputCls} ${changedCls("Gqm_best_service_training")}`}><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {["Yes","No","N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <SelectTrigger className={`${inputCls} ${changedCls("Gqm_best_service_training")}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {["Yes", "No", "N/A"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                             : <CertBadge value={subc.Gqm_best_service_training} />
                           }
                         </div>
@@ -1006,27 +1006,27 @@ export default function SubcontractorDetailsPage() {
                         ) : (
                           <div className="grid gap-3 sm:grid-cols-2">
                             {(subc.jobs ?? []).map((job: any) => {
-                              const jobId   = job.ID_Jobs ?? ""
+                              const jobId = job.ID_Jobs ?? ""
                               const typeMap: Record<string, { cls: string; label: string }> = {
                                 QID: { cls: "bg-violet-100 text-violet-700 border-violet-200", label: "QID" },
-                                WO:  { cls: "bg-amber-100  text-amber-700  border-amber-200",  label: "WO"  },
-                                BID: { cls: "bg-cyan-100   text-cyan-700   border-cyan-200",   label: "BID" },
+                                WO: { cls: "bg-amber-100  text-amber-700  border-amber-200", label: "WO" },
+                                BID: { cls: "bg-cyan-100   text-cyan-700   border-cyan-200", label: "BID" },
                                 PAR: { cls: "bg-indigo-100 text-indigo-700 border-indigo-200", label: "PAR" },
                               }
                               const typeBadge = typeMap[job.Job_type ?? ""] ?? { cls: "bg-slate-100 text-slate-600 border-slate-200", label: job.Job_type ?? "—" }
 
                               const statusMap: Record<string, string> = {
-                                PAID:       "bg-emerald-100 text-emerald-700 border-emerald-200",
-                                COMPLETED:  "bg-emerald-100 text-emerald-700 border-emerald-200",
-                                ACTIVE:     "bg-blue-100    text-blue-700    border-blue-200",
-                                PENDING:    "bg-yellow-100  text-yellow-700  border-yellow-200",
-                                CANCELLED:  "bg-red-100     text-red-600     border-red-200",
+                                PAID: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                                COMPLETED: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                                ACTIVE: "bg-blue-100    text-blue-700    border-blue-200",
+                                PENDING: "bg-yellow-100  text-yellow-700  border-yellow-200",
+                                CANCELLED: "bg-red-100     text-red-600     border-red-200",
                               }
                               const statusCls = statusMap[(job.Job_status ?? "").toUpperCase()] ?? "bg-slate-100 text-slate-500 border-slate-200"
 
-                              const sold    = job.Gqm_final_sold_pricing != null ? Number(job.Gqm_final_sold_pricing) : null
-                              const formula = job.Gqm_formula_pricing     != null ? Number(job.Gqm_formula_pricing)     : null
-                              const cos     = job.Gqm_total_change_orders  != null ? Number(job.Gqm_total_change_orders)  : null
+                              const sold = job.Gqm_final_sold_pricing != null ? Number(job.Gqm_final_sold_pricing) : null
+                              const formula = job.Gqm_formula_pricing != null ? Number(job.Gqm_formula_pricing) : null
+                              const cos = job.Gqm_total_change_orders != null ? Number(job.Gqm_total_change_orders) : null
 
                               const fmtDate = (raw: string | null) => {
                                 if (!raw) return null
@@ -1147,15 +1147,15 @@ export default function SubcontractorDetailsPage() {
                         ) : (
                           <div className="grid gap-3 sm:grid-cols-2">
                             {(subc.orders ?? []).map((order: any) => {
-                              const formula    = order.Formula    != null ? Number(order.Formula)    : null
+                              const formula = order.Formula != null ? Number(order.Formula) : null
                               const adjFormula = order.Adj_formula != null ? Number(order.Adj_formula) : null
-                              const delta      = formula != null && adjFormula != null ? adjFormula - formula : null
+                              const delta = formula != null && adjFormula != null ? adjFormula - formula : null
 
                               const techFieldMap: Record<string, string> = {
                                 "tech-1-ptl-original-pricing": "PTL Original",
-                                "tech-2-ptl-revised-pricing":  "PTL Revised",
-                                "tech-3-bid-pricing":          "BID Pricing",
-                                "tech-4-wo-pricing":           "WO Pricing",
+                                "tech-2-ptl-revised-pricing": "PTL Revised",
+                                "tech-3-bid-pricing": "BID Pricing",
+                                "tech-4-wo-pricing": "WO Pricing",
                               }
                               const techLabel = techFieldMap[order.tech_field ?? ""] ?? order.tech_field ?? null
 
@@ -1283,10 +1283,10 @@ export default function SubcontractorDetailsPage() {
                         </div>
                         <div className="space-y-2 text-xs text-slate-600">
                           {[
-                            { label: "Phone",    value: leaderTechnician.Phone_Number },
+                            { label: "Phone", value: leaderTechnician.Phone_Number },
                             { label: "Location", value: leaderTechnician.Location },
-                            { label: "Email",    value: leaderTechnician.Email_Address },
-                            { label: "Type",     value: leaderTechnician.Type_of_technician },
+                            { label: "Email", value: leaderTechnician.Email_Address },
+                            { label: "Type", value: leaderTechnician.Type_of_technician },
                           ].map(({ label, value }) => value ? (
                             <div key={label} className="flex items-start gap-1.5">
                               <span className="w-14 flex-shrink-0 font-semibold text-slate-400">{label}</span>
@@ -1308,21 +1308,22 @@ export default function SubcontractorDetailsPage() {
                   </div>
                   <div className="divide-y divide-slate-50 px-5">
                     {[
-                      { label: "ID",           value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
-                      { label: "Status",       value: <StatusBadge status={subc.Status} /> },
-                      { label: "Score",        value: <ScoreBadge score={subc.Score} /> },
-                      { label: "Compliance",   value: <CertBadge value={subc.Gqm_compliance} /> },
-                      { label: "BST",          value: <CertBadge value={subc.Gqm_best_service_training} /> },
-                      { label: "Technicians",  value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
-                      { label: "Skills",       value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
-                      { label: "Orders",       value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
-                      { label: "Jobs",         value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
-                      { label: "Attachments",  value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
-                      { label: "Opportunities",value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
-                      { label: "Podio",        value: subc.podio_item_id
+                      { label: "ID", value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
+                      { label: "Status", value: <StatusBadge status={subc.Status} /> },
+                      { label: "Score", value: <ScoreBadge score={subc.Score} /> },
+                      { label: "Compliance", value: <CertBadge value={subc.Gqm_compliance} /> },
+                      { label: "BST", value: <CertBadge value={subc.Gqm_best_service_training} /> },
+                      { label: "Technicians", value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
+                      { label: "Skills", value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
+                      { label: "Orders", value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
+                      { label: "Jobs", value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
+                      { label: "Attachments", value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
+                      { label: "Opportunities", value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
+                      {
+                        label: "Podio", value: subc.podio_item_id
                           ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                              <CheckCircle className="h-3 w-3" /> Linked
-                            </span>
+                            <CheckCircle className="h-3 w-3" /> Linked
+                          </span>
                           : <span className="text-[11px] italic text-slate-400">Not linked</span>
                       },
                     ].map(({ label, value }) => (
@@ -1357,86 +1358,143 @@ export default function SubcontractorDetailsPage() {
 
       {/* ── Skills modal ───────────────────────────────────────────────────── */}
       <Dialog open={skillsModalOpen} onOpenChange={setSkillsModalOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-emerald-600" /> Link a Skill
+        <DialogContent className="flex h-[90dvh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+
+          {/* ── Header fijo ─────────────────────────────────────────────────── */}
+          <div className="flex-shrink-0 border-b border-slate-100 px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <Link2 className="h-4 w-4 text-emerald-600" /> Link a Skill
             </DialogTitle>
-            <DialogDescription>Search and link skills. Already linked ones are disabled.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <DialogDescription className="mt-0.5 text-xs text-slate-500">
+              Search and link skills. Already linked ones are marked as Linked.
+            </DialogDescription>
+
+            {/* Search + refresh — parte del header para que nunca se oculten */}
+            <div className="mt-4 flex items-center gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <Input value={skillsSearch} onChange={(e) => setSkillsSearch(e.target.value)}
-                  placeholder="Search by name, division, or ID…" className={`pl-9 ${inputCls}`} />
+                <Input
+                  value={skillsSearch}
+                  onChange={(e) => setSkillsSearch(e.target.value)}
+                  placeholder="Search by name, division, or ID…"
+                  className={`pl-9 ${inputCls}`}
+                />
               </div>
-              <Button variant="outline" size="sm" onClick={fetchAllSkills} disabled={skillsLoading} className="gap-1.5 text-xs border-slate-200">
-                {skillsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Refresh
+              <Button
+                variant="outline" size="sm"
+                onClick={fetchAllSkills} disabled={skillsLoading}
+                className="flex-shrink-0 gap-1.5 text-xs border-slate-200"
+              >
+                {skillsLoading
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
+                }
+                Refresh
               </Button>
             </div>
+
             {skillsError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{skillsError}</div>
-            )}
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-36">ID</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Skill Name</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-48">Division / Trade</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28 text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {skillsLoading ? (
-                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm italic text-slate-400">Loading skills…</TableCell></TableRow>
-                  ) : paginatedSkillsDb.length ? (
-                    paginatedSkillsDb.map((s) => {
-                      const already = linkedSkillIds.has(s.ID_Skill)
-                      const busy = linkingSkillId === s.ID_Skill
-                      return (
-                        <TableRow key={s.ID_Skill} className="hover:bg-slate-50">
-                          <TableCell className="font-mono text-xs text-slate-500">{s.ID_Skill}</TableCell>
-                          <TableCell className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "—"}</TableCell>
-                          <TableCell className="text-sm text-slate-600">{asStr(s.Division_trade) || "—"}</TableCell>
-                          <TableCell className="text-right">
-                            <Button size="sm" onClick={() => linkSkill(s.ID_Skill)} disabled={already || busy}
-                              variant={already ? "outline" : "default"}
-                              className={`gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
-                              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                              {already ? "Linked" : "Link"}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  ) : (
-                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm italic text-slate-400">No skills found</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                {filteredSkillsDb.length ? skillsStart + 1 : 0}–{Math.min(skillsStart + SKILLS_PAGE_SIZE, filteredSkillsDb.length)} of {filteredSkillsDb.length} skills
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
-                  onClick={() => setSkillsPage(p => Math.max(1, p - 1))} disabled={skillsPage === 1}>
-                  <ChevronLeft className="h-3.5 w-3.5" /> Prev
-                </Button>
-                <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{skillsPage}/{skillsTotalPages}</span>
-                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
-                  onClick={() => setSkillsPage(p => Math.min(skillsTotalPages, p + 1))} disabled={skillsPage >= skillsTotalPages}>
-                  Next <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-600">
+                {skillsError}
               </div>
+            )}
+          </div>
+
+          {/* ── Tabla scrolleable ───────────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-slate-50">
+                <TableRow>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32">ID</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Skill Name</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-44">Division / Trade</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-24 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {skillsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-12 text-center text-sm italic text-slate-400">
+                      Loading skills…
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedSkillsDb.length ? (
+                  paginatedSkillsDb.map((s) => {
+                    const already = linkedSkillIds.has(s.ID_Skill)
+                    const busy = linkingSkillId === s.ID_Skill
+                    return (
+                      <TableRow key={s.ID_Skill} className="hover:bg-slate-50">
+                        <TableCell className="font-mono text-xs text-slate-500">{s.ID_Skill}</TableCell>
+                        <TableCell className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "—"}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{asStr(s.Division_trade) || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => linkSkill(s.ID_Skill)}
+                            disabled={already || busy}
+                            variant={already ? "outline" : "default"}
+                            className={`gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+                          >
+                            {busy
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Link2 className="h-3.5 w-3.5" />
+                            }
+                            {already ? "Linked" : "Link"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-12 text-center text-sm italic text-slate-400">
+                      No skills found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* ── Footer fijo: paginación + Close ─────────────────────────────── */}
+          <div className="flex-shrink-0 flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4">
+            <p className="text-xs text-slate-500">
+              {filteredSkillsDb.length
+                ? `${skillsStart + 1}–${Math.min(skillsStart + SKILLS_PAGE_SIZE, filteredSkillsDb.length)} of ${filteredSkillsDb.length} skills`
+                : "No results"
+              }
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline" size="sm"
+                className="h-7 gap-1 text-xs border-slate-200"
+                onClick={() => setSkillsPage((p) => Math.max(1, p - 1))}
+                disabled={skillsPage === 1}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              </Button>
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                {skillsPage}/{skillsTotalPages}
+              </span>
+              <Button
+                variant="outline" size="sm"
+                className="h-7 gap-1 text-xs border-slate-200"
+                onClick={() => setSkillsPage((p) => Math.min(skillsTotalPages, p + 1))}
+                disabled={skillsPage >= skillsTotalPages}
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+              <div className="ml-2 h-4 w-px bg-slate-200" />
+              <Button
+                variant="outline" size="sm"
+                onClick={() => setSkillsModalOpen(false)}
+                className="text-xs border-slate-200"
+              >
+                Close
+              </Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSkillsModalOpen(false)} className="text-xs border-slate-200">Close</Button>
-          </DialogFooter>
+
         </DialogContent>
       </Dialog>
 

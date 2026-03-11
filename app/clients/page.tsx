@@ -17,7 +17,7 @@ import {
   Plus, Search, ChevronLeft, ChevronRight, Eye, Trash2,
   Building2, Hash, MapPin, Mail, Phone, ExternalLink,
   AlertCircle, RefreshCw, Users, X, Loader2,
-  ShieldCheck, Tag,
+  ShieldCheck, Tag, Zap, ZapOff,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -150,25 +150,57 @@ function StatusBadge({ status }: { status: string | null }) {
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>{status}</span>
 }
 
-function PodioToggle({ value, onChange, labelOn, labelOff, danger }: {
-  value: boolean; onChange: (v: boolean) => void
-  labelOn: string; labelOff: string; danger?: boolean
+// ─── Podio Sync Toggle ────────────────────────────────────────────────────────
+
+function PodioSyncToggle({ value, onChange, danger }: {
+  value: boolean; onChange: (v: boolean) => void; danger?: boolean
 }) {
+  const activeColor = danger
+    ? "border-red-400 bg-gradient-to-r from-red-50 to-rose-50"
+    : "border-violet-400 bg-gradient-to-r from-violet-50 to-indigo-50"
+  const iconBg = danger ? "bg-red-600" : "bg-violet-600"
+  const textActive = danger ? "text-red-800" : "text-violet-800"
+  const subActive = danger ? "text-red-600" : "text-violet-600"
+  const pillActive = danger ? "bg-red-500" : "bg-violet-600"
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-      <div>
-        <p className="text-sm font-medium text-slate-700">{value ? labelOn : labelOff}</p>
-        <p className="text-xs text-slate-500">
-          {danger ? "El item de Podio también será eliminado" : "Crear este registro en Podio simultáneamente"}
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`flex w-full items-center gap-3 overflow-hidden rounded-xl border-2 px-4 py-3 text-left transition-all duration-200 ${
+        value ? activeColor : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+      }`}
+    >
+      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+        value ? iconBg : "bg-slate-200"
+      }`}>
+        {value
+          ? <Zap className="h-4 w-4 text-white" />
+          : <ZapOff className="h-4 w-4 text-slate-400" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold transition-colors ${value ? textActive : "text-slate-600"}`}>
+          {value
+            ? (danger ? "También eliminar de Podio: ON" : "Sincronizar con Podio: ON")
+            : (danger ? "También eliminar de Podio: OFF" : "Sincronizar con Podio: OFF")
+          }
+        </p>
+        <p className={`text-xs transition-colors ${value ? subActive : "text-slate-400"}`}>
+          {danger
+            ? "El item de Podio también será eliminado"
+            : "Crear este registro en Podio simultáneamente"
+          }
         </p>
       </div>
-      <div
-        className={`relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors ${value ? (danger ? "bg-red-500" : "bg-emerald-500") : "bg-slate-300"}`}
-        onClick={() => onChange(!value)}
-      >
-        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0.5"}`} />
+      <div className={`relative flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-all duration-200 ${
+        value ? pillActive : "bg-slate-300"
+      }`}>
+        <span className={`absolute inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-all duration-200 ${
+          value ? "left-[18px]" : "left-[3px]"
+        }`} />
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -291,8 +323,7 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
         </AlertDialogHeader>
 
         <div className="my-2">
-          <PodioToggle value={syncPodio} onChange={setSyncPodio}
-            labelOn="Also delete from Podio: ON" labelOff="Also delete from Podio: OFF" danger />
+          <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} danger />
         </div>
 
         <AlertDialogFooter>
@@ -313,18 +344,31 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
   open: boolean; onOpenChange: (v: boolean) => void
   item: ParentMgmtCo | null; onDeleted: (id: string) => void
 }) {
+  const [syncPodio, setSyncPodio] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Reset al abrir
+  useEffect(() => { if (open) setSyncPodio(false) }, [open])
+
   const doDelete = async () => {
-    if (!item) return; setDeleting(true)
+    if (!item) return
+    setDeleting(true)
     try {
-      const r = await fetch(`/api/parent_mgmt_co/${item.ID_Community_Tracking}`, { method: "DELETE" })
+      // ✅ Pasar sync_podio como query param
+      const r = await fetch(
+        `/api/parent_mgmt_co/${item.ID_Community_Tracking}?sync_podio=${syncPodio}`,
+        { method: "DELETE" }
+      )
       if (!r.ok) throw new Error(await r.text())
       onDeleted(item.ID_Community_Tracking)
       onOpenChange(false)
-      toast({ title: "Deleted", description: `${item.Property_mgmt_co ?? item.ID_Community_Tracking} removed` })
-    } catch (e: any) { toast({ title: "Error", description: e?.message, variant: "destructive" }) }
-    finally { setDeleting(false) }
+      toast({
+        title: "Deleted",
+        description: `${item.Property_mgmt_co ?? item.ID_Community_Tracking} removed${syncPodio ? " from Podio too" : ""}`,
+      })
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message, variant: "destructive" })
+    } finally { setDeleting(false) }
   }
 
   return (
@@ -339,6 +383,14 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
             </span>? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {/* ✅ Toggle de Podio — solo si el item tiene podio_item_id */}
+        {item?.podio_item_id && (
+          <div className="my-2">
+            <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} danger />
+          </div>
+        )}
+
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={doDelete} disabled={deleting}
@@ -384,7 +436,15 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const fetchAll = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const r = await fetch("/api/parent_mgmt_co", { cache: "no-store" })
+      // Primer fetch para saber el total real
+      const first = await fetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
+      if (!first.ok) throw new Error(`Error ${first.status}`)
+      const firstData = await first.json()
+      const total: number = firstData.total ?? 0
+
+      // Si hay registros, traerlos todos en una sola llamada
+      const limit = total > 0 ? total : 200
+      const r = await fetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
       if (!r.ok) throw new Error(`Error ${r.status}`)
       const d = await r.json()
       setItems(d.results ?? [])
@@ -730,7 +790,6 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
       {!loading && !error && (
         <Pagination page={page} total={total} limit={PER_PAGE} onChange={setPage} />
       )}
-
 
       <DeleteCommunityDialog
         open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}

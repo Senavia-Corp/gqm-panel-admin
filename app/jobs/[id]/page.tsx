@@ -180,22 +180,22 @@ const JOB_TYPE_BADGE: Record<string, string> = {
 
 // ── Status → semantic color ────────────────────────────────────────────────
 const STATUS_BADGE: Record<string, string> = {
-  "Assigned/P. Quote":              "bg-blue-50 text-blue-700 border-blue-200",
-  "Waiting for Approval":           "bg-amber-50 text-amber-700 border-amber-200",
-  "Scheduled / Work in Progress":   "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Completed P. INV / POs":         "bg-teal-50 text-teal-700 border-teal-200",
-  "Invoiced":                       "bg-indigo-50 text-indigo-700 border-indigo-200",
-  "HOLD":                           "bg-orange-50 text-orange-700 border-orange-200",
-  "PAID":                           "bg-green-50 text-green-700 border-green-200",
-  "Paid":                           "bg-green-50 text-green-700 border-green-200",
-  "Warranty":                       "bg-purple-50 text-purple-700 border-purple-200",
-  "Cancelled":                      "bg-red-50 text-red-700 border-red-200",
-  "Archived":                       "bg-slate-100 text-slate-500 border-slate-200",
-  "Received-Stand By":              "bg-slate-100 text-slate-600 border-slate-200",
-  "Assigned-In progress":           "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Completed PVI":                  "bg-teal-50 text-teal-700 border-teal-200",
-  "In Progress":                    "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Completed PVI / POs":            "bg-teal-50 text-teal-700 border-teal-200",
+  "Assigned/P. Quote": "bg-blue-50 text-blue-700 border-blue-200",
+  "Waiting for Approval": "bg-amber-50 text-amber-700 border-amber-200",
+  "Scheduled / Work in Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed P. INV / POs": "bg-teal-50 text-teal-700 border-teal-200",
+  "Invoiced": "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "HOLD": "bg-orange-50 text-orange-700 border-orange-200",
+  "PAID": "bg-green-50 text-green-700 border-green-200",
+  "Paid": "bg-green-50 text-green-700 border-green-200",
+  "Warranty": "bg-purple-50 text-purple-700 border-purple-200",
+  "Cancelled": "bg-red-50 text-red-700 border-red-200",
+  "Archived": "bg-slate-100 text-slate-500 border-slate-200",
+  "Received-Stand By": "bg-slate-100 text-slate-600 border-slate-200",
+  "Assigned-In progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI": "bg-teal-50 text-teal-700 border-teal-200",
+  "In Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Completed PVI / POs": "bg-teal-50 text-teal-700 border-teal-200",
 }
 
 type JobDetailPageProps = {
@@ -212,10 +212,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [mounted, setMounted] = useState(false)
 
   const [activeTab, setActiveTab] = useState("details")
-
-  const [documentFilter, setDocumentFilter] = useState<string>("all")
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
 
   const [activeChat, setActiveChat] = useState("general")
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -332,7 +328,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           setEstimateItems(items)
           setHasSavedEstimates(hasSaved)
 
-          loadDocuments()
           loadTasks()
           setOrders(mockOrders.filter((order) => order.ID_Jobs === jobId))
         } catch (err) {
@@ -355,20 +350,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[jobs] loadClients error:", error)
       setClients([])
       setLoadError(error instanceof Error ? error.message : "Unexpected error loading clients")
-    }
-  }
-
-  const loadDocuments = async () => {
-    const jobsId = jobId as string
-    if (jobsId === "create") return
-
-    setIsLoadingDocuments(true)
-    try {
-      setDocuments(mockDocuments as any)
-    } catch (error) {
-      console.error("[docs] loadDocuments error:", error)
-    } finally {
-      setIsLoadingDocuments(false)
     }
   }
 
@@ -1033,15 +1014,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "documents") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
-          <Docs
-            role={user.role}
+          <JobDocumentsTab
             job={job}
-            jobId={jobId}
-            documentFilter={documentFilter}
-            setDocumentFilter={setDocumentFilter}
-            documents={documents}
-            isLoadingDocuments={isLoadingDocuments}
-            onReload={jobDetail.reload}
+            onRefresh={async () => {
+              // FIX: recargar el job completo para que job.attachments se actualice
+              await jobDetail.reload()
+            }}
           />
         </JobTabLayout>
       )
@@ -1311,11 +1289,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     type="button"
                     onClick={() => setSyncPodio((v) => !v)}
                     disabled={jobDetail.isSaving}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${
-                      syncPodio
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${syncPodio
                         ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                         : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
-                    }`}
+                      }`}
                     title={syncPodio ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
                   >
                     {syncPodio
