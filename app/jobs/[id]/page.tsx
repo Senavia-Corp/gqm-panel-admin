@@ -494,45 +494,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const handlePricingFieldChange = (field: string, value: number) => {
     if (!job) return
-    const next: any = { ...(job as any) }
-    const mark = (f: string) => (jobDetail as any).markChanged?.(`pricing.${f}`)
-
-    switch (field) {
-      case "gqmFormulaPricing":
-        next.Gqm_formula_pricing = value; mark("gqmFormulaPricing"); break
-      case "gqmAdjFormulaPricing":
-        next.Gqm_adj_formula_pricing = value; mark("gqmAdjFormulaPricing"); break
-      case "gqmTargetReturn":
-        next.Gqm_target_return = value; mark("gqmTargetReturn"); break
-      case "gqmTargetSoldPricing":
-        next.Gqm_target_sold_pricing = value; mark("gqmTargetSoldPricing"); break
-      case "gqmPremiumInMoney":
-        next.Gqm_premium_in_money = value; mark("gqmPremiumInMoney"); break
-      case "gqmFinalSoldPricing":
-        next.Gqm_final_sold_pricing = value; mark("gqmFinalSoldPricing"); break
-      case "gqmFinalPercentage":
-        next.Gqm_final_percentage = value; mark("gqmFinalPercentage"); break
-      case "estimatedRent":
-        next.Estimated_rent = value; mark("estimatedRent"); break
-      case "estimatedMaterial":
-        next.Estimated_material = value; mark("estimatedMaterial"); break
-      case "estimatedCity":
-        next.Estimated_city = value; mark("estimatedCity"); break
-      case "techFormulaPricing":
-        next.Tech_formula_pricing = value; mark("techFormulaPricing"); break
-      case "accReceivable":
-        next.Acc_receivable = value; mark("accReceivable"); break
-      case "gqmFinalFormPricing":
-        next.Gqm_final_form_pricing = value; mark("gqmFinalFormPricing"); break
-      case "gqmFinalAdjFormPricing":
-        next.Gqm_final_adj_form_pricing = value; mark("gqmFinalAdjFormPricing"); break
-      case "gqmFinalTargetReturn":
-        next.Gqm_final_target_return = value; mark("gqmFinalTargetReturn"); break
-      case "gqmFinalPremInMoney":
-        next.Gqm_final_prem_in_money = value; mark("gqmFinalPremInMoney"); break
-    }
-
+    if (field !== "gqmTargetSoldPricing") return   // all others are now read-only
+    const next: any = { ...(job as any), Gqm_target_sold_pricing: value }
     jobDetail.setJob(next)
+      ; (jobDetail as any).markChanged?.("pricing.gqmTargetSoldPricing")
   }
 
   const handlePricingTargetChange = useCallback((value: string | null) => {
@@ -547,34 +512,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       ; (jobDetail as any).markChanged?.("permit")
   }, [job, jobDetail])
 
-  const handleTotalMaterialsFeesChange = useCallback((value: number | null) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Gqm_total_materials_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.totalMaterialsFees")
-  }, [job, jobDetail])
-
-  const handlePaidFeesChange = useCallback((value: number | null) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Gqm_paid_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.paidFees")
-  }, [job, jobDetail])
-
-  const handleBldgDeptFeesChange = useCallback((value: string[]) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Bldg_dept_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.bldgDeptFees")
-  }, [job, jobDetail])
-
-  const handleAdjPricingCalculated = async (adjPricing: number) => {
-    if (!job) return
-    const next: any = { ...(job as any) }
-    next.Gqm_adj_formula_pricing = adjPricing
-      ; (jobDetail as any).markChanged?.("pricing.gqmAdjFormulaPricing")
-    jobDetail.setJob(next)
-
+  const handleAdjPricingCalculated = async (_adjPricing: number) => {
     toast({
-      title: "Calculated",
-      description: "Adjusted Formula Pricing calculated. Remember to Save Changes to persist.",
+      title: "Multiplier applied",
+      description: "Adjusted Formula Pricing will update after saving. Save Changes to persist.",
     })
   }
 
@@ -1092,14 +1033,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onReload={jobDetail.reload}
             onSyncComplete={jobDetail.reload}
             syncPodio={syncPodio}
-            onJobUpdate={async (updates: Record<string, any>) => {
-              await jobDetail.patch(updates, { sync_podio: false })
+            onJobUpdate={async (_updates: Record<string, any>) => {
             }}
             onPricingTargetChange={handlePricingTargetChange}
             onPermitChange={handlePermitChange}
-            onTotalMaterialsFeesChange={handleTotalMaterialsFeesChange}
-            onPaidFeesChange={handlePaidFeesChange}
-            onBldgDeptFeesChange={handleBldgDeptFeesChange}
+            isReloading={jobDetail.isLoading}
           />
         </JobTabLayout>
       )
@@ -1290,8 +1228,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     onClick={() => setSyncPodio((v) => !v)}
                     disabled={jobDetail.isSaving}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${syncPodio
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
                       }`}
                     title={syncPodio ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
                   >

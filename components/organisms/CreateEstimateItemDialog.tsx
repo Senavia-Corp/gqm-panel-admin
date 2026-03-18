@@ -29,7 +29,7 @@ function FG({ children }: { children: React.ReactNode }) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-const COST_TYPES = ["Subcontractor", "Labor", "Material", "Equipment", "Other"] as const
+const COST_TYPES = ["Subcontractor", "Rent", "Material", "Permit", "BDF", "PTLGCF", "Labor", "Equipment", "Other"] as const
 const MARKUP_TYPES = ["%", "$"] as const
 
 type FormState = {

@@ -16,12 +16,43 @@ function resolveYearFromJobId(jobId: string | null | undefined): number | undefi
   return match ? 2020 + parseInt(match[0], 10) : undefined
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Fields that are CALCULATED by the backend calculator and must NEVER be
+// included in a PATCH payload. The server always overwrites them after saving.
+// Sending them would be a no-op at best, misleading at worst.
+// ─────────────────────────────────────────────────────────────────────────────
+const CALCULATED_FIELDS = new Set([
+  "estimatedRent",
+  "estimatedMaterial",
+  "estimatedCity",
+  "techFormulaPricing",
+  "pricing.estimatedRent",
+  "pricing.estimatedMaterial",
+  "pricing.estimatedCity",
+  "pricing.techFormulaPricing",
+  "pricing.gqmFormulaPricing",
+  "pricing.gqmAdjFormulaPricing",
+  "pricing.gqmTargetReturn",
+  "pricing.gqmPremiumInMoney",
+  "pricing.gqmFinalSoldPricing",
+  "pricing.gqmFinalPercentage",
+  "pricing.gqmFinalFormPricing",
+  "pricing.gqmFinalAdjFormPricing",
+  "pricing.gqmFinalTargetReturn",
+  "pricing.gqmFinalPremInMoney",
+  "pricing.totalMaterialsFees",
+  "pricing.paidFees",
+  "pricing.bldgDeptFees",
+  "pricing.totalChangeOrders",
+  "pricing.accReceivable",
+])
+
 export function useJobDetail(jobId: string) {
-  const [job, setJob] = useState<JobDTO | null>(null)
-  const [originalJob, setOriginalJob] = useState<JobDTO | null>(null)
+  const [job,           setJob]           = useState<JobDTO | null>(null)
+  const [originalJob,   setOriginalJob]   = useState<JobDTO | null>(null)
   const [changedFields, setChangedFields] = useState<ChangedFields>(new Set())
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading,     setIsLoading]     = useState(false)
+  const [isSaving,      setIsSaving]      = useState(false)
 
   // ── Reload ──────────────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
@@ -38,21 +69,22 @@ export function useJobDetail(jobId: string) {
     }
   }, [jobId])
 
-  // ── Mark changed ────────────────────────────────────────────────────────────
+  // ── Mark changed ─────────────────────────────────────────────────────────
+  // Calculated fields are silently ignored — they cannot be "changed" by the user.
   const markChanged = useCallback((key: string) => {
+    if (CALCULATED_FIELDS.has(key)) return
     setChangedFields((prev) => new Set([...prev, key]))
   }, [])
 
   const getValue = (j: any, uiKey: string, pyKey: string) =>
     j?.[uiKey] !== undefined ? j[uiKey] : j?.[pyKey]
 
-  // ── Manual patch (direct payload, no field mapping) ─────────────────────────
+  // ── Manual patch (direct payload, no field mapping) ──────────────────────
   const patch = useCallback(
     async (updates: Record<string, any>, opts?: SaveOptions) => {
       const idJob = job?.ID_Jobs
       if (!idJob) throw new Error("Job ID_Jobs is missing")
 
-      // FIX: derive year from Job ID and pass it to updateJob
       const year = resolveYearFromJobId(idJob)
 
       setIsSaving(true)
@@ -70,21 +102,26 @@ export function useJobDetail(jobId: string) {
     [job?.ID_Jobs, reload],
   )
 
-  // ── Intelligent SAVE — maps UI field keys → Python field names ──────────────
+  // ── Intelligent SAVE — maps UI field keys → Python field names ───────────
+  // Only manual / user-input fields are included in the payload.
+  // Calculated fields are intentionally excluded — the backend recalculates
+  // them automatically after every save.
   const save = useCallback(
     async (opts?: SaveOptions) => {
       const idJob = job?.ID_Jobs
       if (!idJob) throw new Error("Job ID_Jobs is missing")
       if (changedFields.size === 0) return
 
-      // FIX: derive year from Job ID (not from dates — dates can have offsets)
       const year = resolveYearFromJobId(idJob)
 
       const payload: UpdateJobRequest = {}
 
       changedFields.forEach((field) => {
+        // Skip any field that is backend-calculated — these are never sent
+        if (CALCULATED_FIELDS.has(field)) return
+
         switch (field) {
-          // ── Details fields ────────────────────────────────────────────────
+          // ── Details fields ──────────────────────────────────────────────
           case "status":
             payload.Job_status = getValue(job, "status", "Job_status")
             break
@@ -136,6 +173,8 @@ export function useJobDetail(jobId: string) {
             payload.ID_Client = id
             break
           }
+
+          // ── Manual pricing fields (the only editable ones) ──────────────
           case "pricingTarget":
             payload.Pricing_target = (job as any)?.Pricing_target ?? null
             break
@@ -144,58 +183,22 @@ export function useJobDetail(jobId: string) {
             break
         }
 
-        // ── Pricing numeric fields ────────────────────────────────────────
+        // ── Manual pricing numeric fields ──────────────────────────────────
+        // Only Gqm_target_sold_pricing is user-editable in the pricing tab.
+        // All other pricing.* fields are calculated and guarded by CALCULATED_FIELDS above.
         if (field.startsWith("pricing.")) {
           const key = field.replace("pricing.", "")
           switch (key) {
-            case "gqmFormulaPricing":
-              payload.Gqm_formula_pricing = job?.Gqm_formula_pricing ?? null; break
-            case "gqmAdjFormulaPricing":
-              payload.Gqm_adj_formula_pricing = job?.Gqm_adj_formula_pricing ?? null; break
-            case "gqmTargetReturn":
-              payload.Gqm_target_return = job?.Gqm_target_return ?? null; break
             case "gqmTargetSoldPricing":
-              payload.Gqm_target_sold_pricing = job?.Gqm_target_sold_pricing ?? null; break
-            case "gqmPremiumInMoney":
-              payload.Gqm_premium_in_money = job?.Gqm_premium_in_money ?? null; break
-            case "gqmFinalSoldPricing":
-              payload.Gqm_final_sold_pricing = job?.Gqm_final_sold_pricing ?? null; break
-            case "gqmFinalPercentage":
-              payload.Gqm_final_percentage = job?.Gqm_final_percentage ?? null; break
-            case "estimatedRent":
-              payload.Estimated_rent = (job as any)?.Estimated_rent ?? null; break
-            case "estimatedMaterial":
-              payload.Estimated_material = (job as any)?.Estimated_material ?? null; break
-            case "estimatedCity":
-              payload.Estimated_city = (job as any)?.Estimated_city ?? null; break
-            case "techFormulaPricing":
-              payload.Tech_formula_pricing = (job as any)?.Tech_formula_pricing ?? null; break
-            case "accReceivable":
-              payload.Acc_receivable = (job as any)?.Acc_receivable ?? null; break
-            case "gqmFinalFormPricing":
-              payload.Gqm_final_form_pricing = (job as any)?.Gqm_final_form_pricing ?? null; break
-            case "gqmFinalAdjFormPricing":
-              payload.Gqm_final_adj_form_pricing = (job as any)?.Gqm_final_adj_form_pricing ?? null; break
-            case "gqmFinalTargetReturn":
-              payload.Gqm_final_target_return = (job as any)?.Gqm_final_target_return ?? null; break
-            case "gqmFinalPremInMoney":
-              payload.Gqm_final_prem_in_money = (job as any)?.Gqm_final_prem_in_money ?? null; break
-            // ── Fees Paid section ──────────────────────────────────────────
-            case "totalMaterialsFees":
-              payload.Gqm_total_materials_fees = (job as any)?.Gqm_total_materials_fees ?? null; break
-            case "paidFees":
-              payload.Gqm_paid_fees = (job as any)?.Gqm_paid_fees ?? null; break
-            case "bldgDeptFees":
-              payload.Bldg_dept_fees = (job as any)?.Bldg_dept_fees ?? null; break
+              payload.Gqm_target_sold_pricing = job?.Gqm_target_sold_pricing ?? null
+              break
+            // All other pricing.* keys are in CALCULATED_FIELDS and never reach here
           }
         }
       })
 
-
-
       setIsSaving(true)
       try {
-        // FIX: pass year so the proxy forwards ?year= to Python
         await updateJob(idJob, payload, {
           sync_podio: opts?.sync_podio ?? false,
           year,
