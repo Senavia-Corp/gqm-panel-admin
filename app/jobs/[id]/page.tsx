@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast"
 import { JobRightSidebar } from "@/components/organisms/JobRightSidebar"
 
 import type { Subcontractor, Document, Task, EstimateItem, SubcontractorOrder } from "@/lib/types"
-import { ChatSettingsDialog } from "@/components/organisms/ChatSettingsDialog"
 import { CostDialog } from "@/components/organisms/CostDialog"
 import { AddMemberDialog } from "@/components/organisms/AddMemberDialog"
 import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
@@ -76,52 +75,6 @@ const mockDocuments = [
   { id: "8", fileName: "FileName.jpg", fileSize: "2.2 MB", uploadDate: "01/08/2025", tag: "TAG" },
 ]
 
-const mockAdminChatMessages = [
-  {
-    id: "1",
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec mollis quam eu libero pharetra, vitae tincidunt ligula tincidunt.",
-    sender: { name: "John Smith", avatar: "/placeholder.svg?height=40&width=40", id: "2" },
-    timestamp: "6:30 pm",
-    isSent: false,
-  },
-  {
-    id: "2",
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec mollis quam eu libero pharetra, vitae tincidunt ligula tincidunt.",
-    sender: { name: "You", avatar: "/placeholder.svg?height=40&width=40", id: "1" },
-    timestamp: "6:30 pm",
-    isSent: true,
-  },
-]
-
-const mockGeneralChatMessages = [
-  {
-    id: "1",
-    content: "Good morning team! Just checking in on the progress.",
-    sender: { name: "Sarah Johnson", avatar: "/placeholder.svg?height=40&width=40", id: "3" },
-    timestamp: "9:15 am",
-    isSent: false,
-  },
-  {
-    id: "2",
-    content: "Everything is on track. We should be done by end of day.",
-    sender: { name: "You", avatar: "/placeholder.svg?height=40&width=40", id: "1" },
-    timestamp: "9:20 am",
-    isSent: true,
-  },
-]
-
-const adminChatParticipants = [
-  { id: "1", name: "Admin User", avatar: "/placeholder.svg?height=40&width=40", role: "Administrator" },
-  { id: "2", name: "John Smith", avatar: "/placeholder.svg?height=40&width=40", role: "Manager" },
-]
-
-const generalChatParticipants = [
-  { id: "1", name: "Admin User", avatar: "/placeholder.svg?height=40&width=40", role: "Administrator" },
-  { id: "3", name: "Sarah Johnson", avatar: "/placeholder.svg?height=40&width=40", role: "Technician" },
-  { id: "4", name: "Mike Davis", avatar: "/placeholder.svg?height=40&width=40", role: "Technician" },
-]
 
 const mockCosts: Cost[] = [
   { id: "1", name: "Skilled Labor - Carpentry", quantity: 40, unitPrice: 45, total: 1800, type: "Labor" },
@@ -213,9 +166,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const [activeTab, setActiveTab] = useState("details")
 
-  const [activeChat, setActiveChat] = useState("general")
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false)
   const [editingCost, setEditingCost] = useState<Cost | null>(null)
   const [costs, setCosts] = useState<Cost[]>(mockCosts)
@@ -303,7 +253,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     const parsedUser = JSON.parse(userData)
     setUser(parsedUser)
-    setActiveChat(parsedUser.role === "LEAD_TECHNICIAN" ? "general" : "admin")
 
     setLoadError(null)
     void loadClients()
@@ -371,13 +320,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
   }
 
-  const handleSendMessage = (message: string) => {
-    console.log("[chat] send:", message)
-  }
-
-  const handleSaveChatSettings = (name: string, participants: Array<any>) => {
-    console.log("[chat] save settings:", { name, participants })
-  }
 
   const handleEditCost = (cost: Cost) => {
     setEditingCost(cost)
@@ -904,6 +846,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           { id: "documents", label: "Documents" },
           { id: "pricing", label: "Pricing" },
           { id: "members", label: "Members" },
+          { id: "chat", label: "Chat" },
           { id: "tasks", label: "Tasks" },
           { id: "estimate", label: "Estimate" },
           { id: "purchases", label: "Purchases" },
@@ -969,17 +912,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "chat") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
-          <Chat
-            role={user.role}
-            activeChat={activeChat}
-            setActiveChat={setActiveChat}
-            adminChatParticipants={adminChatParticipants}
-            generalChatParticipants={generalChatParticipants}
-            adminMessages={mockAdminChatMessages}
-            generalMessages={mockGeneralChatMessages}
-            onSendMessage={handleSendMessage}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-          />
+          <JobChatTab role={user.role} jobId={jobId} />
         </JobTabLayout>
       )
     }
@@ -1270,15 +1203,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           {renderTab()}
         </main>
       </div>
-
-      <ChatSettingsDialog
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        chatName={activeChat === "admin" ? "Admin Discussion" : "General Project Chat"}
-        chatAvatar={activeChat === "admin" ? "/admin-interface.png" : "/diverse-professional-team.png"}
-        participants={activeChat === "admin" ? adminChatParticipants : generalChatParticipants}
-        onSave={handleSaveChatSettings}
-      />
 
       <CostDialog
         isOpen={isCostDialogOpen}

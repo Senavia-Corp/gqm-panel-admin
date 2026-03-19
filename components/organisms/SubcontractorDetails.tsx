@@ -26,7 +26,6 @@ import { CreateChangeOrderDialog } from "@/components/organisms/CreateChangeOrde
 import { Pencil, Trash2 } from "lucide-react"
 import { DeleteChangeOrderDialog } from "@/components/organisms/DeleteChangeOrderDialog"
 import { DeleteOrderDialog } from "./DeleteJobOrderDialog"
-import { apiFetch } from "@/lib/apiFetch"
 
 interface SubcontractorDetailsProps {
   subcontractor: Subcontractor
@@ -95,23 +94,6 @@ function normalizeEmails(raw: any): string[] {
   return Array.from(new Set(cleaned))
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: PATCH Adj_formula on a single Order
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function patchOrderAdjFormula(orderId: string, newAdjFormula: number): Promise<void> {
-  const res = await apiFetch(`/api/order/${encodeURIComponent(orderId)}?sync_podio=false`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ Adj_formula: newAdjFormula }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const msg = (err as any)?.detail ?? (err as any)?.error ?? `Error ${res.status}`
-    throw new Error(`Failed to update Order Adj_formula: ${msg}`)
-  }
-}
-
 export function SubcontractorDetails({
   subcontractor,
   onBack,
@@ -147,7 +129,7 @@ export function SubcontractorDetails({
       setLoadingOrders(true)
 
       const subId = String(subcontractor?.ID_Subcontractor ?? "")
-      const jId = String(jobId ?? "")
+      const jId   = String(jobId ?? "")
 
       if (!subId || !jId) {
         setOrders([])
@@ -170,17 +152,17 @@ export function SubcontractorDetails({
       const data = await res.json()
 
       let ordersData: any[] = []
-      if (Array.isArray(data)) ordersData = data
-      else if (Array.isArray(data.results)) ordersData = data.results
-      else if (Array.isArray(data.items)) ordersData = data.items
-      else if (Array.isArray(data.data)) ordersData = data.data
-      else ordersData = []
+      if (Array.isArray(data))               ordersData = data
+      else if (Array.isArray(data.results))  ordersData = data.results
+      else if (Array.isArray(data.items))    ordersData = data.items
+      else if (Array.isArray(data.data))     ordersData = data.data
+      else                                   ordersData = []
 
       const mapped = ordersData.map((o) => ({
         ...o,
-        Items: o.estimate_costs ?? o.Items ?? o.items ?? [],
-        Formula: o.Formula ?? o.formula ?? 0,
-        Adj_formula: o.Adj_formula ?? o.adj_formula ?? 0,
+        Items:        o.estimate_costs ?? o.Items ?? o.items ?? [],
+        Formula:      o.Formula      ?? o.formula      ?? 0,
+        Adj_formula:  o.Adj_formula  ?? o.adj_formula  ?? 0,
         change_orders: o.change_orders ?? o.changeOrders ?? [],
       }))
 
@@ -205,83 +187,12 @@ export function SubcontractorDetails({
   }, [subcontractor, jobId])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Adj_formula PATCH helpers — called after each change order mutation
+  // Order.Adj_formula is now recalculated automatically by the backend
+  // whenever a change order is created, updated, or deleted.
+  // The frontend only needs to reload the orders after each mutation.
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * After CREATE: add formula to Adj_formula of the target order.
-   */
-  const handleAfterCreate = useCallback(
-    async (orderId: string, addedFormula: number) => {
-      const order = orders.find((o) => o.ID_Order === orderId)
-      if (!order) {
-        await fetchOrdersForJobAndSub()
-        return
-      }
-      const currentAdj = Number(order.Adj_formula ?? 0)
-      try {
-        await patchOrderAdjFormula(orderId, currentAdj + addedFormula)
-      } catch (err) {
-        console.error("[change-order] patchOrderAdjFormula (create):", err)
-      } finally {
-        await fetchOrdersForJobAndSub()
-      }
-    },
-    [orders, fetchOrdersForJobAndSub],
-  )
-
-  /**
-   * After EDIT: adjust Adj_formula by the delta (newFormula - oldFormula).
-   */
-  const handleAfterEdit = useCallback(
-    async (orderId: string, oldFormula: number, newFormula: number) => {
-      const delta = newFormula - oldFormula
-      if (delta === 0) {
-        await fetchOrdersForJobAndSub()
-        return
-      }
-      const order = orders.find((o) => o.ID_Order === orderId)
-      if (!order) {
-        await fetchOrdersForJobAndSub()
-        return
-      }
-      const currentAdj = Number(order.Adj_formula ?? 0)
-      try {
-        await patchOrderAdjFormula(orderId, currentAdj + delta)
-      } catch (err) {
-        console.error("[change-order] patchOrderAdjFormula (edit):", err)
-      } finally {
-        await fetchOrdersForJobAndSub()
-      }
-    },
-    [orders, fetchOrdersForJobAndSub],
-  )
-
-  /**
-   * After DELETE: subtract formula from Adj_formula of the target order.
-   */
-  const handleAfterDelete = useCallback(
-    async (orderId: string, removedFormula: number) => {
-      const order = orders.find((o) => o.ID_Order === orderId)
-      if (!order) {
-        await fetchOrdersForJobAndSub()
-        return
-      }
-      const currentAdj = Number(order.Adj_formula ?? 0)
-      try {
-        await patchOrderAdjFormula(orderId, currentAdj - removedFormula)
-      } catch (err) {
-        console.error("[change-order] patchOrderAdjFormula (delete):", err)
-      } finally {
-        await fetchOrdersForJobAndSub()
-      }
-    },
-    [orders, fetchOrdersForJobAndSub],
-  )
-
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const formula = orders.reduce((sum, order) => sum + (order.Formula || 0), 0)
+  const formula    = orders.reduce((sum, order) => sum + (order.Formula     || 0), 0)
   const adjFormula = orders.reduce((sum, order) => sum + (order.Adj_formula || 0), 0)
 
   if (selectedTechnician) {
@@ -299,7 +210,7 @@ export function SubcontractorDetails({
   const subTabs = [{ id: "orders", label: "Orders" }]
 
   const orgText = normalizeOrg(subcontractor.Organization)
-  const emails = normalizeEmails(subcontractor.Email_Address ?? "")
+  const emails  = normalizeEmails(subcontractor.Email_Address ?? "")
 
   const handleOpenCreateChangeOrder = (order: any) => {
     setTargetOrderForCh(order)
@@ -621,7 +532,7 @@ export function SubcontractorDetails({
                                   className="h-8 w-8"
                                   title="Delete"
                                   onClick={() => {
-                                    setTargetOrderForCh(order)   // ← needed for delete too
+                                    setTargetOrderForCh(order)
                                     setTargetChangeOrder(co)
                                     setDeleteChOpen(true)
                                   }}
@@ -670,12 +581,10 @@ export function SubcontractorDetails({
                     orderId={String(targetOrderForCh.ID_Order)}
                     defaultSyncPodio={defaultSyncPodio}
                     jobYearForPodioSync={jobYearForPodioSync}
-                    onCreated={async (createdFormula?: number) => {
-                      // PATCH Order: add createdFormula to Adj_formula
-                      await handleAfterCreate(
-                        String(targetOrderForCh.ID_Order),
-                        Number(createdFormula ?? 0),
-                      )
+                    onCreated={async () => {
+                      // Adj_formula is now updated automatically by the backend.
+                      // Just reload the orders to reflect the new values.
+                      await fetchOrdersForJobAndSub()
                     }}
                   />
                 )}
@@ -696,18 +605,14 @@ export function SubcontractorDetails({
                     defaultSyncPodio={defaultSyncPodio}
                     jobYearForPodioSync={jobYearForPodioSync}
                     initialData={{
-                      Name: targetChangeOrder.Name,
-                      Description: targetChangeOrder.Description,
+                      Name:               targetChangeOrder.Name,
+                      Description:        targetChangeOrder.Description,
                       ChangeOrderFormula: targetChangeOrder.ChangeOrderFormula,
-                      State: targetChangeOrder.State,
+                      State:              targetChangeOrder.State,
                     }}
-                    onUpdated={async (newFormula?: number) => {
-                      // PATCH Order: adjust Adj_formula by delta
-                      await handleAfterEdit(
-                        String(targetOrderForCh.ID_Order),
-                        Number(targetChangeOrder.ChangeOrderFormula ?? 0),
-                        Number(newFormula ?? targetChangeOrder.ChangeOrderFormula ?? 0),
-                      )
+                    onUpdated={async () => {
+                      // Adj_formula is now updated automatically by the backend.
+                      await fetchOrdersForJobAndSub()
                     }}
                   />
                 )}
@@ -725,11 +630,8 @@ export function SubcontractorDetails({
                     defaultSyncPodio={defaultSyncPodio}
                     jobYearForPodioSync={jobYearForPodioSync}
                     onDeleted={async () => {
-                      // PATCH Order: subtract removed formula from Adj_formula
-                      await handleAfterDelete(
-                        String(targetOrderForCh?.ID_Order ?? ""),
-                        Number(targetChangeOrder.ChangeOrderFormula ?? 0),
-                      )
+                      // Adj_formula is now updated automatically by the backend.
+                      await fetchOrdersForJobAndSub()
                     }}
                   />
                 )}
@@ -737,11 +639,6 @@ export function SubcontractorDetails({
             )}
           </CardContent>
         </Card>
-
-        {/* <TechniciansTable
-          technicians={subcontractor.technicians || []}
-          onViewDetails={(technician) => setSelectedTechnician(technician)}
-        /> */}
       </div>
     </div>
   )

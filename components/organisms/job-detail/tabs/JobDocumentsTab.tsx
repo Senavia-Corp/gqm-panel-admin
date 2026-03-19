@@ -7,51 +7,56 @@ import { FileStack, Images, FileVideo, FileText, Files } from "lucide-react"
 
 type Props = {
   job: any
-  // FIX: onRefresh debe llamar a jobDetail.reload() en el padre, no solo
-  // setear mockDocuments. Esto garantiza que los attachments nuevos aparezcan
-  // sin recargar la página.
   onRefresh: () => Promise<void> | void
 }
 
 const FILTERS = [
-  { id: "all",       label: "All Files",  icon: Files },
-  { id: "images",    label: "Images",     icon: Images },
-  { id: "videos",    label: "Videos",     icon: FileVideo },
-  { id: "documents", label: "Documents",  icon: FileText },
+  { id: "all", label: "All Files", icon: Files },
+  { id: "images", label: "Images", icon: Images },
+  { id: "videos", label: "Videos", icon: FileVideo },
+  { id: "documents", label: "Documents", icon: FileText },
 ] as const
 
-const IMAGE_FMTS    = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
-const VIDEO_FMTS    = ["mp4", "mov", "avi", "mkv", "webm"]
+const IMAGE_FMTS = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
+const VIDEO_FMTS = ["mp4", "mov", "avi", "mkv", "webm"]
 const DOCUMENT_FMTS = ["pdf", "doc", "docx", "xls", "xlsx", "txt"]
+
+// Resolve year from Job ID first numeric digit: QID5xxx→2025, PTL6xxx→2026
+function resolveJobYear(job: any): number | undefined {
+  const id = String(job?.ID_Jobs ?? job?.id ?? "").trim()
+  const m = id.match(/\d/)
+  return m ? 2020 + parseInt(m[0], 10) : undefined
+}
 
 export function JobDocumentsTab({ job, onRefresh }: Props) {
   const [activeFilter, setActiveFilter] = useState<string>("all")
 
-  const jobId:   string = job?.ID_Jobs   ?? job?.id       ?? ""
-  const jobType: string = job?.Job_type  ?? job?.job_type ?? job?.jobType ?? ""
+  const jobId: string = job?.ID_Jobs ?? job?.id ?? ""
+  const jobType: string = job?.Job_type ?? job?.job_type ?? job?.jobType ?? ""
+  const jobYear: number | undefined = useMemo(() => resolveJobYear(job), [job])
 
   const allAttachments: any[] = Array.isArray(job?.attachments) ? job.attachments : []
 
   const filtered = useMemo(() => {
     switch (activeFilter) {
-      case "images":    return allAttachments.filter((a) => IMAGE_FMTS.includes((a.Document_type ?? "").toLowerCase()))
-      case "videos":    return allAttachments.filter((a) => VIDEO_FMTS.includes((a.Document_type ?? "").toLowerCase()))
+      case "images": return allAttachments.filter((a) => IMAGE_FMTS.includes((a.Document_type ?? "").toLowerCase()))
+      case "videos": return allAttachments.filter((a) => VIDEO_FMTS.includes((a.Document_type ?? "").toLowerCase()))
       case "documents": return allAttachments.filter((a) => DOCUMENT_FMTS.includes((a.Document_type ?? "").toLowerCase()))
-      default:          return allAttachments
+      default: return allAttachments
     }
   }, [allAttachments, activeFilter])
 
   const counts = useMemo(() => ({
-    all:       allAttachments.length,
-    images:    allAttachments.filter((a) => IMAGE_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
-    videos:    allAttachments.filter((a) => VIDEO_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
+    all: allAttachments.length,
+    images: allAttachments.filter((a) => IMAGE_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
+    videos: allAttachments.filter((a) => VIDEO_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
     documents: allAttachments.filter((a) => DOCUMENT_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
   }), [allAttachments])
 
   return (
     <div className="space-y-6">
 
-      {/* ── Upload zone ─────────────────────────────────────────────────── */}
+      {/* ── Upload zone ───────────────────────────────────────────────────── */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
@@ -62,14 +67,16 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
             <p className="text-xs text-slate-500">Supports images, videos, PDFs and office files</p>
           </div>
         </div>
-        {/* FIX: onUploadComplete → onRefresh (jobDetail.reload) para que
-            los documentos nuevos aparezcan inmediatamente sin recargar */}
-        <DocumentUpload jobId={jobId} jobType={jobType} onUploadComplete={onRefresh} />
+        <DocumentUpload
+          jobId={jobId}
+          jobType={jobType}
+          jobYear={jobYear}
+          onUploadComplete={onRefresh}
+        />
       </section>
 
-      {/* ── Gallery ─────────────────────────────────────────────────────── */}
+      {/* ── Gallery ───────────────────────────────────────────────────────── */}
       <section>
-        {/* Header + filter tabs */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50">
@@ -94,18 +101,16 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
                 <button
                   key={id}
                   onClick={() => setActiveFilter(id)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                    active
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${active
                       ? "bg-white text-slate-800 shadow-sm"
                       : "text-slate-500 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}
                   {count > 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
-                    }`}>
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                      }`}>
                       {count}
                     </span>
                   )}
@@ -115,7 +120,6 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           </div>
         </div>
 
-        {/* Grid or empty state */}
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 py-16 text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
@@ -136,6 +140,8 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
                 attachment={attachment}
                 onDelete={onRefresh}
                 onUpdate={onRefresh}
+                jobYear={jobYear}
+                appType={jobType}
               />
             ))}
           </div>

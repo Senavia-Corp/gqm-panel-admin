@@ -5,163 +5,64 @@ export const dynamic = "force-dynamic"
 
 const PYTHON_API_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
 
-const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME
-const API_KEY = process.env.CLOUDINARY_API_KEY
-const API_SECRET = process.env.CLOUDINARY_API_SECRET
-
-async function generateSHA1(data: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const dataBuffer = encoder.encode(data)
-  const hashBuffer = await crypto.subtle.digest("SHA-1", dataBuffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-  return hashHex
-}
-
+/**
+ * POST /api/upload
+ *
+ * Forwards the multipart FormData to the Python backend's /attachments/upload
+ * endpoint, which handles Cloudinary upload, optional Podio attachment, and
+ * DB record creation all in one shot.
+ *
+ * Expected FormData fields (forwarded as-is):
+ *   - file          File       The file to upload
+ *   - entity_id     string     Internal DB ID (e.g. "PAR5147", "QID60123")
+ *   - year          string?    Job year — required when sync_podio=true
+ *   - description   string?    Optional description
+ *   - tag           string?    Tag (default: "general")
+ *
+ * Query params forwarded:
+ *   - sync_podio    "true"|"false"   Whether to attach to Podio item
+ */
 export async function POST(request: NextRequest) {
   try {
-    console.log("[upload] API route called")
+    const { searchParams } = new URL(request.url)
+    const syncPodio = searchParams.get("sync_podio") ?? "false"
 
-    const formData = await request.formData()
-    const file = formData.get("file") as File | null
-    const jobId = formData.get("jobId") as string | null
-    const jobType = formData.get("jobType") as string | null
-    const description = formData.get("description") as string | null
-    const tag = (formData.get("tag") as string) || "general"
+    // Read the raw FormData from the incoming request
+    const incomingForm = await request.formData()
 
-    console.log("[upload] Received request:", {
-      fileName: file?.name,
-      fileSize: file?.size,
-      jobId,
-      jobType,
-      description,
-      tag,
+    // Build a new FormData to forward — we re-append every field so we can
+    // also inject the year from the form if not already there
+    const outgoingForm = new FormData()
+    for (const [key, value] of incomingForm.entries()) {
+      outgoingForm.append(key, value)
+    }
+
+    const targetUrl = `${PYTHON_API_URL}/attachments/upload?sync_podio=${syncPodio}`
+    console.log("[upload proxy] POST →", targetUrl)
+
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      body: outgoingForm,
+      // Do NOT set Content-Type — fetch sets it automatically with the correct
+      // multipart boundary when body is FormData.
     })
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    const contentType = response.headers.get("content-type") ?? ""
+    const isJson = contentType.includes("application/json")
+
+    if (!response.ok) {
+      const body = isJson
+        ? await response.json().catch(() => ({}))
+        : { error: await response.text().catch(() => `HTTP ${response.status}`) }
+      console.error("[upload proxy] backend error:", response.status, body)
+      return NextResponse.json(body, { status: response.status })
     }
 
-    // ✅ FIX: validate jobId is a real non-empty value
-    if (!jobId || jobId === "undefined" || jobId === "null") {
-      console.error("[upload] Invalid jobId received:", jobId)
-      return NextResponse.json({ error: "Job ID is required" }, { status: 400 })
-    }
+    const result = isJson ? await response.json() : { success: true }
+    return NextResponse.json(result, { status: response.status })
 
-    // ✅ FIX: jobType is used only for the Cloudinary folder path — fall back gracefully
-    const resolvedJobType = (!jobType || jobType === "undefined" || jobType === "null")
-      ? "UNKNOWN"
-      : jobType.toUpperCase()
-
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    const folder = `Jobs/${resolvedJobType}/${jobId}`
-    const publicId = file.name.split(".")[0]
-    const tags = `${tag},${jobId}`
-    const timestamp = Math.round(Date.now() / 1000)
-
-    const paramsToSign = `folder=${folder}&public_id=${publicId}&tags=${tags}&timestamp=${timestamp}${API_SECRET}`
-    const signature = await generateSHA1(paramsToSign)
-
-    const cloudinaryForm = new FormData()
-    cloudinaryForm.append("file", new Blob([buffer]), file.name)
-    cloudinaryForm.append("api_key", API_KEY!)
-    cloudinaryForm.append("timestamp", timestamp.toString())
-    cloudinaryForm.append("signature", signature)
-    cloudinaryForm.append("folder", folder)
-    cloudinaryForm.append("public_id", publicId)
-    cloudinaryForm.append("tags", tags)
-
-    console.log("[upload] Uploading to Cloudinary, folder:", folder)
-
-    const cloudinaryResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-      { method: "POST", body: cloudinaryForm },
-    )
-
-    const contentType = cloudinaryResponse.headers.get("content-type")
-    if (!contentType?.includes("application/json")) {
-      const textResponse = await cloudinaryResponse.text()
-      console.error("[upload] Cloudinary returned non-JSON:", textResponse)
-      return NextResponse.json(
-        { error: "Failed to upload file to Cloudinary", details: textResponse },
-        { status: 500 },
-      )
-    }
-
-    const cloudinaryData = await cloudinaryResponse.json()
-
-    if (!cloudinaryResponse.ok) {
-      console.error("[upload] Cloudinary upload failed:", cloudinaryData)
-      return NextResponse.json(
-        {
-          error: "Failed to upload file to Cloudinary",
-          details: cloudinaryData?.error?.message || "Unknown Cloudinary error",
-        },
-        { status: 500 },
-      )
-    }
-
-    console.log("[upload] Cloudinary upload OK:", cloudinaryData.secure_url)
-
-    // ── Create attachment record in DB ──────────────────────────────────────
-    try {
-      // ✅ FIX: Document_type stored lowercase to match frontend filter comparisons
-      //         (AttachmentCard and JobDocumentsTab both do .toLowerCase() checks)
-      const rawFormat: string = cloudinaryData.format ?? file.name.split(".").pop() ?? "unknown"
-
-      const attachmentData = {
-        Document_name: cloudinaryData.original_filename || file.name,
-        Attachment_descr: description || "",
-        Link: cloudinaryData.secure_url,
-        Document_type: rawFormat.toLowerCase(),   // ✅ lowercase
-        ID_Jobs: jobId,
-      }
-
-      console.log("[upload] Creating attachment record:", attachmentData)
-
-      const attachmentResponse = await fetch(`${PYTHON_API_URL}/attachments/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(attachmentData),
-      })
-
-      if (!attachmentResponse.ok) {
-        const attachmentError = await attachmentResponse.text()
-        console.error("[upload] Failed to create attachment record:", attachmentError)
-        // ✅ Surface the DB error to the client so it's visible in logs/toast
-        return NextResponse.json(
-          {
-            error: "File uploaded to Cloudinary but failed to save attachment record",
-            details: attachmentError,
-            cloudinary_url: cloudinaryData.secure_url,
-          },
-          { status: 500 },
-        )
-      }
-
-      const attachmentResult = await attachmentResponse.json()
-      console.log("[upload] Attachment record created:", attachmentResult)
-
-      return NextResponse.json({
-        success: true,
-        data: cloudinaryData,
-        attachment: attachmentResult,
-      })
-    } catch (attachmentError) {
-      console.error("[upload] Unexpected error creating attachment record:", attachmentError)
-      return NextResponse.json(
-        {
-          error: "File uploaded to Cloudinary but failed to save attachment record",
-          details: attachmentError instanceof Error ? attachmentError.message : "Unknown error",
-          cloudinary_url: cloudinaryData.secure_url,
-        },
-        { status: 500 },
-      )
-    }
   } catch (error) {
-    console.error("[upload] Unhandled error:", error)
+    console.error("[upload proxy] unhandled error:", error)
     return NextResponse.json(
       {
         error: "Failed to upload file",
