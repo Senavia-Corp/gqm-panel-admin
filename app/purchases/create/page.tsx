@@ -11,6 +11,7 @@ import {
   ShoppingCart, ClipboardList, Tag, Link2, Search,
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle,
 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -298,11 +299,11 @@ const JOB_TYPE_COLORS: Record<string, string> = {
   PAR: "bg-amber-100 text-amber-700",
 }
 const JOB_STATUS_COLORS: Record<string, string> = {
-  Active:     "bg-emerald-100 text-emerald-700",
-  Completed:  "bg-slate-100 text-slate-600",
+  Active: "bg-emerald-100 text-emerald-700",
+  Completed: "bg-slate-100 text-slate-600",
   "In Progress": "bg-blue-100 text-blue-700",
-  Pending:    "bg-amber-100 text-amber-700",
-  Cancelled:  "bg-red-100 text-red-600",
+  Pending: "bg-amber-100 text-amber-700",
+  Cancelled: "bg-red-100 text-red-600",
 }
 
 function JobPickerModal({
@@ -487,7 +488,7 @@ function StepIndicator({ step, done }: { step: Step; done: Partial<Record<Step, 
             <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all
               ${isActive ? "bg-emerald-600 text-white shadow-sm" :
                 isDone ? "bg-emerald-50 text-emerald-700" :
-                "bg-slate-100 text-slate-400"}`}>
+                  "bg-slate-100 text-slate-400"}`}>
               {isDone && !isActive
                 ? <CheckCircle2 className="h-3 w-3" />
                 : <Icon className="h-3 w-3" />}
@@ -521,9 +522,9 @@ function SectionCard({
 }) {
   const colors: Record<string, string> = {
     emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    slate:   "bg-slate-100 text-slate-500 border-slate-200",
-    blue:    "bg-blue-50 text-blue-600 border-blue-100",
-    amber:   "bg-amber-50 text-amber-600 border-amber-100",
+    slate: "bg-slate-100 text-slate-500 border-slate-200",
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
   }
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -556,6 +557,9 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 // ─────────────────────────────────────────────────────────────────────────────
 export default function CreatePurchasePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams?.get("returnTo") ?? null
+  const backUrl = returnTo ? decodeURIComponent(returnTo) : "/purchases"
   const [user, setUser] = useState<any>(null)
   const [step, setStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
@@ -745,6 +749,8 @@ export default function CreatePurchasePage() {
     })
   }
 
+
+
   if (!user) return null
 
   return (
@@ -774,7 +780,7 @@ export default function CreatePurchasePage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
                   <button
-                    onClick={() => router.push("/purchases")}
+                    onClick={() => router.push(backUrl)}
                     className="mt-0.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -1084,7 +1090,7 @@ export default function CreatePurchasePage() {
                           </Button>
                           <Button
                             disabled={!jobLinked || loading}
-                            onClick={() => router.push("/purchases")}
+                            onClick={() => router.push(backUrl)}
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -1200,7 +1206,7 @@ export default function CreatePurchasePage() {
                   <Button
                     variant="outline"
                     className="w-full text-xs text-slate-500"
-                    onClick={() => router.push("/purchases")}
+                    onClick={() => router.push(backUrl)}
                   >
                     Cancelar
                   </Button>

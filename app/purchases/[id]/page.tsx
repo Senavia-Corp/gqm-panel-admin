@@ -12,6 +12,7 @@ import {
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle, MapPin,
   Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp,
 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -116,9 +117,9 @@ function avatarColor(id?: string | null) {
 const STATUS_OPTIONS = ["In Progress", "Completed", "Pending", "Cancelled"]
 const STATUS_COLORS: Record<string, string> = {
   "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
-  "Completed":   "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Pending":     "bg-amber-100 text-amber-700 border-amber-200",
-  "Cancelled":   "bg-red-100 text-red-600 border-red-200",
+  "Completed": "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "Pending": "bg-amber-100 text-amber-700 border-amber-200",
+  "Cancelled": "bg-red-100 text-red-600 border-red-200",
 }
 
 const JOB_TYPE_COLORS: Record<string, string> = {
@@ -127,19 +128,19 @@ const JOB_TYPE_COLORS: Record<string, string> = {
   PAR: "bg-amber-100 text-amber-700",
 }
 const JOB_STATUS_COLORS: Record<string, string> = {
-  Active:        "bg-emerald-100 text-emerald-700",
-  Completed:     "bg-slate-100 text-slate-600",
+  Active: "bg-emerald-100 text-emerald-700",
+  Completed: "bg-slate-100 text-slate-600",
   "In Progress": "bg-blue-100 text-blue-700",
-  Pending:       "bg-amber-100 text-amber-700",
-  Cancelled:     "bg-red-100 text-red-600",
+  Pending: "bg-amber-100 text-amber-700",
+  Cancelled: "bg-red-100 text-red-600",
 }
 
 const API = {
-  purchases:          "/api/purchases",
-  purchaseOrders:     "/api/purchase-orders",
+  purchases: "/api/purchases",
+  purchaseOrders: "/api/purchase-orders",
   purchaseOrderItems: "/api/purchase-order-items",
-  membersTable:       "/api/members/table",
-  jobsTable:          "/api/jobs",
+  membersTable: "/api/members/table",
+  jobsTable: "/api/jobs",
 }
 
 async function apiCall<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -324,20 +325,20 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-emerald-500" /></div>
             : error ? <div className="flex flex-col items-center gap-2 py-10"><AlertCircle className="h-6 w-6 text-red-400" /><p className="text-xs text-slate-500">{error}</p></div>
-            : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
-            : rows.map(m => (
-              <button key={m.ID_Member} onClick={() => onSelect(m)}
-                className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
-                <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${avatarColor(m.ID_Member)}`}>
-                  {initials(m.Member_Name)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-800 truncate group-hover:text-emerald-700">{m.Member_Name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "No role"} · {m.ID_Member}</p>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
-              </button>
-            ))}
+              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
+                : rows.map(m => (
+                  <button key={m.ID_Member} onClick={() => onSelect(m)}
+                    className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
+                    <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${avatarColor(m.ID_Member)}`}>
+                      {initials(m.Member_Name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-800 truncate group-hover:text-emerald-700">{m.Member_Name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "No role"} · {m.ID_Member}</p>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
+                  </button>
+                ))}
         </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-5 py-2.5">
@@ -415,24 +416,24 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-emerald-500" /></div>
             : error ? <div className="flex flex-col items-center gap-2 py-10"><AlertCircle className="h-6 w-6 text-red-400" /><p className="text-xs text-slate-500">{error}</p></div>
-            : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
-            : rows.map(j => (
-              <button key={j.ID_Jobs} onClick={() => onSelect(j)}
-                className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                  <Briefcase className="h-3.5 w-3.5 text-slate-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold font-mono text-slate-800 group-hover:text-emerald-700">{j.ID_Jobs}</p>
-                    {j.Job_type && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${JOB_TYPE_COLORS[j.Job_type] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_type}</span>}
-                    {j.Job_status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${JOB_STATUS_COLORS[j.Job_status] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_status}</span>}
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-slate-400 truncate">{j.Project_name ?? "Unnamed"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}</p>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
-              </button>
-            ))}
+              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
+                : rows.map(j => (
+                  <button key={j.ID_Jobs} onClick={() => onSelect(j)}
+                    className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                      <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold font-mono text-slate-800 group-hover:text-emerald-700">{j.ID_Jobs}</p>
+                        {j.Job_type && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${JOB_TYPE_COLORS[j.Job_type] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_type}</span>}
+                        {j.Job_status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${JOB_STATUS_COLORS[j.Job_status] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_status}</span>}
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-slate-400 truncate">{j.Project_name ?? "Unnamed"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}</p>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
+                  </button>
+                ))}
         </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-5 py-2.5">
@@ -473,10 +474,10 @@ function ItemRow({
     setSaving(true); setErr(null)
     try {
       const patch: Partial<PurchaseOrderItem> = {}
-      if (draft.Name !== item.Name)                   patch.Name = draft.Name
-      if (draft.Quote_shop !== item.Quote_shop)       patch.Quote_shop = draft.Quote_shop
-      if (draft.Quote_link !== item.Quote_link)       patch.Quote_link = draft.Quote_link
-      if (draft.Quote_value !== item.Quote_value)     patch.Quote_value = asNumber(draft.Quote_value)
+      if (draft.Name !== item.Name) patch.Name = draft.Name
+      if (draft.Quote_shop !== item.Quote_shop) patch.Quote_shop = draft.Quote_shop
+      if (draft.Quote_link !== item.Quote_link) patch.Quote_link = draft.Quote_link
+      if (draft.Quote_value !== item.Quote_value) patch.Quote_value = asNumber(draft.Quote_value)
       if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
       if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
       if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
@@ -851,6 +852,9 @@ export default function PurchaseDetailsPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const searchParams = useSearchParams()
+  const returnTo = searchParams?.get("returnTo") ?? null
+  const backUrl = returnTo ? decodeURIComponent(returnTo) : "/purchases"
 
   const [user, setUser] = useState<any>(null)
   const [purchase, setPurchase] = useState<Purchase | null>(null)
@@ -883,7 +887,7 @@ export default function PurchaseDetailsPage() {
       // Extract scalar IDs so the rest of the UI can use them directly
       const normalizedData: Purchase = {
         ...raw,
-        ID_Jobs:   raw.ID_Jobs   ?? raw.job?.ID_Jobs   ?? null,
+        ID_Jobs: raw.ID_Jobs ?? raw.job?.ID_Jobs ?? null,
         ID_Member: raw.ID_Member ?? raw.member?.ID_Member ?? null,
         Selling_rep: raw.Selling_rep ?? raw.member?.Member_Name ?? null,
         purchase_orders: Array.isArray(raw.purchase_orders) ? raw.purchase_orders : [],
@@ -913,7 +917,7 @@ export default function PurchaseDetailsPage() {
           ...prev,
           ...updated,
           purchase_orders: updated.purchase_orders ?? prev.purchase_orders,
-          ID_Jobs:   "ID_Jobs"   in patch ? (patch.ID_Jobs   ?? updated.ID_Jobs   ?? prev.ID_Jobs)   : prev.ID_Jobs,
+          ID_Jobs: "ID_Jobs" in patch ? (patch.ID_Jobs ?? updated.ID_Jobs ?? prev.ID_Jobs) : prev.ID_Jobs,
           ID_Member: "ID_Member" in patch ? (patch.ID_Member ?? updated.ID_Member ?? prev.ID_Member) : prev.ID_Member,
         }
       })
@@ -1080,6 +1084,7 @@ export default function PurchaseDetailsPage() {
   )
 
   const statusColor = STATUS_COLORS[purchase.Status ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
+  
 
   return (
     <>
@@ -1096,7 +1101,7 @@ export default function PurchaseDetailsPage() {
             <div className="border-b border-slate-200 bg-white px-6 py-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.push("/purchases")}
+                  <button onClick={() => router.push(backUrl)}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
                     <ArrowLeft className="h-4 w-4" />
                   </button>

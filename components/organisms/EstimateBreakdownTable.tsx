@@ -9,7 +9,10 @@ import {
   FileUp, Plus, Save, X, Trash2, Eye, Search,
   ChevronDown, ChevronRight, FilePlus2, AlertTriangle,
   DollarSign, TrendingUp, BarChart3, Package, RefreshCcw,
+  Zap, ZapOff,
 } from "lucide-react"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface EstimateBreakdownTableProps {
   items: EstimateItem[]
@@ -22,31 +25,29 @@ interface EstimateBreakdownTableProps {
   onDeleteAllEstimates: () => Promise<void>
   onCancelImport: () => void
   onDeleteItem?: (item: EstimateItem) => Promise<void>
+  jobYear?: number
 }
 
-// ─── Micro-components ─────────────────────────────────────────────────────────
+// Cost types that need Podio sync on delete
+const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF"])
+
+// ─── Stat card ────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color: "blue" | "emerald" | "amber"
 }) {
-  const map = {
-    blue:    "border-blue-100 bg-blue-50",
-    emerald: "border-emerald-100 bg-emerald-50",
-    amber:   "border-amber-100 bg-amber-50",
-  }
-  const txt = {
-    blue:    "text-blue-600",
-    emerald: "text-emerald-600",
-    amber:   "text-amber-600",
-  }
+  const map = { blue: "border-blue-100 bg-blue-50", emerald: "border-emerald-100 bg-emerald-50", amber: "border-amber-100 bg-amber-50" }
+  const txt = { blue: "text-blue-600", emerald: "text-emerald-600", amber: "text-amber-600" }
   return (
     <div className={`rounded-xl border p-4 ${map[color]}`}>
       <p className={`text-[11px] font-semibold uppercase tracking-wide ${txt[color]}`}>{label}</p>
-      <p className={`mt-1 text-2xl font-black ${txt[color].replace("600","800")}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-black ${txt[color].replace("600", "800")}`}>{value}</p>
       {sub && <p className={`mt-0.5 text-[11px] ${txt[color]}`}>{sub}</p>}
     </div>
   )
 }
+
+// ─── Generic confirm dialog (for Delete All) ──────────────────────────────────
 
 function ConfirmDialog({ open, onClose, title, description, onConfirm, loading, confirmLabel = "Delete" }: {
   open: boolean; onClose: () => void; title: string; description: string
@@ -80,21 +81,173 @@ function ConfirmDialog({ open, onClose, title, description, onConfirm, loading, 
   )
 }
 
+// ─── Delete estimate cost dialog (with optional Podio sync toggle) ─────────────
+// Shown when deleting a single estimate cost. If the item is BDF or PTLGCF,
+// an additional Podio sync toggle appears so the user can push the recalculated
+// Bldg_dept_fees / Ptl_gc_fee to Podio after deletion.
+
+interface DeleteEstimateCostDialogProps {
+  open: boolean
+  onClose: () => void
+  item: EstimateItem | null
+  jobId: string
+  jobYear?: number
+  onConfirm: (syncPodio: boolean) => Promise<void>
+  loading: boolean
+}
+
+function DeleteEstimateCostDialog({
+  open, onClose, item, jobId, jobYear, onConfirm, loading,
+}: DeleteEstimateCostDialogProps) {
+  const [syncPodio, setSyncPodio] = useState(false)
+
+  // Reset toggle when dialog opens for a new item
+  useEffect(() => {
+    if (open) setSyncPodio(false)
+  }, [open, item?.ID_EstimateItem])
+
+  if (!open || !item) return null
+
+  const needsSync = PODIO_SYNC_TYPES.has(item.Cost_Type ?? "")
+  const fieldName = item.Cost_Type === "BDF" ? "Bldg_dept_fees" : "Ptl_gc_fee"
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(3px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose() }}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-100">
+            <Trash2 className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Delete estimate cost?</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[220px]">
+              {item.Title}
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Warning */}
+          <p className="text-sm text-slate-500">
+            This cost will be permanently removed. This action cannot be undone.
+          </p>
+
+          {/* Podio sync section — only for BDF / PTLGCF */}
+          {needsSync && (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2.5">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  Podio Sync
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Deleting this <span className="font-semibold">{item.Cost_Type}</span> cost
+                  will recalculate{" "}
+                  <span className="font-mono font-semibold">{fieldName}</span>{" "}
+                  in the database. Enable sync to push the updated value to Podio.
+                </p>
+              </div>
+
+              {/* Toggle */}
+              <button
+                type="button"
+                onClick={() => setSyncPodio((v) => !v)}
+                disabled={loading}
+                className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all ${
+                  syncPodio
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+                } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {syncPodio
+                  ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
+                  : <ZapOff className="h-4 w-4 flex-shrink-0" />
+                }
+                <div className="flex-1 text-left">
+                  <span className="text-xs font-semibold">
+                    Sync to Podio {syncPodio ? "ON" : "OFF"}
+                  </span>
+                  {syncPodio && jobYear && (
+                    <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                      {jobYear}
+                    </span>
+                  )}
+                  {syncPodio && !jobYear && (
+                    <span className="ml-2 text-[10px] text-red-500">
+                      Year not resolved — sync may fail
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(syncPodio)}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {loading
+              ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
+              : <><Trash2 className="h-3.5 w-3.5" /> Delete</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Helper — PATCH job with sync_podio=true after BDF/PTLGCF deletion ────────
+
+async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<void> {
+  const qs = new URLSearchParams({ sync_podio: "true" })
+  if (jobYear) qs.set("year", String(jobYear))
+  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
+    method:  "PATCH",
+    headers: { "Content-Type": "application/json" },
+    // Empty body — values were already recalculated in DB by recalculate_and_apply
+    body: JSON.stringify({}),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as any)?.error ?? (err as any)?.detail ?? `Podio sync failed (${res.status})`)
+  }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function EstimateBreakdownTable({
   items, onViewDetails, onCreateOrder, onItemsImported, jobId,
-  hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport, onDeleteItem,
+  hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport,
+  onDeleteItem, jobYear,
 }: EstimateBreakdownTableProps) {
-  const [search, setSearch]             = useState("")
-  const [expandedGroups, setExpanded]   = useState<Set<string>>(new Set())
+  const [search, setSearch]               = useState("")
+  const [expandedGroups, setExpanded]     = useState<Set<string>>(new Set())
   const [showDeleteAll, setShowDeleteAll] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<EstimateItem | null>(null)
-  const [isSaving, setIsSaving]         = useState(false)
-  const [isDeleting, setIsDeleting]     = useState(false)
-  const [isDeletingOne, setDeletingOne] = useState(false)
-  const [hasUnsaved, setHasUnsaved]     = useState(false)
-  const [createOpen, setCreateOpen]     = useState(false)
+  const [deleteTarget, setDeleteTarget]   = useState<EstimateItem | null>(null)
+  const [isSaving, setIsSaving]           = useState(false)
+  const [isDeleting, setIsDeleting]       = useState(false)
+  const [isDeletingOne, setDeletingOne]   = useState(false)
+  const [hasUnsaved, setHasUnsaved]       = useState(false)
+  const [createOpen, setCreateOpen]       = useState(false)
   const safeItems = items ?? []
 
   useEffect(() => {
@@ -106,6 +259,7 @@ export function EstimateBreakdownTable({
     setExpanded((prev) => { const s = new Set(prev); s.has(g) ? s.delete(g) : s.add(g); return s })
 
   // ── File upload ──────────────────────────────────────────────────────────
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -134,40 +288,40 @@ export function EstimateBreakdownTable({
           const bc = num(r["Builder Cost"])
           const cp = num(r["Client Price"])
           return {
-            ID_EstimateItem: `TEMP${Date.now()}_${i}`,
-            ID_Jobs: jobId,
-            Category: str(r["Category"]),
-            Cost_Code: str(r["Cost Code"]),
-            Title: str(r["Title"]),
-            Parent_Group: str(r["Parent Group"]),
+            ID_EstimateItem:          `TEMP${Date.now()}_${i}`,
+            ID_Jobs:                  jobId,
+            Category:                 str(r["Category"]),
+            Cost_Code:                str(r["Cost Code"]),
+            Title:                    str(r["Title"]),
+            Parent_Group:             str(r["Parent Group"]),
             Parent_Group_Description: str(r["Parent Group Description"]),
-            Subgroup: str(r["Subgroup"]),
-            Subgroup_Description: str(r["Subgroup Description"]),
-            Option_Type: str(r["Option Type"]),
-            Line_Item_Type: str(r["Line Item Type"]),
-            Description: str(r["Description"]),
-            Quantity: num(r["Quantity"], 1),
-            Unit: str(r["Unit"]),
-            Unit_Cost: num(r["Unit Cost"]),
-            Cost_Type: (str(r["Cost Type"]) as any) || "Subcontractor",
-            Marked_As: str(r["Marked As"]),
-            Builder_Cost: bc,
-            Markup: num(r["Markup"]),
-            Markup_Type: (str(r["Markup Type"]) as any) || "",
-            Unit_Price: num(r["Unit Price"]),
-            Client_Price: cp,
-            Margin: num(r["Margin"]),
-            Profit: r["Profit"] !== "" ? num(r["Profit"], cp - bc) : cp - bc,
-            Percent_Invoiced: num(r["% Invoiced"]),
-            Internal_Notes: str(r["Internal Notes"]),
-            ID_Order: null,
+            Subgroup:                 str(r["Subgroup"]),
+            Subgroup_Description:     str(r["Subgroup Description"]),
+            Option_Type:              str(r["Option Type"]),
+            Line_Item_Type:           str(r["Line Item Type"]),
+            Description:              str(r["Description"]),
+            Quantity:                 num(r["Quantity"], 1),
+            Unit:                     str(r["Unit"]),
+            Unit_Cost:                num(r["Unit Cost"]),
+            Cost_Type:                (str(r["Cost Type"]) as any) || "Subcontractor",
+            Marked_As:                str(r["Marked As"]),
+            Builder_Cost:             bc,
+            Markup:                   num(r["Markup"]),
+            Markup_Type:              (str(r["Markup Type"]) as any) || "",
+            Unit_Price:               num(r["Unit Price"]),
+            Client_Price:             cp,
+            Margin:                   num(r["Margin"]),
+            Profit:                   r["Profit"] !== "" ? num(r["Profit"], cp - bc) : cp - bc,
+            Percent_Invoiced:         num(r["% Invoiced"]),
+            Internal_Notes:           str(r["Internal Notes"]),
+            ID_Order:                 null,
           }
         })
 
       onItemsImported(parsed)
       setHasUnsaved(true)
       toast.success(`Imported ${parsed.length} items from Excel`)
-    } catch (err) {
+    } catch {
       toast.error("Error parsing Excel file")
     } finally { e.target.value = "" }
   }
@@ -188,21 +342,39 @@ export function EstimateBreakdownTable({
     finally { setIsDeleting(false) }
   }
 
-  const handleDeleteOne = async () => {
+  // ── Delete single item — with optional Podio sync ────────────────────────
+  const handleDeleteOne = async (syncPodio: boolean) => {
     if (!deleteTarget || !onDeleteItem) return
     setDeletingOne(true)
     try {
       await onDeleteItem(deleteTarget)
-      toast.success("Estimate cost deleted")
+
+      // If BDF or PTLGCF and sync ON → PATCH job to push recalculated values to Podio.
+      // By the time we reach here, recalculate_and_apply already ran in estimate_routes
+      // (triggered by the DELETE of the estimate cost), so the DB has the updated values.
+      if (syncPodio && PODIO_SYNC_TYPES.has(deleteTarget.Cost_Type ?? "")) {
+        try {
+          await patchJobForPodioSync(jobId, jobYear)
+          toast.success("Estimate cost deleted and Podio synced")
+        } catch (podioErr: any) {
+          // Deletion succeeded — only Podio sync failed. Inform but don't throw.
+          toast.error(`Cost deleted but Podio sync failed: ${podioErr?.message ?? "unknown error"}`)
+        }
+      } else {
+        toast.success("Estimate cost deleted")
+      }
+
       setDeleteTarget(null)
-    } catch { toast.error("Failed to delete estimate cost") }
-    finally { setDeletingOne(false) }
+    } catch {
+      toast.error("Failed to delete estimate cost")
+    } finally {
+      setDeletingOne(false)
+    }
   }
 
   // ── Manual create ────────────────────────────────────────────────────────
   const handleManualCreated = (item: EstimateItem) => {
     onItemsImported([...safeItems, item])
-    // Don't set hasUnsaved — the item is already persisted
   }
 
   // ── Filtering & grouping ─────────────────────────────────────────────────
@@ -223,13 +395,13 @@ export function EstimateBreakdownTable({
     { bc: 0, cp: 0, profit: 0 }
   )
 
-  // Create Order is disabled while there are unsaved imported items
   const canCreateOrder = !hasUnsaved
+  const bdfCount       = safeItems.filter((i) => i.Cost_Type === "BDF").length
 
   return (
     <div className="space-y-4">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -243,7 +415,6 @@ export function EstimateBreakdownTable({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Unsaved import actions */}
             {hasUnsaved && (
               <div className="flex items-center gap-2">
                 <p className="hidden text-[11px] text-amber-600 sm:block">Unsaved — save before creating orders</p>
@@ -253,12 +424,14 @@ export function EstimateBreakdownTable({
                 </button>
                 <button onClick={handleSave} disabled={isSaving}
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
-                  {isSaving ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Saving…</> : <><Save className="h-3.5 w-3.5" /> Save Changes</>}
+                  {isSaving
+                    ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+                    : <><Save className="h-3.5 w-3.5" /> Save Changes</>
+                  }
                 </button>
               </div>
             )}
 
-            {/* Delete all */}
             {hasSavedEstimates && !hasUnsaved && (
               <button onClick={() => setShowDeleteAll(true)}
                 className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors">
@@ -266,7 +439,6 @@ export function EstimateBreakdownTable({
               </button>
             )}
 
-            {/* Upload Excel */}
             {!hasSavedEstimates && !hasUnsaved && (
               <>
                 <input type="file" accept=".xls,.xlsx" id="estimate-upload" onChange={handleFileUpload} className="hidden" />
@@ -277,13 +449,11 @@ export function EstimateBreakdownTable({
               </>
             )}
 
-            {/* Create manually */}
             <button onClick={() => setCreateOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
               <FilePlus2 className="h-3.5 w-3.5" /> New Cost
             </button>
 
-            {/* Create Order — disabled while unsaved */}
             <button
               onClick={canCreateOrder ? onCreateOrder : undefined}
               disabled={!canCreateOrder}
@@ -301,7 +471,6 @@ export function EstimateBreakdownTable({
           </div>
         </div>
 
-        {/* Saving progress hint */}
         {isSaving && (
           <div className="border-t border-amber-100 bg-amber-50 px-5 py-2">
             <p className="text-[11px] font-medium text-amber-700">
@@ -311,7 +480,7 @@ export function EstimateBreakdownTable({
         )}
       </div>
 
-      {/* ── Stats ────────────────────────────────────────────────────────────── */}
+      {/* ── Stats ────────────────────────────────────────────────────────── */}
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard label="Builder Cost" value={`$${totals.bc.toFixed(2)}`} color="blue" sub={`${safeItems.length} items`} />
         <StatCard
@@ -323,9 +492,8 @@ export function EstimateBreakdownTable({
         <StatCard label="Client Price" value={`$${totals.cp.toFixed(2)}`} color="amber" />
       </div>
 
-      {/* ── Table card ───────────────────────────────────────────────────────── */}
+      {/* ── Table ────────────────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        {/* Search */}
         <div className="border-b border-slate-100 px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -372,11 +540,7 @@ export function EstimateBreakdownTable({
                   const gcp = groupItems.reduce((s, i) => s + i.Client_Price, 0)
                   return (
                     <React.Fragment key={group}>
-                      {/* Group row */}
-                      <tr
-                        className="cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors"
-                        onClick={() => toggleGroup(group)}
-                      >
+                      <tr className="cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors" onClick={() => toggleGroup(group)}>
                         <td className="px-4 py-2.5">
                           {expanded
                             ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -392,7 +556,7 @@ export function EstimateBreakdownTable({
                         <td className="px-4 py-2.5 text-right text-xs font-bold text-slate-700">${gcp.toFixed(2)}</td>
                         <td />
                       </tr>
-                      {/* Item rows */}
+
                       {expanded && groupItems.map((item) => (
                         <tr key={item.ID_EstimateItem} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3" />
@@ -409,13 +573,23 @@ export function EstimateBreakdownTable({
                                   Unsaved
                                 </span>
                               )}
+                              {/* Badge for Podio-relevant types */}
+                              {PODIO_SYNC_TYPES.has(item.Cost_Type ?? "") && (
+                                <span className="rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                                  Podio field
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.Cost_Code}</td>
                           <td className="px-4 py-3 text-right text-sm text-slate-600">{item.Quantity.toFixed(2)}</td>
                           <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">${item.Unit_Cost.toFixed(2)}</td>
                           <td className="px-4 py-3">
-                            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                              PODIO_SYNC_TYPES.has(item.Cost_Type ?? "")
+                                ? "border-violet-200 bg-violet-50 text-violet-700"
+                                : "border-slate-200 bg-slate-100 text-slate-600"
+                            }`}>
                               {item.Cost_Type || "—"}
                             </span>
                           </td>
@@ -423,15 +597,19 @@ export function EstimateBreakdownTable({
                           <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${item.Client_Price.toFixed(2)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => onViewDetails(item)}
+                              <button
+                                onClick={() => onViewDetails(item)}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                                title="View details">
+                                title="View details"
+                              >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
                               {onDeleteItem && (
-                                <button onClick={() => setDeleteTarget(item)}
+                                <button
+                                  onClick={() => setDeleteTarget(item)}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
-                                  title="Delete cost">
+                                  title="Delete cost"
+                                >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
@@ -448,7 +626,9 @@ export function EstimateBreakdownTable({
         </div>
       </div>
 
-      {/* ── Dialogs ──────────────────────────────────────────────────────────── */}
+      {/* ── Dialogs ──────────────────────────────────────────────────────── */}
+
+      {/* Delete All — generic, no Podio sync (bulk deletes don't map cleanly to slots) */}
       <ConfirmDialog
         open={showDeleteAll}
         onClose={() => !isDeleting && setShowDeleteAll(false)}
@@ -459,20 +639,23 @@ export function EstimateBreakdownTable({
         confirmLabel="Delete All"
       />
 
-      <ConfirmDialog
+      {/* Delete single — with optional Podio sync for BDF/PTLGCF */}
+      <DeleteEstimateCostDialog
         open={!!deleteTarget}
         onClose={() => !isDeletingOne && setDeleteTarget(null)}
-        title="Delete this estimate cost?"
-        description={`"${deleteTarget?.Title ?? ""}" will be permanently removed. This action cannot be undone.`}
+        item={deleteTarget}
+        jobId={jobId}
+        jobYear={jobYear}
         onConfirm={handleDeleteOne}
         loading={isDeletingOne}
-        confirmLabel="Delete"
       />
 
       <CreateEstimateItemDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         jobId={jobId}
+        jobYear={jobYear}
+        existingBdfCount={bdfCount}
         onCreated={handleManualCreated}
       />
     </div>

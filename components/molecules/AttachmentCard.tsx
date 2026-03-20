@@ -3,8 +3,10 @@
 import { useState } from "react"
 import {
   Download, Trash2, Edit, FileText, ImageIcon, Video,
-  File, ExternalLink, CheckCircle2, AlertTriangle, Unlink,
+  File, ExternalLink, CheckCircle2, AlertTriangle,
+  Zap, ZapOff,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,11 +22,17 @@ import type { Attachment } from "@/lib/types"
 
 interface AttachmentCardProps {
   attachment: Attachment
+  /** Called after a successful delete or update so the parent can reload */
   onDelete?: () => void
   onUpdate?: () => void
+  /** Year resolved from job ID — used by Podio sync */
+  jobYear?:  number
+  /** App type (QID / PTL / PAR) — required by Python when sync_podio=true */
+  appType?:  string
 }
 
-// ── File type helpers ──────────────────────────────────────────────────────
+// ─── File type helpers ────────────────────────────────────────────────────────
+
 const IMAGE_FMTS    = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
 const VIDEO_FMTS    = ["mp4", "mov", "avi", "mkv", "webm"]
 const DOCUMENT_FMTS = ["pdf", "doc", "docx", "xls", "xlsx", "txt"]
@@ -44,16 +52,79 @@ const TYPE_META = {
   other:    { icon: File,      accent: "bg-slate-400",  badge: "bg-slate-50 text-slate-600 border-slate-200" },
 }
 
-function getPublicIdFromUrl(url: string): string | null {
-  try {
-    const match = url.match(/\/v\d+\/(.+?)(\.[^.]+)?$/)
-    return match?.[1] ?? null
-  } catch { return null }
+// ─── Small reusable Podio toggle ──────────────────────────────────────────────
+
+function PodioToggle({
+  value,
+  onChange,
+  jobYear,
+  disabled,
+}: {
+  value: boolean
+  onChange: (v: boolean) => void
+  jobYear?: number
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      disabled={disabled}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all",
+        value
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+          : "border-slate-200 bg-white text-slate-400 hover:border-slate-300",
+        disabled && "opacity-50 cursor-not-allowed",
+      )}
+    >
+      {value
+        ? <Zap    className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
+        : <ZapOff className="h-4 w-4 flex-shrink-0" />
+      }
+      <div className="flex-1 text-left">
+        <span className="text-xs font-semibold">
+          Sync to Podio {value ? "ON" : "OFF"}
+        </span>
+        {value && jobYear && (
+          <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+            {jobYear}
+          </span>
+        )}
+        {value && !jobYear && (
+          <span className="ml-2 text-[10px] text-red-500">Year not resolved — sync may fail</span>
+        )}
+      </div>
+    </button>
+  )
 }
 
-export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCardProps) {
-  const [showEditDialog,    setShowEditDialog]    = useState(false)
-  const [showDeleteDialog,  setShowDeleteDialog]  = useState(false)   // ← nuevo modal
+// ─── Helper — build query string for sync params ──────────────────────────────
+
+function buildSyncQs(syncPodio: boolean, appType?: string, jobYear?: number): string {
+  const qs = new URLSearchParams()
+  qs.set("sync_podio", syncPodio ? "true" : "false")
+  if (syncPodio && appType)  qs.set("app_type", appType)
+  if (syncPodio && jobYear)  qs.set("year",     String(jobYear))
+  return qs.toString()
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function AttachmentCard({
+  attachment,
+  onDelete,
+  onUpdate,
+  jobYear,
+  appType,
+}: AttachmentCardProps) {
+  const [showEditDialog,   setShowEditDialog]   = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Per-dialog independent Podio sync toggles (default OFF)
+  const [editSyncPodio,   setEditSyncPodio]   = useState(false)
+  const [deleteSyncPodio, setDeleteSyncPodio] = useState(false)
+
   const [editedDescription, setEditedDescription] = useState(attachment.Attachment_descr || "")
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -65,28 +136,43 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
   const Icon = meta.icon
   const isImage = kind === "image"
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────
+
   const handleDownload = () => window.open(attachment.Link, "_blank")
 
-  const handleEdit = () => {
+  const handleOpenEdit = () => {
     setEditedDescription(attachment.Attachment_descr || "")
+    setEditSyncPodio(false)
     setShowEditDialog(true)
+  }
+
+  const handleOpenDelete = () => {
+    setDeleteSyncPodio(false)
+    setShowDeleteDialog(true)
   }
 
   const handleSaveEdit = async () => {
     setIsUpdating(true)
     try {
-      const res = await fetch(`/api/attachments/${attachment.ID_Attachment}`, {
+      const qs  = buildSyncQs(editSyncPodio, appType, jobYear)
+      const res = await fetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ Attachment_descr: editedDescription }),
       })
-      if (!res.ok) throw new Error("Failed to update attachment")
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as any)?.error ?? (err as any)?.detail ?? "Failed to update")
+      }
       toast({ title: "Description updated", description: "Changes saved successfully." })
       setShowEditDialog(false)
       onUpdate?.()
-    } catch {
-      toast({ title: "Error", description: "Failed to update description", variant: "destructive" })
+    } catch (err) {
+      toast({
+        title:       "Error",
+        description: err instanceof Error ? err.message : "Failed to update description",
+        variant:     "destructive",
+      })
     } finally {
       setIsUpdating(false)
     }
@@ -95,19 +181,27 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
   const handleDeleteConfirmed = async () => {
     setIsDeleting(true)
     try {
-      const publicId = getPublicIdFromUrl(attachment.Link)
-      const url = publicId
-        ? `/api/attachments/${attachment.ID_Attachment}?publicId=${encodeURIComponent(publicId)}`
-        : `/api/attachments/${attachment.ID_Attachment}`
-
-      const res = await fetch(url, { method: "DELETE" })
-      if (!res.ok) throw new Error("Failed to delete attachment")
-
-      toast({ title: "File deleted", description: `${attachment.Document_name} removed successfully.` })
+      // Backend now handles Cloudinary deletion internally — no publicId needed.
+      const qs  = buildSyncQs(deleteSyncPodio, appType, jobYear)
+      const res = await fetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as any)?.error ?? (err as any)?.detail ?? "Failed to delete")
+      }
+      toast({
+        title:       "File deleted",
+        description: `${attachment.Document_name} removed successfully.`,
+      })
       setShowDeleteDialog(false)
       onDelete?.()
-    } catch {
-      toast({ title: "Error", description: "Failed to delete file", variant: "destructive" })
+    } catch (err) {
+      toast({
+        title:       "Error",
+        description: err instanceof Error ? err.message : "Failed to delete file",
+        variant:     "destructive",
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -115,7 +209,7 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
 
   return (
     <>
-      {/* ── Card ──────────────────────────────────────────────────────────── */}
+      {/* ── Card ────────────────────────────────────────────────────────── */}
       <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
 
         {/* Color accent bar */}
@@ -163,11 +257,10 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
           <p className="truncate text-sm font-semibold text-slate-800" title={attachment.Document_name}>
             {attachment.Document_name}
           </p>
-          {attachment.Attachment_descr ? (
-            <p className="mt-1 line-clamp-2 text-xs text-slate-500">{attachment.Attachment_descr}</p>
-          ) : (
-            <p className="mt-1 text-xs italic text-slate-300">No description</p>
-          )}
+          {attachment.Attachment_descr
+            ? <p className="mt-1 line-clamp-2 text-xs text-slate-500">{attachment.Attachment_descr}</p>
+            : <p className="mt-1 text-xs italic text-slate-300">No description</p>
+          }
 
           {/* Actions */}
           <div className="mt-4 flex items-center gap-1.5">
@@ -179,14 +272,14 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
               Download
             </button>
             <button
-              onClick={handleEdit}
+              onClick={handleOpenEdit}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
               title="Edit description"
             >
               <Edit className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={() => setShowDeleteDialog(true)}   // ← abre modal, no confirm()
+              onClick={handleOpenDelete}
               disabled={isDeleting}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
               title="Delete file"
@@ -200,11 +293,13 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
         </div>
       </div>
 
-      {/* ── Delete confirmation modal ──────────────────────────────────── */}
-      <Dialog open={showDeleteDialog} onOpenChange={(v) => !isDeleting && setShowDeleteDialog(v)}>
+      {/* ── Delete confirmation dialog ───────────────────────────────────── */}
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={(v) => !isDeleting && setShowDeleteDialog(v)}
+      >
         <DialogContent className="!max-w-[420px] gap-0 overflow-hidden p-0">
-
-          {/* Header — red stripe like UnlinkMemberDialog */}
+          {/* Red header */}
           <div className="border-b border-red-100 bg-red-50 px-6 py-5">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
@@ -237,6 +332,17 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
               <p className="text-xs text-amber-700">
                 The file will be permanently removed from the database and from Cloudinary storage.
               </p>
+            </div>
+
+            {/* Podio sync toggle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Podio Sync</Label>
+              <PodioToggle
+                value={deleteSyncPodio}
+                onChange={setDeleteSyncPodio}
+                jobYear={jobYear}
+                disabled={isDeleting}
+              />
             </div>
 
             {/* Actions */}
@@ -272,8 +378,8 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit description modal ─────────────────────────────────────── */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      {/* ── Edit description dialog ──────────────────────────────────────── */}
+      <Dialog open={showEditDialog} onOpenChange={(v) => !isUpdating && setShowEditDialog(v)}>
         <DialogContent className="!max-w-[460px] gap-0 overflow-hidden p-0">
           <div className="border-b border-slate-100 px-6 py-5">
             <DialogTitle className="text-base font-semibold">Edit Description</DialogTitle>
@@ -281,18 +387,39 @@ export function AttachmentCard({ attachment, onDelete, onUpdate }: AttachmentCar
               {attachment.Document_name}
             </DialogDescription>
           </div>
-          <div className="p-6">
-            <Label htmlFor="edit-desc" className="text-sm font-medium text-slate-700">Description</Label>
-            <Input
-              id="edit-desc"
-              placeholder="Enter a description…"
-              value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-              className="mt-2"
-              onKeyDown={(e) => e.key === "Enter" && !isUpdating && handleSaveEdit()}
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={isUpdating}>
+
+          <div className="flex flex-col gap-4 p-6">
+            {/* Description input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-desc" className="text-sm font-medium text-slate-700">
+                Description
+              </Label>
+              <Input
+                id="edit-desc"
+                placeholder="Enter a description…"
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !isUpdating && handleSaveEdit()}
+              />
+            </div>
+
+            {/* Podio sync toggle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Podio Sync</Label>
+              <PodioToggle
+                value={editSyncPodio}
+                onChange={setEditSyncPodio}
+                jobYear={jobYear}
+                disabled={isUpdating}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditDialog(false)}
+                disabled={isUpdating}
+              >
                 Cancel
               </Button>
               <Button
