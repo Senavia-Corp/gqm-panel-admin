@@ -17,6 +17,7 @@ type Props = {
   onDeleteAllEstimates: () => Promise<void>
   onCancelImport: () => void
   onDeleteItem: (item: EstimateItem) => Promise<void>
+  jobYear?: number
 }
 
 export function JobEstimateTab({
@@ -30,7 +31,8 @@ export function JobEstimateTab({
   onSaveEstimates,
   onDeleteAllEstimates,
   onCancelImport,
-  onDeleteItem
+  onDeleteItem,
+  jobYear,
 }: Props) {
   return (
     <div className="space-y-4">
@@ -48,6 +50,7 @@ export function JobEstimateTab({
           onDeleteAllEstimates={onDeleteAllEstimates}
           onCancelImport={onCancelImport}
           onDeleteItem={onDeleteItem}
+          jobYear={jobYear}
         />
       )}
     </div>

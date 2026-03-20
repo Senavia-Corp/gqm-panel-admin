@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast"
 import { JobRightSidebar } from "@/components/organisms/JobRightSidebar"
 
 import type { Subcontractor, Document, Task, EstimateItem, SubcontractorOrder } from "@/lib/types"
-import { ChatSettingsDialog } from "@/components/organisms/ChatSettingsDialog"
 import { CostDialog } from "@/components/organisms/CostDialog"
 import { AddMemberDialog } from "@/components/organisms/AddMemberDialog"
 import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
@@ -50,6 +49,8 @@ import { Label } from "@/components/ui/label"
 import { LinkMemberDialog } from "@/components/organisms/LinkMemberDialog"
 import { UnlinkMemberDialog } from "@/components/organisms/UnlinkMemberDialog"
 import { apiFetch } from "@/lib/apiFetch"
+import { PodioSyncAfterImportDialog } from "@/components/organisms/PodioSyncAfterImportDialog"
+import { useSearchParams } from "next/navigation"
 
 
 const TechnicianJobSidebar = dynamic(
@@ -65,63 +66,6 @@ const LeadTechnicianTechniciansView = dynamic(
   { ssr: false },
 )
 
-const mockDocuments = [
-  { id: "1", fileName: "FileName.jpg", fileSize: "2.5 MB", uploadDate: "01/15/2025", tag: "TAG" },
-  { id: "2", fileName: "FileName.jpg", fileSize: "1.8 MB", uploadDate: "01/14/2025", tag: "TAG" },
-  { id: "3", fileName: "FileName.jpg", fileSize: "3.2 MB", uploadDate: "01/13/2025", tag: "TAG" },
-  { id: "4", fileName: "FileName.jpg", fileSize: "4.1 MB", uploadDate: "01/12/2025", tag: "TAG" },
-  { id: "5", fileName: "FileName.jpg", fileSize: "2.9 MB", uploadDate: "01/11/2025", tag: "TAG" },
-  { id: "6", fileName: "FileName.jpg", fileSize: "1.5 MB", uploadDate: "01/10/2025", tag: "TAG" },
-  { id: "7", fileName: "FileName.jpg", fileSize: "3.7 MB", uploadDate: "01/09/2025", tag: "TAG" },
-  { id: "8", fileName: "FileName.jpg", fileSize: "2.2 MB", uploadDate: "01/08/2025", tag: "TAG" },
-]
-
-const mockAdminChatMessages = [
-  {
-    id: "1",
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec mollis quam eu libero pharetra, vitae tincidunt ligula tincidunt.",
-    sender: { name: "John Smith", avatar: "/placeholder.svg?height=40&width=40", id: "2" },
-    timestamp: "6:30 pm",
-    isSent: false,
-  },
-  {
-    id: "2",
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec mollis quam eu libero pharetra, vitae tincidunt ligula tincidunt.",
-    sender: { name: "You", avatar: "/placeholder.svg?height=40&width=40", id: "1" },
-    timestamp: "6:30 pm",
-    isSent: true,
-  },
-]
-
-const mockGeneralChatMessages = [
-  {
-    id: "1",
-    content: "Good morning team! Just checking in on the progress.",
-    sender: { name: "Sarah Johnson", avatar: "/placeholder.svg?height=40&width=40", id: "3" },
-    timestamp: "9:15 am",
-    isSent: false,
-  },
-  {
-    id: "2",
-    content: "Everything is on track. We should be done by end of day.",
-    sender: { name: "You", avatar: "/placeholder.svg?height=40&width=40", id: "1" },
-    timestamp: "9:20 am",
-    isSent: true,
-  },
-]
-
-const adminChatParticipants = [
-  { id: "1", name: "Admin User", avatar: "/placeholder.svg?height=40&width=40", role: "Administrator" },
-  { id: "2", name: "John Smith", avatar: "/placeholder.svg?height=40&width=40", role: "Manager" },
-]
-
-const generalChatParticipants = [
-  { id: "1", name: "Admin User", avatar: "/placeholder.svg?height=40&width=40", role: "Administrator" },
-  { id: "3", name: "Sarah Johnson", avatar: "/placeholder.svg?height=40&width=40", role: "Technician" },
-  { id: "4", name: "Mike Davis", avatar: "/placeholder.svg?height=40&width=40", role: "Technician" },
-]
 
 const mockCosts: Cost[] = [
   { id: "1", name: "Skilled Labor - Carpentry", quantity: 40, unitPrice: 45, total: 1800, type: "Labor" },
@@ -207,14 +151,17 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const { toast } = useToast()
   const routeParams = useParams<{ id: string }>()
   const jobId = String(routeParams?.id ?? "")
+  const searchParams = useSearchParams()
 
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
-  const [activeTab, setActiveTab] = useState("details")
-
-  const [activeChat, setActiveChat] = useState("general")
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams?.get("tab")
+    const validTabs = ["details", "subcontractors", "documents", "pricing",
+      "members", "chat", "tasks", "estimate", "purchases", "technicians"]
+    return validTabs.includes(tab ?? "") ? (tab as string) : "details"
+  })
 
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false)
   const [editingCost, setEditingCost] = useState<Cost | null>(null)
@@ -242,6 +189,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
   const [orders, setOrders] = useState<SubcontractorOrder[]>([])
   const [syncPodio, setSyncPodio] = useState(true)
+
+  const [podioSyncDialogOpen, setPodioSyncDialogOpen] = useState(false)
+  const [importedBdfCount, setImportedBdfCount] = useState(0)
+  const [importedPtlgcfCount, setImportedPtlgcfCount] = useState(0)
 
   const jobDetail = useJobDetail(jobId)
   const job = jobDetail.job
@@ -303,7 +254,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     const parsedUser = JSON.parse(userData)
     setUser(parsedUser)
-    setActiveChat(parsedUser.role === "LEAD_TECHNICIAN" ? "general" : "admin")
 
     setLoadError(null)
     void loadClients()
@@ -371,13 +321,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
   }
 
-  const handleSendMessage = (message: string) => {
-    console.log("[chat] send:", message)
-  }
-
-  const handleSaveChatSettings = (name: string, participants: Array<any>) => {
-    console.log("[chat] save settings:", { name, participants })
-  }
 
   const handleEditCost = (cost: Cost) => {
     setEditingCost(cost)
@@ -494,45 +437,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const handlePricingFieldChange = (field: string, value: number) => {
     if (!job) return
-    const next: any = { ...(job as any) }
-    const mark = (f: string) => (jobDetail as any).markChanged?.(`pricing.${f}`)
-
-    switch (field) {
-      case "gqmFormulaPricing":
-        next.Gqm_formula_pricing = value; mark("gqmFormulaPricing"); break
-      case "gqmAdjFormulaPricing":
-        next.Gqm_adj_formula_pricing = value; mark("gqmAdjFormulaPricing"); break
-      case "gqmTargetReturn":
-        next.Gqm_target_return = value; mark("gqmTargetReturn"); break
-      case "gqmTargetSoldPricing":
-        next.Gqm_target_sold_pricing = value; mark("gqmTargetSoldPricing"); break
-      case "gqmPremiumInMoney":
-        next.Gqm_premium_in_money = value; mark("gqmPremiumInMoney"); break
-      case "gqmFinalSoldPricing":
-        next.Gqm_final_sold_pricing = value; mark("gqmFinalSoldPricing"); break
-      case "gqmFinalPercentage":
-        next.Gqm_final_percentage = value; mark("gqmFinalPercentage"); break
-      case "estimatedRent":
-        next.Estimated_rent = value; mark("estimatedRent"); break
-      case "estimatedMaterial":
-        next.Estimated_material = value; mark("estimatedMaterial"); break
-      case "estimatedCity":
-        next.Estimated_city = value; mark("estimatedCity"); break
-      case "techFormulaPricing":
-        next.Tech_formula_pricing = value; mark("techFormulaPricing"); break
-      case "accReceivable":
-        next.Acc_receivable = value; mark("accReceivable"); break
-      case "gqmFinalFormPricing":
-        next.Gqm_final_form_pricing = value; mark("gqmFinalFormPricing"); break
-      case "gqmFinalAdjFormPricing":
-        next.Gqm_final_adj_form_pricing = value; mark("gqmFinalAdjFormPricing"); break
-      case "gqmFinalTargetReturn":
-        next.Gqm_final_target_return = value; mark("gqmFinalTargetReturn"); break
-      case "gqmFinalPremInMoney":
-        next.Gqm_final_prem_in_money = value; mark("gqmFinalPremInMoney"); break
-    }
-
+    if (field !== "gqmTargetSoldPricing") return   // all others are now read-only
+    const next: any = { ...(job as any), Gqm_target_sold_pricing: value }
     jobDetail.setJob(next)
+      ; (jobDetail as any).markChanged?.("pricing.gqmTargetSoldPricing")
   }
 
   const handlePricingTargetChange = useCallback((value: string | null) => {
@@ -547,34 +455,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       ; (jobDetail as any).markChanged?.("permit")
   }, [job, jobDetail])
 
-  const handleTotalMaterialsFeesChange = useCallback((value: number | null) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Gqm_total_materials_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.totalMaterialsFees")
-  }, [job, jobDetail])
-
-  const handlePaidFeesChange = useCallback((value: number | null) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Gqm_paid_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.paidFees")
-  }, [job, jobDetail])
-
-  const handleBldgDeptFeesChange = useCallback((value: string[]) => {
-    if (!job) return
-    jobDetail.setJob({ ...(job as any), Bldg_dept_fees: value } as any)
-      ; (jobDetail as any).markChanged?.("pricing.bldgDeptFees")
-  }, [job, jobDetail])
-
-  const handleAdjPricingCalculated = async (adjPricing: number) => {
-    if (!job) return
-    const next: any = { ...(job as any) }
-    next.Gqm_adj_formula_pricing = adjPricing
-      ; (jobDetail as any).markChanged?.("pricing.gqmAdjFormulaPricing")
-    jobDetail.setJob(next)
-
+  const handleAdjPricingCalculated = async (_adjPricing: number) => {
     toast({
-      title: "Calculated",
-      description: "Adjusted Formula Pricing calculated. Remember to Save Changes to persist.",
+      title: "Multiplier applied",
+      description: "Adjusted Formula Pricing will update after saving. Save Changes to persist.",
     })
   }
 
@@ -815,6 +699,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         title: "Estimates saved",
         description: `Created ${succeeded}/${toCreate.length}. Skipped ${skipped} (duplicates/existing).`,
       })
+      const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
+      const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+      if (bdfSaved > 0 || ptlgcfSaved > 0) {
+        setImportedBdfCount(bdfSaved)
+        setImportedPtlgcfCount(ptlgcfSaved)
+        setPodioSyncDialogOpen(true)
+      }
       return
     }
 
@@ -823,6 +714,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       description: `Created ${succeeded}/${toCreate.length}. Failed ${failed.length}. Skipped ${skipped}. See console for details.`,
       variant: "destructive",
     })
+    const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
+    const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+    if (bdfSaved > 0 || ptlgcfSaved > 0) {
+      setImportedBdfCount(bdfSaved)
+      setImportedPtlgcfCount(ptlgcfSaved)
+      setPodioSyncDialogOpen(true)
+    }
   }
 
   const handleDeleteAllEstimates = async () => {
@@ -963,6 +861,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           { id: "documents", label: "Documents" },
           { id: "pricing", label: "Pricing" },
           { id: "members", label: "Members" },
+          { id: "chat", label: "Chat" },
           { id: "tasks", label: "Tasks" },
           { id: "estimate", label: "Estimate" },
           { id: "purchases", label: "Purchases" },
@@ -1028,17 +927,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "chat") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
-          <Chat
-            role={user.role}
-            activeChat={activeChat}
-            setActiveChat={setActiveChat}
-            adminChatParticipants={adminChatParticipants}
-            generalChatParticipants={generalChatParticipants}
-            adminMessages={mockAdminChatMessages}
-            generalMessages={mockGeneralChatMessages}
-            onSendMessage={handleSendMessage}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-          />
+          <JobChatTab role={user.role} jobId={jobId} />
         </JobTabLayout>
       )
     }
@@ -1092,14 +981,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onReload={jobDetail.reload}
             onSyncComplete={jobDetail.reload}
             syncPodio={syncPodio}
-            onJobUpdate={async (updates: Record<string, any>) => {
-              await jobDetail.patch(updates, { sync_podio: false })
+            onJobUpdate={async (_updates: Record<string, any>) => {
             }}
             onPricingTargetChange={handlePricingTargetChange}
             onPermitChange={handlePermitChange}
-            onTotalMaterialsFeesChange={handleTotalMaterialsFeesChange}
-            onPaidFeesChange={handlePaidFeesChange}
-            onBldgDeptFeesChange={handleBldgDeptFeesChange}
+            isReloading={jobDetail.isLoading}
           />
         </JobTabLayout>
       )
@@ -1162,6 +1048,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteAllEstimates={handleDeleteAllEstimates}
             onCancelImport={handleCancelImport}
             onDeleteItem={handleDeleteEstimateItem}
+            jobYear={resolveJobYearForPodioSync(job)}
           />
         </JobTabLayout>
       )
@@ -1290,8 +1177,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     onClick={() => setSyncPodio((v) => !v)}
                     disabled={jobDetail.isSaving}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${syncPodio
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
                       }`}
                     title={syncPodio ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
                   >
@@ -1332,15 +1219,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           {renderTab()}
         </main>
       </div>
-
-      <ChatSettingsDialog
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        chatName={activeChat === "admin" ? "Admin Discussion" : "General Project Chat"}
-        chatAvatar={activeChat === "admin" ? "/admin-interface.png" : "/diverse-professional-team.png"}
-        participants={activeChat === "admin" ? adminChatParticipants : generalChatParticipants}
-        onSave={handleSaveChatSettings}
-      />
 
       <CostDialog
         isOpen={isCostDialogOpen}
@@ -1438,6 +1316,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           }}
         />
       )}
+
+      <PodioSyncAfterImportDialog
+        open={podioSyncDialogOpen}
+        onClose={() => setPodioSyncDialogOpen(false)}
+        jobId={resolvedJobId}
+        jobYear={resolvedYear}
+        bdfCount={importedBdfCount}
+        ptlgcfCount={importedPtlgcfCount}
+      />
     </div>
   )
 }

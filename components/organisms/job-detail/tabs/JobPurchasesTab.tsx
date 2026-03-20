@@ -47,10 +47,10 @@ function useDebounce<T>(value: T, ms: number): T {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  "In Progress":  { label: "In Progress",  color: "bg-blue-50 text-blue-700 border-blue-200",     icon: <Clock className="h-3 w-3" /> },
-  "Completed":    { label: "Completed",    color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" /> },
-  "Pending":      { label: "Pending",      color: "bg-amber-50 text-amber-700 border-amber-200",   icon: <Clock className="h-3 w-3" /> },
-  "Cancelled":    { label: "Cancelled",    color: "bg-red-50 text-red-600 border-red-200",         icon: <XCircle className="h-3 w-3" /> },
+  "In Progress": { label: "In Progress", color: "bg-blue-50 text-blue-700 border-blue-200", icon: <Clock className="h-3 w-3" /> },
+  "Completed": { label: "Completed", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" /> },
+  "Pending": { label: "Pending", color: "bg-amber-50 text-amber-700 border-amber-200", icon: <Clock className="h-3 w-3" /> },
+  "Cancelled": { label: "Cancelled", color: "bg-red-50 text-red-600 border-red-200", icon: <XCircle className="h-3 w-3" /> },
 }
 
 function StatusBadge({ status }: { status?: string | null }) {
@@ -69,7 +69,7 @@ function initials(name?: string | null) {
 
 const AVATAR_COLORS = [
   "bg-emerald-100 text-emerald-700", "bg-blue-100 text-blue-700",
-  "bg-violet-100 text-violet-700",   "bg-amber-100 text-amber-700",
+  "bg-violet-100 text-violet-700", "bg-amber-100 text-amber-700",
   "bg-rose-100 text-rose-700",
 ]
 function avatarColor(id?: string | null) {
@@ -296,18 +296,19 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
   }
 
   const handleCreateNew = () => {
-    // Navigate to create purchase page with job pre-filled
-    router.push(`/purchases/create?job_id=${encodeURIComponent(jobId)}`)
+    const returnTo = encodeURIComponent(`/jobs/${jobId}?tab=purchases`)
+    router.push(`/purchases/create?job_id=${encodeURIComponent(jobId)}&returnTo=${returnTo}`)
   }
 
   const handleOpenPurchase = (id: string) => {
-    router.push(`/purchases/${id}`)
+    const returnTo = encodeURIComponent(`/jobs/${jobId}?tab=purchases`)
+    router.push(`/purchases/${id}?returnTo=${returnTo}`)
   }
 
   // Computed summary stats
   const totalSpending = purchases.reduce((a, p) => a + (p.Total_spending ?? 0), 0)
-  const totalOrders   = purchases.reduce((a, p) => a + (p.order_count ?? 0), 0)
-  const totalItems    = purchases.reduce((a, p) => a + (p.item_count ?? 0), 0)
+  const totalOrders = purchases.reduce((a, p) => a + (p.order_count ?? 0), 0)
+  const totalItems = purchases.reduce((a, p) => a + (p.item_count ?? 0), 0)
 
   const STATUS_OPTIONS = ["", "In Progress", "Completed", "Pending", "Cancelled"]
 
@@ -382,11 +383,10 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
             <button
               key={s || "all"}
               onClick={() => { setStatusFilter(s); setPage(1) }}
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold border transition-colors ${
-                statusFilter === s
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
-              }`}
+              className={`rounded-full px-3 py-1 text-[11px] font-semibold border transition-colors ${statusFilter === s
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
+                }`}
             >
               {s || "All"}
             </button>
