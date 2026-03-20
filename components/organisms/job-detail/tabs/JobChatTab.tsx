@@ -16,7 +16,7 @@ import type { UserRole } from "@/lib/types"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Props = {
-  role:  UserRole
+  role: UserRole
   jobId: string
 }
 
@@ -52,7 +52,7 @@ function initials(name: string | null | undefined): string {
 // Deterministic color per member ID so each user always gets the same avatar color
 const AVATAR_COLORS = [
   "bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-amber-500",
-  "bg-rose-500",   "bg-indigo-500", "bg-teal-500",  "bg-orange-500",
+  "bg-rose-500", "bg-indigo-500", "bg-teal-500", "bg-orange-500",
 ]
 function avatarColor(memberId: string): string {
   let hash = 0
@@ -67,11 +67,11 @@ function MessageBubble({
   isSelf,
   showName,
 }: {
-  msg:      ChatMessageData
-  isSelf:   boolean
+  msg: ChatMessageData
+  isSelf: boolean
   showName: boolean
 }) {
-  const name  = msg.member_name ?? "Unknown"
+  const name = msg.member_name ?? "Unknown"
   const color = avatarColor(msg.ID_Member)
 
   return (
@@ -95,11 +95,10 @@ function MessageBubble({
 
         {/* Bubble */}
         <div
-          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
-            isSelf
-              ? "rounded-br-sm bg-emerald-600 text-white"
-              : "rounded-bl-sm bg-white text-slate-800 border border-slate-100"
-          }`}
+          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${isSelf
+            ? "rounded-br-sm bg-emerald-600 text-white"
+            : "rounded-bl-sm bg-white text-slate-800 border border-slate-100"
+            }`}
         >
           {msg.content}
         </div>
@@ -130,8 +129,8 @@ function DateDivider({ date }: { date: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function JobChatTab({ role, jobId }: Props) {
-  const { toast }  = useToast()
-  const bottomRef  = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState("")
 
   const { messages, isLoading, isSending, error, sendMessage, currentUserId } =
@@ -139,7 +138,9 @@ export function JobChatTab({ role, jobId }: Props) {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = messagesContainerRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [messages])
 
   const handleSend = useCallback(async () => {
@@ -150,9 +151,9 @@ export function JobChatTab({ role, jobId }: Props) {
       await sendMessage(trimmed)
     } catch {
       toast({
-        title:       "Failed to send message",
+        title: "Failed to send message",
         description: "Please try again.",
-        variant:     "destructive",
+        variant: "destructive",
       })
       setInput(trimmed)   // restore so the user doesn't lose their text
     }
@@ -169,20 +170,20 @@ export function JobChatTab({ role, jobId }: Props) {
 
   type GroupedEntry =
     | { type: "date"; date: string }
-    | { type: "msg";  msg: ChatMessageData; isSelf: boolean; showName: boolean }
+    | { type: "msg"; msg: ChatMessageData; isSelf: boolean; showName: boolean }
 
   const grouped: GroupedEntry[] = []
-  let lastDate   = ""
+  let lastDate = ""
   let lastSender = ""
 
   for (const msg of messages) {
     const dateStr = formatDate(msg.created_at)
     if (dateStr !== lastDate) {
       grouped.push({ type: "date", date: dateStr })
-      lastDate   = dateStr
+      lastDate = dateStr
       lastSender = ""
     }
-    const isSelf   = msg.ID_Member === currentUserId
+    const isSelf = msg.ID_Member === currentUserId
     const showName = !isSelf && msg.ID_Member !== lastSender
     grouped.push({ type: "msg", msg, isSelf, showName })
     lastSender = msg.ID_Member
@@ -218,7 +219,7 @@ export function JobChatTab({ role, jobId }: Props) {
       )}
 
       {/* ── Messages area ───────────────────────────────────────────────────── */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+      <div ref={messagesContainerRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {!isLoading && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
@@ -241,9 +242,6 @@ export function JobChatTab({ role, jobId }: Props) {
             />
           ),
         )}
-
-        {/* Invisible anchor for auto-scroll */}
-        <div ref={bottomRef} />
       </div>
 
       {/* ── Input area ──────────────────────────────────────────────────────── */}

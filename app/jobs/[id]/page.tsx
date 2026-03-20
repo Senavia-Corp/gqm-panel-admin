@@ -49,6 +49,8 @@ import { Label } from "@/components/ui/label"
 import { LinkMemberDialog } from "@/components/organisms/LinkMemberDialog"
 import { UnlinkMemberDialog } from "@/components/organisms/UnlinkMemberDialog"
 import { apiFetch } from "@/lib/apiFetch"
+import { PodioSyncAfterImportDialog } from "@/components/organisms/PodioSyncAfterImportDialog"
+import { useSearchParams } from "next/navigation"
 
 
 const TechnicianJobSidebar = dynamic(
@@ -63,17 +65,6 @@ const LeadTechnicianTechniciansView = dynamic(
   () => import("@/components/organisms/LeadTechnicianTechniciansView").then((mod) => mod.LeadTechnicianTechniciansView),
   { ssr: false },
 )
-
-const mockDocuments = [
-  { id: "1", fileName: "FileName.jpg", fileSize: "2.5 MB", uploadDate: "01/15/2025", tag: "TAG" },
-  { id: "2", fileName: "FileName.jpg", fileSize: "1.8 MB", uploadDate: "01/14/2025", tag: "TAG" },
-  { id: "3", fileName: "FileName.jpg", fileSize: "3.2 MB", uploadDate: "01/13/2025", tag: "TAG" },
-  { id: "4", fileName: "FileName.jpg", fileSize: "4.1 MB", uploadDate: "01/12/2025", tag: "TAG" },
-  { id: "5", fileName: "FileName.jpg", fileSize: "2.9 MB", uploadDate: "01/11/2025", tag: "TAG" },
-  { id: "6", fileName: "FileName.jpg", fileSize: "1.5 MB", uploadDate: "01/10/2025", tag: "TAG" },
-  { id: "7", fileName: "FileName.jpg", fileSize: "3.7 MB", uploadDate: "01/09/2025", tag: "TAG" },
-  { id: "8", fileName: "FileName.jpg", fileSize: "2.2 MB", uploadDate: "01/08/2025", tag: "TAG" },
-]
 
 
 const mockCosts: Cost[] = [
@@ -160,11 +151,17 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const { toast } = useToast()
   const routeParams = useParams<{ id: string }>()
   const jobId = String(routeParams?.id ?? "")
+  const searchParams = useSearchParams()
 
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
-  const [activeTab, setActiveTab] = useState("details")
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams?.get("tab")
+    const validTabs = ["details", "subcontractors", "documents", "pricing",
+      "members", "chat", "tasks", "estimate", "purchases", "technicians"]
+    return validTabs.includes(tab ?? "") ? (tab as string) : "details"
+  })
 
   const [isCostDialogOpen, setIsCostDialogOpen] = useState(false)
   const [editingCost, setEditingCost] = useState<Cost | null>(null)
@@ -192,6 +189,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
   const [orders, setOrders] = useState<SubcontractorOrder[]>([])
   const [syncPodio, setSyncPodio] = useState(true)
+
+  const [podioSyncDialogOpen, setPodioSyncDialogOpen] = useState(false)
+  const [importedBdfCount, setImportedBdfCount] = useState(0)
+  const [importedPtlgcfCount, setImportedPtlgcfCount] = useState(0)
 
   const jobDetail = useJobDetail(jobId)
   const job = jobDetail.job
@@ -698,6 +699,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         title: "Estimates saved",
         description: `Created ${succeeded}/${toCreate.length}. Skipped ${skipped} (duplicates/existing).`,
       })
+      const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
+      const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+      if (bdfSaved > 0 || ptlgcfSaved > 0) {
+        setImportedBdfCount(bdfSaved)
+        setImportedPtlgcfCount(ptlgcfSaved)
+        setPodioSyncDialogOpen(true)
+      }
       return
     }
 
@@ -706,6 +714,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       description: `Created ${succeeded}/${toCreate.length}. Failed ${failed.length}. Skipped ${skipped}. See console for details.`,
       variant: "destructive",
     })
+    const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
+    const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+    if (bdfSaved > 0 || ptlgcfSaved > 0) {
+      setImportedBdfCount(bdfSaved)
+      setImportedPtlgcfCount(ptlgcfSaved)
+      setPodioSyncDialogOpen(true)
+    }
   }
 
   const handleDeleteAllEstimates = async () => {
@@ -1033,6 +1048,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteAllEstimates={handleDeleteAllEstimates}
             onCancelImport={handleCancelImport}
             onDeleteItem={handleDeleteEstimateItem}
+            jobYear={resolveJobYearForPodioSync(job)}
           />
         </JobTabLayout>
       )
@@ -1300,6 +1316,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           }}
         />
       )}
+
+      <PodioSyncAfterImportDialog
+        open={podioSyncDialogOpen}
+        onClose={() => setPodioSyncDialogOpen(false)}
+        jobId={resolvedJobId}
+        jobYear={resolvedYear}
+        bdfCount={importedBdfCount}
+        ptlgcfCount={importedPtlgcfCount}
+      />
     </div>
   )
 }

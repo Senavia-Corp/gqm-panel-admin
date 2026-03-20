@@ -159,7 +159,7 @@ function parseBullets(description: string): string[] {
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 const CHANGED = "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
-const NORMAL  = "border-slate-200 bg-slate-50 focus:bg-white"
+const NORMAL = "border-slate-200 bg-slate-50 focus:bg-white"
 
 // ─── SectionCard ─────────────────────────────────────────────────────────────
 
@@ -337,10 +337,10 @@ function FinancialDocItem({ item }: { item: any }) {
         <div className="px-3 pb-3 border-t border-slate-100 bg-white pt-2 space-y-1">
           {bullets.length > 1
             ? bullets.map((b, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm text-slate-500">
-                  <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-slate-300" /><span>{b}</span>
-                </div>
-              ))
+              <div key={i} className="flex items-start gap-2 text-sm text-slate-500">
+                <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-slate-300" /><span>{b}</span>
+              </div>
+            ))
             : <p className="text-sm text-slate-500">{item.Description}</p>}
         </div>
       )}
@@ -352,7 +352,7 @@ function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
   const isInv = type === "invoice"
   const accent = isInv
     ? { bg: "bg-emerald-50/50", icon: "bg-emerald-100", iconColor: "text-emerald-600", badge: "bg-emerald-100 border-emerald-200 text-emerald-700", balance: "text-emerald-700" }
-    : { bg: "bg-orange-50/50",  icon: "bg-orange-100",  iconColor: "text-orange-600",  badge: "bg-orange-100 border-orange-200 text-orange-700",   balance: "text-orange-700" }
+    : { bg: "bg-orange-50/50", icon: "bg-orange-100", iconColor: "text-orange-600", badge: "bg-orange-100 border-orange-200 text-orange-700", balance: "text-orange-700" }
   const DocIcon = isInv ? FileText : DollarSign
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -437,8 +437,8 @@ function SyncBanner({ phase, jobYear, errorMessage, onRetry }: {
     )
   }
   const steps: { phase: SyncPhase; label: string }[] = [
-    { phase: "checking",  label: "Checking for financial data…" },
-    { phase: "syncing",   label: "Importing from QuickBooks…" },
+    { phase: "checking", label: "Checking for financial data…" },
+    { phase: "syncing", label: "Importing from QuickBooks…" },
     { phase: "reloading", label: "Loading documents…" },
   ]
   const cur = steps.findIndex((s) => s.phase === phase)
@@ -501,16 +501,15 @@ function SubHeader({ icon: Icon, title, total, color }: {
 function TabPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-        active ? "bg-white text-slate-800 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-      }`}>
+      className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${active ? "bg-white text-slate-800 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+        }`}>
       {children}
     </button>
   )
 }
 
 const PRICING_TARGET_OPTIONS = ["Yes", "No", "Leadership Approval"] as const
-const PERMIT_OPTIONS          = ["Yes", "No"] as const
+const PERMIT_OPTIONS = ["Yes", "No"] as const
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -524,30 +523,32 @@ export function JobPricingTab({
   const src = [job?.pricingData ?? job, job]
 
   // ── Calculated (read-only) fields ─────────────────────────────────────────
-  const estimatedRent             = getOptionalNumber(src, ["Estimated_rent"])
-  const estimatedMaterial         = getOptionalNumber(src, ["Estimated_material"])
-  const estimatedCity             = getOptionalNumber(src, ["Estimated_city"])
-  const techFormulaPricing        = getOptionalNumber(src, ["Tech_formula_pricing"])
-  const gqmFormula                = getOptionalNumber(src, ["Gqm_formula_pricing"])
-  const gqmAdjFormula             = getOptionalNumber(src, ["Gqm_adj_formula_pricing"])
-  const gqmTargetReturnRaw        = getOptionalNumber(src, ["Gqm_target_return"])
-  const gqmPremium                = getOptionalNumber(src, ["Gqm_premium_in_money"])
-  const gqmFinalSold              = getOptionalNumber(src, ["Gqm_final_sold_pricing"])
-  const gqmFinalPercentageRaw     = getOptionalNumber(src, ["Gqm_final_percentage"])
-  const gqmTotalChangeOrders      = getOptionalNumber(src, ["Gqm_total_change_orders"])
-  const gqmTotalMaterialsFees     = getOptionalNumber(src, ["Gqm_total_materials_fees"])
-  const gqmPaidFees               = getOptionalNumber(src, ["Gqm_paid_fees"])
-  const gqmFinalFormPricing       = getOptionalNumber(src, ["Gqm_final_form_pricing"])
-  const gqmFinalAdjForm           = getOptionalNumber(src, ["Gqm_final_adj_form_pricing"])
-  const gqmFinalTargetReturn      = getOptionalNumber(src, ["Gqm_final_target_return"])
-  const gqmFinalPremInMoney       = getOptionalNumber(src, ["Gqm_final_prem_in_money"])
-  const accReceivable             = getOptionalNumber(src, ["Acc_receivable"])
-  const bldgDeptFees              = getOptionalStringArray(src, ["Bldg_dept_fees"])
+  const estimatedRent = getOptionalNumber(src, ["Estimated_rent"])
+  const estimatedMaterial = getOptionalNumber(src, ["Estimated_material"])
+  const estimatedCity = getOptionalNumber(src, ["Estimated_city"])
+  const techFormulaPricing = getOptionalNumber(src, ["Tech_formula_pricing"])
+  const gqmFormula = getOptionalNumber(src, ["Gqm_formula_pricing"])
+  const gqmAdjFormula = getOptionalNumber(src, ["Gqm_adj_formula_pricing"])
+  const gqmTargetReturnRaw = getOptionalNumber(src, ["Gqm_target_return"])
+  const gqmPremium = getOptionalNumber(src, ["Gqm_premium_in_money"])
+  const gqmFinalSold = getOptionalNumber(src, ["Gqm_final_sold_pricing"])
+  const gqmFinalPercentageRaw = getOptionalNumber(src, ["Gqm_final_percentage"])
+  const gqmTotalChangeOrders = getOptionalNumber(src, ["Gqm_total_change_orders"])
+  const gqmTotalMaterialsFees = getOptionalNumber(src, ["Gqm_total_materials_fees"])
+  const gqmPaidFees = getOptionalNumber(src, ["Gqm_paid_fees"])
+  const gqmFinalFormPricing = getOptionalNumber(src, ["Gqm_final_form_pricing"])
+  const gqmFinalAdjForm = getOptionalNumber(src, ["Gqm_final_adj_form_pricing"])
+  const gqmFinalTargetReturn = getOptionalNumber(src, ["Gqm_final_target_return"])
+  const gqmFinalPremInMoney = getOptionalNumber(src, ["Gqm_final_prem_in_money"])
+  const accReceivable = getOptionalNumber(src, ["Acc_receivable"])
+  const ptlGcFee = getOptionalNumber(src, ["Ptl_gc_fee"])
+  const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
+  const bldgDeptFees = getOptionalStringArray(src, ["Bldg_dept_fees"])
 
   // ── Manually editable fields ──────────────────────────────────────────────
-  const gqmTargetSold             = getOptionalNumber(src, ["Gqm_target_sold_pricing"])
-  const pricingTarget             = getOptionalString(src, ["Pricing_target"])
-  const permit                    = getOptionalString(src, ["Permit"])
+  const gqmTargetSold = getOptionalNumber(src, ["Gqm_target_sold_pricing"])
+  const pricingTarget = getOptionalString(src, ["Pricing_target"])
+  const permit = getOptionalString(src, ["Permit"])
 
   // Local text state only for the single editable numeric field
   const [gqmTargetSoldText, setGqmTargetSoldText] = useState(gqmTargetSold?.toString() ?? "")
@@ -555,22 +556,22 @@ export function JobPricingTab({
 
   // ── Financial docs ────────────────────────────────────────────────────────
   const financialDocs: any[] = Array.isArray(job?.financial_docs) ? job.financial_docs : []
-  const invoices    = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "invoice")
-  const bills       = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "bill")
-  const invTotal    = invoices.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
-  const billTotal   = bills.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
-  const invTx       = invoices.flatMap((d) => d?.financial_transactions ?? [])
-  const billTx      = bills.flatMap((d) => d?.financial_transactions ?? [])
-  const invTxTotal  = invTx.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const invoices = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "invoice")
+  const bills = financialDocs.filter((d) => String(d?.Type_of_document ?? "").toLowerCase() === "bill")
+  const invTotal = invoices.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const billTotal = bills.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
+  const invTx = invoices.flatMap((d) => d?.financial_transactions ?? [])
+  const billTx = bills.flatMap((d) => d?.financial_transactions ?? [])
+  const invTxTotal = invTx.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
   const billTxTotal = billTx.reduce((s, d) => s + (Number(d?.Total_Amount) || 0), 0)
 
-  const [activeTab,  setActiveTab]  = useState<"analysis" | "invoices" | "bills">("analysis")
-  const [syncPhase,  setSyncPhase]  = useState<SyncPhase>("idle")
-  const [syncError,  setSyncError]  = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"analysis" | "invoices" | "bills">("analysis")
+  const [syncPhase, setSyncPhase] = useState<SyncPhase>("idle")
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const jobYear = useMemo(() => resolveJobYearFromId(job), [job])
-  const onSyncCompleteRef   = useRef(onSyncComplete)
-  const syncAttemptedRef    = useRef(false)
+  const onSyncCompleteRef = useRef(onSyncComplete)
+  const syncAttemptedRef = useRef(false)
   useEffect(() => { onSyncCompleteRef.current = onSyncComplete }, [onSyncComplete])
 
   const runSync = async (code: string) => {
@@ -614,9 +615,9 @@ export function JobPricingTab({
     )
   }
 
-  const formula              = gqmFormula ?? null
+  const formula = gqmFormula ?? null
   const applicableMultiplier = formula != null ? findApplicableMultiplier(formula, job?.multipliers || []) : null
-  const recommendedAdj       = formula != null && applicableMultiplier ? formula * Number(applicableMultiplier.Multiplier) : null
+  const recommendedAdj = formula != null && applicableMultiplier ? formula * Number(applicableMultiplier.Multiplier) : null
 
   const commit = (field: string, text: string) => {
     const p = parseNumberInput(text)
@@ -624,9 +625,9 @@ export function JobPricingTab({
     onPricingFieldChange(field, p.value)
   }
 
-  const isSyncing       = ["checking", "syncing", "reloading"].includes(syncPhase)
-  const handleJobUpdate = onPatchJob ?? (async () => {})
-  const handleReload    = onReload   ?? (async () => {})
+  const isSyncing = ["checking", "syncing", "reloading"].includes(syncPhase)
+  const handleJobUpdate = onPatchJob ?? (async () => { })
+  const handleReload = onReload ?? (async () => { })
 
   return (
     <>
@@ -727,8 +728,8 @@ export function JobPricingTab({
                     recommendedAdj != null
                       ? `Formula × multiplier = ${fmtMoney(recommendedAdj)}`
                       : applicableMultiplier == null
-                      ? "No multiplier in range — using default factor"
-                      : undefined
+                        ? "No multiplier in range — using default factor"
+                        : undefined
                   }
                 />
               </div>
@@ -822,6 +823,17 @@ export function JobPricingTab({
                 hint="Sum of Total Spending from all Purchases"
               />
             </div>
+
+            {/* PTL GC Fee — only shown for PTL jobs, calculated from PTLGCF estimate costs */}
+            {jobType === "PTL" && (
+              <div className="max-w-xs">
+                <ReadonlyField
+                  label="PTL GC Fee"
+                  value={ptlGcFee}
+                  hint="Sum of Estimate Costs with type PTLGCF"
+                />
+              </div>
+            )}
 
             {/* GQM Paid Fees — calculated from Bldg_dept_fees */}
             <div className="max-w-xs">
