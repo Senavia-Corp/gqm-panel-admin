@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface MultiplierSelectorProps {
   formulaPricing: number
-  onMultiplierSelected: (multiplier: Multiplier, adjFormulaPricing: number) => void
+  onMultiplierSelected: (multiplier: Multiplier, adjFormulaPricing: number) => Promise<void>
   jobId?: string
   existingMultipliers?: Multiplier[]
 }
@@ -118,7 +118,7 @@ export function MultiplierSelector({
       }
     }
 
-    onMultiplierSelected(multiplier, adjFormulaPricing)
+    await onMultiplierSelected(multiplier, adjFormulaPricing)
     setSelectedMultiplierId("")
   }
 
@@ -203,7 +203,7 @@ export function MultiplierSelector({
         await linkMultiplierToJob(jobId, created.ID_MultiplierR)
       }
 
-      onMultiplierSelected(created, adjFormulaPricing)
+      await onMultiplierSelected(created, adjFormulaPricing)
 
       toast({
         title: "Success",

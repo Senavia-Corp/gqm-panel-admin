@@ -116,7 +116,12 @@ function fmtDate(s: any) {
     if (!s) return "—"
     const d = new Date(s)
     if (Number.isNaN(d.getTime())) return String(s)
-    return d.toLocaleDateString()
+    return d.toLocaleDateString("en-US", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    })
   } catch { return String(s) }
 }
 
