@@ -78,6 +78,11 @@ function RepAvatar() {
   )
 }
 
+const ConvertToPercentage = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return "-"
+  return `${(value * 100).toFixed(2)}%`
+}
+
 export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRole }: JobsTableProps) {
   const isPar = tableVariant === "PAR"
   const isPtl = tableVariant === "PTL"
@@ -92,12 +97,12 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
         <TableHeader>
           <TableRow>
             <TableHead className="px-6">Job ID</TableHead>
-            {!isPar && <TableHead className="px-4">{mid.header}</TableHead>}
-            <TableHead className="px-4">Representative</TableHead>
             <TableHead className="px-4">Client</TableHead>
+            <TableHead className="px-4">Representative</TableHead>
+            {!isPar && <TableHead className="px-4">{mid.header}</TableHead>}
+            <TableHead className="px-4">Target Sold Pricing</TableHead>
+            <TableHead className="px-4">Target %</TableHead>
             <TableHead className="px-4">Status</TableHead>
-            <TableHead className="px-4">{dateHeader}</TableHead>
-            {isPar && <TableHead className="px-4">GQM Formula</TableHead>}
             <TableHead className="px-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -139,24 +144,10 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
 
             return (
               <TableRow key={job.ID_Jobs}>
-                <TableCell className="px-6 py-4 font-mono text-sm">{job.ID_Jobs}</TableCell>
+                {/* Id Jobs */}
+                <TableCell className="px-6 py-4 font-medium text-sm">{job.ID_Jobs}</TableCell>
 
-                {!isPar && <TableCell className="px-4 py-4 font-medium">{midValue || "-"}</TableCell>}
-
-                <TableCell className="px-4 py-4">
-                  {repName ? (
-                    <div className="flex items-center gap-3">
-                      <RepAvatar />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{repName}</span>
-                        <span className="text-xs text-muted-foreground">{repId ?? "-"}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">No representative</span>
-                  )}
-                </TableCell>
-
+                {/* Client */}
                 <TableCell className="px-4 py-4">
                   {client ? (
                     <div className="flex items-center gap-3">
@@ -171,13 +162,33 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                   )}
                 </TableCell>
 
+                {/* Representative */}
+                <TableCell className="px-4 py-4">
+                  {repName ? (
+                    <div className="flex items-center gap-3">
+                      <RepAvatar />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">{repName}</span>
+                        <span className="text-xs text-muted-foreground">{repId ?? "-"}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">No representative</span>
+                  )}
+                </TableCell>
+
+                {/* Project Name / Mid Value */}
+                {!isPar && <TableCell className="px-4 py-4 font-medium">{midValue || "-"}</TableCell>}
+
+                {/* Target Sold Pricing */}
+                <TableCell className="px-6 py-4 font-medium text-sm">${job.Gqm_target_sold_pricing ?? "-"}</TableCell>
+
+                {/* Target Return */}
+                <TableCell className="px-6 py-4 font-medium text-sm">{ConvertToPercentage(job.Gqm_target_return) ?? "-"}</TableCell>
+
                 <TableCell className="px-4 py-4">
                   <StatusBadge status={job.Job_status as any} />
                 </TableCell>
-
-                <TableCell className="px-4 py-4">{safeDateLabel(dateRaw)}</TableCell>
-
-                {isPar && <TableCell className="px-4 py-4 font-medium">${String(gqmFormula ?? "-")}</TableCell>}
 
                 <TableCell className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
