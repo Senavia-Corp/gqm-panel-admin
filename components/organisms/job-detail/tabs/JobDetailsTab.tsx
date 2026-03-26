@@ -130,11 +130,10 @@ function EditableInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className={`text-sm transition-all ${
-          changed
+        className={`text-sm transition-all ${changed
             ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
             : "border-slate-200 bg-slate-50 focus:bg-white"
-        }`}
+          }`}
       />
       {changed && (
         <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -168,11 +167,10 @@ function EditableTextarea({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        className={`text-sm transition-all resize-y ${
-          changed
+        className={`text-sm transition-all resize-y ${changed
             ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300 focus:ring-amber-400"
             : "border-slate-200 bg-slate-50 focus:bg-white"
-        }`}
+          }`}
       />
       {changed && (
         <span className="absolute right-2.5 top-2.5">
@@ -225,7 +223,38 @@ export function JobDetailsTab({
 
   return (
     <div className="space-y-4">
-      {/* ── 1. Job Characteristics ─────────────────────────────────────── */}
+
+      {/* ── 1. Client ─────────────────────────────────────────────────── */}
+      {role !== "LEAD_TECHNICIAN" && (
+        <SectionCard icon={Building2} title="Client">
+          <ClientSelect
+            value={currentClientId || ""}
+            initialClients={clients}
+            changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
+            onChange={(selected) => {
+              if (!selected) {
+                onFieldChange("client", null)
+                onFieldChange("ID_Client", null)
+                return
+              }
+              onFieldChange("ID_Client", selected.id)
+              onFieldChange("client", {
+                ID_Client: selected.id,
+                id: selected.id,
+                name: selected.name,
+                companyName: selected.companyName,
+                email: selected.email,
+                phone: selected.phone,
+                address: selected.address,
+                avatar: selected.avatar,
+                status: selected.status,
+              })
+            }}
+          />
+        </SectionCard>
+      )}
+
+      {/* ── 2. Job Characteristics ─────────────────────────────────────── */}
       <SectionCard icon={Hash} title="Job Characteristics">
         <div className="grid gap-4 sm:grid-cols-3">
           {/* Job ID */}
@@ -258,11 +287,10 @@ export function JobDetailsTab({
               </div>
             ) : (
               <Select value={status} onValueChange={(v) => onFieldChange("status", v)}>
-                <SelectTrigger className={`text-sm transition-all ${
-                  isFieldChanged("status")
+                <SelectTrigger className={`text-sm transition-all ${isFieldChanged("status")
                     ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300"
                     : "border-slate-200 bg-slate-50"
-                }`}>
+                  }`}>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -293,7 +321,7 @@ export function JobDetailsTab({
         )}
       </SectionCard>
 
-      {/* ── 2. Work Information ────────────────────────────────────────── */}
+      {/* ── 3. Work Information ────────────────────────────────────────── */}
       {(isQID || isPTL || isPAR) && (
         <SectionCard icon={FileText} title="Work Information">
           {/* Project Name — QID only */}
@@ -350,7 +378,7 @@ export function JobDetailsTab({
         </SectionCard>
       )}
 
-      {/* ── 3. Timeline ────────────────────────────────────────────────── */}
+      {/* ── 4. Timeline ────────────────────────────────────────────────── */}
       <SectionCard icon={Calendar} title="Timeline">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -428,7 +456,7 @@ export function JobDetailsTab({
         </div>
       </SectionCard>
 
-      {/* ── 4. Additional Details ──────────────────────────────────────── */}
+      {/* ── 5. Additional Details ──────────────────────────────────────── */}
       <SectionCard icon={Info} title="Additional Details">
         {isTech ? (
           <ReadonlyField value={additionalDetail} />
@@ -443,7 +471,7 @@ export function JobDetailsTab({
         )}
       </SectionCard>
 
-      {/* ── 5. PTL Details ────────────────────────────────────────────── */}
+      {/* ── 6. PTL Details ────────────────────────────────────────────── */}
       {isPTL && (
         <SectionCard icon={Tag} title="PTL Details">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -474,36 +502,6 @@ export function JobDetailsTab({
               )}
             </div>
           </div>
-        </SectionCard>
-      )}
-
-      {/* ── 6. Client ─────────────────────────────────────────────────── */}
-      {role !== "LEAD_TECHNICIAN" && (
-        <SectionCard icon={Building2} title="Client">
-          <ClientSelect
-            value={currentClientId || ""}
-            initialClients={clients}
-            changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
-            onChange={(selected) => {
-              if (!selected) {
-                onFieldChange("client", null)
-                onFieldChange("ID_Client", null)
-                return
-              }
-              onFieldChange("ID_Client", selected.id)
-              onFieldChange("client", {
-                ID_Client: selected.id,
-                id: selected.id,
-                name: selected.name,
-                companyName: selected.companyName,
-                email: selected.email,
-                phone: selected.phone,
-                address: selected.address,
-                avatar: selected.avatar,
-                status: selected.status,
-              })
-            }}
-          />
         </SectionCard>
       )}
     </div>
