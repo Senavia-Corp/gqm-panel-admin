@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar }   from "@/components/organisms/Sidebar"
-import { TopBar }    from "@/components/organisms/TopBar"
-import { Button }    from "@/components/ui/button"
-import { Input }     from "@/components/ui/input"
+import { Sidebar } from "@/components/organisms/Sidebar"
+import { TopBar } from "@/components/organisms/TopBar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -16,35 +16,39 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   BadgeDollarSign, Plus, Search, ChevronLeft, ChevronRight,
-  Eye, Trash2, AlertCircle, RefreshCw, X, Loader2, Calendar,
+  Eye, Trash2, AlertCircle, RefreshCw, X, Loader2, Calendar, User
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CommissionRow = {
-  ID_Commission:    string
-  Month:            string | null
-  Year:             number | null
+  ID_Commission: string
+  Month: string | null
+  Year: number | null
   Total_commission: number | null
+  member: {
+    ID_Member: string
+    Member_Name: string | null
+  }
 }
 
 type TableResponse = {
-  page:    number
-  limit:   number
-  total:   number
+  page: number
+  limit: number
+  total: number
   results: CommissionRow[]
 }
 
 type MemberOption = {
-  ID_Member:   string
+  ID_Member: string
   Member_Name: string | null
 }
 
 const LIMIT = 20
 
 const MONTHS = [
-  "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
-  "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER",
+  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,6 +97,14 @@ function SkeletonRows() {
   )
 }
 
+function RepAvatar() {
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gqm-yellow/30 ring-1 ring-gqm-yellow/50">
+      <User className="h-4 w-4 text-gqm-green-dark" />
+    </div>
+  )
+}
+
 // ─── Create Commission Modal ──────────────────────────────────────────────────
 
 function CreateCommissionModal({
@@ -100,23 +112,23 @@ function CreateCommissionModal({
   onOpenChange,
   onCreated,
 }: {
-  open:         boolean
+  open: boolean
   onOpenChange: (v: boolean) => void
-  onCreated:    (id: string) => void
+  onCreated: (id: string) => void
 }) {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i))
 
-  const [month,    setMonth]    = useState("")
-  const [year,     setYear]     = useState("")
+  const [month, setMonth] = useState("")
+  const [year, setYear] = useState("")
   const [memberId, setMemberId] = useState("")
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Members list
-  const [members,        setMembers]        = useState<MemberOption[]>([])
+  const [members, setMembers] = useState<MemberOption[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
-  const [memberSearch,   setMemberSearch]   = useState("")
+  const [memberSearch, setMemberSearch] = useState("")
 
   useEffect(() => {
     if (!open) return
@@ -130,9 +142,9 @@ function CreateCommissionModal({
 
   const filteredMembers = memberSearch.trim()
     ? members.filter(m =>
-        (m.Member_Name ?? "").toLowerCase().includes(memberSearch.toLowerCase()) ||
-        m.ID_Member.toLowerCase().includes(memberSearch.toLowerCase())
-      )
+      (m.Member_Name ?? "").toLowerCase().includes(memberSearch.toLowerCase()) ||
+      m.ID_Member.toLowerCase().includes(memberSearch.toLowerCase())
+    )
     : members
 
   const selectedMember = members.find(m => m.ID_Member === memberId)
@@ -144,12 +156,12 @@ function CreateCommissionModal({
 
   const handleCreate = async () => {
     if (!memberId) { setError("Please select a member."); return }
-    if (!month)    { setError("Please select a month."); return }
-    if (!year)     { setError("Please select a year.");  return }
+    if (!month) { setError("Please select a month."); return }
+    if (!year) { setError("Please select a year."); return }
     setSaving(true); setError(null)
     try {
       const res = await fetch("/api/commission", {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Month: month, Year: parseInt(year), ID_Member: memberId }),
         cache: "no-store",
@@ -209,18 +221,17 @@ function CreateCommissionModal({
                   <p className="py-4 text-center text-sm text-slate-400">No members found</p>
                 ) : filteredMembers.map(m => {
                   const isSelected = memberId === m.ID_Member
-                  const initials   = (m.Member_Name ?? m.ID_Member)
+                  const initials = (m.Member_Name ?? m.ID_Member)
                     .split(/\s+/).filter(Boolean).slice(0, 2)
                     .map((w: string) => w[0].toUpperCase()).join("") || "??"
                   return (
                     <button
                       key={m.ID_Member}
                       onClick={() => setMemberId(isSelected ? "" : m.ID_Member)}
-                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
-                        isSelected
-                          ? "border-emerald-300 bg-emerald-50"
-                          : "border-transparent hover:border-slate-200 hover:bg-slate-50"
-                      }`}
+                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${isSelected
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-transparent hover:border-slate-200 hover:bg-slate-50"
+                        }`}
                     >
                       <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${isSelected ? "bg-emerald-600" : "bg-slate-400"}`}>
                         {initials}
@@ -302,17 +313,17 @@ export default function CommissionsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
 
-  const [rows,    setRows]    = useState<CommissionRow[]>([])
-  const [total,   setTotal]   = useState(0)
-  const [page,    setPage]    = useState(1)
+  const [rows, setRows] = useState<CommissionRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const [search,       setSearch]       = useState("")
-  const debouncedSearch                 = useDebounce(search, 350)
-  const [createOpen,   setCreateOpen]   = useState(false)
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 350)
+  const [createOpen, setCreateOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<CommissionRow | null>(null)
-  const [deleting,     setDeleting]     = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
 
@@ -330,14 +341,16 @@ export default function CommissionsPage() {
     try {
       const url = new URL("/api/commission", window.location.origin)
       url.searchParams.set("table", "true")
-      url.searchParams.set("page",  String(p))
+      url.searchParams.set("page", String(p))
       url.searchParams.set("limit", String(LIMIT))
       if (q) url.searchParams.set("q", q)
       const res = await fetch(url.toString(), { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: TableResponse = await res.json()
+      console.log("Data de la commission",data);
+
       setRows(data.results ?? [])
-      setTotal(data.total  ?? 0)
+      setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
       setError(e?.message ?? "Failed to load commissions")
@@ -362,7 +375,7 @@ export default function CommissionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
   const rangeStart = total === 0 ? 0 : (page - 1) * LIMIT + 1
-  const rangeEnd   = Math.min(page * LIMIT, total)
+  const rangeEnd = Math.min(page * LIMIT, total)
 
   if (!user) return null
 
@@ -422,8 +435,8 @@ export default function CommissionsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/80">
-                      {["Commission ID", "Month", "Year", "Total", ""].map((label, i) => (
-                        <th key={i} className={`px-5 py-3 text-left ${i === 4 ? "text-right" : ""}`}>
+                      {["Commission ID", "Member", "Month", "Year", "Total", "Actions"].map((label, i) => (
+                        <th key={i} className={`px-5 py-3 text-left ${i === 5 ? "text-right" : ""}`}>
                           {label && <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</span>}
                         </th>
                       ))}
@@ -443,7 +456,13 @@ export default function CommissionsPage() {
                     ) : rows.map((row) => (
                       <tr key={row.ID_Commission} className="border-b border-slate-100 transition-colors hover:bg-slate-50/60">
                         <td className="px-5 py-3.5">
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{row.ID_Commission}</span>
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">{row.ID_Commission}</span>
+                        </td>
+                        <td className="px-5 py-3.5 flex items-center gap-3"><RepAvatar />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">{row.member.Member_Name ?? "-"}</span>
+                            <span className="text-xs text-muted-foreground">{row.member.ID_Member ?? "-"}</span>
+                          </div>
                         </td>
                         <td className="px-5 py-3.5"><MonthBadge month={row.Month} /></td>
                         <td className="px-5 py-3.5"><span className="text-sm font-medium text-slate-700">{row.Year ?? "—"}</span></td>
