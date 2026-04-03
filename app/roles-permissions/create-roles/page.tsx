@@ -9,14 +9,64 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Plus, X, ArrowLeft, Users, Shield, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react"
 
+import type { Permission, IAMDocument, IAMStatement } from "@/lib/types"
+
 type PermissionLite = {
   ID_Permission: string
   Name?: string | null
   Description?: string | null
-  Action?: string | null
-  Service_Associated?: string | null
+  Document?: IAMDocument | null
   Active?: boolean | null
 }
+
+const MODULE_ACTIONS = [
+  {
+    module: "Jobs",
+    actions: [
+      { id: "job:read", label: "Full Read" },
+      { id: "job:read_basics", label: "Read Basics" },
+      { id: "job:create", label: "Create" },
+      { id: "job:update", label: "Update" },
+      { id: "job:delete", label: "Delete" },
+    ]
+  },
+  {
+    module: "Members",
+    actions: [
+      { id: "member:read", label: "Read" },
+      { id: "member:create", label: "Create" },
+      { id: "member:update", label: "Update" },
+      { id: "member:delete", label: "Delete" },
+    ]
+  },
+  {
+    module: "Subcontractors",
+    actions: [
+      { id: "subcontractor:read", label: "Read" },
+      { id: "subcontractor:create", label: "Create" },
+      { id: "subcontractor:update", label: "Update" },
+      { id: "subcontractor:delete", label: "Delete" },
+    ]
+  },
+  {
+    module: "Clients / Communities",
+    actions: [
+      { id: "client:read", label: "Read" },
+      { id: "client:create", label: "Create" },
+      { id: "client:update", label: "Update" },
+      { id: "client:delete", label: "Delete" },
+    ]
+  },
+  {
+    module: "PMC (Parent Companies)",
+    actions: [
+      { id: "parent_mgmt_co:read", label: "Read" },
+      { id: "parent_mgmt_co:create", label: "Create" },
+      { id: "parent_mgmt_co:update", label: "Update" },
+      { id: "parent_mgmt_co:delete", label: "Delete" },
+    ]
+  },
+]
 
 type PermissionListResponse =
   | { results: PermissionLite[]; total?: number; page?: number; limit?: number }
@@ -25,25 +75,20 @@ type PermissionListResponse =
 const ITEMS_PER_PAGE = 20
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-const ACTION_COLORS: Record<string, string> = {
-  View:   "bg-sky-50 text-sky-700 border-sky-200",
-  Create: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Edit:   "bg-amber-50 text-amber-700 border-amber-200",
-  Delete: "bg-red-50 text-red-600 border-red-200",
-}
-const SERVICE_COLORS: Record<string, string> = {
-  Job:           "bg-violet-50 text-violet-700 border-violet-200",
-  Subcontractor: "bg-orange-50 text-orange-700 border-orange-200",
-  GQM_Member:    "bg-blue-50 text-blue-700 border-blue-200",
-  Technician:    "bg-teal-50 text-teal-700 border-teal-200",
-  Client:        "bg-pink-50 text-pink-700 border-pink-200",
-  Dashboard:     "bg-slate-100 text-slate-600 border-slate-200",
-}
-
-function Chip({ label, colorMap }: { label?: string | null; colorMap: Record<string, string> }) {
-  const cls = colorMap[label ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
-  const display = label === "GQM_Member" ? "GQM Member" : (label ?? "—")
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>{display}</span>
+function PolicySummary({ document }: { document?: IAMDocument | null }) {
+  if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
+  const allActions = document.Statement.flatMap(s => s.Action)
+  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">Full Access</span>
+  const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
+  return (
+    <div className="flex flex-wrap gap-1">
+      {modules.map(m => (
+        <span key={m} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 lowercase border border-slate-200">
+          {m}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export default function CreateRolePage() {
@@ -68,8 +113,7 @@ export default function CreateRolePage() {
   const [qName, setQName] = useState("")
   const [qDesc, setQDesc] = useState("")
   const [qActive, setQActive] = useState(true)
-  const [qAction, setQAction] = useState("View")
-  const [qService, setQService] = useState("Job")
+  const [qStatements, setQStatements] = useState<IAMStatement[]>([{ Effect: "Allow", Action: [], Resource: ["*"] }])
   const [quickSubmitting, setQuickSubmitting] = useState(false)
   const [quickError, setQuickError] = useState<string | null>(null)
 
@@ -101,9 +145,7 @@ export default function CreateRolePage() {
     if (!q) return permissions
     return permissions.filter((p) =>
       p.ID_Permission.toLowerCase().includes(q) ||
-      asString(p.Name).toLowerCase().includes(q) ||
-      asString(p.Action).toLowerCase().includes(q) ||
-      asString(p.Service_Associated).toLowerCase().includes(q)
+      asString(p.Name).toLowerCase().includes(q)
     )
   }, [permissions, permSearch])
 
@@ -113,21 +155,61 @@ export default function CreateRolePage() {
   const selectedPermissions = useMemo(() => permissions.filter((p) => selectedIds.has(p.ID_Permission)), [permissions, selectedIds])
   const canSubmit = useMemo(() => name.trim().length > 0 && selectedIds.size > 0, [name, selectedIds])
 
+  const toggleQuickAction = (sIdx: number, actionId: string) => {
+    const s = qStatements[sIdx]
+    let next: string[] = [...s.Action]
+
+    if (actionId === "*") {
+      next = next.includes("*") ? [] : ["*"]
+    } else {
+      next = next.filter(a => a !== "*")
+      const mod = actionId.split(":")[0]
+      const isModWildcard = actionId.endsWith(":*")
+
+      if (isModWildcard) {
+        if (next.includes(actionId)) {
+          next = next.filter(a => a !== actionId)
+        } else {
+          next = [...next.filter(a => !a.startsWith(`${mod}:`)), actionId]
+        }
+      } else {
+        next = next.filter(a => a !== `${mod}:*`)
+        if (next.includes(actionId)) {
+          next = next.filter(a => a !== actionId)
+        } else {
+          next = [...next, actionId]
+        }
+      }
+    }
+    setQStatements(qStatements.map((stmt, i) => i === sIdx ? { ...stmt, Action: next } : stmt))
+  }
+
   const quickCreatePermission = async () => {
     try {
       setQuickSubmitting(true); setQuickError(null)
-      if (!qName.trim()) throw new Error("Permission name is required")
+      const doc: IAMDocument = { Version: "1.0", Statement: qStatements }
       const res = await fetch("/api/permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Name: qName.trim(), Description: qDesc.trim() || null, Active: qActive, Action: qAction, Service_Associated: qService }),
+        body: JSON.stringify({ 
+          Name: qName.trim(), 
+          Description: qDesc.trim() || null, 
+          Active: qActive,
+          Document: doc
+        }),
       })
       if (!res.ok) { const body = await res.json().catch(() => null); throw new Error(body?.detail || `Failed to create permission (${res.status})`) }
       const created = await res.json() as any
-      const perm: PermissionLite = { ID_Permission: created?.ID_Permission, Name: created?.Name, Description: created?.Description, Action: created?.Action, Service_Associated: created?.Service_Associated, Active: created?.Active }
+      const perm: PermissionLite = { 
+        ID_Permission: created?.ID_Permission, 
+        Name: created?.Name, 
+        Description: created?.Description, 
+        Document: created?.Document,
+        Active: created?.Active 
+      }
       setPermissions((prev) => [perm, ...prev])
       setSelectedIds((prev) => new Set(prev).add(perm.ID_Permission))
-      setQName(""); setQDesc(""); setQActive(true); setQAction("View"); setQService("Job"); setQuickOpen(false)
+      setQName(""); setQDesc(""); setQActive(true); setQStatements([{ Effect: "Allow", Action: [], Resource: ["*"] }]); setQuickOpen(false)
     } catch (e: any) {
       setQuickError(e?.message ?? "Failed to create permission")
     } finally { setQuickSubmitting(false) }
@@ -166,7 +248,7 @@ export default function CreateRolePage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
 
         <main className="flex-1 overflow-y-auto p-6">
           {/* Breadcrumb */}
@@ -253,34 +335,99 @@ export default function CreateRolePage() {
                     </button>
                   </div>
 
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</label>
-                      <Input value={qName} onChange={(e) => setQName(e.target.value)} placeholder="e.g. View Jobs" className="h-8 text-xs border-slate-200 bg-white" />
+                  <div className="grid gap-3">
+                    <div className="grid gap-3 lg:grid-cols-2">
+                       <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</label>
+                          <Input value={qName} onChange={(e) => setQName(e.target.value)} placeholder="e.g. View Jobs" className="h-8 text-xs border-slate-200 bg-white" />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</label>
+                          <Input value={qDesc} onChange={(e) => setQDesc(e.target.value)} placeholder="Optional…" className="h-8 text-xs border-slate-200 bg-white" />
+                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</label>
-                      <Select value={qAction} onValueChange={(v) => setQAction(v)}>
-                        <SelectTrigger className="h-8 text-xs border-slate-200 bg-white"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {["View","Create","Edit","Delete"].map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service</label>
-                      <Select value={qService} onValueChange={(v) => setQService(v)}>
-                        <SelectTrigger className="h-8 text-xs border-slate-200 bg-white"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {["Job","Subcontractor","GQM_Member","Technician","Client","Dashboard"].map((s) => (
-                            <SelectItem key={s} value={s}>{s === "GQM_Member" ? "GQM Member" : s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</label>
-                      <Input value={qDesc} onChange={(e) => setQDesc(e.target.value)} placeholder="Optional…" className="h-8 text-xs border-slate-200 bg-white" />
+
+                    <div className="space-y-3">
+                      {qStatements.map((qs, qsIdx) => (
+                        <div key={qsIdx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-3 relative">
+                           {qStatements.length > 1 && (
+                             <button onClick={() => setQStatements(qStatements.filter((_, i) => i !== qsIdx))} className="absolute right-2 top-2 text-slate-300 hover:text-red-500">
+                                <X className="h-3 w-3" />
+                             </button>
+                           )}
+                           <div className="flex flex-wrap items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                 <span className="text-[10px] font-bold uppercase text-slate-400">Effect:</span>
+                                 <div className="flex rounded border border-slate-100 bg-slate-50 p-0.5">
+                                    {["Allow", "Deny"].map(ef => (
+                                      <button 
+                                        key={ef} 
+                                        onClick={() => setQStatements(qStatements.map((stmt, i) => i === qsIdx ? { ...stmt, Effect: ef as any } : stmt))}
+                                        className={`px-2 py-0.5 text-[10px] font-bold rounded ${qs.Effect === ef ? (ef === "Allow" ? "bg-emerald-600 text-white" : "bg-red-600 text-white") : "text-slate-400"}`}
+                                      >
+                                        {ef}
+                                      </button>
+                                    ))}
+                                 </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleQuickAction(qsIdx, "*")}
+                                className={`flex h-6 items-center gap-1 rounded border px-2 text-[10px] font-bold transition-all ${
+                                  qs.Action.includes("*") 
+                                    ? "border-amber-200 bg-amber-50 text-amber-700 shadow-sm" 
+                                    : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                                }`}
+                              >
+                                <Shield className="h-3.5 w-3.5" /> Full Access (*)
+                              </button>
+                           </div>
+
+                           <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${qs.Action.includes("*") ? "opacity-30 pointer-events-none" : ""}`}>
+                              {MODULE_ACTIONS.map(mod => (
+                                <div key={mod.module} className="space-y-1.5 min-w-0">
+                                   <div className="flex items-center justify-between border-b border-slate-50 pb-0.5">
+                                      <p className="text-[9px] font-bold uppercase text-slate-600 truncate mr-2">{mod.module}</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleQuickAction(qsIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
+                                        className={`rounded px-1.5 text-[8px] font-bold transition-all ${
+                                          qs.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`)
+                                            ? "bg-amber-100 text-amber-700"
+                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                                        }`}
+                                      >
+                                        All
+                                      </button>
+                                   </div>
+                                   <div className="flex flex-wrap gap-1">
+                                      {mod.actions.map(act => {
+                                        const active = qs.Action.includes(act.id)
+                                        return (
+                                          <button
+                                            key={act.id}
+                                            onClick={() => toggleQuickAction(qsIdx, act.id)}
+                                            className={`px-1.5 py-0.5 text-[9px] font-bold rounded border transition-all ${
+                                              active ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
+                                            }`}
+                                          >
+                                            {act.id.split(":")[1] || act.id}
+                                          </button>
+                                        )
+                                      })}
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => setQStatements([...qStatements, { Effect: "Allow", Action: [], Resource: ["*"] }])}
+                        className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Add statement
+                      </button>
                     </div>
                   </div>
 
@@ -341,8 +488,7 @@ export default function CreateRolePage() {
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="w-10 px-4 py-2.5" />
                           <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Permission</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
                           <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
                         </tr>
                       </thead>
@@ -366,8 +512,7 @@ export default function CreateRolePage() {
                                 <div className="text-xs font-semibold text-slate-700">{asString(p.Name) || p.ID_Permission}</div>
                                 {p.Description && <div className="text-[11px] text-slate-400 line-clamp-1">{asString(p.Description)}</div>}
                               </td>
-                              <td className="px-4 py-2.5"><Chip label={p.Action} colorMap={ACTION_COLORS} /></td>
-                              <td className="px-4 py-2.5"><Chip label={p.Service_Associated} colorMap={SERVICE_COLORS} /></td>
+                              <td className="px-4 py-2.5"><PolicySummary document={p.Document} /></td>
                               <td className="px-4 py-2.5 text-center">
                                 {p.Active ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">

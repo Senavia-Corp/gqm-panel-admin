@@ -6,9 +6,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params
   try {
     console.log(`[members] GET /${id}`)
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
     if (!response.ok) {
       const errorText = await response.text()
@@ -27,9 +31,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const body = await request.json()
     console.log(`[members] PATCH /${id}:`, Object.keys(body))
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(body),
     })
     if (!response.ok) {
@@ -48,9 +56,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id } = await params
   try {
     console.log(`[members] DELETE /${id}`)
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
     if (!response.ok) {
       const errorText = await response.text()

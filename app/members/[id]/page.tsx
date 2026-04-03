@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -238,6 +240,9 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  const { hasPermission } = usePermissions()
+  const canUpdate = hasPermission("member:update")
+
   // ── Edit state ─────────────────────────────────────────────────────────────
   const [editing, setEditing]   = useState(false)
   const [saving,  setSaving]    = useState(false)
@@ -292,7 +297,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const fetchMember = useCallback(async () => {
     setLoading(true); setLoadError(null)
     try {
-      const res = await fetch(`/api/members/${id}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/members/${id}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: MemberFull = await res.json()
       setMember(data)
@@ -314,7 +319,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
       for (const k of Object.keys(form)) {
         if (!SKIP_PATCH.has(k)) payload[k] = (form as any)[k].trim() || null
       }
-      const res = await fetch(`/api/members/${id}`, {
+      const res = await apiFetch(`/api/members/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -348,7 +353,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
     }
     setPwSaving(true)
     try {
-      const res = await fetch(`/api/members/${id}`, {
+      const res = await apiFetch(`/api/members/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Password: pwForm.new }),
@@ -367,7 +372,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
     setModalMode(mode); setRpSearch(""); setRpLoading(true)
     try {
       const endpoint = mode === "role" ? "/api/roles" : "/api/permissions"
-      const res = await fetch(endpoint, { cache: "no-store" })
+      const res = await apiFetch(endpoint, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       const items = Array.isArray(data) ? data : (data.results ?? [])
@@ -381,7 +386,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const linkRole = async (roleId: string) => {
     setLinkingId(roleId)
     try {
-      const res = await fetch(`/api/members/${id}/role/${roleId}`, { method: "POST", cache: "no-store" })
+      const res = await apiFetch(`/api/members/${id}/role/${roleId}`, { method: "POST", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchMember()
       toast({ title: "Role assigned" })
@@ -393,7 +398,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const unlinkRole = async () => {
     setUnlinkingId("role")
     try {
-      const res = await fetch(`/api/members/${id}/role/unlink`, { method: "DELETE", cache: "no-store" })
+      const res = await apiFetch(`/api/members/${id}/role/unlink`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchMember()
       toast({ title: "Role removed" })
@@ -405,7 +410,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const linkPermission = async (permId: string) => {
     setLinkingId(permId)
     try {
-      const res = await fetch(`/api/members/${id}/permissions/${permId}`, { method: "POST", cache: "no-store" })
+      const res = await apiFetch(`/api/members/${id}/permissions/${permId}`, { method: "POST", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchMember()
       toast({ title: "Permission linked" })
@@ -417,7 +422,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const unlinkPermission = async (permId: string) => {
     setUnlinkingId(permId)
     try {
-      const res = await fetch(`/api/members/${id}/permissions/${permId}`, { method: "DELETE", cache: "no-store" })
+      const res = await apiFetch(`/api/members/${id}/permissions/${permId}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchMember()
       toast({ title: "Permission removed" })
@@ -514,7 +519,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="flex items-center gap-2.5">
-                {editing ? (
+                {canUpdate && editing ? (
                   <>
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving} className="gap-1.5 text-xs border-slate-200">
                       <X className="h-3.5 w-3.5" /> Cancel
@@ -524,11 +529,11 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                       {saving ? "Saving…" : "Save Changes"}
                     </Button>
                   </>
-                ) : (
+                ) : canUpdate ? (
                   <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
                     ✎ Edit
                   </Button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

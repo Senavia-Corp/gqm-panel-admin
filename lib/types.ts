@@ -418,23 +418,23 @@ export interface User {
 
 //Permissions and Roles
 
-export type PermissionActionType = "View" | "Create" | "Edit" | "Delete"
+export interface IAMStatement {
+  Effect: "Allow" | "Deny"
+  Action: string[]
+  Resource: string[]
+}
 
-export type PermissionServiceType =
-  | "Job"
-  | "Subcontractor"
-  | "GQM_Member"
-  | "Technician"
-  | "Client"
-  | "Dashboard"
+export interface IAMDocument {
+  Version: string
+  Statement: IAMStatement[]
+}
 
 export interface Permission {
   ID_Permission: string
   Name: string | null
   Description: string | null
   Active: boolean | null
-  Action: PermissionActionType
-  Service_Associated: PermissionServiceType
+  Document: IAMDocument
 
   roles?: Role[]
   members?: any[]

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -169,7 +170,7 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
 
         if (yearTab !== "ALL") qs.set("year", yearTab)
 
-        const res = await fetch(`/api/metrics/members/acc-rep-selling?${qs.toString()}`)
+        const res = await apiFetch(`/api/metrics/members/acc-rep-selling?${qs.toString()}`)
         if (!res.ok) throw new Error(`Failed members metrics: ${res.status}`)
 
         const data: ApiResponse = await res.json()

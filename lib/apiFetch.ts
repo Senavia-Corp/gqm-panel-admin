@@ -24,6 +24,12 @@ export async function apiFetch(
     headers.set("X-User-Id", userId)
   }
 
+  // Inject the JWT authorization token
+  const token = localStorage.getItem("access_token")
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`)
+  }
+
   // Default Content-Type for JSON bodies
   if (
     options.body &&

@@ -12,9 +12,13 @@ export async function GET(request: NextRequest) {
 
     console.log("[proxy] GET parent_mgmt_co →", pythonUrl.toString())
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(pythonUrl.toString(), {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
@@ -58,9 +62,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log("[proxy] POST parent_mgmt_co | sync_podio=%s | body:", syncPodio, body)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(pythonUrl.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(body),
     })
 

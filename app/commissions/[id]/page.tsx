@@ -19,6 +19,7 @@ import {
   RefreshCw, ChevronDown, ChevronRight as ChevronRightIcon, Pencil,
   Check, X, Briefcase, Calendar, DollarSign, Hash, Layers, Save, Search, Users,
 } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -211,7 +212,7 @@ function AddGroupModal({ open, onOpenChange, commissionId, onCreated }: {
     if (!jobType || !year || !rol) { setError("All fields are required."); return }
     setSaving(true); setError(null)
     try {
-      const res = await fetch("/api/commission_group", {
+      const res = await apiFetch("/api/commission_group", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Jobs_type: jobType, Jobs_year: parseInt(year), Rol: rol, ID_Commission: commissionId }),
         cache: "no-store",
@@ -301,7 +302,7 @@ function AddDetailModal({ open, onOpenChange, group, commission, onCreated }: {
   useEffect(() => {
     if (!open) return
     setLoadingMembers(true)
-    fetch("/api/members/table?page=1&limit=100", { cache: "no-store" })
+    apiFetch("/api/members/table?page=1&limit=100", { cache: "no-store" })
       .then(r => r.json())
       .then(d => setMembers(d.results ?? []))
       .catch(() => setMembers([]))
@@ -320,7 +321,7 @@ function AddDetailModal({ open, onOpenChange, group, commission, onCreated }: {
     })
     if (commission.Month) params.set("month", commission.Month)
 
-    fetch(`/api/jobs/by-member-role?${params.toString()}`, { cache: "no-store" })
+    apiFetch(`/api/jobs/by-member-role?${params.toString()}`, { cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(`Error ${r.status}`); return r.json() })
       .then(d => {
         const list    = Array.isArray(d) ? d : (d.results ?? [])
@@ -342,7 +343,7 @@ function AddDetailModal({ open, onOpenChange, group, commission, onCreated }: {
     if (!factor || isNaN(f) || f <= 0) { setError("Please enter a valid factor (e.g. 0.054)."); return }
     setSaving(true); setError(null)
     try {
-      const res = await fetch("/api/commission_detail", {
+      const res = await apiFetch("/api/commission_detail", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Factor: f, ID_Jobs: selected.ID_Jobs, ID_ComGroup: group.ID_ComGroup }),
         cache: "no-store",
@@ -541,7 +542,7 @@ function GroupCard({ group, commission, onUpdated, onDeleted }: {
 
   const patchGroup = async (field: string, raw: string) => {
     const value = field === "Jobs_year" ? parseInt(raw) : raw
-    const res = await fetch(`/api/commission_group?id=${encodeURIComponent(group.ID_ComGroup)}`, {
+    const res = await apiFetch(`/api/commission_group?id=${encodeURIComponent(group.ID_ComGroup)}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }), cache: "no-store",
     })
@@ -552,7 +553,7 @@ function GroupCard({ group, commission, onUpdated, onDeleted }: {
   const patchDetail = async (detailId: string, raw: string) => {
     const f = parseFloat(raw)
     if (isNaN(f)) throw new Error("Invalid factor")
-    const res = await fetch(`/api/commission_detail?id=${encodeURIComponent(detailId)}`, {
+    const res = await apiFetch(`/api/commission_detail?id=${encodeURIComponent(detailId)}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ Factor: f }), cache: "no-store",
     })
@@ -564,7 +565,7 @@ function GroupCard({ group, commission, onUpdated, onDeleted }: {
     if (!deleteDetailId) return
     setDeletingDetail(true)
     try {
-      const res = await fetch(`/api/commission_detail?id=${encodeURIComponent(deleteDetailId)}`, {
+      const res = await apiFetch(`/api/commission_detail?id=${encodeURIComponent(deleteDetailId)}`, {
         method: "DELETE", cache: "no-store",
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
@@ -575,7 +576,7 @@ function GroupCard({ group, commission, onUpdated, onDeleted }: {
   const confirmDeleteGroup = async () => {
     setDeletingGroup(true)
     try {
-      const res = await fetch(`/api/commission_group?id=${encodeURIComponent(group.ID_ComGroup)}`, {
+      const res = await apiFetch(`/api/commission_group?id=${encodeURIComponent(group.ID_ComGroup)}`, {
         method: "DELETE", cache: "no-store",
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
@@ -738,7 +739,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
   const fetchCommission = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const res = await fetch(`/api/commission?id=${encodeURIComponent(id)}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/commission?id=${encodeURIComponent(id)}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: Commission = await res.json()
       setCommission(data)
@@ -752,7 +753,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
   const saveHeader = async () => {
     setSavingHeader(true)
     try {
-      const res = await fetch(`/api/commission?id=${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/commission?id=${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Month: headerForm.Month, Year: parseInt(headerForm.Year) }),
         cache: "no-store",
@@ -767,7 +768,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
   if (loading) return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar /><div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6 space-y-4">
           {[16, 32, 56, 56].map((h, i) => (
             <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white" style={{ height: `${h * 4}px` }} />
@@ -780,7 +781,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
   if (!commission) return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar /><div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 p-6">
           <button onClick={() => router.push("/commissions")} className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
             <ArrowLeft className="h-4 w-4" /> Back
@@ -799,7 +800,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* Sticky header */}

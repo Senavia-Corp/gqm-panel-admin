@@ -11,33 +11,24 @@ import {
   Trash2, Save, Plus, X, ArrowLeft, Users, Shield,
   AlertCircle, RefreshCcw, CheckCircle2, Link2, Link2Off,
 } from "lucide-react"
-import type { Permission, Role, PaginatedResponse } from "@/lib/types"
+import type { Permission, Role, PaginatedResponse, IAMDocument } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-const ACTION_COLORS: Record<string, string> = {
-  View:   "bg-sky-50 text-sky-700 border-sky-200",
-  Create: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Edit:   "bg-amber-50 text-amber-700 border-amber-200",
-  Delete: "bg-red-50 text-red-600 border-red-200",
-}
-const SERVICE_COLORS: Record<string, string> = {
-  Job:           "bg-violet-50 text-violet-700 border-violet-200",
-  Subcontractor: "bg-orange-50 text-orange-700 border-orange-200",
-  GQM_Member:    "bg-blue-50 text-blue-700 border-blue-200",
-  Technician:    "bg-teal-50 text-teal-700 border-teal-200",
-  Client:        "bg-pink-50 text-pink-700 border-pink-200",
-  Dashboard:     "bg-slate-100 text-slate-600 border-slate-200",
-}
-
-function Chip({ label, colorMap }: { label?: string | null; colorMap: Record<string, string> }) {
-  const cls = colorMap[label ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
-  const display = label === "GQM_Member" ? "GQM Member" : (label ?? "—")
+function PolicySummary({ document }: { document?: IAMDocument | null }) {
+  if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
+  const allActions = document.Statement.flatMap(s => s.Action)
+  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">Full Access</span>
+  const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
-      {display}
-    </span>
+    <div className="flex flex-wrap gap-1">
+      {modules.map(m => (
+        <span key={m} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 lowercase border border-slate-200">
+          {m}
+        </span>
+      ))}
+    </div>
   )
 }
 
@@ -189,7 +180,7 @@ export default function RoleDetailPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
 
         <main className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* ── Breadcrumb back ──────────────────────────────────────────── */}
@@ -362,8 +353,7 @@ export default function RoleDetailPage() {
                       <tr className="border-b border-slate-100">
                         <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
                         <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service</th>
+                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
                         <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Linked</th>
                         <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
                       </tr>
@@ -380,12 +370,7 @@ export default function RoleDetailPage() {
                               <div className="text-xs font-semibold text-slate-700">{asString(p.Name) || "—"}</div>
                               {p.Description && <div className="text-[11px] text-slate-400 line-clamp-1">{asString(p.Description)}</div>}
                             </td>
-                            <td className="px-4 py-2.5">
-                              <Chip label={p.Action} colorMap={ACTION_COLORS} />
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <Chip label={p.Service_Associated} colorMap={SERVICE_COLORS} />
-                            </td>
+                            <td className="px-4 py-2.5"><PolicySummary document={p.Document} /></td>
                             <td className="px-4 py-2.5 text-center">
                               {linked ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -444,9 +429,8 @@ export default function RoleDetailPage() {
                               Linked
                             </span>
                           </div>
-                          <div className="mt-2.5 flex flex-wrap gap-1.5">
-                            <Chip label={p.Action} colorMap={ACTION_COLORS} />
-                            <Chip label={p.Service_Associated} colorMap={SERVICE_COLORS} />
+                          <div className="mt-2.5">
+                            <PolicySummary document={p.Document} />
                           </div>
                           {p.Description && (
                             <p className="mt-2 text-[11px] text-slate-400 line-clamp-2">{asString(p.Description)}</p>

@@ -18,9 +18,11 @@ import {
 import {
   ArrowLeft, Save, X, Mail, Phone, Plus, Briefcase, Users, UserCheck,
   Search, Trash2, ExternalLink, MapPin, Globe, AlertCircle, ChevronRight,
-  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag,
+  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag, Shield
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -325,12 +327,12 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
   const fetchCompanies = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const first = await fetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
+      const first = await apiFetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
       if (!first.ok) throw new Error(`Error ${first.status}`)
       const firstData = await first.json()
       const total: number = firstData.total ?? 0
       const limit = total > 0 ? total : 200
-      const r = await fetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
+      const r = await apiFetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
       if (!r.ok) throw new Error(`Error ${r.status}`)
       const d = await r.json()
       setCompanies(d.results ?? [])
@@ -421,7 +423,7 @@ function LinkManagerModal({ open, onOpenChange, clientId, syncPodio, existingIds
   const fetch_ = useCallback(async (q: string) => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/managers?${q ? `q=${encodeURIComponent(q)}&` : ""}limit=30`, { cache: "no-store" })
+      const r = await apiFetch(`/api/managers?${q ? `q=${encodeURIComponent(q)}&` : ""}limit=30`, { cache: "no-store" })
       const d = await r.json(); setResults(d.results ?? d)
     } catch { setResults([]) } finally { setLoading(false) }
   }, [])
@@ -433,7 +435,7 @@ function LinkManagerModal({ open, onOpenChange, clientId, syncPodio, existingIds
     setLinking(m.ID_Manager)
     try {
       const rol = rolMap[m.ID_Manager] ?? ""
-      const r = await fetch(`/api/client_manager?clientId=${clientId}&managerId=${m.ID_Manager}&sync_podio=${syncPodio}`,
+      const r = await apiFetch(`/api/client_manager?clientId=${clientId}&managerId=${m.ID_Manager}&sync_podio=${syncPodio}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) })
       if (!r.ok) throw new Error(await r.text())
       onLinked({ ...m, rol }); toast({ title: "Manager linked" })
@@ -494,7 +496,7 @@ function LinkMemberModal({ open, onOpenChange, clientId, syncPodio, existingIds,
   const fetch_ = useCallback(async (q: string) => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/members?${q ? `q=${encodeURIComponent(q)}&` : ""}limit=30`, { cache: "no-store" })
+      const r = await apiFetch(`/api/members?${q ? `q=${encodeURIComponent(q)}&` : ""}limit=30`, { cache: "no-store" })
       const d = await r.json(); setResults(d.results ?? d)
     } catch { setResults([]) } finally { setLoading(false) }
   }, [])
@@ -506,7 +508,7 @@ function LinkMemberModal({ open, onOpenChange, clientId, syncPodio, existingIds,
     setLinking(m.ID_Member)
     try {
       const rol = rolMap[m.ID_Member] ?? ""
-      const r = await fetch(`/api/client_member?clientId=${clientId}&memberId=${m.ID_Member}&sync_podio=${syncPodio}`,
+      const r = await apiFetch(`/api/client_member?clientId=${clientId}&memberId=${m.ID_Member}&sync_podio=${syncPodio}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) })
       if (!r.ok) throw new Error(await r.text())
       onLinked({ ...m, rol }); toast({ title: "Member linked" })
@@ -573,6 +575,10 @@ export default function ClientDetailPage({ params }: Props) {
   const [unlinkingManager, setUnlinkingManager] = useState<string | null>(null)
   const [unlinkingMember, setUnlinkingMember] = useState<string | null>(null)
 
+  const { hasPermission } = usePermissions()
+  const canRead = hasPermission("client:read")
+  const canUpdate = hasPermission("client:update")
+
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
@@ -583,7 +589,7 @@ export default function ClientDetailPage({ params }: Props) {
     if (!clientId) return
     setLoading(true); setLoadError(null)
     try {
-      const res = await fetch(`/api/clients/${clientId}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/clients/${clientId}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed (${res.status})`)
       const data = (await res.json()) as Client
       const n: Client = {
@@ -625,9 +631,9 @@ export default function ClientDetailPage({ params }: Props) {
       const payload: Record<string, any> = {}
       for (const [k, v] of Object.entries(formData)) {
         if (SKIP_ON_PATCH.includes(k as keyof Client)) continue
-        payload[k] = (k === "Email_Address" || k === "Phone_Number") ? serializeArrayField(parseArrayField(v)) : v
+        payload[k] = (k === "Email_Address" || k === "Phone_Number") ? serializeArrayField(parseArrayField(v as any)) : v
       }
-      const res = await fetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`,
+      const res = await apiFetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`,
         { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error(await res.text())
       const upd = (await res.json()) as Client
@@ -650,7 +656,7 @@ export default function ClientDetailPage({ params }: Props) {
   const unlinkMgr = async (id: string) => {
     setUnlinkingManager(id)
     try {
-      const r = await fetch(`/api/client_manager?clientId=${clientId}&managerId=${id}&sync_podio=${syncPodio}`, { method: "DELETE" })
+      const r = await apiFetch(`/api/client_manager?clientId=${clientId}&managerId=${id}&sync_podio=${syncPodio}`, { method: "DELETE" })
       if (!r.ok) throw new Error(await r.text())
       setClient((p) => p ? { ...p, manager: (p.manager ?? []).filter((m) => m.ID_Manager !== id) } : p)
       toast({ title: "Unlinked", description: "Manager removed" })
@@ -661,7 +667,7 @@ export default function ClientDetailPage({ params }: Props) {
   const unlinkMem = async (id: string) => {
     setUnlinkingMember(id)
     try {
-      const r = await fetch(`/api/client_member?clientId=${clientId}&memberId=${id}&sync_podio=${syncPodio}`, { method: "DELETE" })
+      const r = await apiFetch(`/api/client_member?clientId=${clientId}&memberId=${id}&sync_podio=${syncPodio}`, { method: "DELETE" })
       if (!r.ok) throw new Error(await r.text())
       setClient((p) => p ? { ...p, members: (p.members ?? []).filter((m) => m.ID_Member !== id) } : p)
       toast({ title: "Unlinked", description: "Member removed" })
@@ -691,7 +697,7 @@ export default function ClientDetailPage({ params }: Props) {
   // ─── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar user={user} />
+      <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar />
         <main className="flex-1 overflow-y-auto"><div className="flex h-full items-center justify-center p-6">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
@@ -705,7 +711,7 @@ export default function ClientDetailPage({ params }: Props) {
   // ─── Error ─────────────────────────────────────────────────────────────────
   if (!client) return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar user={user} />
+      <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar />
         <main className="flex-1 overflow-y-auto"><div className="mx-auto max-w-xl p-6">
           <Card className="p-6">
             <div className="mb-3 flex items-center gap-2 text-red-500"><AlertCircle className="h-5 w-5" /><h1 className="text-lg font-semibold">Community could not be loaded</h1></div>
@@ -720,6 +726,30 @@ export default function ClientDetailPage({ params }: Props) {
     </div>
   )
 
+  if (!canRead && !loading) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <Shield className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
+            <p className="mt-2 max-w-sm text-slate-500">
+              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">client:read</code> permission required to access this resource.
+            </p>
+            <Button onClick={() => router.push("/clients")} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Go Back to Clients
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   // parent a mostrar (puede venir del formData si el usuario lo cambió)
   const displayParent = formData.parent_mgmt_co ?? client.parent_mgmt_co
 
@@ -727,7 +757,7 @@ export default function ClientDetailPage({ params }: Props) {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ── */}
@@ -767,7 +797,7 @@ export default function ClientDetailPage({ params }: Props) {
                     </a>
                   )}
 
-                  {activeTab === "details" && (
+                  {activeTab === "details" && canUpdate && (
                     !isEditing
                       ? <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}
                           className="h-8 gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700">✎ Edit</Button>
@@ -783,13 +813,13 @@ export default function ClientDetailPage({ params }: Props) {
                           )}
                         </>
                   )}
-                  {activeTab === "managers" && (
+                  {activeTab === "managers" && canUpdate && (
                     <Button size="sm" variant="outline" onClick={() => setManagerModalOpen(true)}
                       className="h-8 gap-1.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
                       <Plus className="h-3.5 w-3.5" />Link Manager
                     </Button>
                   )}
-                  {activeTab === "members" && (
+                  {activeTab === "members" && canUpdate && (
                     <Button size="sm" variant="outline" onClick={() => setMemberModalOpen(true)}
                       className="h-8 gap-1.5 text-xs border-blue-200 text-blue-700 hover:bg-blue-50">
                       <Plus className="h-3.5 w-3.5" />Link Member
@@ -1073,10 +1103,12 @@ export default function ClientDetailPage({ params }: Props) {
                           <p className="mt-0.5 font-mono text-[11px] text-slate-400">{mgr.ID_Manager}</p>
                           {mgr.rol && <span className="mt-1.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{mgr.rol}</span>}
                         </div>
-                        <button onClick={() => unlinkMgr(mgr.ID_Manager)} disabled={unlinkingManager === mgr.ID_Manager}
-                          className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors">
-                          {unlinkingManager === mgr.ID_Manager ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
+                        {canUpdate && (
+                          <button onClick={() => unlinkMgr(mgr.ID_Manager)} disabled={unlinkingManager === mgr.ID_Manager}
+                            className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors">
+                            {unlinkingManager === mgr.ID_Manager ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1103,10 +1135,12 @@ export default function ClientDetailPage({ params }: Props) {
                           <p className="mt-0.5 font-mono text-[11px] text-slate-400">{mem.ID_Member}</p>
                           {mem.rol && <span className="mt-1.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">{mem.rol}</span>}
                         </div>
-                        <button onClick={() => unlinkMem(mem.ID_Member)} disabled={unlinkingMember === mem.ID_Member}
-                          className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors">
-                          {unlinkingMember === mem.ID_Member ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
+                        {canUpdate && (
+                          <button onClick={() => unlinkMem(mem.ID_Member)} disabled={unlinkingMember === mem.ID_Member}
+                            className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors">
+                            {unlinkingMember === mem.ID_Member ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

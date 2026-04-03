@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   LayoutDashboard,
   Briefcase,
@@ -61,7 +62,17 @@ export function Sidebar() {
     }
   }, [])
 
-  const menuItems = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+  const { hasPermission } = usePermissions()
+
+  const menuItems = useMemo(() => {
+    const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+    return base.filter((item) => {
+      if (item.href === "/members") return hasPermission("member:read")
+      if (item.href === "/clients") return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+      if (item.href === "/roles-permissions") return hasPermission("iam_pm:read")
+      return true
+    })
+  }, [userRole, hasPermission])
 
   const handleLogout = () => {
     localStorage.removeItem("access_token")

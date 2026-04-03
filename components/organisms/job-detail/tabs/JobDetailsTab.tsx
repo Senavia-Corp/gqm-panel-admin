@@ -10,6 +10,7 @@ import {
   Briefcase, MapPin, FileText, Calendar, Clock,
   Info, Building2, Tag, AlertCircle, CheckCircle2, Hash,
 } from "lucide-react"
+import { usePermissions } from "@/hooks/usePermissions"
 
 type Props = {
   role: UserRole
@@ -18,6 +19,7 @@ type Props = {
   statusOptionsByJobType: Record<string, string[]>
   onFieldChange: (field: string, value: any) => void
   isFieldChanged: (field: string) => boolean
+  readOnly?: boolean
 }
 
 function pick<T = any>(obj: any, keys: string[], fallback: T): T {
@@ -188,8 +190,13 @@ export function JobDetailsTab({
   statusOptionsByJobType,
   onFieldChange,
   isFieldChanged,
+  readOnly = false,
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
+  const isReadOnly = readOnly || isTech
+
+  const { hasPermission } = usePermissions()
+  const canReadClients = hasPermission("client:read")
 
   // Field values
   const idJobs = pick<string>(job, ["ID_Jobs", "idJobs", "jobId"], "")
@@ -231,7 +238,9 @@ export function JobDetailsTab({
             value={currentClientId || ""}
             initialClients={clients}
             changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
+            disabled={isReadOnly || !canReadClients}
             onChange={(selected) => {
+              if (isReadOnly) return
               if (!selected) {
                 onFieldChange("client", null)
                 onFieldChange("ID_Client", null)
@@ -280,7 +289,7 @@ export function JobDetailsTab({
           {/* Status */}
           <div>
             <FieldLabel>Status</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${statusColor}`}>
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
                 <span className="text-sm font-medium">{status || "—"}</span>
@@ -307,7 +316,7 @@ export function JobDetailsTab({
         {isQID && (
           <div>
             <FieldLabel>Service Type</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <ReadonlyField value={serviceType} />
             ) : (
               <EditableInput
@@ -328,7 +337,7 @@ export function JobDetailsTab({
           {isQID && (
             <div>
               <FieldLabel>Project Name</FieldLabel>
-              {isTech ? (
+              {isReadOnly ? (
                 <ReadonlyField value={projectName} />
               ) : (
                 <EditableInput
@@ -345,7 +354,7 @@ export function JobDetailsTab({
           {(isQID || isPTL) && (
             <div>
               <FieldLabel>Project Location</FieldLabel>
-              {isTech ? (
+              {isReadOnly ? (
                 <ReadonlyField value={projectLocation} />
               ) : (
                 <EditableTextarea
@@ -363,7 +372,7 @@ export function JobDetailsTab({
           {(isQID || isPAR) && (
             <div>
               <FieldLabel>PO / WTN / WO #</FieldLabel>
-              {isTech ? (
+              {isReadOnly ? (
                 <ReadonlyField value={poWtnWo} />
               ) : (
                 <EditableInput
@@ -383,7 +392,7 @@ export function JobDetailsTab({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <FieldLabel>Date Assigned</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <ReadonlyField value={dateAssigned} />
             ) : (
               <EditableInput
@@ -397,7 +406,7 @@ export function JobDetailsTab({
 
           <div>
             <FieldLabel>Estimated Start Date</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <ReadonlyField value={estimatedStartDate} />
             ) : (
               <EditableInput
@@ -412,7 +421,7 @@ export function JobDetailsTab({
 
         <div>
           <FieldLabel>Estimated Duration (months)</FieldLabel>
-          {isTech ? (
+          {isReadOnly ? (
             <ReadonlyField value={durationRaw || "—"} />
           ) : (
             <EditableInput
@@ -428,7 +437,7 @@ export function JobDetailsTab({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <FieldLabel>Date Received</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <ReadonlyField value={dateReceived} />
             ) : (
               <EditableInput
@@ -442,7 +451,7 @@ export function JobDetailsTab({
 
           <div>
             <FieldLabel>Estimated Completion Date</FieldLabel>
-            {isTech ? (
+            {isReadOnly ? (
               <ReadonlyField value={estimatedCompletionDate} />
             ) : (
               <EditableInput
@@ -458,7 +467,7 @@ export function JobDetailsTab({
 
       {/* ── 5. Additional Details ──────────────────────────────────────── */}
       <SectionCard icon={Info} title="Additional Details">
-        {isTech ? (
+        {isReadOnly ? (
           <ReadonlyField value={additionalDetail} />
         ) : (
           <EditableTextarea
@@ -477,7 +486,7 @@ export function JobDetailsTab({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <FieldLabel>Superintendent</FieldLabel>
-              {isTech ? (
+              {isReadOnly ? (
                 <ReadonlyField value={ptlSuperintendent} />
               ) : (
                 <EditableInput
@@ -490,7 +499,7 @@ export function JobDetailsTab({
             </div>
             <div>
               <FieldLabel>Property ID</FieldLabel>
-              {isTech ? (
+              {isReadOnly ? (
                 <ReadonlyField value={ptlPropertyId} />
               ) : (
                 <EditableInput

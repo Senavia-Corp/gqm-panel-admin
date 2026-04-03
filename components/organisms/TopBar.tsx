@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, ChevronDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ export function TopBar() {
 
     if (!memberId) { setLoadingMember(false); return }
 
-    fetch(`/api/members/${memberId}`, { cache: "no-store" })
+    apiFetch(`/api/members/${memberId}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
         setMember({

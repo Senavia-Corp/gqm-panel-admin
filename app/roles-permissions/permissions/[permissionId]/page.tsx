@@ -15,36 +15,62 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   Trash2, Save, ArrowLeft, Shield, Users,
-  AlertCircle, RefreshCcw, CheckCircle2, X,
+  AlertCircle, RefreshCcw, CheckCircle2, X, Plus
 } from "lucide-react"
-import type { Permission, PermissionActionType, PermissionServiceType, Role } from "@/lib/types"
+import type { Permission, IAMDocument, IAMStatement, Role } from "@/lib/types"
+
+const MODULE_ACTIONS = [
+  {
+    module: "Jobs",
+    actions: [
+      { id: "job:read", label: "Full Read", desc: "Access to all job info including financial data." },
+      { id: "job:read_basics", label: "Read Basics", desc: "Limited access to public/basic fields only." },
+      { id: "job:create", label: "Create", desc: "Create new job records." },
+      { id: "job:update", label: "Update", desc: "Edit existing job information." },
+      { id: "job:delete", label: "Delete", desc: "Delete job records." },
+    ]
+  },
+  {
+    module: "Members",
+    actions: [
+      { id: "member:read", label: "Read", desc: "View the team member list and details." },
+      { id: "member:create", label: "Create", desc: "Register new team members." },
+      { id: "member:update", label: "Update", desc: "Edit member profiles." },
+      { id: "member:delete", label: "Delete", desc: "Remove members from the system." },
+    ]
+  },
+  {
+    module: "Subcontractors",
+    actions: [
+      { id: "subcontractor:read", label: "Read", desc: "View subcontractor lists and details." },
+      { id: "subcontractor:create", label: "Create", desc: "Register new subcontractors." },
+      { id: "subcontractor:update", label: "Update", desc: "Edit subcontractor profiles." },
+      { id: "subcontractor:delete", label: "Delete", desc: "Delete subcontractor records." },
+    ]
+  },
+  {
+    module: "Clients / Communities",
+    actions: [
+      { id: "client:read", label: "Read", desc: "View clients and communities." },
+      { id: "client:create", label: "Create", desc: "Create new client/community records." },
+      { id: "client:update", label: "Update", desc: "Update client information." },
+      { id: "client:delete", label: "Delete", desc: "Delete clients from the system." },
+    ]
+  },
+  {
+    module: "PMC (Parent Companies)",
+    actions: [
+      { id: "parent_mgmt_co:read", label: "Read", desc: "Consult PMCs." },
+      { id: "parent_mgmt_co:create", label: "Create", desc: "Create new PMC records." },
+      { id: "parent_mgmt_co:update", label: "Update", desc: "Edit PMC information." },
+      { id: "parent_mgmt_co:delete", label: "Delete", desc: "Delete PMC records." },
+    ]
+  },
+]
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-const ACTION_COLORS: Record<string, string> = {
-  View:   "bg-sky-50 text-sky-700 border-sky-200",
-  Create: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Edit:   "bg-amber-50 text-amber-700 border-amber-200",
-  Delete: "bg-red-50 text-red-600 border-red-200",
-}
-const SERVICE_COLORS: Record<string, string> = {
-  Job:           "bg-violet-50 text-violet-700 border-violet-200",
-  Subcontractor: "bg-orange-50 text-orange-700 border-orange-200",
-  GQM_Member:    "bg-blue-50 text-blue-700 border-blue-200",
-  Technician:    "bg-teal-50 text-teal-700 border-teal-200",
-  Client:        "bg-pink-50 text-pink-700 border-pink-200",
-  Dashboard:     "bg-slate-100 text-slate-600 border-slate-200",
-}
 
-function Chip({ label, colorMap }: { label?: string | null; colorMap: Record<string, string> }) {
-  const cls = colorMap[label ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
-  const display = label === "GQM_Member" ? "GQM Member" : (label ?? "—")
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}>
-      {display}
-    </span>
-  )
-}
 
 function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -69,8 +95,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boo
   )
 }
 
-const ACTION_OPTIONS: PermissionActionType[] = ["View", "Create", "Edit", "Delete"]
-const SERVICE_OPTIONS: PermissionServiceType[] = ["Job", "Subcontractor", "GQM_Member", "Technician", "Client", "Dashboard"]
+
 
 export default function PermissionDetailPage() {
   const params = useParams() as { permissionId?: string }
@@ -83,6 +108,7 @@ export default function PermissionDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [statements, setStatements] = useState<IAMStatement[]>([])
 
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
@@ -96,13 +122,47 @@ export default function PermissionDetailPage() {
       setLoading(true); setLoadError(null)
       const res = await fetch(`/api/permissions/${permissionId}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch permission (${res.status})`)
-      setPermission(await res.json())
+      const data = await res.json()
+      setPermission(data)
+      setStatements(data.Document?.Statement || [{ Effect: "Allow", Action: [], Resource: ["*"] }])
     } catch (e: any) {
       setPermission(null); setLoadError(e?.message ?? "Failed to load permission")
     } finally { setLoading(false) }
   }
 
   useEffect(() => { if (!user) return; fetchPermission() }, [user, permissionId])
+
+  const addStatement = () => setStatements([...statements, { Effect: "Allow", Action: [], Resource: ["*"] }])
+  const removeStatement = (idx: number) => setStatements(statements.filter((_, i) => i !== idx))
+  const updateStatement = (idx: number, updates: Partial<IAMStatement>) => setStatements(statements.map((s, i) => i === idx ? { ...s, ...updates } : s))
+  const toggleAction = (idx: number, actionId: string) => {
+    const s = statements[idx]
+    let next: string[] = [...s.Action]
+
+    if (actionId === "*") {
+      next = next.includes("*") ? [] : ["*"]
+    } else {
+      next = next.filter(a => a !== "*")
+      const mod = actionId.split(":")[0]
+      const isModWildcard = actionId.endsWith(":*")
+
+      if (isModWildcard) {
+        if (next.includes(actionId)) {
+          next = next.filter(a => a !== actionId)
+        } else {
+          next = [...next.filter(a => !a.startsWith(`${mod}:`)), actionId]
+        }
+      } else {
+        next = next.filter(a => a !== `${mod}:*`)
+        if (next.includes(actionId)) {
+          next = next.filter(a => a !== actionId)
+        } else {
+          next = [...next, actionId]
+        }
+      }
+    }
+    updateStatement(idx, { Action: next })
+  }
 
   const linkedRoles = useMemo(() => {
     const roles = (permission as any)?.roles
@@ -113,6 +173,7 @@ export default function PermissionDetailPage() {
     if (!permissionId || !permission) return
     try {
       setSaving(true)
+      const doc: IAMDocument = { Version: "1.0", Statement: statements }
       await fetch(`/api/permissions/${permissionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -121,8 +182,7 @@ export default function PermissionDetailPage() {
           Name: permission.Name,
           Description: permission.Description,
           Active: permission.Active,
-          Action: permission.Action,
-          Service_Associated: permission.Service_Associated,
+          Document: doc
         }),
       })
       await fetchPermission()
@@ -151,7 +211,7 @@ export default function PermissionDetailPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        {user ? <TopBar user={user} /> : null}
+        {user ? <TopBar /> : null}
 
         <main className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* ── Breadcrumb ───────────────────────────────────────────────── */}
@@ -228,8 +288,9 @@ export default function PermissionDetailPage() {
             <div className="py-12 text-center text-sm text-slate-400">Permission not found</div>
           ) : (
             <>
-              {/* ── Permission info card ───────────────────────────────── */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+              {/* Permission info card */}
+              <div className="max-w-5xl mx-auto space-y-5">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
                 {/* ID + active status row */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
@@ -246,116 +307,209 @@ export default function PermissionDetailPage() {
 
                 {/* Form grid */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Name</label>
-                    <Input
-                      value={asString(permission.Name)}
-                      onChange={(e) => setPermission({ ...permission, Name: e.target.value })}
-                      placeholder="Permission name"
-                      className="border-slate-200 bg-slate-50 focus:bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 lg:col-span-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
                     <Textarea
                       value={asString(permission.Description)}
                       onChange={(e) => setPermission({ ...permission, Description: e.target.value })}
                       placeholder="Permission description"
-                      className="min-h-[88px] resize-y border-slate-200 bg-slate-50 focus:bg-white"
+                      className="min-h-[64px] resize-y border-slate-200 bg-slate-50 focus:bg-white"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Action</label>
-                    <Select
-                      value={permission.Action as any}
-                      onValueChange={(v) => setPermission({ ...permission, Action: v as PermissionActionType })}
-                    >
-                      <SelectTrigger className="border-slate-200 bg-slate-50">
-                        <SelectValue placeholder="Select action…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ACTION_OPTIONS.map((a) => (
-                          <SelectItem key={a} value={a}>{a}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Service</label>
-                    <Select
-                      value={permission.Service_Associated as any}
-                      onValueChange={(v) => setPermission({ ...permission, Service_Associated: v as PermissionServiceType })}
-                    >
-                      <SelectTrigger className="border-slate-200 bg-slate-50">
-                        <SelectValue placeholder="Select service…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SERVICE_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s}>{s === "GQM_Member" ? "GQM Member" : s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
-
-                {/* Live preview chips */}
-                {(permission.Action || permission.Service_Associated) && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <span className="text-xs text-slate-400 mr-1">Preview:</span>
-                    {permission.Action && <Chip label={permission.Action} colorMap={ACTION_COLORS} />}
-                    {permission.Service_Associated && <Chip label={permission.Service_Associated} colorMap={SERVICE_COLORS} />}
-                  </div>
-                )}
               </div>
 
-              {/* ── Linked roles card ─────────────────────────────────── */}
+              {/* Policy Builder Replacement */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
-                    <Users className="h-4 w-4 text-violet-600" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Policy Statements
+                  </label>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={addStatement}
+                      className="h-7 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Statement
+                    </Button>
                   </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">Linked Roles ({linkedRoles.length})</h2>
-                    <p className="text-xs text-slate-400">Roles that currently include this permission.</p>
-                  </div>
+
+                  {statements.map((s, sIdx) => (
+                    <div key={sIdx} className="relative rounded-xl border border-slate-200 bg-slate-50/30 p-4 space-y-4">
+                      {statements.length > 1 && (
+                        <button 
+                          onClick={() => removeStatement(sIdx)}
+                          className="absolute right-3 top-3 text-slate-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-400">Effect</label>
+                          <div className="flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => updateStatement(sIdx, { Effect: "Allow" })}
+                              className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                                s.Effect === "Allow" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                              }`}
+                            >
+                              Allow
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateStatement(sIdx, { Effect: "Deny" })}
+                              className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                                s.Effect === "Deny" ? "bg-red-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                              }`}
+                            >
+                              Deny
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-400">Shortcut</label>
+                          <button
+                            type="button"
+                            onClick={() => toggleAction(sIdx, "*")}
+                            className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-all ${
+                              s.Action.includes("*") 
+                                ? "border-amber-200 bg-amber-50 text-amber-700 shadow-sm" 
+                                : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                            }`}
+                          >
+                            <Shield className="h-3.5 w-3.5" /> Full Access (*)
+                          </button>
+                        </div>
+
+                        <div className="flex-1 min-w-[200px]">
+                          <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-[11px] text-emerald-800">
+                              <strong>Resource:</strong> Global <code>["*"]</code>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-bold uppercase text-slate-400">Actions</label>
+                        <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${s.Action.includes("*") ? "opacity-30 pointer-events-none" : ""}`}>
+                          {MODULE_ACTIONS.map((mod) => (
+                            <div key={mod.module} className="space-y-2">
+                              <h4 className="text-[11px] font-bold text-slate-600 border-b border-slate-100 pb-1 flex items-center justify-between">
+                                {mod.module}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleAction(sIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
+                                    className={`rounded px-1.5 py-0.5 text-[9px] font-bold transition-all ${
+                                      s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`)
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                                    }`}
+                                  >
+                                    All
+                                  </button>
+                                  <span className="font-normal text-slate-400">({mod.actions.filter(a => s.Action.includes(a.id)).length})</span>
+                                </div>
+                              </h4>
+                              <div className="space-y-1.5">
+                                {mod.actions.map((act) => {
+                                  const isChecked = s.Action.includes(act.id)
+                                  return (
+                                    <button
+                                      key={act.id}
+                                      type="button"
+                                      onClick={() => toggleAction(sIdx, act.id)}
+                                      className={`flex w-full items-start gap-2 rounded-lg border p-2 text-left transition-all ${
+                                        isChecked 
+                                          ? "border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-200" 
+                                          : "border-transparent hover:bg-slate-100"
+                                      }`}
+                                    >
+                                      <div className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-all ${
+                                        isChecked ? "bg-emerald-600 border-emerald-600" : "bg-white border-slate-300"
+                                      }`}>
+                                        {isChecked && <CheckCircle2 className="h-2.5 w-2.5 text-white" />}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className={`text-[11px] font-bold leading-tight ${isChecked ? "text-emerald-900" : "text-slate-700"}`}>
+                                          {act.id}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 leading-tight">
+                                          {act.desc}
+                                        </p>
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {linkedRoles.length ? (
-                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
-                    {linkedRoles.map((r: any) => (
-                      <button
-                        key={r.ID_Role}
-                        onClick={() => router.push(`/roles-permissions/roles/${r.ID_Role}`)}
-                        type="button"
-                        className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-violet-300 hover:shadow-md transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate">{asString(r.Name) || "—"}</p>
-                            <p className="font-mono text-[10px] text-slate-400">{r.ID_Role}</p>
+                  {/* JSON Preview */}
+                  <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-900 p-4 font-mono text-[10px] text-emerald-400 overflow-x-auto">
+                    <p className="text-slate-500 mb-2 uppercase font-sans font-bold tracking-widest text-[9px] font-sans">Document Preview</p>
+                    <pre>{JSON.stringify({ Version: "1.0", Statement: statements }, null, 2)}</pre>
+                  </div>
+
+                {/* Linked roles card */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                      <Users className="h-4 w-4 text-violet-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-800">Linked Roles ({linkedRoles.length})</h2>
+                      <p className="text-xs text-slate-400">Roles that currently include this permission.</p>
+                    </div>
+                  </div>
+
+                  {linkedRoles.length ? (
+                    <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+                      {linkedRoles.map((r: any) => (
+                        <button
+                          key={r.ID_Role}
+                          onClick={() => router.push(`/roles-permissions/roles/${r.ID_Role}`)}
+                          type="button"
+                          className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-violet-300 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate">{asString(r.Name) || "—"}</p>
+                              <p className="font-mono text-[10px] text-slate-400">{r.ID_Role}</p>
+                            </div>
+                            <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                              r.Active
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                : "bg-slate-100 border-slate-200 text-slate-400"
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${r.Active ? "bg-emerald-500" : "bg-slate-400"}`} />
+                              {r.Active ? "Active" : "Inactive"}
+                            </span>
                           </div>
-                          <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                            r.Active
-                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                              : "bg-slate-100 border-slate-200 text-slate-400"
-                          }`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${r.Active ? "bg-emerald-500" : "bg-slate-400"}`} />
-                            {r.Active ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                        {r.Description && (
-                          <p className="mt-2 text-[11px] text-slate-400 line-clamp-2">{asString(r.Description)}</p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-center">
-                    <Users className="mx-auto mb-1.5 h-6 w-6 text-slate-200" />
-                    <p className="text-xs text-slate-400">No roles linked to this permission</p>
-                  </div>
-                )}
-              </div>
+                          {r.Description && (
+                            <p className="mt-2 text-[11px] text-slate-400 line-clamp-2">{asString(r.Description)}</p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-center">
+                      <Users className="mx-auto mb-1.5 h-6 w-6 text-slate-200" />
+                      <p className="text-xs text-slate-400">No roles linked to this permission</p>
+                    </div>
+                  )}
+                </div>
+              </div> {/* End of max-w-5xl container */}
             </>
           )}
         </main>

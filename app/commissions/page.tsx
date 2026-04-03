@@ -18,6 +18,7 @@ import {
   BadgeDollarSign, Plus, Search, ChevronLeft, ChevronRight,
   Eye, Trash2, AlertCircle, RefreshCw, X, Loader2, Calendar, User
 } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ function CreateCommissionModal({
   useEffect(() => {
     if (!open) return
     setLoadingMembers(true)
-    fetch("/api/members/table?page=1&limit=100", { cache: "no-store" })
+    apiFetch("/api/members/table?page=1&limit=100", { cache: "no-store" })
       .then(r => r.json())
       .then(d => setMembers(d.results ?? []))
       .catch(() => setMembers([]))
@@ -160,7 +161,7 @@ function CreateCommissionModal({
     if (!year) { setError("Please select a year."); return }
     setSaving(true); setError(null)
     try {
-      const res = await fetch("/api/commission", {
+      const res = await apiFetch("/api/commission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Month: month, Year: parseInt(year), ID_Member: memberId }),
@@ -344,7 +345,7 @@ export default function CommissionsPage() {
       url.searchParams.set("page", String(p))
       url.searchParams.set("limit", String(LIMIT))
       if (q) url.searchParams.set("q", q)
-      const res = await fetch(url.toString(), { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(url.toString(), { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: TableResponse = await res.json()
       console.log("Data de la commission",data);
@@ -364,7 +365,7 @@ export default function CommissionsPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/commission?id=${encodeURIComponent(deleteTarget.ID_Commission)}`, {
+      const res = await apiFetch(`/api/commission?id=${encodeURIComponent(deleteTarget.ID_Commission)}`, {
         method: "DELETE", cache: "no-store",
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
@@ -383,7 +384,7 @@ export default function CommissionsPage() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-5">
 

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, ChevronLeft, ChevronRight, Eye, Trash2, X, AlertCircle, RefreshCcw, ShieldOff } from "lucide-react"
-import type { Permission, PaginatedResponse, PermissionActionType, PermissionServiceType } from "@/lib/types"
+import type { Permission, PaginatedResponse, IAMDocument, IAMStatement } from "@/lib/types"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,39 +23,29 @@ import {
 const ITEMS_PER_PAGE = 10
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-// ── Semantic color maps ────────────────────────────────────────────────────────
-const ACTION_COLORS: Record<string, string> = {
-  View:   "bg-sky-50 text-sky-700 border-sky-200",
-  Create: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Edit:   "bg-amber-50 text-amber-700 border-amber-200",
-  Delete: "bg-red-50 text-red-600 border-red-200",
-}
+function PolicySummary({ document }: { document?: IAMDocument }) {
+  if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
 
-const SERVICE_COLORS: Record<string, string> = {
-  Job:           "bg-violet-50 text-violet-700 border-violet-200",
-  Subcontractor: "bg-orange-50 text-orange-700 border-orange-200",
-  GQM_Member:    "bg-blue-50 text-blue-700 border-blue-200",
-  Technician:    "bg-teal-50 text-teal-700 border-teal-200",
-  Client:        "bg-pink-50 text-pink-700 border-pink-200",
-  Dashboard:     "bg-slate-100 text-slate-600 border-slate-200",
-}
+  const allActions = document.Statement.flatMap(s => s.Action)
+  if (allActions.includes("*")) {
+    return <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">Full Administrative Access (*)</span>
+  }
 
-function ActionChip({ action }: { action?: string | null }) {
-  const cls = ACTION_COLORS[action ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
+  const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
+  
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}>
-      {action ?? "—"}
-    </span>
-  )
-}
-
-function ServiceChip({ service }: { service?: string | null }) {
-  const cls = SERVICE_COLORS[service ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"
-  const label = service === "GQM_Member" ? "GQM Member" : service ?? "—"
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}>
-      {label}
-    </span>
+    <div className="flex flex-wrap gap-1">
+      {modules.map(m => {
+        const isFullModule = allActions.includes(`${m}:*`)
+        return (
+          <span key={m} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold lowercase ${
+            isFullModule ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"
+          }`}>
+            {m}{isFullModule ? ":*" : ""}
+          </span>
+        )
+      })}
+    </div>
   )
 }
 
@@ -84,8 +74,7 @@ export default function PermissionsTable() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState<number>(0)
   const [searchQuery, setSearchQuery] = useState("")
-  const [actionFilter, setActionFilter] = useState<"all" | PermissionActionType>("all")
-  const [serviceFilter, setServiceFilter] = useState<"all" | PermissionServiceType>("all")
+  const [moduleFilter, setModuleFilter] = useState<string>("all")
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [permissionToDelete, setPermissionToDelete] = useState<Permission | null>(null)
@@ -147,16 +136,18 @@ export default function PermissionsTable() {
         asString(p.ID_Permission).toLowerCase().includes(q) ||
         asString(p.Name).toLowerCase().includes(q) ||
         asString(p.Description).toLowerCase().includes(q)
-      const matchesAction = actionFilter === "all" || p.Action === actionFilter
-      const matchesService = serviceFilter === "all" || p.Service_Associated === serviceFilter
+      
+      const pModules = p.Document?.Statement?.flatMap(s => s.Action).map(a => a.split(":")[0]) ?? []
+      const matchesModule = moduleFilter === "all" || pModules.includes(moduleFilter) || (moduleFilter === "admin" && pModules.includes("*"))
+
       const isActive = Boolean(p.Active)
       const matchesActive = activeFilter === "all" || (activeFilter === "active" ? isActive : !isActive)
-      return matchesSearch && matchesAction && matchesService && matchesActive
+      return matchesSearch && matchesModule && matchesActive
     })
-  }, [permissions, searchQuery, actionFilter, serviceFilter, activeFilter])
+  }, [permissions, searchQuery, moduleFilter, activeFilter])
 
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE))
-  const hasActiveFilters = searchQuery || actionFilter !== "all" || serviceFilter !== "all" || activeFilter !== "all"
+  const hasActiveFilters = searchQuery || moduleFilter !== "all" || activeFilter !== "all"
 
   return (
     <div>
@@ -179,31 +170,18 @@ export default function PermissionsTable() {
             )}
           </div>
 
-          <Select value={actionFilter} onValueChange={(v: any) => setActionFilter(v)}>
-            <SelectTrigger className="w-36 text-sm border-slate-200 bg-slate-50">
-              <SelectValue placeholder="Action" />
+          <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v)}>
+            <SelectTrigger className="w-44 text-sm border-slate-200 bg-slate-50">
+              <SelectValue placeholder="Module" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
-              <SelectItem value="View">View</SelectItem>
-              <SelectItem value="Create">Create</SelectItem>
-              <SelectItem value="Edit">Edit</SelectItem>
-              <SelectItem value="Delete">Delete</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={serviceFilter} onValueChange={(v: any) => setServiceFilter(v)}>
-            <SelectTrigger className="w-40 text-sm border-slate-200 bg-slate-50">
-              <SelectValue placeholder="Service" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Services</SelectItem>
-              <SelectItem value="Job">Job</SelectItem>
-              <SelectItem value="Subcontractor">Subcontractor</SelectItem>
-              <SelectItem value="GQM_Member">GQM Member</SelectItem>
-              <SelectItem value="Technician">Technician</SelectItem>
-              <SelectItem value="Client">Client</SelectItem>
-              <SelectItem value="Dashboard">Dashboard</SelectItem>
+              <SelectItem value="all">All Modules</SelectItem>
+              <SelectItem value="admin">Full Admin</SelectItem>
+              <SelectItem value="job">Jobs</SelectItem>
+              <SelectItem value="member">Members</SelectItem>
+              <SelectItem value="subcontractor">Subcontractors</SelectItem>
+              <SelectItem value="client">Clients</SelectItem>
+              <SelectItem value="parent_mgmt_co">PMC</SelectItem>
             </SelectContent>
           </Select>
 
@@ -220,7 +198,7 @@ export default function PermissionsTable() {
 
           {hasActiveFilters && (
             <button
-              onClick={() => { setSearchQuery(""); setActionFilter("all"); setServiceFilter("all"); setActiveFilter("all") }}
+              onClick={() => { setSearchQuery(""); setModuleFilter("all"); setActiveFilter("all") }}
               className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-100 transition-colors"
             >
               <X className="h-3.5 w-3.5" /> Clear filters
@@ -270,11 +248,10 @@ export default function PermissionsTable() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Service</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name / Description</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Roles</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Linked Roles</th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actions</th>
                 </tr>
               </thead>
@@ -292,8 +269,7 @@ export default function PermissionsTable() {
                           <div className="mt-0.5 text-xs text-slate-400 line-clamp-1">{asString(p.Description)}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3"><ActionChip action={p.Action} /></td>
-                      <td className="px-4 py-3"><ServiceChip service={p.Service_Associated} /></td>
+                      <td className="px-4 py-3"><PolicySummary document={p.Document} /></td>
                       <td className="px-4 py-3"><ActivePill active={p.Active} /></td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
