@@ -7,16 +7,8 @@ import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  BadgeDollarSign, Plus, Search, ChevronLeft, ChevronRight,
-  Eye, Trash2, AlertCircle, RefreshCw, X, Loader2, Calendar, User
+  BadgeDollarSign, Search, ChevronLeft, ChevronRight,
+  Eye, AlertCircle, RefreshCw, X, Calendar, User
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 
@@ -40,17 +32,7 @@ type TableResponse = {
   results: CommissionRow[]
 }
 
-type MemberOption = {
-  ID_Member: string
-  Member_Name: string | null
-}
-
 const LIMIT = 20
-
-const MONTHS = [
-  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
-]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,208 +88,6 @@ function RepAvatar() {
   )
 }
 
-// ─── Create Commission Modal ──────────────────────────────────────────────────
-
-function CreateCommissionModal({
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  onCreated: (id: string) => void
-}) {
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i))
-
-  const [month, setMonth] = useState("")
-  const [year, setYear] = useState("")
-  const [memberId, setMemberId] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Members list
-  const [members, setMembers] = useState<MemberOption[]>([])
-  const [loadingMembers, setLoadingMembers] = useState(false)
-  const [memberSearch, setMemberSearch] = useState("")
-
-  useEffect(() => {
-    if (!open) return
-    setLoadingMembers(true)
-    apiFetch("/api/members/table?page=1&limit=100", { cache: "no-store" })
-      .then(r => r.json())
-      .then(d => setMembers(d.results ?? []))
-      .catch(() => setMembers([]))
-      .finally(() => setLoadingMembers(false))
-  }, [open])
-
-  const filteredMembers = memberSearch.trim()
-    ? members.filter(m =>
-      (m.Member_Name ?? "").toLowerCase().includes(memberSearch.toLowerCase()) ||
-      m.ID_Member.toLowerCase().includes(memberSearch.toLowerCase())
-    )
-    : members
-
-  const selectedMember = members.find(m => m.ID_Member === memberId)
-
-  const reset = () => {
-    setMonth(""); setYear(""); setMemberId("")
-    setError(null); setMemberSearch("")
-  }
-
-  const handleCreate = async () => {
-    if (!memberId) { setError("Please select a member."); return }
-    if (!month) { setError("Please select a month."); return }
-    if (!year) { setError("Please select a year."); return }
-    setSaving(true); setError(null)
-    try {
-      const res = await apiFetch("/api/commission", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Month: month, Year: parseInt(year), ID_Member: memberId }),
-        cache: "no-store",
-      })
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}))
-        throw new Error((d as any)?.detail ?? `Error ${res.status}`)
-      }
-      const created = await res.json()
-      reset(); onOpenChange(false); onCreated(created.ID_Commission)
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to create commission")
-    } finally { setSaving(false) }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
-      <DialogContent className="rounded-2xl border-slate-200 sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900">
-            <BadgeDollarSign className="h-5 w-5 text-emerald-600" /> New Commission
-          </DialogTitle>
-          <DialogDescription className="text-slate-500">
-            Select the member, month and year for this commission period.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />{error}
-            </div>
-          )}
-
-          {/* Member selector */}
-          <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Member <span className="text-red-400">*</span>
-            </p>
-            <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Search members…"
-                value={memberSearch}
-                onChange={e => setMemberSearch(e.target.value)}
-                className="pl-9 border-slate-200 bg-slate-50 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
-              />
-            </div>
-
-            {loadingMembers ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading members…
-              </div>
-            ) : (
-              <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-1.5">
-                {filteredMembers.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-slate-400">No members found</p>
-                ) : filteredMembers.map(m => {
-                  const isSelected = memberId === m.ID_Member
-                  const initials = (m.Member_Name ?? m.ID_Member)
-                    .split(/\s+/).filter(Boolean).slice(0, 2)
-                    .map((w: string) => w[0].toUpperCase()).join("") || "??"
-                  return (
-                    <button
-                      key={m.ID_Member}
-                      onClick={() => setMemberId(isSelected ? "" : m.ID_Member)}
-                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${isSelected
-                        ? "border-emerald-300 bg-emerald-50"
-                        : "border-transparent hover:border-slate-200 hover:bg-slate-50"
-                        }`}
-                    >
-                      <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${isSelected ? "bg-emerald-600" : "bg-slate-400"}`}>
-                        {initials}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800">{m.Member_Name ?? "Unnamed"}</p>
-                        <p className="font-mono text-[11px] text-slate-400">{m.ID_Member}</p>
-                      </div>
-                      {isSelected && (
-                        <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">✓</span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Month + Year */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                Month <span className="text-red-400">*</span>
-              </p>
-              <Select value={month} onValueChange={setMonth}>
-                <SelectTrigger className="border-slate-200 bg-slate-50 text-sm">
-                  <SelectValue placeholder="Select…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map(m => <SelectItem key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                Year <span className="text-red-400">*</span>
-              </p>
-              <Select value={year} onValueChange={setYear}>
-                <SelectTrigger className="border-slate-200 bg-slate-50 text-sm">
-                  <SelectValue placeholder="Select…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Preview */}
-          {(selectedMember || month || year) && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Preview</p>
-              <p className="text-sm text-slate-700">
-                <span className="font-semibold">{selectedMember?.Member_Name ?? "—"}</span>
-                {month && year && ` · ${month.charAt(0) + month.slice(1).toLowerCase()} ${year}`}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => { reset(); onOpenChange(false) }} disabled={saving} className="text-xs border-slate-200">
-            Cancel
-          </Button>
-          <Button size="sm" onClick={handleCreate} disabled={saving || !memberId || !month || !year}
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            {saving ? "Creating…" : "Create Commission"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CommissionsPage() {
@@ -322,9 +102,6 @@ export default function CommissionsPage() {
 
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 350)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<CommissionRow | null>(null)
-  const [deleting, setDeleting] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
 
@@ -348,8 +125,7 @@ export default function CommissionsPage() {
       const res = await apiFetch(url.toString(), { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: TableResponse = await res.json()
-      console.log("Data de la commission",data);
-
+      
       setRows(data.results ?? [])
       setTotal(data.total ?? 0)
     } catch (e: any) {
@@ -360,19 +136,6 @@ export default function CommissionsPage() {
 
   useEffect(() => { setPage(1) }, [debouncedSearch])
   useEffect(() => { if (user) fetchData(page, debouncedSearch) }, [user, page, debouncedSearch, fetchData])
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try {
-      const res = await apiFetch(`/api/commission?id=${encodeURIComponent(deleteTarget.ID_Commission)}`, {
-        method: "DELETE", cache: "no-store",
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
-      setDeleteTarget(null); fetchData(page, debouncedSearch)
-    } catch (e: any) { console.error("Delete error:", e) }
-    finally { setDeleting(false) }
-  }
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
   const rangeStart = total === 0 ? 0 : (page - 1) * LIMIT + 1
@@ -395,12 +158,9 @@ export default function CommissionsPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900 leading-none">Commissions</h1>
-                  <p className="mt-1 text-sm text-slate-500">Manage member commission records</p>
+                  <p className="mt-1 text-sm text-slate-500">View and manage member commission records</p>
                 </div>
               </div>
-              <Button onClick={() => setCreateOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="h-4 w-4" /> New Commission
-              </Button>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -446,7 +206,7 @@ export default function CommissionsPage() {
                   <tbody>
                     {loading ? <SkeletonRows /> : rows.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-16 text-center">
+                        <td colSpan={6} className="py-16 text-center">
                           <div className="flex flex-col items-center gap-3">
                             <BadgeDollarSign className="h-8 w-8 text-slate-300" />
                             <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
@@ -473,10 +233,6 @@ export default function CommissionsPage() {
                             <button onClick={() => router.push(`/commissions/${row.ID_Commission}`)}
                               className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600" title="View">
                               <Eye className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => setDeleteTarget(row)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900" title="Delete">
-                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -506,25 +262,6 @@ export default function CommissionsPage() {
           </div>
         </main>
       </div>
-
-      <CreateCommissionModal open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => router.push(`/commissions/${id}`)} />
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-2xl border-slate-200">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900">Delete Commission</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500">
-              Are you sure you want to delete commission <span className="font-semibold text-slate-700">{deleteTarget?.ID_Commission}</span>? All groups and details will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-200 text-xs" disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleting} className="gap-1.5 bg-red-600 hover:bg-red-700 text-xs">
-              {deleting ? "Deleting…" : "Delete Commission"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

@@ -64,6 +64,7 @@ async function proxyFetch(url: string, init?: RequestInit) {
 export async function GET(request: NextRequest) {
     if (!PYTHON_BASE_URL) return jsonError("Missing PYTHON_API_BASE_URL env var", 500)
 
+    const authHeader = request.headers.get("Authorization")
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     const page = searchParams.get("page") ?? DEFAULT_PAGE
@@ -72,7 +73,10 @@ export async function GET(request: NextRequest) {
     if (id) {
         const url = `${COMMISSION_DETAIL_BASE}/${encodeURIComponent(id)}`
         console.log("[commission_detail proxy] GET by id ->", url)
-        const result = await proxyFetch(url, { method: "GET" })
+        const result = await proxyFetch(url, { 
+            method: "GET",
+            headers: authHeader ? { Authorization: authHeader } : {},
+        })
         if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
         return NextResponse.json(result.data)
     }
@@ -80,7 +84,10 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams({ page, limit })
     const url = `${COMMISSION_DETAIL_BASE}/?${params.toString()}`
     console.log("[commission_detail proxy] GET list ->", url)
-    const result = await proxyFetch(url, { method: "GET" })
+    const result = await proxyFetch(url, { 
+        method: "GET",
+        headers: authHeader ? { Authorization: authHeader } : {},
+    })
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
 }
@@ -96,6 +103,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     if (!PYTHON_BASE_URL) return jsonError("Missing PYTHON_API_BASE_URL env var", 500)
 
+    const authHeader = request.headers.get("Authorization")
     const body = await request.json().catch(() => null)
     if (!body) return jsonError("Invalid JSON body", 400)
 
@@ -105,6 +113,7 @@ export async function POST(request: NextRequest) {
     const result = await proxyFetch(url, {
         method: "POST",
         body: JSON.stringify(body),
+        headers: authHeader ? { Authorization: authHeader } : {},
     })
 
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
@@ -120,6 +129,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
     if (!PYTHON_BASE_URL) return jsonError("Missing PYTHON_API_BASE_URL env var", 500)
 
+    const authHeader = request.headers.get("Authorization")
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     if (!id) return jsonError("Missing required query param: id", 400)
@@ -133,6 +143,7 @@ export async function PATCH(request: NextRequest) {
     const result = await proxyFetch(url, {
         method: "PATCH",
         body: JSON.stringify(body),
+        headers: authHeader ? { Authorization: authHeader } : {},
     })
 
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
@@ -147,6 +158,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     if (!PYTHON_BASE_URL) return jsonError("Missing PYTHON_API_BASE_URL env var", 500)
 
+    const authHeader = request.headers.get("Authorization")
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     if (!id) return jsonError("Missing required query param: id", 400)
@@ -154,7 +166,10 @@ export async function DELETE(request: NextRequest) {
     const url = `${COMMISSION_DETAIL_BASE}/${encodeURIComponent(id)}`
     console.log("[commission_detail proxy] DELETE ->", url)
 
-    const result = await proxyFetch(url, { method: "DELETE" })
+    const result = await proxyFetch(url, { 
+        method: "DELETE",
+        headers: authHeader ? { Authorization: authHeader } : {},
+    })
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
 }

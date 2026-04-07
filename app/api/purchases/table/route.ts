@@ -9,8 +9,13 @@ export async function GET(req: Request) {
     const qs     = url.searchParams.toString()
     const target = `${API}/table${qs ? `?${qs}` : ""}`
 
+    const authHeader = req.headers.get("Authorization")
+    
     const res = await fetch(target, {
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 

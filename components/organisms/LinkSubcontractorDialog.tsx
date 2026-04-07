@@ -202,8 +202,11 @@ export function LinkSubcontractorDialog({
       params.set("page", String(page))
       params.set("limit", String(limit))
       if (statusFilter) params.set("status", statusFilter)
-      const res = await fetch(`/api/subcontractors?${params.toString()}`)
-      if (!res.ok) throw new Error("Failed to fetch subcontractors")
+      const res = await apiFetch(`/api/subcontractors?${params.toString()}`)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData?.error || errorData?.detail || "Failed to fetch subcontractors")
+      }
       const data = (await res.json()) as TableResponse
       setRows(Array.isArray(data.results) ? data.results : [])
       setTotal(Number(data.total || 0))

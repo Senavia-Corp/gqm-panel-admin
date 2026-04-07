@@ -42,6 +42,7 @@ import { JobDetailTabs } from "@/components/organisms/JobDetailTabs"
 import { JobSubcontractorsTab } from "@/components/organisms/job-detail/tabs/JobSubcontractorsTab"
 import { JobTechniciansTab } from "@/components/organisms/job-detail/tabs/JobTechniciansTab"
 import { JobPurchasesTab } from "@/components/organisms/job-detail/tabs/JobPurchasesTab"
+import { JobCommissionsTab } from "@/components/organisms/job-detail/tabs/JobCommissionsTab"
 
 import { useParams } from "next/navigation"
 import { Switch } from "@/components/ui/switch"
@@ -162,7 +163,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams?.get("tab")
     const validTabs = ["details", "subcontractors", "documents", "pricing",
-      "members", "chat", "tasks", "estimate", "purchases", "technicians"]
+      "members", "chat", "tasks", "estimate", "purchases", "technicians", "commissions"]
     return validTabs.includes(tab ?? "") ? (tab as string) : "details"
   })
 
@@ -845,37 +846,57 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   // derived / ui
   // ---------------------------
   const tabs = useMemo(() => {
-    if (user?.role === "LEAD_TECHNICIAN") {
-      return [
-        { id: "details", label: "Details" },
-        { id: "documents", label: "Documents" },
-        { id: "chat", label: "Chat" },
-        { id: "pricing", label: "Pricing" },
-        { id: "members", label: "Members" },
-        { id: "tasks", label: "Tasks" },
-        { id: "technicians", label: "Technicians" },
-        { id: "purchases", label: "Purchases" },
-      ]
-    }
+    if (!user) return []
 
-    const baseTabs = [{ id: "details", label: "Details" }]
+    // 1. Details — accessible to anyone who can see the job (basics or full read)
+    const canReadDocs = hasPermission("job:read")
+    const canViewSubcontractors = hasPermission("subcontractor:read")
+    const canViewMembers = hasPermission("member:read")
+
+    const items = [
+      { id: "details", label: "Details" },
+    ]
+
+    // 2. Conditional tabs
+    if (canViewSubcontractors) {
+      items.push({ id: "subcontractors", label: "Subcontractors" })
+    }
     
-    // Si tienen permisos ampliados de lectura o edición, ven el resto de las pestañas
-    if (hasPermission("job:read") || hasPermission("job:update")) {
-      baseTabs.push(
-        { id: "subcontractors", label: "Subcontractors" },
-        { id: "documents", label: "Documents" },
-        { id: "pricing", label: "Pricing" },
-        { id: "members", label: "Members" },
-        { id: "chat", label: "Chat" },
-        { id: "tasks", label: "Tasks" },
-        { id: "estimate", label: "Estimate" },
-        { id: "purchases", label: "Purchases" }
-      )
+    // Documents/Chat/Pricing/Estimate usually require full read
+    if (canReadDocs) {
+      items.push({ id: "documents", label: "Documents" })
+      items.push({ id: "pricing", label: "Pricing" })
     }
 
-    return baseTabs
-  }, [user?.role, hasPermission])
+    if (canViewMembers) {
+      items.push({ id: "members", label: "Members" })
+    }
+
+    if (canReadDocs) {
+      items.push({ id: "chat", label: "Chat" })
+      items.push({ id: "tasks", label: "Tasks" })
+      items.push({ id: "estimate", label: "Estimate" })
+    }
+
+    // Technicians tab for Lead Techs usually depends on subcontractor permission
+    if (user.role === "LEAD_TECHNICIAN") {
+      items.push({ id: "technicians", label: "Technicians" })
+    }
+
+    // Purchases & Commissions - user asked to prepare ground, defaulting to job:read for now
+    if (canReadDocs) {
+      items.push({ id: "purchases", label: "Purchases" })
+      items.push({ id: "commissions", label: "Commissions" })
+    }
+
+    return items
+  }, [user, hasPermission])
+
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+      setActiveTab("details")
+    }
+  }, [tabs, activeTab])
 
   const rightSidebar = useMemo(() => {
     if (!user || !job) return null
@@ -1067,6 +1088,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <JobPurchasesTab jobId={jobId} userRole={user.role} />
+        </JobTabLayout>
+      )
+    }
+
+    if (activeTab === "commissions") {
+      return (
+        <JobTabLayout sidebar={rightSidebar}>
+          <JobCommissionsTab job={job} reload={jobDetail.reload} />
         </JobTabLayout>
       )
     }

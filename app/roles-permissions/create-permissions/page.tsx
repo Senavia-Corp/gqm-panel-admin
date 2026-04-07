@@ -58,6 +58,22 @@ const MODULE_ACTIONS = [
       { id: "parent_mgmt_co:delete", label: "Delete", desc: "Delete PMC records." },
     ]
   },
+  {
+    module: "Purchases",
+    actions: [
+      { id: "purchase:read", label: "Read", desc: "View purchase orders and financial spending." },
+      { id: "purchase:create", label: "Create", desc: "Create new purchase records." },
+      { id: "purchase:update", label: "Update", desc: "Edit existing purchases." },
+      { id: "purchase:delete", label: "Delete", desc: "Remove purchase records." },
+    ]
+  },
+  {
+    module: "Commissions",
+    actions: [
+      { id: "commission:read", label: "Read", desc: "View job commissions and breakdown." },
+      { id: "commission:update", label: "Update", desc: "Edit commission types or rates." },
+    ]
+  },
 ]
 
 

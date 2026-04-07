@@ -11,7 +11,7 @@ function jsonError(message: string, status = 500, extra?: Record<string, unknown
   return NextResponse.json({ error: message, ...(extra ?? {}) }, { status })
 }
 
-async function proxyFetch(url: string, init?: RequestInit) {
+async function proxyFetch(url: string, init?: RequestInit, authHeader?: string | null) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
@@ -21,6 +21,7 @@ async function proxyFetch(url: string, init?: RequestInit) {
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
         ...(init?.headers ?? {}),
       },
       signal: controller.signal,
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
   if (!PYTHON_BASE_URL) return jsonError("Missing PYTHON_API_BASE_URL env var", 500)
 
   const { searchParams } = new URL(request.url)
+  const authHeader = request.headers.get("Authorization")
 
   // mode:
   // - "table" -> /subcontractors/subcontractors_table (ligero + paginado)
@@ -81,7 +83,7 @@ export async function GET(request: NextRequest) {
     const url = `${SUBCONTRACTORS_BASE}/${encodeURIComponent(id)}`
     console.log("[subcontractors proxy] GET by id ->", url)
 
-    const result = await proxyFetch(url, { method: "GET" })
+    const result = await proxyFetch(url, { method: "GET" }, authHeader)
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
     return NextResponse.json(result.data)
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
     const url = `${endpoint}?${params.toString()}`
     console.log("[subcontractors proxy] GET subcontractors_table ->", url)
 
-    const result = await proxyFetch(url, { method: "GET" })
+    const result = await proxyFetch(url, { method: "GET" }, authHeader)
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
     return NextResponse.json(result.data)
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
   const pythonUrl = `${SUBCONTRACTORS_BASE}/`
   console.log("[subcontractors proxy] GET full list ->", pythonUrl)
 
-  const result = await proxyFetch(pythonUrl, { method: "GET" })
+  const result = await proxyFetch(pythonUrl, { method: "GET" }, authHeader)
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)
@@ -129,13 +131,14 @@ export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const syncPodio = (searchParams.get("sync_podio") ?? "false").toLowerCase() === "true"
 
+  const authHeader = request.headers.get("Authorization")
   const body = await request.json().catch(() => null)
   if (!body) return jsonError("Invalid JSON body", 400)
 
   const url = `${SUBCONTRACTORS_BASE}/?sync_podio=${syncPodio ? "true" : "false"}`
   console.log("[subcontractors proxy] POST Body ->", JSON.stringify(body))
 
-  const result = await proxyFetch(url, { method: "POST", body: JSON.stringify(body) })
+  const result = await proxyFetch(url, { method: "POST", body: JSON.stringify(body) }, authHeader)
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)
