@@ -14,8 +14,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layers, ClipboardList, Wrench, Briefcase } from "lucide-react"
+import { usePermissions } from "@/hooks/usePermissions"
 
-type JobsTab    = "ALL" | JobType
+type JobsTab = "ALL" | JobType
 type YearFilter = "ALL" | "2026" | "2025" | "2024" | "2023"
 
 const TAB_TITLE: Record<JobsTab, string> = {
@@ -26,7 +27,7 @@ const TAB_TITLE: Record<JobsTab, string> = {
 }
 
 const YEAR_OPTIONS: { value: YearFilter; label: string }[] = [
-  { value: "ALL",  label: "All years" },
+  { value: "ALL", label: "All years" },
   { value: "2026", label: "2026" },
   { value: "2025", label: "2025" },
   { value: "2024", label: "2024" },
@@ -61,36 +62,37 @@ function sortArchivedLast(list: JobDTO[]) {
 // Page
 // ---------------------------------------------------------------------------
 export default function JobsPage() {
-  const router    = useRouter()
+  const router = useRouter()
   const { toast } = useToast()
 
   const [user, setUser] = useState<any>(null)
+  const { hasPermission } = usePermissions()
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  const [activeTab,    setActiveTab]    = useState<JobsTab>("ALL")
+  const [activeTab, setActiveTab] = useState<JobsTab>("ALL")
   const [selectedYear, setSelectedYear] = useState<YearFilter>("ALL")
   // searchQuery  = what the user is typing (controls the input only)
   // appliedSearch = the value actually sent to the backend
-  const [searchQuery,   setSearchQuery]   = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [appliedSearch, setAppliedSearch] = useState("")
 
   // ── Pagination ────────────────────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalJobs,   setTotalJobs]   = useState(0)
-  const [totalPages,  setTotalPages]  = useState(0)
+  const [totalJobs, setTotalJobs] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const itemsPerPage = 10
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  const [jobs,         setJobs]         = useState<JobDTO[]>([])
+  const [jobs, setJobs] = useState<JobDTO[]>([])
   const [filteredJobs, setFilteredJobs] = useState<JobDTO[]>([])
 
-  const [technicianAllJobs,      setTechnicianAllJobs]      = useState<JobDTO[]>([])
+  const [technicianAllJobs, setTechnicianAllJobs] = useState<JobDTO[]>([])
   const [technicianFilteredJobs, setTechnicianFilteredJobs] = useState<JobDTO[]>([])
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [retrying,  setRetrying]  = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean; job: JobDTO | null; suggestedYear: number | null
@@ -109,24 +111,24 @@ export default function JobsPage() {
   // All params are passed explicitly so the function always uses fresh values,
   // no stale closure or stale ref issues.
   async function loadJobs(params: {
-    tab:    JobsTab
-    year:   YearFilter
+    tab: JobsTab
+    year: YearFilter
     search: string
-    page:   number
+    page: number
   }) {
     setIsLoading(true)
     setLoadError(null)
 
     const filters: Record<string, string> = {}
-    if (params.tab !== "ALL")    filters.type   = params.tab
-    if (params.year !== "ALL")   filters.year   = params.year
-    if (params.search.trim())    filters.search = params.search.trim()
+    if (params.tab !== "ALL") filters.type = params.tab
+    if (params.year !== "ALL") filters.year = params.year
+    if (params.search.trim()) filters.search = params.search.trim()
 
     try {
       if (isTechnician) {
         const techRes = await fetch(`/api/technician/${user.id}`, { cache: "no-store" })
         if (!techRes.ok) throw new Error("Failed to fetch technician data")
-        const techData    = await techRes.json()
+        const techData = await techRes.json()
         const assignedIds: string[] = techData?.subcontractor?.jobs?.map((j: any) => j.ID_Jobs) ?? []
 
         const { jobs: allJobs } = await fetchJobs(1, 10_000, filters)
@@ -190,9 +192,9 @@ export default function JobsPage() {
   }
 
   const handleFilterStatus = (status: JobStatus | "all") => {
-    const base     = isTechnician ? technicianAllJobs : jobs
+    const base = isTechnician ? technicianAllJobs : jobs
     const filtered = status === "all" ? base : base.filter((j) => j.Job_status === status)
-    const sorted   = sortArchivedLast(filtered)
+    const sorted = sortArchivedLast(filtered)
     setCurrentPage(1)
     if (isTechnician) {
       setTechnicianFilteredJobs(sorted)
@@ -244,8 +246,8 @@ export default function JobsPage() {
     }
   }
 
-  const handlePreviousPage = () => currentPage > 1          && setCurrentPage((p) => p - 1)
-  const handleNextPage     = () => currentPage < totalPages && setCurrentPage((p) => p + 1)
+  const handlePreviousPage = () => currentPage > 1 && setCurrentPage((p) => p - 1)
+  const handleNextPage = () => currentPage < totalPages && setCurrentPage((p) => p + 1)
 
   const technicianPageSlice = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
@@ -253,8 +255,8 @@ export default function JobsPage() {
   }, [technicianFilteredJobs, currentPage])
 
   const displayedJobs = isTechnician ? technicianPageSlice : filteredJobs
-  const yearSuffix    = selectedYear === "ALL" ? "" : ` ${selectedYear}`
-  const headerTitle   = `${TAB_TITLE[activeTab]}${yearSuffix}`
+  const yearSuffix = selectedYear === "ALL" ? "" : ` ${selectedYear}`
+  const headerTitle = `${TAB_TITLE[activeTab]}${yearSuffix}`
 
   if (!user) return null
 
@@ -307,7 +309,7 @@ export default function JobsPage() {
                 year={selectedYear}
                 yearOptions={YEAR_OPTIONS}
                 onYearChange={(y) => { setSelectedYear(y as YearFilter); setCurrentPage(1) }}
-                onAddNew={user?.role === "GQM_MEMBER" ? () => router.push("/jobs/create") : undefined}
+                onAddNew={user?.role === "GQM_MEMBER" && hasPermission("job:create") ? () => router.push("/jobs/create") : undefined}
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
                 onSearchSubmit={handleSearchSubmit}
@@ -339,7 +341,7 @@ export default function JobsPage() {
                           <Button variant="outline" onClick={() => window.location.reload()}>Reload page</Button>
                         </>
                       ) : (
-                        user?.role === "GQM_MEMBER" && totalJobs === 0 && (
+                        user?.role === "GQM_MEMBER" && hasPermission("job:create") && totalJobs === 0 && (
                           <>
                             <Button onClick={() => router.push("/jobs/create")} className="bg-gqm-green hover:bg-gqm-green-dark">
                               Create Your First Job

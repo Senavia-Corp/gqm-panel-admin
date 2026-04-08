@@ -91,9 +91,8 @@ export async function fetchJobs(
     if (filters?.status) params.set("status", filters.status)
     if (filters?.search) params.set("search", filters.search)
 
-    const response = await fetch(`${JOBS_API_URL}?${params.toString()}`, {
+    const response = await apiFetch(`${JOBS_API_URL}?${params.toString()}`, {
       method:  "GET",
-      headers: { "Content-Type": "application/json" },
       cache:   "no-store",
     })
 
@@ -115,10 +114,8 @@ export async function fetchJobs(
 
 export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
   try {
-    const response = await fetch(`${JOBS_API_URL}/${encodeURIComponent(idJob)}`, {
+    const response = await apiFetch(`${JOBS_API_URL}/${encodeURIComponent(idJob)}`, {
       method:  "GET",
-      headers: { "Content-Type": "application/json" },
-      cache:   "no-store",
     })
     if (response.status === 404) return null
     if (!response.ok) {
@@ -134,10 +131,8 @@ export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
 
 export async function fetchClients(): Promise<Client[]> {
   try {
-    const response = await fetch("/api/clients", {
+    const response = await apiFetch("/api/clients", {
       method:  "GET",
-      headers: { "Content-Type": "application/json" },
-      cache:   "no-store",
     })
     if (!response.ok) {
       const err = await response.text().catch(() => "")

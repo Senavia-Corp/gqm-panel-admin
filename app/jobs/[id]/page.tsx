@@ -23,6 +23,7 @@ import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
 import { TaskDetailsDialog } from "@/components/organisms/TaskDetailsDialog"
 import { CreateTaskDialog } from "@/components/organisms/CreateTaskDialog"
 import { LinkSubcontractorDialog } from "@/components/organisms/LinkSubcontractorDialog"
+import { EditEstimateItemDialog } from "@/components/organisms/EditEstimateItemDialog"
 
 import { useJobDetail } from "./useJobDetail"
 import { mapEstimateCostsFromJob, mapEstimateItemToCreatePayload } from "@/lib/mappers/estimate.mapper"
@@ -42,6 +43,7 @@ import { JobDetailTabs } from "@/components/organisms/JobDetailTabs"
 import { JobSubcontractorsTab } from "@/components/organisms/job-detail/tabs/JobSubcontractorsTab"
 import { JobTechniciansTab } from "@/components/organisms/job-detail/tabs/JobTechniciansTab"
 import { JobPurchasesTab } from "@/components/organisms/job-detail/tabs/JobPurchasesTab"
+import { JobCommissionsTab } from "@/components/organisms/job-detail/tabs/JobCommissionsTab"
 
 import { useParams } from "next/navigation"
 import { Switch } from "@/components/ui/switch"
@@ -51,6 +53,7 @@ import { UnlinkMemberDialog } from "@/components/organisms/UnlinkMemberDialog"
 import { apiFetch } from "@/lib/apiFetch"
 import { PodioSyncAfterImportDialog } from "@/components/organisms/PodioSyncAfterImportDialog"
 import { useSearchParams } from "next/navigation"
+import { usePermissions } from "@/hooks/usePermissions"
 
 
 const TechnicianJobSidebar = dynamic(
@@ -153,13 +156,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const jobId = String(routeParams?.id ?? "")
   const searchParams = useSearchParams()
 
+  const { hasPermission } = usePermissions()
+
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams?.get("tab")
     const validTabs = ["details", "subcontractors", "documents", "pricing",
-      "members", "chat", "tasks", "estimate", "purchases", "technicians"]
+      "members", "chat", "tasks", "estimate", "purchases", "technicians", "commissions"]
     return validTabs.includes(tab ?? "") ? (tab as string) : "details"
   })
 
@@ -184,6 +189,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
 
   const [selectedEstimateItem, setSelectedEstimateItem] = useState<EstimateItem | null>(null)
+  const [editingEstimateItemTarget, setEditingEstimateItemTarget] = useState<EstimateItem | null>(null)
+  const [isEditEstimateOpen, setIsEditEstimateOpen] = useState(false)
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [estimateItems, setEstimateItems] = useState<EstimateItem[]>([])
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
@@ -573,7 +580,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     for (let attempt = 0; attempt <= ESTIMATE_RETRY_MAX; attempt++) {
       try {
-        const response = await fetch("/api/estimate", {
+        const response = await apiFetch("/api/estimate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -629,7 +636,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       ret.push(p)
 
-      const e = p.then(() => executing.splice(executing.indexOf(e), 1))
+      const e: Promise<any> = p.then(() => executing.splice(executing.indexOf(e), 1))
       executing.push(e)
 
       if (executing.length >= poolLimit) {
@@ -699,8 +706,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         title: "Estimates saved",
         description: `Created ${succeeded}/${toCreate.length}. Skipped ${skipped} (duplicates/existing).`,
       })
-      const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
-      const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+      const bdfSaved = toCreate.filter(i => String(i.Cost_Type) === "BDF").length
+      const ptlgcfSaved = toCreate.filter(i => String(i.Cost_Type) === "PTLGCF").length
       if (bdfSaved > 0 || ptlgcfSaved > 0) {
         setImportedBdfCount(bdfSaved)
         setImportedPtlgcfCount(ptlgcfSaved)
@@ -714,8 +721,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       description: `Created ${succeeded}/${toCreate.length}. Failed ${failed.length}. Skipped ${skipped}. See console for details.`,
       variant: "destructive",
     })
-    const bdfSaved = toCreate.filter(i => i.Cost_Type === "BDF").length
-    const ptlgcfSaved = toCreate.filter(i => i.Cost_Type === "PTLGCF").length
+    const bdfSaved = toCreate.filter(i => String(i.Cost_Type) === "BDF").length
+    const ptlgcfSaved = toCreate.filter(i => String(i.Cost_Type) === "PTLGCF").length
     if (bdfSaved > 0 || ptlgcfSaved > 0) {
       setImportedBdfCount(bdfSaved)
       setImportedPtlgcfCount(ptlgcfSaved)
@@ -736,7 +743,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       .filter(Boolean)
 
     await asyncPool(2, ids, async (id) => {
-      const res = await fetch(`/api/estimate/${id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/estimate/${id}`, { method: "DELETE" })
       if (res.status === 404) return { ok: true, skipped: true }
       if (!res.ok) {
         const raw = await res.text().catch(() => "")
@@ -761,8 +768,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     const persistedId = resolvePersistedEstimateId(item, job)
     if (!persistedId) throw new Error("Could not resolve persisted estimate id")
-
-    const res = await fetch(`/api/estimate/${persistedId}`, { method: "DELETE" })
+    const res = await apiFetch(`/api/estimate/${persistedId}`, { method: "DELETE" })
 
     if (res.status !== 404 && !res.ok) {
       const raw = await res.text().catch(() => "")
@@ -770,6 +776,18 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     await jobDetail.reload()
+  }
+
+  const handleEditEstimateItem = (item: EstimateItem) => {
+    setEditingEstimateItemTarget(item)
+    setIsEditEstimateOpen(true)
+  }
+
+  const handleEstimateItemEdited = async (updatedItem: EstimateItem) => {
+    await jobDetail.reload()
+    if (selectedEstimateItem && selectedEstimateItem.ID_EstimateItem === updatedItem.ID_EstimateItem) {
+      setSelectedEstimateItem(updatedItem)
+    }
   }
 
   const handleCancelImport = () => {
@@ -816,7 +834,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       const orderId = orderData.ID_Order
 
       const updatePromises = selectedItemIds.map(async (estimateId) => {
-        const response = await fetch(`/api/estimate/${estimateId}`, {
+        const response = await apiFetch(`/api/estimate/${estimateId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ID_Order: orderId }),
@@ -842,32 +860,58 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   // ---------------------------
   // derived / ui
   // ---------------------------
-  const tabs = useMemo(
-    () =>
-      user?.role === "LEAD_TECHNICIAN"
-        ? [
-          { id: "details", label: "Details" },
-          { id: "documents", label: "Documents" },
-          { id: "chat", label: "Chat" },
-          { id: "pricing", label: "Pricing" },
-          { id: "members", label: "Members" },
-          { id: "tasks", label: "Tasks" },
-          { id: "technicians", label: "Technicians" },
-          { id: "purchases", label: "Purchases" },
-        ]
-        : [
-          { id: "details", label: "Details" },
-          { id: "subcontractors", label: "Subcontractors" },
-          { id: "documents", label: "Documents" },
-          { id: "pricing", label: "Pricing" },
-          { id: "members", label: "Members" },
-          { id: "chat", label: "Chat" },
-          { id: "tasks", label: "Tasks" },
-          { id: "estimate", label: "Estimate" },
-          { id: "purchases", label: "Purchases" },
-        ],
-    [user?.role],
-  )
+  const tabs = useMemo(() => {
+    if (!user) return []
+
+    // 1. Details — accessible to anyone who can see the job (basics or full read)
+    const canReadDocs = hasPermission("job:read")
+    const canViewSubcontractors = hasPermission("subcontractor:read")
+    const canViewMembers = hasPermission("member:read")
+
+    const items = [
+      { id: "details", label: "Details" },
+    ]
+
+    // 2. Conditional tabs
+    if (canViewSubcontractors) {
+      items.push({ id: "subcontractors", label: "Subcontractors" })
+    }
+    
+    // Documents/Chat/Pricing/Estimate usually require full read
+    if (canReadDocs) {
+      items.push({ id: "documents", label: "Documents" })
+      items.push({ id: "pricing", label: "Pricing" })
+    }
+
+    if (canViewMembers) {
+      items.push({ id: "members", label: "Members" })
+    }
+
+    if (canReadDocs) {
+      items.push({ id: "chat", label: "Chat" })
+      items.push({ id: "tasks", label: "Tasks" })
+      items.push({ id: "estimate", label: "Estimate" })
+    }
+
+    // Technicians tab for Lead Techs usually depends on subcontractor permission
+    if (user.role === "LEAD_TECHNICIAN") {
+      items.push({ id: "technicians", label: "Technicians" })
+    }
+
+    // Purchases & Commissions - user asked to prepare ground, defaulting to job:read for now
+    if (canReadDocs) {
+      items.push({ id: "purchases", label: "Purchases" })
+      items.push({ id: "commissions", label: "Commissions" })
+    }
+
+    return items
+  }, [user, hasPermission])
+
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+      setActiveTab("details")
+    }
+  }, [tabs, activeTab])
 
   const rightSidebar = useMemo(() => {
     if (!user || !job) return null
@@ -905,6 +949,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             statusOptionsByJobType={STATUS_OPTIONS_BY_JOB_TYPE}
             onFieldChange={handleFieldChange}
             isFieldChanged={isFieldChanged}
+            readOnly={!hasPermission("job:update")}
           />
         </JobTabLayout>
       )
@@ -1048,6 +1093,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteAllEstimates={handleDeleteAllEstimates}
             onCancelImport={handleCancelImport}
             onDeleteItem={handleDeleteEstimateItem}
+            onEditItem={handleEditEstimateItem}
             jobYear={resolveJobYearForPodioSync(job)}
           />
         </JobTabLayout>
@@ -1058,6 +1104,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <JobPurchasesTab jobId={jobId} userRole={user.role} />
+        </JobTabLayout>
+      )
+    }
+
+    if (activeTab === "commissions") {
+      return (
+        <JobTabLayout sidebar={rightSidebar}>
+          <JobCommissionsTab job={job} reload={jobDetail.reload} />
         </JobTabLayout>
       )
     }
@@ -1086,7 +1140,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex flex-1 items-center justify-center">
             <div className="rounded-lg border bg-white p-8 text-center">
               <h2 className="text-lg font-semibold mb-2">Error loading job</h2>
@@ -1107,7 +1161,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex flex-1 items-center justify-center">
             <div className="flex items-center gap-2 text-slate-400">
               <RefreshCcw className="h-4 w-4 animate-spin" />
@@ -1124,9 +1178,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar userRole={user?.role} />
+      <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
 
           {/* ── Page header ────────────────────────────────────────────────── */}
@@ -1168,7 +1222,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               </div>
 
               {/* Right: Podio sync toggle + Save button (only when there are changes) */}
-              {jobDetail.hasChanges && (
+              {jobDetail.hasChanges && hasPermission("job:update") && (
                 <div className="flex items-center gap-3 flex-shrink-0">
 
                   {/* Podio toggle — styled button instead of Switch */}
@@ -1325,6 +1379,21 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         bdfCount={importedBdfCount}
         ptlgcfCount={importedPtlgcfCount}
       />
+
+      {editingEstimateItemTarget && (
+        <EditEstimateItemDialog
+          open={isEditEstimateOpen}
+          onOpenChange={(open) => {
+            setIsEditEstimateOpen(open)
+            if (!open) setEditingEstimateItemTarget(null)
+          }}
+          jobId={resolvedJobId}
+          jobYear={resolvedYear}
+          initialItem={editingEstimateItemTarget}
+          existingBdfCount={Array.isArray((job as any)?.estimate_costs) ? (job as any).estimate_costs.filter((c: any) => c.Cost_Type === "BDF" || c.Cost_type === "BDF").length : 0}
+          onEdited={handleEstimateItemEdited}
+        />
+      )}
     </div>
   )
 }

@@ -66,8 +66,12 @@ export async function GET(
   const url = `${JOBS_BASE}/${encodeURIComponent(idJobs)}`
   console.log("[jobs proxy] GET by ID_Jobs ->", url)
 
-  // GETs don't need X-User-Id
-  const result = await proxyFetch(url, { method: "GET" })
+  // GETs don't need X-User-Id but they DO need Authorization for IAM Policies
+  const authHeader = _request.headers.get("Authorization")
+  const result     = await proxyFetch(url, { 
+      method: "GET",
+      headers: authHeader ? { "Authorization": authHeader } : {}
+  })
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)
@@ -92,11 +96,16 @@ export async function PATCH(
 
   // ── Forward X-User-Id so the Python audit decorator can read it ──────────
   const userId = request.headers.get("X-User-Id")
+  const authHeader = request.headers.get("Authorization")
+
+  const headers: Record<string, string> = {}
+  if (userId) headers["X-User-Id"] = userId
+  if (authHeader) headers["Authorization"] = authHeader
 
   const result = await proxyFetch(url, {
     method:  "PATCH",
     body:    JSON.stringify(body),
-    headers: userId ? { "X-User-Id": userId } : {},   // ← forwarded
+    headers,
   })
 
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
@@ -120,10 +129,15 @@ export async function DELETE(
 
   // ── Forward X-User-Id so the Python audit decorator can read it ──────────
   const userId = request.headers.get("X-User-Id")
+  const authHeader = request.headers.get("Authorization")
+
+  const headers: Record<string, string> = {}
+  if (userId) headers["X-User-Id"] = userId
+  if (authHeader) headers["Authorization"] = authHeader
 
   const result = await proxyFetch(url, {
     method:  "DELETE",
-    headers: userId ? { "X-User-Id": userId } : {},   // ← forwarded
+    headers,
   })
 
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })

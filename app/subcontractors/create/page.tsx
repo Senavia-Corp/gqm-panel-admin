@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { usePermissions } from "@/hooks/usePermissions"
+import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -126,6 +128,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
 
 export default function CreateSubcontractorPage() {
   const router = useRouter()
+  const { hasPermission } = usePermissions()
   const [user, setUser]           = useState<any>(null)
   const [syncPodio, setSyncPodio] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -193,7 +196,7 @@ export default function CreateSubcontractorPage() {
         Notes:                    form.Notes.trim()            || null,
       }
 
-      const res = await fetch(`/api/subcontractors?sync_podio=${syncPodio}`, {
+      const res = await apiFetch(`/api/subcontractors?sync_podio=${syncPodio}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -219,11 +222,38 @@ export default function CreateSubcontractorPage() {
 
   if (!user) return null
 
+  if (!hasPermission("subcontractor:create")) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 group-hover:scale-110 transition-transform duration-500">
+              <ShieldCheck className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <p className="text-slate-500 max-w-md mb-8">
+              You do not have the required permissions (`subcontractor:create`) to create new subcontractors.
+              Please contact your administrator if you believe this is an error.
+            </p>
+            <Button 
+              onClick={() => router.push("/subcontractors")}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
+            >
+              Return to Subcontractors
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
 
           {/* ── Sticky header ─────────────────────────────────────────────── */}

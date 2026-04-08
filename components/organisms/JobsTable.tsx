@@ -1,11 +1,12 @@
 "use client"
 
-import { Pencil, Trash2, Building2, User } from "lucide-react"
+import { Pencil, Trash2, Building2, User, Eye } from "lucide-react"
 import type { JobDTO, JobType } from "@/lib/types"
 import { StatusBadge } from "@/components/atoms/StatusBadge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import Link from "next/link"
+import { usePermissions } from "@/hooks/usePermissions"
 
 type JobsTableVariant = "ALL" | JobType
 
@@ -88,6 +89,8 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
   const isPtl = tableVariant === "PTL"
   const isQid = tableVariant === "QID"
   const mid = getMidColumnConfig(tableVariant)
+  const { hasPermission } = usePermissions()
+  const canReadFull = hasPermission("job:read")
 
   const dateHeader = isPtl ? "Start Date" : isQid || isPar ? "Date Assigned" : "Date"
 
@@ -100,8 +103,8 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
             <TableHead className="px-4">Client</TableHead>
             <TableHead className="px-4">Representative</TableHead>
             {!isPar && <TableHead className="px-4">{mid.header}</TableHead>}
-            <TableHead className="px-4">Target Sold Pricing</TableHead>
-            <TableHead className="px-4">Target %</TableHead>
+            {canReadFull && <TableHead className="px-4">Target S. Pricing</TableHead>}
+            {canReadFull && <TableHead className="px-4">Target %</TableHead>}
             <TableHead className="px-4">Status</TableHead>
             <TableHead className="px-6 text-right">Actions</TableHead>
           </TableRow>
@@ -158,7 +161,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-500">No client associated</span>
+                    <span className="text-sm text-gray-400 italic">Client not available</span>
                   )}
                 </TableCell>
 
@@ -173,7 +176,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-500">No representative</span>
+                    <span className="text-sm text-gray-400 italic">Representative not available</span>
                   )}
                 </TableCell>
 
@@ -181,10 +184,10 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                 {!isPar && <TableCell className="px-4 py-4 font-medium">{midValue || "-"}</TableCell>}
 
                 {/* Target Sold Pricing */}
-                <TableCell className="px-6 py-4 font-medium text-sm">${job.Gqm_target_sold_pricing ?? "-"}</TableCell>
+                {canReadFull && <TableCell className="px-6 py-4 font-medium text-sm">${job.Gqm_target_sold_pricing ?? "-"}</TableCell>}
 
                 {/* Target Return */}
-                <TableCell className="px-6 py-4 font-medium text-sm">{ConvertToPercentage(job.Gqm_target_return) ?? "-"}</TableCell>
+                {canReadFull && <TableCell className="px-6 py-4 font-medium text-sm">{ConvertToPercentage(job.Gqm_target_return) ?? "-"}</TableCell>}
 
                 <TableCell className="px-4 py-4">
                   <StatusBadge status={job.Job_status as any} />
@@ -192,18 +195,20 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
 
                 <TableCell className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
-                    <Link href={`/jobs/${job.ID_Jobs}`}>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80"
-                        onClick={() => onEdit?.(job.ID_Jobs)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                    {(hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
+                      <Link href={`/jobs/${job.ID_Jobs}`}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={`h-8 w-8 ${hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                          onClick={() => onEdit?.(job.ID_Jobs)}
+                        >
+                          {hasPermission("job:update") ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </Link>
+                    )}
 
-                    {userRole === "GQM_MEMBER" && (
+                    {userRole === "GQM_MEMBER" && hasPermission("job:delete") && (
                       <Button
                         size="icon"
                         variant="ghost"

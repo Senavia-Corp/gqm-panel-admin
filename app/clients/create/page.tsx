@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   ArrowLeft, Save, Loader2, Building2, MapPin, Mail, Phone,
-  Globe, FileText, Plus, X, Zap, ZapOff,
+  Globe, FileText, Plus, X, Zap, ZapOff, Shield
 } from "lucide-react"
 
 // ─── Array input helper ───────────────────────────────────────────────────────
@@ -152,6 +152,9 @@ export default function CreateParentCoPage() {
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [syncPodio, setSyncPodio] = useState(false)
+  const { hasPermission } = usePermissions()
+
+  const canCreate = hasPermission("parent_mgmt_co:create")
 
   const [form, setForm] = useState({
     Property_mgmt_co:    "",
@@ -200,7 +203,7 @@ export default function CreateParentCoPage() {
       }
 
       // ✅ Incluir sync_podio como query param
-      const res = await fetch(`/api/parent_mgmt_co?sync_podio=${syncPodio}`, {
+      const res = await apiFetch(`/api/parent_mgmt_co?sync_podio=${syncPodio}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -227,11 +230,35 @@ export default function CreateParentCoPage() {
     </div>
   )
 
+  if (!canCreate) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <Shield className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
+            <p className="mt-2 max-w-sm text-slate-500">
+              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">parent_mgmt_co:create</code> permission required to access this resource.
+            </p>
+            <Button onClick={() => router.back()} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Go Back
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ── */}

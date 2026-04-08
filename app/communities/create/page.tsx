@@ -15,10 +15,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   ArrowLeft, Save, Loader2, Users, MapPin, Mail, Phone,
   Globe, ShieldCheck, Plus, X, Building2, FileText,
-  CreditCard, Search, ChevronRight, ExternalLink,
+  CreditCard, Search, ChevronRight, ExternalLink, Shield
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -154,13 +156,13 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
     setLoading(true); setError(null)
     try {
       // Primer fetch para saber total, luego traer todos
-      const first = await fetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
+      const first = await apiFetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
       if (!first.ok) throw new Error(`Error ${first.status}`)
       const firstData = await first.json()
       const total: number = firstData.total ?? 0
       const limit = total > 0 ? total : 200
 
-      const r = await fetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
+      const r = await apiFetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
       if (!r.ok) throw new Error(`Error ${r.status}`)
       const d = await r.json()
       setCompanies(d.results ?? [])
@@ -283,6 +285,9 @@ export default function CreateCommunityPage() {
   const [syncPodio, setSyncPodio] = useState(false)
   const [parentSelectorOpen, setParentSelectorOpen] = useState(false)
   const [selectedParent, setSelectedParent] = useState<ParentMgmtCo | null>(null)
+  const { hasPermission } = usePermissions()
+
+  const canCreate = hasPermission("client:create")
 
   const [form, setForm] = useState({
     Client_Community:       "",
@@ -347,7 +352,7 @@ export default function CreateCommunityPage() {
         Phone_Number:           form.Phone_Number.filter((v) => v.trim()),
       }
 
-      const res = await fetch(`/api/clients?sync_podio=${syncPodio}`, {
+      const res = await apiFetch(`/api/clients?sync_podio=${syncPodio}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -371,11 +376,35 @@ export default function CreateCommunityPage() {
     </div>
   )
 
+  if (!canCreate) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <Shield className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
+            <p className="mt-2 max-w-sm text-slate-500">
+              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">client:create</code> permission required to access this resource.
+            </p>
+            <Button onClick={() => router.back()} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Go Back
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky page header ── */}

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   LayoutDashboard,
   Briefcase,
@@ -17,7 +18,8 @@ import {
   Wrench,
   FileText,
   ShoppingBag,
-  FileBadge
+  FileBadge,
+  BadgeDollarSign,
 } from "lucide-react"
 import { Logo } from "@/components/atoms/Logo"
 import { Button } from "@/components/ui/button"
@@ -30,7 +32,8 @@ const gqmMemberMenuItems = [
   { icon: UserCircle, label: "Clients", href: "/clients" },
   { icon: UsersRound, label: "GQM Members", href: "/members" },
   { icon: ShoppingBag, label: "Purchases", href: "/purchases" },
-  { icon: FileBadge, label: "Roles & Permissions", href: "/roles-permissions" }
+  { icon: BadgeDollarSign, label: "Commissions", href: "/commissions" },
+  { icon: FileBadge, label: "Roles & Permissions", href: "/roles-permissions" },
 ]
 
 const leadTechnicianMenuItems = [
@@ -59,10 +62,20 @@ export function Sidebar() {
     }
   }, [])
 
-  const menuItems = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+  const { hasPermission } = usePermissions()
+
+  const menuItems = useMemo(() => {
+    const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+    return base.filter((item) => {
+      if (item.href === "/members") return hasPermission("member:read")
+      if (item.href === "/clients") return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+      if (item.href === "/subcontractors") return hasPermission("subcontractor:read")
+      if (item.href === "/roles-permissions") return hasPermission("iam_pm:read")
+      return true
+    })
+  }, [userRole, hasPermission])
 
   const handleLogout = () => {
-    console.log("[v0] Logging out user")
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("token_type")
@@ -83,26 +96,17 @@ export function Sidebar() {
         {collapsed && <Logo showText={false} />}
       </div>
 
-      {/* Notifications */}
-      <div className="border-b px-4 py-3">
-        {/* <Button variant="ghost" className="w-full justify-start gap-3" size={collapsed ? "icon" : "default"}>
-          <Bell className="h-5 w-5" />
-          {!collapsed && <span>Notifications</span>}
-          {!collapsed && (
-            <span className="ml-auto rounded bg-gqm-yellow px-2 py-0.5 text-xs font-bold text-gqm-green-dark">
-              {userRole === "LEAD_TECHNICIAN" ? "1" : "4"}
-            </span>
-          )}
-        </Button> */}
-      </div>
+      {/* Notifications placeholder */}
+      <div className="border-b px-4 py-3" />
 
       {/* Main Navigation */}
       <nav className="flex-1 space-y-1 p-4">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           const isDisabled =
-            userRole === "LEAD_TECHNICIAN" && (item.href === "/technicians" || item.href === "/reports")
+            userRole === "LEAD_TECHNICIAN" &&
+            (item.href === "/technicians" || item.href === "/reports")
 
           return (
             <Link
@@ -112,7 +116,8 @@ export function Sidebar() {
             >
               <Button
                 variant={isActive ? "secondary" : "ghost"}
-                className={`w-full justify-start gap-3 ${isActive ? "bg-gray-100" : ""} ${isDisabled ? "opacity-50" : ""}`}
+                className={`w-full justify-start gap-3 ${isActive ? "bg-gray-100" : ""} ${isDisabled ? "opacity-50" : ""
+                  }`}
                 size={collapsed ? "icon" : "default"}
                 disabled={isDisabled}
               >
@@ -128,7 +133,9 @@ export function Sidebar() {
       <div className="space-y-1 border-t p-4">
         {bottomItems.map((item) => {
           const Icon = item.icon
-          const isDisabled = userRole === "LEAD_TECHNICIAN" && (item.href === "/profile" || item.href === "/settings")
+          const isDisabled =
+            userRole === "LEAD_TECHNICIAN" &&
+            (item.href === "/profile" || item.href === "/settings")
           const isLogout = item.label === "Log out"
 
           return (
@@ -159,7 +166,11 @@ export function Sidebar() {
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full border bg-white shadow-md"
       >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        {collapsed ? (
+          <ChevronRight className="h-4 w-4" />
+        ) : (
+          <ChevronLeft className="h-4 w-4" />
+        )}
       </Button>
     </aside>
   )

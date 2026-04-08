@@ -89,7 +89,11 @@ export async function GET(request: NextRequest) {
   const url = `${JOBS_BASE}/jobs_table?${params.toString()}`
   console.log("[jobs proxy] GET jobs_table ->", url)
 
-  const result = await proxyFetch(url, { method: "GET" })
+  const authHeader = request.headers.get("Authorization")
+  const result = await proxyFetch(url, { 
+      method: "GET",
+      headers: authHeader ? { "Authorization": authHeader } : {}
+  })
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)
@@ -117,11 +121,16 @@ export async function POST(request: NextRequest) {
   console.log("[jobs proxy] POST ->", url)
 
   const userId = request.headers.get("X-User-Id")
+  const authHeader = request.headers.get("Authorization")
+
+  const headers: Record<string, string> = {}
+  if (userId) headers["X-User-Id"] = userId
+  if (authHeader) headers["Authorization"] = authHeader
 
   const result = await proxyFetch(url, {
     method:  "POST",
     body:    JSON.stringify(jobPayload),
-    headers: userId ? { "X-User-Id": userId } : {},
+    headers,
   })
 
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })

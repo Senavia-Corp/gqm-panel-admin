@@ -176,9 +176,9 @@ export function LinkMemberDialog({
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim())
 
-      const res  = await fetch(`/api/members/table?${params.toString()}`, { method: "GET" })
+      const res  = await apiFetch(`/api/members/table?${params.toString()}`, { method: "GET" })
       const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || "Failed to fetch members")
+      if (!res.ok) throw new Error(json?.error || json?.detail || "Failed to fetch members")
       setData(json)
     } catch (err) {
       console.error("[LinkMemberDialog] fetchMembers error:", err)

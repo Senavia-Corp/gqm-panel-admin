@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import { Button } from "@/components/ui/button"
 import {
   Briefcase,
@@ -74,6 +76,21 @@ export default function DashboardPage() {
   const [jobTab, setJobTab] = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
 
+  const { hasPermission } = usePermissions()
+
+  const canReadJobs = hasPermission("job:read")
+  const canReadClients = hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+  const canReadMembers = hasPermission("member:read")
+
+  // Default view adjustment
+  useEffect(() => {
+    if (!canReadJobs) {
+      if (canReadClients) setView("clients")
+      else if (canReadMembers) setView("members")
+      else setView("tasks")
+    }
+  }, [canReadJobs, canReadClients, canReadMembers])
+
   const [user, setUser] = useState<User | null>(null)
 
   // Jobs metrics desde endpoint nuevo
@@ -134,7 +151,7 @@ export default function DashboardPage() {
         const qs = new URLSearchParams({ type: jobTab })
         if (yearTab !== "ALL") qs.set("year", yearTab)
 
-        const res = await fetch(`/api/metrics/jobs/status?${qs.toString()}`)
+        const res = await apiFetch(`/api/metrics/jobs/status?${qs.toString()}`)
         if (!res.ok) throw new Error(`Failed metrics/jobs/status: ${res.status}`)
 
         const data: JobsStatusMetricsResponse = await res.json()
@@ -166,7 +183,7 @@ export default function DashboardPage() {
       try {
         setIsLoadingClients(true)
 
-        const response = await fetch("/api/clients")
+        const response = await apiFetch("/api/clients")
         if (!response.ok) throw new Error(`Failed to fetch clients: ${response.status}`)
 
         const data       = await response.json()
@@ -291,7 +308,7 @@ export default function DashboardPage() {
       const qs  = new URLSearchParams({ type: jobTab })
       if (yearTab !== "ALL") qs.set("year", yearTab)
 
-      const res = await fetch(`/api/reports/jobs?${qs.toString()}`, {
+      const res = await apiFetch(`/api/reports/jobs?${qs.toString()}`, {
         method:  "GET",
         headers: { Accept: "application/pdf" },
       })
@@ -332,7 +349,7 @@ export default function DashboardPage() {
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto p-6">
             <LeadTechnicianDashboard />
           </main>
@@ -350,7 +367,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
@@ -359,36 +376,42 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-4">
               {/* ── View selector ── */}
               <div className="inline-flex rounded-lg border bg-white p-1">
-                <Button
-                  variant={view === "jobs" ? "default" : "ghost"}
-                  className={view === "jobs" ? "bg-gqm-green text-white" : ""}
-                  onClick={() => setView("jobs")}
-                >
-                  <span className="flex items-center gap-2">
-                    <File className="h-4 w-4" />
-                    Jobs
-                  </span>
-                </Button>
-                <Button
-                  variant={view === "clients" ? "default" : "ghost"}
-                  className={view === "clients" ? "bg-gqm-green text-white" : ""}
-                  onClick={() => setView("clients")}
-                >
-                  <span className="flex items-center gap-2">
-                    <ConstructionIcon className="h-4 w-4" />
-                    Clients
-                  </span>
-                </Button>
-                <Button
-                  variant={view === "members" ? "default" : "ghost"}
-                  className={view === "members" ? "bg-gqm-green text-white" : ""}
-                  onClick={() => setView("members")}
-                >
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Members
-                  </span>
-                </Button>
+                {canReadJobs && (
+                  <Button
+                    variant={view === "jobs" ? "default" : "ghost"}
+                    className={view === "jobs" ? "bg-gqm-green text-white" : ""}
+                    onClick={() => setView("jobs")}
+                  >
+                    <span className="flex items-center gap-2">
+                      <File className="h-4 w-4" />
+                      Jobs
+                    </span>
+                  </Button>
+                )}
+                {canReadClients && (
+                  <Button
+                    variant={view === "clients" ? "default" : "ghost"}
+                    className={view === "clients" ? "bg-gqm-green text-white" : ""}
+                    onClick={() => setView("clients")}
+                  >
+                    <span className="flex items-center gap-2">
+                      <ConstructionIcon className="h-4 w-4" />
+                      Clients
+                    </span>
+                  </Button>
+                )}
+                {canReadMembers && (
+                  <Button
+                    variant={view === "members" ? "default" : "ghost"}
+                    className={view === "members" ? "bg-gqm-green text-white" : ""}
+                    onClick={() => setView("members")}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Members
+                    </span>
+                  </Button>
+                )}
 
                 {/* ── NEW: Tasks tab ── */}
                 <Button

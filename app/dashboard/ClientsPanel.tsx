@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -176,8 +178,22 @@ type NormalizedRow = {
 }
 
 export default function ClientsPanel({ jobTab, yearTab }: Props) {
-  const [entityMode, setEntityMode] = useState<EntityMode>("PARENT") // default as requested
+  const { hasPermission } = usePermissions()
+  const canReadParents = hasPermission("parent_mgmt_co:read")
+  const canReadClients = hasPermission("client:read")
+
+  // Default mode based on permissions
+  const [entityMode, setEntityMode] = useState<EntityMode>(canReadParents ? "PARENT" : "CLIENT")
   const [orderBy, setOrderBy] = useState<RankOrder>("closed") // default as requested
+
+  // If permissions change or initial load, ensure entityMode is valid
+  useEffect(() => {
+    if (entityMode === "PARENT" && !canReadParents && canReadClients) {
+      setEntityMode("CLIENT")
+    } else if (entityMode === "CLIENT" && !canReadClients && canReadParents) {
+      setEntityMode("PARENT")
+    }
+  }, [canReadParents, canReadClients])
 
   const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -220,7 +236,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         ? `/api/metrics/parent-mgmt-co?${qs.toString()}`
         : `/api/metrics/clients?${qs.toString()}`
 
-    const res = await fetch(url, { cache: "no-store" })
+    const res = await apiFetch(url, { cache: "no-store" })
     if (!res.ok) throw new Error(`Failed clients metrics: ${res.status}`)
     return res.json()
   }
@@ -402,6 +418,16 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
 
   const entityLabel = entityMode === "PARENT" ? "Parent Companies" : "Clients"
 
+  if (!canReadParents && !canReadClients) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center text-muted-foreground bg-white">
+        <Lock className="h-10 w-10 mb-4 opacity-20" />
+        <h3 className="text-lg font-semibold text-slate-900">Access Denied</h3>
+        <p className="max-w-xs mt-2">You do not have permissions to view client or company metrics.</p>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* ===== 1) Carousel cards (summary) ===== */}
@@ -409,20 +435,24 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         {/* Toggles row (inside the cards area) */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex rounded-lg border bg-white p-1">
-            <Button
-              variant={entityMode === "PARENT" ? "default" : "ghost"}
-              className={entityMode === "PARENT" ? "bg-gqm-green text-white" : ""}
-              onClick={() => setEntityMode("PARENT")}
-            >
-              Parent Companies
-            </Button>
-            <Button
-              variant={entityMode === "CLIENT" ? "default" : "ghost"}
-              className={entityMode === "CLIENT" ? "bg-gqm-green text-white" : ""}
-              onClick={() => setEntityMode("CLIENT")}
-            >
-              Clients
-            </Button>
+            {canReadParents && (
+              <Button
+                variant={entityMode === "PARENT" ? "default" : "ghost"}
+                className={entityMode === "PARENT" ? "bg-gqm-green text-white" : ""}
+                onClick={() => setEntityMode("PARENT")}
+              >
+                Parent Companies
+              </Button>
+            )}
+            {canReadClients && (
+              <Button
+                variant={entityMode === "CLIENT" ? "default" : "ghost"}
+                className={entityMode === "CLIENT" ? "bg-gqm-green text-white" : ""}
+                onClick={() => setEntityMode("CLIENT")}
+              >
+                Clients
+              </Button>
+            )}
           </div>
 
           <div className="inline-flex rounded-lg border bg-white p-1">

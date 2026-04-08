@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Calculator,
   Briefcase,
+  BadgeDollarSign,
 } from "lucide-react"
 
 type TabDef = { id: string; label: string }
@@ -31,6 +32,7 @@ const tabIconById: Record<string, React.ComponentType<{ className?: string }>> =
   members: UserCircle2,
   tasks: ClipboardList,
   estimate: Calculator,
+  commissions: BadgeDollarSign,
 
   // fallback / futuros
   default: Briefcase,

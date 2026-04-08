@@ -13,8 +13,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X, Trash2, Zap, ZapOff } from "lucide-react"
+import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X, Trash2, Zap, ZapOff, Shield } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import { CommunityDetailsCard, type CommunityClient } from "@/components/organisms/CommunityDetailsCard"
 
 // ─── Array field helpers ─────────────────────────────────────────────────────
@@ -250,7 +252,7 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
     setDeleting(true)
     try {
       // ✅ Pasar sync_podio como query param
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/parent_mgmt_co/${item.ID_Community_Tracking}?sync_podio=${syncPodio}`,
         { method: "DELETE" }
       )
@@ -309,6 +311,11 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  const { hasPermission } = usePermissions()
+  const canRead = hasPermission("parent_mgmt_co:read")
+  const canUpdate = hasPermission("parent_mgmt_co:update")
+  const canDelete = hasPermission("parent_mgmt_co:delete")
+
   const [isEditing, setIsEditing] = useState(false)
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState<Partial<ParentMgmtCo>>({})
@@ -333,7 +340,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       setLoading(true)
       setLoadError(null)
 
-      const response = await fetch(`/api/parent_mgmt_co/${parentMgmtCoId}`, { cache: "no-store" })
+      const response = await apiFetch(`/api/parent_mgmt_co/${parentMgmtCoId}`, { cache: "no-store" })
       if (!response.ok) {
         const errText = await response.text().catch(() => "")
         throw new Error(`Failed to fetch parent mgmt co (${response.status})${errText ? `: ${errText}` : ""}`)
@@ -382,7 +389,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
 
     try {
       // ✅ Pasar sync_podio como query param
-      const response = await fetch(`/api/parent_mgmt_co/${parentMgmtCoId}?sync_podio=${syncPodio}`, {
+      const response = await apiFetch(`/api/parent_mgmt_co/${parentMgmtCoId}?sync_podio=${syncPodio}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patchPayload),
@@ -440,7 +447,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
@@ -459,7 +466,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="mx-auto max-w-xl">
               <Card className="p-6">
@@ -482,11 +489,35 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
     )
   }
 
+  if (!canRead) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
+              <Shield className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
+            <p className="mt-2 max-w-sm text-slate-500">
+              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">parent_mgmt_co:read</code> permission required to access this resource.
+            </p>
+            <Button onClick={() => router.push("/clients")} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Go Back to Clients
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -499,42 +530,46 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
               </Button>
 
               {/* ✅ Botón eliminar — abre el DeleteParentDialog */}
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteDialog(true)}
-                className="gap-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </Button>
-
-              {!isEditing ? (
+              {canDelete && (
                 <Button
                   variant="outline"
-                  onClick={() => setIsEditing(true)}
-                  className="gap-2 border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="gap-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
                 >
-                  ✎ Edit
+                  <Trash2 className="h-4 w-4" /> Delete
                 </Button>
-              ) : (
-                <>
+              )}
+
+              {canUpdate && (
+                !isEditing ? (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setIsEditing(false)
-                      setEditedFields(new Set())
-                      setFormData(parentMgmtCo ?? {})
-                      setSyncPodio(false)  // ✅ Reset al cancelar
-                    }}
-                    className="gap-2 border-slate-200 text-slate-500"
+                    onClick={() => setIsEditing(true)}
+                    className="gap-2 border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
                   >
-                    <X className="h-4 w-4" /> Cancel
+                    ✎ Edit
                   </Button>
-                  {editedFields.size > 0 && (
-                    <Button onClick={handleSaveChanges} className="bg-gqm-green hover:bg-gqm-green/90 gap-2">
-                      <Save className="h-4 w-4" /> Save Changes
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false)
+                        setEditedFields(new Set())
+                        setFormData(parentMgmtCo ?? {})
+                        setSyncPodio(false)  // ✅ Reset al cancelar
+                      }}
+                      className="gap-2 border-slate-200 text-slate-500"
+                    >
+                      <X className="h-4 w-4" /> Cancel
                     </Button>
-                  )}
-                </>
+                    {editedFields.size > 0 && (
+                      <Button onClick={handleSaveChanges} className="bg-gqm-green hover:bg-gqm-green/90 gap-2">
+                        <Save className="h-4 w-4" /> Save Changes
+                      </Button>
+                    )}
+                  </>
+                )
               )}
             </div>
           </div>
@@ -562,6 +597,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Label className="mb-2 block font-semibold">Parent Management Company</Label>
                     <Input
                       value={formData.Property_mgmt_co ?? ""}
+                      disabled={!canUpdate}
                       onChange={(e) => handleFieldChange("Property_mgmt_co", e.target.value)}
                       className={editedFields.has("Property_mgmt_co") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                     />
@@ -570,6 +606,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Label className="mb-2 block font-semibold">Company Abbrev</Label>
                     <Input
                       value={formData.Company_abbrev ?? ""}
+                      disabled={!canUpdate}
                       onChange={(e) => handleFieldChange("Company_abbrev", e.target.value)}
                       className={editedFields.has("Company_abbrev") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                     />
@@ -578,6 +615,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Label className="mb-2 block font-semibold">State</Label>
                     <Input
                       value={formData.State ?? ""}
+                      disabled={!canUpdate}
                       onChange={(e) => handleFieldChange("State", e.target.value)}
                       className={editedFields.has("State") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                     />
@@ -586,6 +624,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Label className="mb-2 block font-semibold">Main Office HQ</Label>
                     <Textarea
                       value={formData.Main_office_hq ?? ""}
+                      disabled={!canUpdate}
                       onChange={(e) => handleFieldChange("Main_office_hq", e.target.value)}
                       className={editedFields.has("Main_office_hq") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                       rows={2}
@@ -635,6 +674,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Label className="mb-2 block font-semibold">Podio Item ID</Label>
                     <Input
                       value={formData.podio_item_id ?? ""}
+                      disabled={!canUpdate}
                       onChange={(e) => handleFieldChange("podio_item_id", e.target.value)}
                       className={editedFields.has("podio_item_id") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                     />

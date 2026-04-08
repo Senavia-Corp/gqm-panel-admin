@@ -7,14 +7,18 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
+export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params
     console.log(`[proxy] GET parent_mgmt_co/${id}`)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(`${PYTHON_API_BASE_URL}/parent_mgmt_co/${id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
@@ -45,9 +49,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const body = await request.json()
     console.log(`[proxy] PATCH parent_mgmt_co/${id} | sync_podio=%s`, syncPodio)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(pythonUrl.toString(), {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(body),
     })
 
@@ -78,9 +86,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     console.log(`[proxy] DELETE parent_mgmt_co/${id} | sync_podio=%s`, syncPodio)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(pythonUrl.toString(), {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
 
     if (!response.ok) {

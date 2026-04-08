@@ -9,6 +9,7 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -273,7 +274,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
       if (search) qs.set("q", search)
       if (status) qs.set("status", status)
 
-      const res = await fetch(`/api/purchases/table?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(`/api/purchases/table?${qs}`, { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setPurchases(Array.isArray(data.results) ? data.results : [])
@@ -290,7 +291,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
   useEffect(() => { load(1, dq, statusFilter) }, [dq, statusFilter, load])
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/purchases/${id}`, { method: "DELETE", cache: "no-store" })
+    const res = await apiFetch(`/api/purchases/${id}`, { method: "DELETE", cache: "no-store" })
     if (!res.ok) throw new Error(`Error ${res.status}`)
     load(page, dq, statusFilter)
   }

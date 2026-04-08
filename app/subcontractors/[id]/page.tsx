@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { usePermissions } from "@/hooks/usePermissions"
+import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -244,7 +246,7 @@ function PageSkeleton({ user }: { user: any }) {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-6xl space-y-4">
             <div className="h-16 animate-pulse rounded-2xl bg-white border border-slate-200" />
@@ -274,6 +276,7 @@ export default function SubcontractorDetailsPage() {
   const id = params.id as string
   const activeTab = searchParams.get("tab") || "details"
 
+  const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
 
   // ── Data state ─────────────────────────────────────────────────────────────
@@ -358,7 +361,7 @@ export default function SubcontractorDetailsPage() {
     if (!id) return
     setLoading(true); setLoadError(null)
     try {
-      const res = await fetch(`/api/subcontractors/${id}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/subcontractors/${id}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json() as SubcFull
       const normalized: SubcFull = {
@@ -410,7 +413,7 @@ export default function SubcontractorDetailsPage() {
       for (const [k, v] of Object.entries(allFields)) {
         if (!SKIP_ON_PATCH.has(k)) payload[k] = v
       }
-      const res = await fetch(`/api/subcontractors/${id}?sync_podio=${syncPodio}`, {
+      const res = await apiFetch(`/api/subcontractors/${id}?sync_podio=${syncPodio}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -423,7 +426,7 @@ export default function SubcontractorDetailsPage() {
       const normalized: SubcFull = {
         ...updated,
         Organization: normalizeOrg(updated.Organization),
-        technicians: Array.isArray(updated.technicians) ? updated.technicians : technicians,
+        technicians: Array.isArray(updated.technicians) ? (updated.technicians as any[]) : technicians,
         attachments: Array.isArray(updated.attachments) ? updated.attachments : subc.attachments ?? [],
         opportunities: Array.isArray(updated.opportunities) ? updated.opportunities : subc.opportunities ?? [],
         orders: Array.isArray(updated.orders) ? updated.orders : subc.orders ?? [],
@@ -464,7 +467,7 @@ export default function SubcontractorDetailsPage() {
   const fetchAllSkills = async () => {
     setSkillsLoading(true); setSkillsError(null)
     try {
-      const res = await fetch("/api/skills", { cache: "no-store" })
+      const res = await apiFetch("/api/skills", { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       setAllSkills(normalizeSkillsResponse(await res.json()))
       setSkillsPage(1)
@@ -481,7 +484,7 @@ export default function SubcontractorDetailsPage() {
   const linkSkill = async (skillId: string) => {
     setLinkingSkillId(skillId)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(id)}?sync_podio=${skillsSyncPodio}`,
         { method: "POST", cache: "no-store" }
       )
@@ -495,7 +498,7 @@ export default function SubcontractorDetailsPage() {
   const unlinkSkill = async (skillId: string) => {
     setUnlinkingSkillId(skillId)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/skills_subcontractors/skills/${encodeURIComponent(skillId)}/subcontractors/${encodeURIComponent(id)}?sync_podio=${skillsSyncPodio}`,
         { method: "DELETE", cache: "no-store" }
       )
@@ -546,20 +549,48 @@ export default function SubcontractorDetailsPage() {
 
   const confirmDeleteTechnician = async () => {
     if (!deleteDialog.technician?.ID_Technician) return
-    await fetch(`/api/technicians/${deleteDialog.technician.ID_Technician}`, { method: "DELETE", cache: "no-store" }).catch(() => null)
+    await apiFetch(`/api/technicians/${deleteDialog.technician.ID_Technician}`, { method: "DELETE", cache: "no-store" }).catch(() => null)
     setTechnicians((p) => p.filter((t) => t.ID_Technician !== deleteDialog.technician?.ID_Technician))
     setDeleteDialog({ open: false, technician: null })
   }
 
   // ── Guards ─────────────────────────────────────────────────────────────────
   if (!user) return null
+  
+  if (!hasPermission("subcontractor:read")) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 group-hover:scale-110 transition-transform duration-500">
+              <ShieldCheck className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <p className="text-slate-500 max-w-md mb-8">
+              You do not have the required permissions (`subcontractor:read`) to view this subcontractor's details.
+              Please contact your administrator if you believe this is an error.
+            </p>
+            <Button 
+              onClick={() => router.push("/subcontractors")}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
+            >
+              Return to Subcontractors
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) return <PageSkeleton user={user} />
 
   if (!subc) return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <button onClick={() => router.push("/subcontractors")}
             className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
@@ -591,7 +622,7 @@ export default function SubcontractorDetailsPage() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ── */}
@@ -623,13 +654,15 @@ export default function SubcontractorDetailsPage() {
 
               <div className="flex items-center gap-2.5">
                 {/* Podio toggle */}
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
-                  <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
-                    onClick={() => setSyncPodio((v) => !v)}>
-                    <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
-                  </div>
-                  Sync Podio
-                </label>
+                {hasPermission("subcontractor:update") && (
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+                    <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                      onClick={() => setSyncPodio((v) => !v)}>
+                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                    </div>
+                    Sync Podio
+                  </label>
+                )}
 
                 {editing ? (
                   <>
@@ -644,10 +677,12 @@ export default function SubcontractorDetailsPage() {
                     </Button>
                   </>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}
-                    className="gap-1.5 text-xs border-slate-200">
-                    ✎ Edit
-                  </Button>
+                  hasPermission("subcontractor:update") && (
+                    <Button size="sm" variant="outline" onClick={() => setEditing(true)}
+                      className="gap-1.5 text-xs border-slate-200">
+                      ✎ Edit
+                    </Button>
+                  )
                 )}
               </div>
             </div>
@@ -861,10 +896,12 @@ export default function SubcontractorDetailsPage() {
                   <TabsContent value="technicians">
                     <SectionCard icon={Wrench} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Technicians"
                       action={
-                        <Button size="sm" onClick={() => router.push(`/subcontractors/${id}/technicians/create`)}
-                          className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                          <Plus className="h-3.5 w-3.5" /> Add Technician
-                        </Button>
+                        hasPermission("subcontractor:update") && (
+                          <Button size="sm" onClick={() => router.push(`/subcontractors/${id}/technicians/create`)}
+                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                            <Plus className="h-3.5 w-3.5" /> Add Technician
+                          </Button>
+                        )
                       }>
                       {/* Search + filter */}
                       <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -897,6 +934,10 @@ export default function SubcontractorDetailsPage() {
                                 } as any}
                                 onView={(tid) => router.push(`/subcontractors/${id}/technicians/${tid}`)}
                                 onDelete={(tid) => {
+                                  if (!hasPermission("subcontractor:update")) {
+                                    toast({ title: "Denied", description: "You do not have permission to delete technicians.", variant: "destructive" })
+                                    return
+                                  }
                                   const tech = technicians.find(x => x.ID_Technician === tid) ?? null
                                   if (tech) setDeleteDialog({ open: true, technician: tech })
                                 }}
@@ -934,17 +975,21 @@ export default function SubcontractorDetailsPage() {
                     <SectionCard icon={Wrench} iconBg="bg-amber-50" iconColor="text-amber-600" title="Skills"
                       action={
                         <div className="flex items-center gap-2">
-                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
-                            <div className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ${skillsSyncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
-                              onClick={() => setSkillsSyncPodio(v => !v)}>
-                              <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${skillsSyncPodio ? "translate-x-3" : "translate-x-0.5"}`} />
-                            </div>
-                            Podio
-                          </label>
-                          <Button size="sm" onClick={openSkillsModal}
-                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                            <Plus className="h-3.5 w-3.5" /> Link Skill
-                          </Button>
+                          {hasPermission("subcontractor:update") && (
+                            <>
+                              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+                                <div className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ${skillsSyncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                                  onClick={() => setSkillsSyncPodio(v => !v)}>
+                                  <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${skillsSyncPodio ? "translate-x-3" : "translate-x-0.5"}`} />
+                                </div>
+                                Podio
+                              </label>
+                              <Button size="sm" onClick={openSkillsModal}
+                                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                                <Plus className="h-3.5 w-3.5" /> Link Skill
+                              </Button>
+                            </>
+                          )}
                         </div>
                       }>
                       {subc.skills?.length ? (
@@ -962,11 +1007,13 @@ export default function SubcontractorDetailsPage() {
                                   </div>
                                   <p className="mt-0.5 font-mono text-[11px] text-slate-400">{s.ID_Skill}</p>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => unlinkSkill(s.ID_Skill)} disabled={busy}
-                                  className="gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600">
-                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
-                                  Unlink
-                                </Button>
+                                {hasPermission("subcontractor:update") && (
+                                  <Button variant="outline" size="sm" onClick={() => unlinkSkill(s.ID_Skill)} disabled={busy}
+                                    className="gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600">
+                                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                                    Unlink
+                                  </Button>
+                                )}
                               </div>
                             )
                           })}
@@ -975,9 +1022,11 @@ export default function SubcontractorDetailsPage() {
                         <div className="flex flex-col items-center justify-center gap-3 py-12">
                           <Wrench className="h-8 w-8 text-slate-300" />
                           <p className="text-sm text-slate-500">No skills linked yet</p>
-                          <Button size="sm" onClick={openSkillsModal} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                            <Plus className="h-3.5 w-3.5" /> Link first skill
-                          </Button>
+                          {hasPermission("subcontractor:update") && (
+                            <Button size="sm" onClick={openSkillsModal} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                              <Plus className="h-3.5 w-3.5" /> Link first skill
+                            </Button>
+                          )}
                         </div>
                       )}
                     </SectionCard>

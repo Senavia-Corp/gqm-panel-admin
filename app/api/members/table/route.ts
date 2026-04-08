@@ -17,9 +17,15 @@ export async function GET(request: Request) {
     upstream.searchParams.set("limit", limit)
     if (q) upstream.searchParams.set("q", q)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
+
     const response = await fetch(upstream.toString(), {
       method: "GET",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 

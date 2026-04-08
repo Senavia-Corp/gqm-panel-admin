@@ -4,6 +4,8 @@
  * The proxies at /api/clients/* forward to PYTHON_API_BASE_URL (set in .env).
  */
 
+import { apiFetch } from "@/lib/apiFetch"
+
 export type ClientDetails = {
   ID_Client: string
   Client_Community?: string | null
@@ -41,7 +43,7 @@ export async function fetchClients(
   params.set("limit", String(limit))
   if (query?.trim()) params.set("q", query.trim())
 
-  const response = await fetch(`/api/clients?${params.toString()}`, { cache: "no-store" })
+  const response = await apiFetch(`/api/clients?${params.toString()}`, { cache: "no-store" })
 
   if (!response.ok) {
     throw new Error(`Failed to fetch clients (${response.status})`)
@@ -57,7 +59,7 @@ export async function fetchClients(
 // ─── Single ───────────────────────────────────────────────────────────────────
 
 export async function fetchClientById(clientId: string): Promise<ClientDetails> {
-  const response = await fetch(`/api/clients/${clientId}`, { cache: "no-store" })
+  const response = await apiFetch(`/api/clients/${clientId}`, { cache: "no-store" })
   if (!response.ok) {
     throw new Error(`Failed to fetch client ${clientId} (${response.status})`)
   }
@@ -70,7 +72,7 @@ export async function createClient(
   clientData: Partial<ClientDetails>,
   syncPodio = false,
 ): Promise<ClientDetails> {
-  const response = await fetch(`/api/clients?sync_podio=${syncPodio}`, {
+  const response = await apiFetch(`/api/clients?sync_podio=${syncPodio}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(clientData),
@@ -88,7 +90,7 @@ export async function updateClient(
   updates: UpdateClientRequest,
   syncPodio = false,
 ): Promise<ClientDetails> {
-  const response = await fetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`, {
+  const response = await apiFetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -102,7 +104,7 @@ export async function updateClient(
 // ─── Delete ───────────────────────────────────────────────────────────────────
 
 export async function deleteClient(clientId: string, syncPodio = false): Promise<void> {
-  const response = await fetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`, {
+  const response = await apiFetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`, {
     method: "DELETE",
   })
   if (!response.ok) {
@@ -118,7 +120,7 @@ export async function linkManager(
   rol?: string,
   syncPodio = false,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_manager?clientId=${clientId}&managerId=${managerId}&sync_podio=${syncPodio}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) }
   )
@@ -130,7 +132,7 @@ export async function unlinkManager(
   managerId: string,
   syncPodio = false,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_manager?clientId=${clientId}&managerId=${managerId}&sync_podio=${syncPodio}`,
     { method: "DELETE" }
   )
@@ -142,7 +144,7 @@ export async function updateManagerRole(
   managerId: string,
   rol: string | null,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_manager?clientId=${clientId}&managerId=${managerId}`,
     { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) }
   )
@@ -157,7 +159,7 @@ export async function linkMember(
   rol?: string,
   syncPodio = false,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_member?clientId=${clientId}&memberId=${memberId}&sync_podio=${syncPodio}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) }
   )
@@ -169,7 +171,7 @@ export async function unlinkMember(
   memberId: string,
   syncPodio = false,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_member?clientId=${clientId}&memberId=${memberId}&sync_podio=${syncPodio}`,
     { method: "DELETE" }
   )
@@ -181,7 +183,7 @@ export async function updateMemberRole(
   memberId: string,
   rol: string | null,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/client_member?clientId=${clientId}&memberId=${memberId}`,
     { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rol }) }
   )

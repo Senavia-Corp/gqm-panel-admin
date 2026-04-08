@@ -6,6 +6,8 @@ import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -115,6 +117,7 @@ function SkeletonRows() {
 export default function MembersPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const { hasPermission } = usePermissions()
 
   // ── Table state ────────────────────────────────────────────────────────────
   const [rows,    setRows]    = useState<MemberRow[]>([])
@@ -153,7 +156,7 @@ export default function MembersPage() {
       url.searchParams.set("limit", String(LIMIT))
       if (q) url.searchParams.set("q", q)
 
-      const res = await fetch(url.toString(), { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(url.toString(), { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: TableResponse = await res.json()
 
@@ -179,7 +182,7 @@ export default function MembersPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/members/${deleteTarget.ID_Member}`, { method: "DELETE", cache: "no-store" })
+      const res = await apiFetch(`/api/members/${deleteTarget.ID_Member}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       setDeleteTarget(null)
       fetchData(page, debouncedSearch)
@@ -216,12 +219,14 @@ export default function MembersPage() {
                   <p className="mt-1 text-sm text-slate-500">Manage all GQM members and their information</p>
                 </div>
               </div>
-              <Button
-                onClick={() => router.push("/members/create")}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Plus className="h-4 w-4" /> Add Member
-              </Button>
+              {hasPermission("member:create") && (
+                <Button
+                  onClick={() => router.push("/members/create")}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="h-4 w-4" /> Add Member
+                </Button>
+              )}
             </div>
 
             {/* ── Table card ──────────────────────────────────────────── */}
@@ -368,13 +373,15 @@ export default function MembersPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button
-                              onClick={() => setDeleteTarget(member)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900"
-                              title="Delete member"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {hasPermission("member:delete") && (
+                              <button
+                                onClick={() => setDeleteTarget(member)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900"
+                                title="Delete member"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
