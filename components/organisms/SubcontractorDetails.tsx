@@ -26,6 +26,9 @@ import { CreateChangeOrderDialog } from "@/components/organisms/CreateChangeOrde
 import { Pencil, Trash2 } from "lucide-react"
 import { DeleteChangeOrderDialog } from "@/components/organisms/DeleteChangeOrderDialog"
 import { DeleteOrderDialog } from "./DeleteJobOrderDialog"
+import { EditOrderDialog } from "./EditOrderDialog"
+import { apiFetch } from "@/lib/apiFetch"
+import { toast } from "sonner"
 
 interface SubcontractorDetailsProps {
   subcontractor: Subcontractor
@@ -123,6 +126,9 @@ export function SubcontractorDetails({
   const [deleteOrderOpen, setDeleteOrderOpen] = useState(false)
   const [targetOrderForDelete, setTargetOrderForDelete] = useState<any | null>(null)
 
+  const [editOrderOpen, setEditOrderOpen] = useState(false)
+  const [targetOrderForEdit, setTargetOrderForEdit] = useState<any | null>(null)
+
   // ── Memoized fetch ──────────────────────────────────────────────────────
   const fetchOrdersForJobAndSub = useCallback(async () => {
     try {
@@ -141,7 +147,7 @@ export function SubcontractorDetails({
       qs.set("ID_Subcontractor", subId)
 
       const url = `/api/order?${qs.toString()}`
-      const res = await fetch(url, { cache: "no-store" })
+      const res = await apiFetch(url, { cache: "no-store" })
 
       if (!res.ok) {
         console.error("Failed to fetch orders for job+subcontractor:", res.status)
@@ -178,6 +184,61 @@ export function SubcontractorDetails({
   useEffect(() => {
     fetchOrdersForJobAndSub()
   }, [fetchOrdersForJobAndSub])
+
+  const handleEditOrderSubmit = async (orderId: string, orderName: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
+    try {
+      const currentItems = targetOrderForEdit?.Items || []
+      const currentItemIds = currentItems.map((i: any) => String(i.ID_EstimateItem || i.ID_EstimateCost || i.id || i.ID)).filter(Boolean)
+
+      const itemsToAdd = selectedItemIds.filter(id => !currentItemIds.includes(id))
+      const itemsToRemove = currentItemIds.filter((id: string) => !selectedItemIds.includes(id))
+
+      // 1. Remove items (PATCH with ID_Order: null)
+      const removePromises = itemsToRemove.map((id: string) => 
+        apiFetch(`/api/estimate/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ID_Order: null })
+        }).then(res => { if (!res.ok) throw new Error("Failed to remove item")})
+      )
+      await Promise.all(removePromises)
+
+      // 2. Add items (PATCH with ID_Order: orderId)
+      const addPromises = itemsToAdd.map((id: string) => 
+        apiFetch(`/api/estimate/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ID_Order: orderId })
+        }).then(res => { if (!res.ok) throw new Error("Failed to add item")})
+      )
+      await Promise.all(addPromises)
+
+      // 3. Patch Order properties & Sync Podio
+      const qs = new URLSearchParams()
+      qs.set("sync_podio", syncPodioOverride ? "true" : "false")
+      if (syncPodioOverride && jobYearForPodioSync) {
+        qs.set("year", String(jobYearForPodioSync))
+      }
+
+      const orderRes = await apiFetch(`/api/order/${orderId}?${qs.toString()}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Title: orderName })
+      })
+
+      if (!orderRes.ok) {
+        const err = await orderRes.json().catch(() => ({}))
+        throw new Error(err?.error || err?.detail || "Failed to update order details")
+      }
+
+      toast.success("Order updated successfully")
+      await fetchOrdersForJobAndSub()
+    } catch (error: any) {
+      console.error("[EditOrder] Error:", error)
+      toast.error(error.message || "An error occurred while editing the order")
+      throw error // Re-throw so EditOrderDialog stays open if it fails
+    }
+  }
 
   useEffect(() => {
     const subChangeOrders = mockChangeOrders.filter(
@@ -216,6 +277,9 @@ export function SubcontractorDetails({
     setTargetOrderForCh(order)
     setCreateChOpen(true)
   }
+
+  console.log("Aqui las orders", orders);
+  
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -453,6 +517,19 @@ export function SubcontractorDetails({
                               Add Change Order
                             </Button>
 
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => {
+                                setTargetOrderForEdit(order)
+                                setEditOrderOpen(true)
+                              }}
+                              className="gap-2"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </Button>
+
                             <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
                               View Details
                             </Button>
@@ -566,6 +643,20 @@ export function SubcontractorDetails({
                   onDeleted={fetchOrdersForJobAndSub}
                   jobPodioId={jobPodioId}
                   subcontractorId={subcontractor?.ID_Subcontractor ?? ""}
+                />
+
+                <EditOrderDialog
+                  open={editOrderOpen}
+                  onOpenChange={(open) => {
+                    setEditOrderOpen(open)
+                    if (!open) setTargetOrderForEdit(null)
+                  }}
+                  order={targetOrderForEdit}
+                  items={estimateCosts}
+                  subcontractors={[subcontractor]}
+                  defaultSyncPodio={defaultSyncPodio}
+                  jobYearForPodioSync={jobYearForPodioSync}
+                  onEditOrder={handleEditOrderSubmit}
                 />
 
                 {/* ── Create Change Order ──────────────────────────────────── */}
