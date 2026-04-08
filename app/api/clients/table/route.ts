@@ -27,9 +27,13 @@ export async function GET(request: NextRequest) {
 
     console.log("[proxy] GET /clients/table →", upstream.toString())
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const res = await fetch(upstream.toString(), {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 

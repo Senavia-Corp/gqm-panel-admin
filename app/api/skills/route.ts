@@ -8,11 +8,13 @@ export async function GET(req: NextRequest) {
     const qs = url.searchParams.toString()
     const upstream = `${BACKEND_URL}/skills/${qs ? `?${qs}` : ""}`
 
+    const authHeader = req.headers.get("Authorization")
     const res = await fetch(upstream, {
       method: "GET",
       cache: "no-store",
       headers: {
         Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     })
 
@@ -34,12 +36,14 @@ export async function POST(req: NextRequest) {
     const body = await req.text()
     const upstream = `${BACKEND_URL}/skills/`
 
+    const authHeader = req.headers.get("Authorization")
     const res = await fetch(upstream, {
       method: "POST",
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       body,
     })

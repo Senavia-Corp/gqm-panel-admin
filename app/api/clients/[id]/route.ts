@@ -11,9 +11,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const { id } = await params
     console.log(`[v0] Proxy: Fetching client ${id} from Python API`)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(`${PYTHON_API_BASE_URL}/clients/${id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
@@ -45,9 +49,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     console.log(`[v0] Proxy: Updating client ${id} — sync_podio:`, syncPodio)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(upstream.toString(), {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(body),
     })
 
@@ -78,9 +86,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     console.log(`[v0] Proxy: Deleting client ${id} — sync_podio:`, syncPodio)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(upstream.toString(), {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
 
     if (!response.ok) {

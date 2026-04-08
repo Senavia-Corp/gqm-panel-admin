@@ -11,9 +11,13 @@ export async function GET(request: NextRequest) {
 
     console.log("[v0] Proxy: Fetching clients from Python API:", upstream.toString())
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(upstream.toString(), {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
@@ -64,9 +68,13 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Proxy: Creating client — sync_podio:", syncPodio)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
     const response = await fetch(upstream.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(body),
     })
 

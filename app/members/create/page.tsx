@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
 import {
   ArrowLeft, Save, Loader2, Eye, EyeOff,
   User, Mail, Phone, MapPin, Shield, Briefcase,
@@ -146,7 +147,7 @@ export default function CreateMemberPage() {
       if (form.Phone_Number.trim()) payload.Phone_Number = form.Phone_Number.trim()
       if (form.Address.trim())      payload.Address      = form.Address.trim()
 
-      const res = await fetch("/api/members", {
+      const res = await apiFetch("/api/members", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payload),
@@ -181,7 +182,7 @@ export default function CreateMemberPage() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ──────────────────────────────────────────────── */}

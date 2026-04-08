@@ -45,6 +45,11 @@ export default function LoginPage() {
       localStorage.setItem("user_type", data.user_type)
       localStorage.setItem("login_time", Date.now().toString()) // Store login time for token expiry
 
+      // Save IAM policies if returned by the backend login endpoint
+      if (data.user_data?.policies) {
+        localStorage.setItem("user_policies", JSON.stringify(data.user_data.policies))
+      }
+
       const role = data.user_type === "member" ? "GQM_MEMBER" : "LEAD_TECHNICIAN"
 
       let userData

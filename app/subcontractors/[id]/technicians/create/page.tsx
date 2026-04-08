@@ -6,6 +6,10 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { usePermissions } from "@/hooks/usePermissions"
+import { apiFetch } from "@/lib/apiFetch"
+import { toast } from "@/components/ui/use-toast"
+import { ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,7 +20,9 @@ import type { TechnicianType } from "@/lib/types"
 
 export default function CreateTechnicianPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -76,17 +82,63 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
       return
     }
 
-    console.log("Creating technician:", formData)
-    router.push(`/subcontractors/${params.id}?tab=technicians`)
+    setLoading(true)
+    const payload = {
+      ...formData,
+      ID_Subcontractor: params.id,
+    }
+
+    apiFetch("/api/technician", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.message || err.detail || `Error ${res.status}`)
+        }
+        toast({ title: "Success", description: "Technician created successfully." })
+        router.push(`/subcontractors/${params.id}?tab=technicians`)
+      })
+      .catch((err) => {
+        setErrors([err.message || "Failed to create technician"])
+        toast({ title: "Error", description: err.message, variant: "destructive" })
+      })
+      .finally(() => setLoading(false))
   }
 
   if (!user) return null
+
+  if (!hasPermission("subcontractor:update")) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 transition-transform hover:scale-110">
+              <ShieldCheck className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <p className="text-slate-500 max-w-md mb-8">
+              You do not have permission (`subcontractor:update`) to create technicians for this subcontractor.
+            </p>
+            <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
+              Return to Technicians
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <Button
             variant="ghost"
@@ -200,8 +252,9 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
               )}
 
               <div className="flex gap-4">
-                <Button type="submit" className="flex-1">
-                  Create Technician
+                <Button type="submit" className="flex-1" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {loading ? "Creating..." : "Create Technician"}
                 </Button>
                 <Button
                   type="button"

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { apiFetch } from "@/lib/apiFetch"
+import { usePermissions } from "@/hooks/usePermissions"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -17,7 +19,7 @@ import {
   Plus, Search, ChevronLeft, ChevronRight, Eye, Trash2,
   Building2, Hash, MapPin, Mail, Phone, ExternalLink,
   AlertCircle, RefreshCw, Users, X, Loader2,
-  ShieldCheck, Tag, Zap, ZapOff,
+  ShieldCheck, Tag, Zap, ZapOff, Shield
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -299,7 +301,7 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
     if (!community) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/clients/${community.ID_Client}?sync_podio=${syncPodio}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/clients/${community.ID_Client}?sync_podio=${syncPodio}`, { method: "DELETE" })
       if (!res.ok) throw new Error(await res.text())
       onDeleted(community.ID_Client)
       onOpenChange(false)
@@ -355,7 +357,7 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
     setDeleting(true)
     try {
       // ✅ Pasar sync_podio como query param
-      const r = await fetch(
+      const r = await apiFetch(
         `/api/parent_mgmt_co/${item.ID_Community_Tracking}?sync_podio=${syncPodio}`,
         { method: "DELETE" }
       )
@@ -431,20 +433,21 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ParentMgmtCo | null>(null)
+  const { hasPermission }               = usePermissions()
   const PER_PAGE = 10
 
   const fetchAll = useCallback(async () => {
     setLoading(true); setError(null)
     try {
       // Primer fetch para saber el total real
-      const first = await fetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
+      const first = await apiFetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
       if (!first.ok) throw new Error(`Error ${first.status}`)
       const firstData = await first.json()
       const total: number = firstData.total ?? 0
 
       // Si hay registros, traerlos todos en una sola llamada
       const limit = total > 0 ? total : 200
-      const r = await fetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
+      const r = await apiFetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
       if (!r.ok) throw new Error(`Error ${r.status}`)
       const d = await r.json()
       setItems(d.results ?? [])
@@ -496,10 +499,12 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
             </button>
           )}
         </div>
-        <Button onClick={() => router.push("/clients/create")}
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
-          <Plus className="h-4 w-4" /> Add Company
-        </Button>
+        {hasPermission("parent_mgmt_co:create") && (
+          <Button onClick={() => router.push("/clients/create")}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
+            <Plus className="h-4 w-4" /> Add Company
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -575,11 +580,13 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                         onClick={() => router.push(`/clients/${row.ID_Community_Tracking}`)}>
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon"
-                        className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
-                        onClick={() => setDeleteTarget(row)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {hasPermission("parent_mgmt_co:delete") && (
+                        <Button variant="ghost" size="icon"
+                          className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
+                          onClick={() => setDeleteTarget(row)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -623,6 +630,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CommunityRow | null>(null)
+  const { hasPermission }               = usePermissions()
   const abortRef                        = useRef<AbortController | null>(null)
 
   const fetchPage = useCallback(async (p: number, q: string) => {
@@ -632,7 +640,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
     try {
       const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
       if (q) params.set("q", q)
-      const res = await fetch(`/api/clients/table?${params}`, {
+      const res = await apiFetch(`/api/clients/table?${params}`, {
         cache: "no-store", signal: abortRef.current.signal,
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
@@ -670,10 +678,12 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
             </button>
           )}
         </div>
-        <Button onClick={() => router.push("/communities/create")}
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
-          <Plus className="h-4 w-4" /> New Community
-        </Button>
+        {hasPermission("client:create") && (
+          <Button onClick={() => router.push("/communities/create")}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
+            <Plus className="h-4 w-4" /> New Community
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -804,7 +814,17 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 export default function ClientsPage() {
   const router = useRouter()
   const [user, setUser]           = useState<any>(null)
+  const { hasPermission }         = usePermissions()
   const [activeTab, setActiveTab] = useState<MainTab>("companies")
+
+  const canSeeCompanies = hasPermission("parent_mgmt_co:read")
+  const canSeeCommunities = hasPermission("client:read")
+
+  // Adjust active tab if one is not permitted
+  useEffect(() => {
+    if (!canSeeCompanies && canSeeCommunities) setActiveTab("communities")
+    else if (canSeeCompanies && !canSeeCommunities) setActiveTab("companies")
+  }, [canSeeCompanies, canSeeCommunities])
 
   useEffect(() => {
     const u = localStorage.getItem("user_data")
@@ -818,7 +838,7 @@ export default function ClientsPage() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header + tabs ── */}
@@ -837,10 +857,10 @@ export default function ClientsPage() {
             <div className="mt-3 flex px-6">
               {(
                 [
-                  { id: "companies"   as MainTab, icon: Building2, label: "Parent Companies" },
-                  { id: "communities" as MainTab, icon: Users,     label: "Communities"       },
+                  { id: "companies"   as MainTab, icon: Building2, label: "Parent Companies", visible: canSeeCompanies },
+                  { id: "communities" as MainTab, icon: Users,     label: "Communities",      visible: canSeeCommunities },
                 ] as const
-              ).map(({ id, icon: Icon, label }) => {
+              ).filter(t => t.visible).map(({ id, icon: Icon, label }) => {
                 const on = activeTab === id
                 return (
                   <button key={id} onClick={() => setActiveTab(id)}
@@ -859,8 +879,21 @@ export default function ClientsPage() {
 
           {/* ── Tab content ── */}
           <div className="p-6">
-            {activeTab === "companies"   && <CompaniesTab   router={router} />}
-            {activeTab === "communities" && <CommunitiesTab router={router} />}
+            {!canSeeCompanies && !canSeeCommunities ? (
+              <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white">
+                <Shield className="h-10 w-10 text-slate-200" />
+                <h2 className="text-lg font-bold text-slate-800">Access Denied</h2>
+                <p className="text-sm text-slate-500 text-center max-w-sm">
+                  You don't have permissions to view clients or parent management companies. 
+                  Please contact your administrator.
+                </p>
+              </div>
+            ) : (
+              <>
+                {activeTab === "companies"   && canSeeCompanies && <CompaniesTab   router={router} />}
+                {activeTab === "communities" && canSeeCommunities && <CommunitiesTab router={router} />}
+              </>
+            )}
           </div>
         </main>
       </div>

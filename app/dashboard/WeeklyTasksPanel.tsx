@@ -16,6 +16,7 @@ import {
   ConstructionIcon,
   WalletIcon,
 } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -372,7 +373,7 @@ export default function WeeklyTasksPanel() {
         setIsLoading(true)
         const qs = new URLSearchParams()
         if (jobType !== "ALL") qs.set("job_type", jobType)
-        const res = await fetch(`/api/tasks/weekly?${qs.toString()}`, { cache: "no-store" })
+        const res = await apiFetch(`/api/tasks/weekly?${qs.toString()}`, { cache: "no-store" })
         if (!res.ok) throw new Error(`Failed weekly tasks: ${res.status}`)
         const data: WeeklyTask[] = await res.json()
         setTasks(Array.isArray(data) ? data : [])

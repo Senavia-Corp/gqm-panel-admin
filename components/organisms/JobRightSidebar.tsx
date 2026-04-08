@@ -7,6 +7,7 @@ import { TimelineItem, type TLActivityEntry } from "@/components/molecules/Timel
 import { TechnicianJobSidebar } from "@/components/organisms/TechnicianJobSidebar"
 import { mapClientDetailsToClient } from "@/lib/mappers/client.mapper"
 import type { JobDTO, UserRole } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ function PDFPopover({
     setDlError(null)
     try {
       const params = new URLSearchParams({ job_id: jobId, period, ref_date: refDate })
-      const res    = await fetch(`/api/metrics/timeline/reports/pdf?${params}`)
+      const res    = await apiFetch(`/api/metrics/timeline/reports/pdf?${params}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.error ?? `Error ${res.status}`)
@@ -251,7 +252,7 @@ export function JobRightSidebar({ role, job }: Props) {
     }))
 
     try {
-      const res  = await fetch(`/api/timeline/job/${encodeURIComponent(jobId)}?page=${page}&limit=${PAGE_LIMIT}`)
+      const res  = await apiFetch(`/api/timeline/job/${encodeURIComponent(jobId)}?page=${page}&limit=${PAGE_LIMIT}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? `Error ${res.status}`)
 

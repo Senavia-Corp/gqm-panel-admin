@@ -9,20 +9,24 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockTechnicians } from "@/lib/mock-data/technicians"
-import { mockSubcontractors } from "@/lib/mock-data/subcontractors"
-import { mockTimelineEvents } from "@/lib/mock-data/timeline"
+import { usePermissions } from "@/hooks/usePermissions"
+import { apiFetch } from "@/lib/apiFetch"
+import { toast } from "@/components/ui/use-toast"
 import { TimelineItem } from "@/components/molecules/TimelineItem"
-import { ArrowLeft, Save, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Save, Eye, EyeOff, ShieldCheck, Loader2, RefreshCw, AlertCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Technician } from "@/lib/types"
 import { TechnicianJobsSection } from "@/components/organisms/TechnicianJobsSection"
 
 export default function TechnicianDetailsPage({ params }: { params: { id: string; technicianId: string } }) {
   const router = useRouter()
+  const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
   const [technician, setTechnician] = useState<Technician | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState<Partial<Technician>>({})
   const [showPassword, setShowPassword] = useState(false)
@@ -34,6 +38,22 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
   })
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
 
+  const fetchTechnician = async () => {
+    try {
+      setLoading(true)
+      setLoadError(null)
+      const res = await apiFetch(`/api/technician/${params.technicianId}`)
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
+      setTechnician(data)
+      setFormData(data)
+    } catch (e: any) {
+      setLoadError(e.message || "Failed to load technician")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
     if (!userData) {
@@ -41,12 +61,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
       return
     }
     setUser(JSON.parse(userData))
-
-    const found = mockTechnicians.find((tech) => tech.ID_Technician === params.technicianId)
-    if (found) {
-      setTechnician(found)
-      setFormData(found)
-    }
+    fetchTechnician()
   }, [params.technicianId, router])
 
   const handleFieldChange = (field: keyof Technician, value: any) => {
@@ -94,25 +109,99 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
     setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" })
   }
 
-  const handleSaveChanges = () => {
-    console.log("Saving technician changes:", formData)
-    if (technician) {
-      setTechnician({ ...technician, ...formData })
+  const handleSaveChanges = async () => {
+    try {
+      setSaving(true)
+      const res = await apiFetch(`/api/technician/${params.technicianId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const updated = await res.json()
+      setTechnician(updated)
+      setIsEditing(false)
+      setEditedFields(new Set())
+      toast({ title: "Saved", description: "Technician updated successfully." })
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" })
+    } finally {
+      setSaving(false)
     }
-    setIsEditing(false)
-    setEditedFields(new Set())
   }
 
-  const subcontractor = mockSubcontractors.find((sub) => sub.ID_Subcontractor === params.id)
-  const leaderTechnician = subcontractor?.technicians?.find((tech: Technician) => tech.Type === "Leader")
+  if (!user) return null
 
-  if (!user || !technician) return null
+  if (!hasPermission("subcontractor:read")) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 transition-transform hover:scale-110">
+              <ShieldCheck className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <p className="text-slate-500 max-w-md mb-8">
+              You do not have permission (`subcontractor:read`) to view this technician.
+            </p>
+            <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
+              Return to Technicians
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 flex flex-col items-center justify-center">
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
+            <p className="mt-4 text-sm font-medium text-slate-500 font-mono italic">Loading technician details...</p>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  if (!technician) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto p-6">
+            <Button variant="ghost" onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)} className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Technicians
+            </Button>
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+              <div className="flex items-center gap-3 font-mono">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <h2 className="font-semibold text-red-800">Technician not found</h2>
+              </div>
+              <p className="mt-2 text-sm text-red-600 italic font-mono">{loadError || "The technician might have been deleted or moved."}</p>
+              <Button onClick={fetchTechnician} className="mt-4 gap-2" variant="outline">
+                <RefreshCw className="h-4 w-4" /> Retry
+              </Button>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <Button
             variant="ghost"
@@ -130,20 +219,20 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                   <Avatar className="h-20 w-20">
                     <AvatarImage src={technician.Avatar || "/placeholder.svg"} alt={technician.Name} />
                     <AvatarFallback className="bg-gqm-yellow text-gqm-green-dark text-2xl font-semibold">
-                      {technician.Name.split(" ")
+                      {(technician.Name || "??").split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h1 className="text-3xl font-bold">{technician.Name}</h1>
-                    <p className="text-muted-foreground">{technician.ID_Technician}</p>
+                    <h1 className="text-3xl font-bold">{technician.Name || "Unnamed"}</h1>
+                    <p className="text-muted-foreground font-mono">{technician.ID_Technician}</p>
                   </div>
                 </div>
-                {isEditing && (
-                  <Button onClick={handleSaveChanges} className="gap-2">
-                    <Save className="h-4 w-4" />
-                    Save Changes
+                {isEditing && hasPermission("subcontractor:update") && (
+                  <Button onClick={handleSaveChanges} disabled={saving} className="gap-2">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {saving ? "Saving..." : "Save Changes"}
                   </Button>
                 )}
               </div>
@@ -162,9 +251,9 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                     </div>
                     <div>
                       <Label className="mb-2 block font-semibold">Technician Type</Label>
-                      <Select value={formData.Type} onValueChange={(value) => handleFieldChange("Type", value)}>
+                      <Select value={formData.Type_of_technician || ""} onValueChange={(value) => handleFieldChange("Type_of_technician", value)}>
                         <SelectTrigger
-                          className={editedFields.has("Type") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
+                          className={editedFields.has("Type_of_technician") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -192,17 +281,17 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                       <Label className="mb-2 block font-semibold">Email (Username)</Label>
                       <Input
                         type="email"
-                        value={formData.Email || ""}
-                        onChange={(e) => handleFieldChange("Email", e.target.value)}
-                        className={editedFields.has("Email") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
+                        value={formData.Email_Address || ""}
+                        onChange={(e) => handleFieldChange("Email_Address", e.target.value)}
+                        className={editedFields.has("Email_Address") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                       />
                     </div>
                     <div>
                       <Label className="mb-2 block font-semibold">Phone Number</Label>
                       <Input
-                        value={formData.Phone_number || ""}
-                        onChange={(e) => handleFieldChange("Phone_number", e.target.value)}
-                        className={editedFields.has("Phone_number") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
+                        value={formData.Phone_Number || ""}
+                        onChange={(e) => handleFieldChange("Phone_Number", e.target.value)}
+                        className={editedFields.has("Phone_Number") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
                       />
                     </div>
                   </div>
@@ -219,7 +308,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                             type={showPassword ? "text" : "password"}
                             value={formData.Password || ""}
                             readOnly
-                            className="flex-1"
+                            className="flex-1 bg-slate-50"
                           />
                           <Button
                             type="button"
@@ -295,60 +384,66 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
             </div>
 
             <div className="space-y-6">
+              {/* Technician Info Sidebar */}
               <Card className="p-6">
-                <h2 className="mb-4 text-xl font-semibold">Leader Information</h2>
-                {leaderTechnician ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-gqm-yellow text-gqm-green-dark text-lg font-semibold">
-                          {leaderTechnician.Name.split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{leaderTechnician.Name}</h3>
-                        <p className="text-sm text-muted-foreground">{leaderTechnician.ID_Technician}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="font-medium">Organization:</span> {subcontractor?.Organization}
-                      </p>
-                      <p>
-                        <span className="font-medium">Phone:</span> {leaderTechnician.Phone_number}
-                      </p>
-                      <p>
-                        <span className="font-medium">Location:</span> {leaderTechnician.Location}
-                      </p>
-                      <p>
-                        <span className="font-medium">Email:</span> {leaderTechnician.Email}
-                      </p>
-                      <p>
-                        <span className="font-medium">Tech ID:</span> {leaderTechnician.ID_Technician}
-                      </p>
-                      <p>
-                        <span className="font-medium">Type:</span>{" "}
-                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                          {leaderTechnician.Type}
-                        </span>
-                      </p>
+                <h2 className="mb-4 text-xl font-semibold">Information</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-16 w-16">
+                      <AvatarFallback className="bg-emerald-600 text-white text-lg font-bold">
+                        {(technician.Name || "??").split(" ").map((n: any) => n[0]).join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-slate-900">{technician.Name || "Unnamed"}</h3>
+                      <p className="text-xs text-slate-400 font-mono">{technician.ID_Technician}</p>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No leader assigned</p>
-                )}
-              </Card>
-
-              <Card className="p-6">
-                <h2 className="mb-4 text-xl font-semibold">Timeline</h2>
-                <div className="space-y-3">
-                  {mockTimelineEvents.slice(0, 5).map((event) => (
-                    <TimelineItem key={event.id} activity={event.title} date={event.date} />
-                  ))}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Phone:</span>
+                      <span className="font-medium text-slate-900">{technician.Phone_Number || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Location:</span>
+                      <span className="font-medium text-slate-900">{technician.Location || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Email:</span>
+                      <span className="font-medium text-slate-900 truncate max-w-[150px]" title={technician.Email_Address || ""}>
+                        {technician.Email_Address || "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Type:</span>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 border border-blue-100">
+                        {technician.Type_of_technician || "Worker"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </Card>
+
+              {technician.tasks && technician.tasks.length > 0 && (
+                <Card className="p-6">
+                  <h2 className="mb-4 text-xl font-semibold">Recent Tasks</h2>
+                  <div className="space-y-3">
+                    {technician.tasks.slice(0, 5).map((t: any) => (
+                      <TimelineItem 
+                        key={t.ID_Tasks || t.ID_Task} 
+                        entry={{
+                          ID_TLActivity: t.ID_Tasks || t.ID_Task,
+                          Action: "Task Assigned",
+                          Action_datetime: t.Designation_date || null,
+                          Description: t.Name || "",
+                          ID_Jobs: null,
+                          ID_Member: null
+                         }} 
+                      />
+                    ))}
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
         </main>

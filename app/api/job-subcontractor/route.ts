@@ -50,9 +50,16 @@ export async function POST(request: NextRequest) {
 
   const url = `${PYTHON_API_URL}/jobs/${encodeURIComponent(jobId)}/subcontractors/${encodeURIComponent(subcontractorId)}?${params}`
 
-  // ── Forward X-User-Id ─────────────────────────────────────────────────────
+  // ── Forward Authorization & X-User-Id ──────────────────────────────────────
+  const authHeader = request.headers.get("Authorization")
   const userId = request.headers.get("X-User-Id")
-  const result = await proxyFetch(url, { method: "POST", headers: userId ? { "X-User-Id": userId } : {} })
+  const result = await proxyFetch(url, { 
+    method: "POST", 
+    headers: {
+      ...(authHeader ? { Authorization: authHeader } : {}),
+      ...(userId ? { "X-User-Id": userId } : {}),
+    }
+  })
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
   return NextResponse.json(result.data ?? { success: true })
 }
@@ -73,9 +80,16 @@ export async function DELETE(request: NextRequest) {
 
   const url = `${PYTHON_API_URL}/jobs/${encodeURIComponent(jobId)}/subcontractors/${encodeURIComponent(subcontractorId)}?${params}`
 
-  // ── Forward X-User-Id ─────────────────────────────────────────────────────
+  // ── Forward Authorization & X-User-Id ──────────────────────────────────────
+  const authHeader = request.headers.get("Authorization")
   const userId = request.headers.get("X-User-Id")
-  const result = await proxyFetch(url, { method: "DELETE", headers: userId ? { "X-User-Id": userId } : {} })
+  const result = await proxyFetch(url, { 
+    method: "DELETE", 
+    headers: {
+      ...(authHeader ? { Authorization: authHeader } : {}),
+      ...(userId ? { "X-User-Id": userId } : {}),
+    }
+  })
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
   return NextResponse.json(result.data ?? { success: true })
 }

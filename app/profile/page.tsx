@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
 import {
   User, Mail, Phone, MapPin, Briefcase, Shield,
   Lock, Eye, EyeOff, Pencil, Check, X, Loader2,
@@ -177,7 +178,7 @@ export default function ProfilePage() {
 
     void (async () => {
       try {
-        const res = await fetch(`/api/members/${memberId}`)
+        const res = await apiFetch(`/api/members/${memberId}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data: MemberProfile = await res.json()
         setProfile(data)
@@ -216,7 +217,7 @@ export default function ProfilePage() {
         Address: editValues.Address,
       }
 
-      const res = await fetch(`/api/members/${profile.ID_Member}`, {
+      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -249,7 +250,7 @@ export default function ProfilePage() {
     }
     setIsSaving(true)
     try {
-      const res = await fetch(`/api/members/${profile.ID_Member}`, {
+      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Password: editValues.newPassword }),
@@ -289,9 +290,9 @@ export default function ProfilePage() {
 
   return (
     <div className="flex h-screen bg-slate-50/80">
-      <Sidebar userRole={user?.role} />
+      <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Hero banner ─────────────────────────────────────────────── */}

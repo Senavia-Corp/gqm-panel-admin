@@ -10,9 +10,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     console.log(`[v0] Fetching from: ${url}`)
 
+    const authHeader = request.headers.get("Authorization")
     const response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       cache: "no-store",
     })

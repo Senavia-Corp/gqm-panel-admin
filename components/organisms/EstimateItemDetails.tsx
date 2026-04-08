@@ -10,9 +10,10 @@ import { ArrowLeft } from "lucide-react"
 interface EstimateItemDetailsProps {
   item: EstimateItem
   onBack: () => void
+  onEdit?: () => void
 }
 
-export function EstimateItemDetails({ item, onBack }: EstimateItemDetailsProps) {
+export function EstimateItemDetails({ item, onBack, onEdit }: EstimateItemDetailsProps) {
   const parseValue = (value: string | number): number => {
     if (typeof value === "number") return value
     const parsed = Number.parseFloat(String(value).replace(/[%$,]/g, ""))
@@ -30,6 +31,12 @@ export function EstimateItemDetails({ item, onBack }: EstimateItemDetailsProps) 
           <ArrowLeft className="h-4 w-4" />
           Back to Estimate Breakdown
         </Button>
+        {onEdit && (
+          <Button onClick={onEdit} className="bg-blue-600 hover:bg-blue-700 gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            Edit Cost
+          </Button>
+        )}
       </div>
 
       <div className="space-y-6">

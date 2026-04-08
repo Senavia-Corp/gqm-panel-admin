@@ -25,11 +25,13 @@ interface EstimateBreakdownTableProps {
   onDeleteAllEstimates: () => Promise<void>
   onCancelImport: () => void
   onDeleteItem?: (item: EstimateItem) => Promise<void>
+  onEditItem?: (item: EstimateItem) => void
   jobYear?: number
 }
 
 // Cost types that need Podio sync on delete
-const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF"])
+const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF", "Rent", "Material", "Permit"])
+
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -237,7 +239,7 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<vo
 export function EstimateBreakdownTable({
   items, onViewDetails, onCreateOrder, onItemsImported, jobId,
   hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport,
-  onDeleteItem, jobYear,
+  onDeleteItem, onEditItem, jobYear,
 }: EstimateBreakdownTableProps) {
   const [search, setSearch]               = useState("")
   const [expandedGroups, setExpanded]     = useState<Set<string>>(new Set())
@@ -604,9 +606,18 @@ export function EstimateBreakdownTable({
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
+                              {onEditItem && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onEditItem(item); }}
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
+                                  title="Edit cost"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                </button>
+                              )}
                               {onDeleteItem && (
                                 <button
-                                  onClick={() => setDeleteTarget(item)}
+                                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); }}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
                                   title="Delete cost"
                                 >

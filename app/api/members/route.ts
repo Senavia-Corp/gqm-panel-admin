@@ -12,11 +12,14 @@ export async function GET(request: Request) {
     const apiUrl = `${API_BASE_URL}/?page=${page}&limit=${limit}`
     console.log("[v0] API URL:", apiUrl)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
+
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     })
 
@@ -51,11 +54,14 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log("[v0] Creating member:", body)
 
+    const authHeader = request.headers.get("Authorization") ?? ""
+
     const response = await fetch(`${API_BASE_URL}/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       body: JSON.stringify(body),
     })

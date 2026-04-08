@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Input } from "@/components/ui/input"
 import { Building2, Search, X, ChevronLeft, ChevronRight, RefreshCcw, CheckCircle2, AlertCircle } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,7 @@ interface Props {
   onChange: (client: MappedClient | null) => void
   initialClients?: any[]
   changed?: boolean
+  disabled?: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -96,7 +98,7 @@ function useClientTable(open: boolean) {
     try {
       const params = new URLSearchParams({ page: String(pg), limit: String(limit) })
       if (q) params.set("q", q)
-      const res = await fetch(`/api/clients/table?${params}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/clients/table?${params}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const json: TableResponse = await res.json()
       setData(json)
@@ -135,13 +137,13 @@ function useSingleClient(id: string | undefined) {
     // Try /api/clients/table?q=<id> first (lightweight)
     const load = async () => {
       try {
-        const res = await fetch(`/api/clients/table?q=${encodeURIComponent(id)}&limit=1`, { cache: "no-store" })
+        const res = await apiFetch(`/api/clients/table?q=${encodeURIComponent(id)}&limit=1`, { cache: "no-store" })
         if (!res.ok) return
         const json: TableResponse = await res.json()
         const found = json.results.find((r) => r.ID_Client === id)
         if (found) { setClient(found); return }
         // Fallback to full client endpoint
-        const res2 = await fetch(`/api/clients/${encodeURIComponent(id)}`, { cache: "no-store" })
+        const res2 = await apiFetch(`/api/clients/${encodeURIComponent(id)}`, { cache: "no-store" })
         if (!res2.ok) return
         const full = await res2.json()
         setClient(full)
@@ -155,7 +157,7 @@ function useSingleClient(id: string | undefined) {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 
-export function ClientSelect({ value, onChange, initialClients = [], changed }: Props) {
+export function ClientSelect({ value, onChange, initialClients = [], changed, disabled = false }: Props) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -251,6 +253,25 @@ export function ClientSelect({ value, onChange, initialClients = [], changed }: 
       )}
     </div>
   )
+
+  // ── Disabled / read-only display ────────────────────────────────────────
+  if (disabled) {
+    return (
+      <div className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 opacity-70 cursor-not-allowed">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+          <Building2 className="h-4 w-4" />
+        </div>
+        {selectedMapped ? (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-slate-600">{selectedMapped.name}</div>
+            <div className="font-mono text-[10px] text-slate-400">{selectedMapped.id}</div>
+          </div>
+        ) : (
+          <span className="text-sm text-slate-400">No client selected</span>
+        )}
+      </div>
+    )
+  }
 
   // ── Modal (portal, centered on screen) ─────────────────────────────────
   const modal = open && typeof window !== "undefined" ? createPortal(

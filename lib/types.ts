@@ -1,5 +1,46 @@
 // Core data types for the GQM Admin Panel
 
+export type CommissionType = "Non-Comp" | "Standard" | "Premium"
+
+export interface CommissionDetail {
+  ID_ComDetail: string
+  Factor: number | null
+  Sell_Mgmt: number | null
+  Type: CommissionType
+  ID_Jobs: string | null
+  ID_ComGroup: string | null
+  comgroup?: {
+    ID_ComGroup: string
+    ID_Commission: string
+    Jobs_type: string
+    Jobs_year: number
+    Rol: string
+    Total_detail: number
+    commission?: {
+      Applicable: boolean
+      ID_Commission: string
+      ID_Member: string
+      Month: string
+      Status: string | null
+      Total_commission: number
+      Total_margin: number
+      Total_reimbursement: number | null
+      Year: number
+      member?: {
+        Address: string
+        Company_Role: string
+        Email_Address: string
+        ID_Member: string
+        ID_Role: string
+        Member_Name: string
+        Phone_Number: string
+        podio_item_id: string | null
+        podio_profile_id: string | null
+      }
+    }
+  }
+}
+
 export type JobStatus =
   | "Assigned/P. Quote"
   | "Waiting for Approval"
@@ -166,6 +207,7 @@ export interface JobDTO {
   members: MemberDetails[] | any[]
   subcontractors: Subcontractor[] | any[]
   payment_units: any[]
+  comdetails?: CommissionDetail[]
 }
 
 export interface JobsPaginatedResponse extends PaginatedResponse<JobDTO> {}
@@ -224,6 +266,7 @@ export interface Job {
     gqmFinalPercentage: number
     gqmTotalChangeOrders: number
   }
+  comdetails?: CommissionDetail[]
 }
 
 export interface TimelineEvent {
@@ -418,23 +461,23 @@ export interface User {
 
 //Permissions and Roles
 
-export type PermissionActionType = "View" | "Create" | "Edit" | "Delete"
+export interface IAMStatement {
+  Effect: "Allow" | "Deny"
+  Action: string[]
+  Resource: string[]
+}
 
-export type PermissionServiceType =
-  | "Job"
-  | "Subcontractor"
-  | "GQM_Member"
-  | "Technician"
-  | "Client"
-  | "Dashboard"
+export interface IAMDocument {
+  Version: string
+  Statement: IAMStatement[]
+}
 
 export interface Permission {
   ID_Permission: string
   Name: string | null
   Description: string | null
   Active: boolean | null
-  Action: PermissionActionType
-  Service_Associated: PermissionServiceType
+  Document: IAMDocument
 
   roles?: Role[]
   members?: any[]
