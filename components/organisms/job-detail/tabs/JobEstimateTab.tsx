@@ -17,6 +17,7 @@ type Props = {
   onDeleteAllEstimates: () => Promise<void>
   onCancelImport: () => void
   onDeleteItem: (item: EstimateItem) => Promise<void>
+  onEditItem: (item: EstimateItem) => void
   jobYear?: number
 }
 
@@ -32,12 +33,13 @@ export function JobEstimateTab({
   onDeleteAllEstimates,
   onCancelImport,
   onDeleteItem,
+  onEditItem,
   jobYear,
 }: Props) {
   return (
     <div className="space-y-4">
       {selectedItem ? (
-        <EstimateItemDetails item={selectedItem} onBack={() => onSelectItem(null)} />
+        <EstimateItemDetails item={selectedItem} onBack={() => onSelectItem(null)} onEdit={() => onEditItem(selectedItem)} />
       ) : (
         <EstimateBreakdownTable
           items={items}
@@ -50,6 +52,7 @@ export function JobEstimateTab({
           onDeleteAllEstimates={onDeleteAllEstimates}
           onCancelImport={onCancelImport}
           onDeleteItem={onDeleteItem}
+          onEditItem={onEditItem}
           jobYear={jobYear}
         />
       )}

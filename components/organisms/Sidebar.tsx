@@ -69,6 +69,7 @@ export function Sidebar() {
     return base.filter((item) => {
       if (item.href === "/members") return hasPermission("member:read")
       if (item.href === "/clients") return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+      if (item.href === "/subcontractors") return hasPermission("subcontractor:read")
       if (item.href === "/roles-permissions") return hasPermission("iam_pm:read")
       return true
     })

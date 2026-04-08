@@ -19,10 +19,14 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const upstream = buildUpstream(req, skills_id, subcon_id)
     
 
+    const authHeader = req.headers.get("Authorization")
     const res = await fetch(upstream, {
       method: "POST",
       cache: "no-store",
-      headers: { Accept: "application/json" },
+      headers: { 
+        Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
 
     const text = await res.text()
@@ -44,10 +48,14 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const upstream = buildUpstream(req, skills_id, subcon_id)
     console.log("[skills_subcontractors proxy] upstream:", upstream)
 
+    const authHeader = req.headers.get("Authorization")
     const res = await fetch(upstream, {
       method: "DELETE",
       cache: "no-store",
-      headers: { Accept: "application/json" },
+      headers: { 
+        Accept: "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     })
 
     const text = await res.text()

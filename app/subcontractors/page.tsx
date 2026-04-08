@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { usePermissions } from "@/hooks/usePermissions"
+import { apiFetch } from "@/lib/apiFetch"
 import { SubcontractorManagementTable } from "@/components/organisms/SubcontractorManagementTable"
 import { DeleteSubcontractorDialog } from "@/components/organisms/DeleteSubcontractorDialog"
 import { Button } from "@/components/ui/button"
@@ -66,6 +68,7 @@ const PER_PAGE = 10
 
 export default function SubcontractorsPage() {
   const router = useRouter()
+  const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
 
   const [rows, setRows]         = useState<Subcontractor[]>([])
@@ -100,13 +103,14 @@ export default function SubcontractorsPage() {
   const fetchPage = useCallback(async (p: number, q: string, st: string) => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
+
     setLoading(true); setError(null)
     try {
       const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
       if (q)           params.set("q", q)
       if (st !== "all") params.set("status", st)
 
-      const res = await fetch(`/api/subcontractors_table?${params}`, {
+      const res = await apiFetch(`/api/subcontractors_table?${params}`, {
         cache: "no-store",
         signal: abortRef.current.signal,
       })
@@ -134,7 +138,7 @@ export default function SubcontractorsPage() {
   const confirmDelete = async (syncPodio: boolean) => {
     if (!deleteTarget?.ID_Subcontractor) return
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/subcontractors/${deleteTarget.ID_Subcontractor}?sync_podio=${syncPodio}`,
         { method: "DELETE", cache: "no-store" }
       )
@@ -153,11 +157,38 @@ export default function SubcontractorsPage() {
 
   if (!user) return null
 
+  if (!hasPermission("subcontractor:read")) {
+    return (
+      <div className="flex h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 group-hover:scale-110 transition-transform duration-500">
+              <AlertCircle className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <p className="text-slate-500 max-w-md mb-8">
+              You do not have the required permissions (`subcontractor:read`) to view this section. 
+              Please contact your administrator if you believe this is an error.
+            </p>
+            <Button 
+              onClick={() => router.push("/dashboard")}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
+            >
+              Return to Dashboard
+            </Button>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto">
 
           {/* ── Sticky header ── */}
@@ -189,12 +220,14 @@ export default function SubcontractorsPage() {
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => router.push("/subcontractors/create")}
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
-                >
-                  <Plus className="h-4 w-4" /> Add Subcontractor
-                </Button>
+                {hasPermission("subcontractor:create") && (
+                  <Button
+                    onClick={() => router.push("/subcontractors/create")}
+                    className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                  >
+                    <Plus className="h-4 w-4" /> Add Subcontractor
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-3 px-5 py-4">

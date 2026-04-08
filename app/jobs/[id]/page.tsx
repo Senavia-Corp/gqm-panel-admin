@@ -23,6 +23,7 @@ import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
 import { TaskDetailsDialog } from "@/components/organisms/TaskDetailsDialog"
 import { CreateTaskDialog } from "@/components/organisms/CreateTaskDialog"
 import { LinkSubcontractorDialog } from "@/components/organisms/LinkSubcontractorDialog"
+import { EditEstimateItemDialog } from "@/components/organisms/EditEstimateItemDialog"
 
 import { useJobDetail } from "./useJobDetail"
 import { mapEstimateCostsFromJob, mapEstimateItemToCreatePayload } from "@/lib/mappers/estimate.mapper"
@@ -188,6 +189,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
 
   const [selectedEstimateItem, setSelectedEstimateItem] = useState<EstimateItem | null>(null)
+  const [editingEstimateItemTarget, setEditingEstimateItemTarget] = useState<EstimateItem | null>(null)
+  const [isEditEstimateOpen, setIsEditEstimateOpen] = useState(false)
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [estimateItems, setEstimateItems] = useState<EstimateItem[]>([])
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
@@ -775,6 +778,18 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     await jobDetail.reload()
   }
 
+  const handleEditEstimateItem = (item: EstimateItem) => {
+    setEditingEstimateItemTarget(item)
+    setIsEditEstimateOpen(true)
+  }
+
+  const handleEstimateItemEdited = async (updatedItem: EstimateItem) => {
+    await jobDetail.reload()
+    if (selectedEstimateItem && selectedEstimateItem.ID_EstimateItem === updatedItem.ID_EstimateItem) {
+      setSelectedEstimateItem(updatedItem)
+    }
+  }
+
   const handleCancelImport = () => {
     setEstimateItems([])
   }
@@ -1078,6 +1093,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteAllEstimates={handleDeleteAllEstimates}
             onCancelImport={handleCancelImport}
             onDeleteItem={handleDeleteEstimateItem}
+            onEditItem={handleEditEstimateItem}
             jobYear={resolveJobYearForPodioSync(job)}
           />
         </JobTabLayout>
@@ -1363,6 +1379,21 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         bdfCount={importedBdfCount}
         ptlgcfCount={importedPtlgcfCount}
       />
+
+      {editingEstimateItemTarget && (
+        <EditEstimateItemDialog
+          open={isEditEstimateOpen}
+          onOpenChange={(open) => {
+            setIsEditEstimateOpen(open)
+            if (!open) setEditingEstimateItemTarget(null)
+          }}
+          jobId={resolvedJobId}
+          jobYear={resolvedYear}
+          initialItem={editingEstimateItemTarget}
+          existingBdfCount={Array.isArray((job as any)?.estimate_costs) ? (job as any).estimate_costs.filter((c: any) => c.Cost_Type === "BDF" || c.Cost_type === "BDF").length : 0}
+          onEdited={handleEstimateItemEdited}
+        />
+      )}
     </div>
   )
 }

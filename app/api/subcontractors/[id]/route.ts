@@ -21,11 +21,15 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params
+    const authHeader = _req.headers.get("Authorization")
 
     const url = joinUrl(RAW_PYTHON_BASE_URL, `/subcontractors/${encodeURIComponent(id)}`)
     const response = await fetch(url, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
@@ -47,6 +51,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params
+    const authHeader = req.headers.get("Authorization")
     const payload = await req.json()
 
     const { searchParams } = new URL(req.url)
@@ -59,7 +64,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     const response = await fetch(url, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: JSON.stringify(payload),
       cache: "no-store",
     })
@@ -82,6 +90,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params
+    const authHeader = req.headers.get("Authorization")
 
     const { searchParams } = new URL(req.url)
     const syncPodio = (searchParams.get("sync_podio") ?? "false").toLowerCase() === "true"
@@ -93,7 +102,10 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
 
     const response = await fetch(url, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       cache: "no-store",
     })
 
