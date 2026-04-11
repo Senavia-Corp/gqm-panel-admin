@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Shield, CheckCircle2, X, AlertCircle, Plus } from "lucide-react"
 
 import type { IAMDocument, IAMStatement } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 const MODULE_ACTIONS = [
   {
@@ -151,7 +152,7 @@ export default function CreatePermissionPage() {
     try {
       setSubmitting(true); setError(null)
       const doc: IAMDocument = { Version: "1.0", Statement: statements }
-      const res = await fetch("/api/permissions", {
+      const res = await apiFetch("/api/permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { apiFetch } from "@/lib/apiFetch"
 
 const ITEMS_PER_PAGE = 10
 const asString = (v: unknown) => (v == null ? "" : String(v))
@@ -84,7 +85,7 @@ export default function PermissionsTable() {
     try {
       setLoading(true)
       setLoadError(null)
-      const res = await fetch(`/api/permissions?page=${nextPage}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/permissions?page=${nextPage}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch permissions (${res.status})`)
       const data = (await res.json()) as PermissionListResponse
       const list = Array.isArray(data) ? data : Array.isArray(data.results) ? data.results : []
@@ -108,14 +109,14 @@ export default function PermissionsTable() {
       setLoadError(null)
       const roles = Array.isArray(permissionToDelete.roles) ? permissionToDelete.roles : []
       for (const r of roles) {
-        await fetch("/api/permissions/roles", {
+        await apiFetch("/api/permissions/roles", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ permissionId: permissionToDelete.ID_Permission, roleId: r.ID_Role }),
           cache: "no-store",
         })
       }
-      const res = await fetch(`/api/permissions/${permissionToDelete.ID_Permission}`, { method: "DELETE", cache: "no-store" })
+      const res = await apiFetch(`/api/permissions/${permissionToDelete.ID_Permission}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to delete permission (${res.status})`)
       setDeleteOpen(false)
       setPermissionToDelete(null)

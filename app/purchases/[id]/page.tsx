@@ -13,6 +13,7 @@ import {
   Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp,
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -144,7 +145,7 @@ const API = {
 }
 
 async function apiCall<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -284,7 +285,7 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
     try {
       const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
       if (search) qs.set("q", search)
-      const res = await fetch(`${API.membersTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(`${API.membersTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setRows(Array.isArray(data.results) ? data.results : [])
@@ -375,7 +376,7 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
     try {
       const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
       if (search) qs.set("search", search)
-      const res = await fetch(`${API.jobsTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(`${API.jobsTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setRows(Array.isArray(data.results) ? data.results : [])

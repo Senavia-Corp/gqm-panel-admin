@@ -12,13 +12,14 @@ const asJsonResponse = async (response: Response) => {
   return NextResponse.json(isJson ? body : { raw: body }, { status: response.status })
 }
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   try {
     const { id } = await params
+    const authHeader = req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}role/${id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       cache: "no-store",
     })
 
@@ -36,10 +37,11 @@ export async function PATCH(req: Request, { params }: Params) {
   try {
     const { id } = await params
     const payload = await req.json()
+    const authHeader = req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}role/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       body: JSON.stringify(payload),
       cache: "no-store",
     })
@@ -54,13 +56,14 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
   try {
     const { id } = await params
+    const authHeader = req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}role/${id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       cache: "no-store",
     })
 

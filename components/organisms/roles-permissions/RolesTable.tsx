@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { apiFetch } from "@/lib/apiFetch"
 
 const ITEMS_PER_PAGE = 10
 const asString = (v: unknown) => (v == null ? "" : String(v))
@@ -56,7 +57,7 @@ export default function RolesTable() {
     try {
       setLoading(true)
       setLoadError(null)
-      const res = await fetch(`/api/roles?page=${nextPage}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/roles?page=${nextPage}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch roles (${res.status})`)
       const data = (await res.json()) as RoleListResponse
       const list = Array.isArray(data) ? data : Array.isArray(data.results) ? data.results : []
@@ -80,14 +81,14 @@ export default function RolesTable() {
       setLoadError(null)
       const permissions = Array.isArray(roleToDelete.permissions) ? roleToDelete.permissions : []
       for (const p of permissions) {
-        await fetch("/api/permissions/roles", {
+        await apiFetch("/api/permissions/roles", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ permissionId: p.ID_Permission, roleId: roleToDelete.ID_Role }),
           cache: "no-store",
         })
       }
-      const res = await fetch(`/api/roles/${roleToDelete.ID_Role}`, { method: "DELETE", cache: "no-store" })
+      const res = await apiFetch(`/api/roles/${roleToDelete.ID_Role}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to delete role (${res.status})`)
       setDeleteOpen(false)
       setRoleToDelete(null)

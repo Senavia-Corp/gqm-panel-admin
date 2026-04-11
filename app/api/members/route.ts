@@ -52,7 +52,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    console.log("[v0] Creating member:", body)
 
     const authHeader = request.headers.get("Authorization") ?? ""
 
@@ -67,10 +66,9 @@ export async function POST(request: Request) {
     })
 
     const responseText = await response.text()
-    console.log("[v0] Create response:", responseText.substring(0, 200))
 
     if (!response.ok) {
-      console.log("[v0] Error creating member:", responseText)
+
       return NextResponse.json({ error: "Failed to create member", details: responseText }, { status: response.status })
     }
 
