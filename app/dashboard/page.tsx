@@ -29,6 +29,7 @@ import type { User } from "@/lib/types"
 import { LeadTechnicianDashboard } from "@/components/organisms/LeadTechnicianDashboard"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { logout } from "@/lib/auth-utils"
 
 import JobsPanel from "./JobsPanel"
 import ClientsPanel from "./ClientsPanel"
@@ -117,30 +118,17 @@ export default function DashboardPage() {
   useEffect(() => {
     const accessToken = localStorage.getItem("access_token")
     const userData    = localStorage.getItem("user_data")
-    const loginTime   = localStorage.getItem("login_time")
 
     if (!accessToken || !userData) {
-      router.push("/login")
+      logout()
       return
     }
 
-    if (loginTime) {
-      const elapsedTime = Date.now() - Number.parseInt(loginTime)
-      const ONE_HOUR    = 60 * 60 * 1000
-      if (elapsedTime >= ONE_HOUR) {
-        localStorage.removeItem("access_token")
-        localStorage.removeItem("refresh_token")
-        localStorage.removeItem("token_type")
-        localStorage.removeItem("user_id")
-        localStorage.removeItem("user_type")
-        localStorage.removeItem("user_data")
-        localStorage.removeItem("login_time")
-        router.push("/login")
-        return
-      }
+    try {
+      setUser(JSON.parse(userData))
+    } catch (e) {
+      logout()
     }
-
-    setUser(JSON.parse(userData))
   }, [router])
 
   useEffect(() => {

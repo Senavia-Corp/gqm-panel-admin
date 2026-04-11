@@ -796,12 +796,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const handleCreateOrder = async (orderName: string, subcontractorId: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
     try {
-      const selectedItems = estimateItems.filter((item) => selectedItemIds.includes(item.ID_EstimateItem))
-      const formula = selectedItems.reduce((sum, item) => sum + item.Builder_Cost, 0)
+      const getItemId = (i: any) => String(i?.ID_EstimateItem || i?.ID_EstimateCost || i?.ID_Estimate_Cost || i?.id || i?.ID || "")
+      const selectedItems = estimateItems.filter((item) => selectedItemIds.includes(getItemId(item)))
+      const formula = selectedItems.reduce((sum, item) => sum + (item.Builder_Cost ?? (item as any)?.Builder_cost ?? 0), 0)
 
       const year = resolveJobYearForPodioSync(job)
 
-      const qs =
+      // 1. Create the Order
+      // We pass sync podio to get the slot in Podio directly upon creation.
+      const qsCreate =
         syncPodioOverride
           ? `?sync_podio=true&year=${encodeURIComponent(String(year ?? ""))}`
           : `?sync_podio=false`
@@ -817,9 +820,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         Adj_formula: formula,
         ID_Subcontractor: subcontractorId,
         job_podio_id: (job as any)?.podio_item_id ?? null,
+        estimate_cost_ids: selectedItemIds, // Added this field for the new backend logic!
       }
 
-      const orderResponse = await apiFetch(`/api/order${qs}`, {
+      const orderResponse = await apiFetch(`/api/order${qsCreate}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderBody),
@@ -830,20 +834,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         throw new Error((errorData as any)?.error || (errorData as any)?.detail || "Failed to create order")
       }
 
-      const orderData = await orderResponse.json()
-      const orderId = orderData.ID_Order
-
-      const updatePromises = selectedItemIds.map(async (estimateId) => {
-        const response = await apiFetch(`/api/estimate/${estimateId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ID_Order: orderId }),
-        })
-        if (!response.ok) return { success: false, id: estimateId }
-        return { success: true, id: estimateId }
-      })
-
-      await Promise.allSettled(updatePromises)
+      // Backend now handles attaching items, formulas, and syncing atomically!
       await jobDetail.reload()
 
       toast({ title: "Success", description: `Order "${orderName}" created successfully.` })
@@ -1297,6 +1288,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         items={estimateItems}
         subcontractors={(job as any)?.subcontractors || []}
         defaultSyncPodio={syncPodio}
+        jobYearForPodioSync={resolveJobYearForPodioSync(job)}
+        jobId={String((job as any)?.ID_Jobs ?? "")}
+        existingOrdersCount={(job as any)?.subcontractors?.flatMap((s: any) => s.orders ?? []).length ?? 0}
+        onSubcontractorLinked={() => jobDetail.reload()}
         onCreateOrder={handleCreateOrder}
       />
 

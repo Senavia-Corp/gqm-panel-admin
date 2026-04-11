@@ -64,27 +64,34 @@ export async function GET(request: NextRequest) {
 
   const page   = searchParams.get("page")  ?? DEFAULT_PAGE
   const limit  = searchParams.get("limit") ?? DEFAULT_LIMIT
-  const status = searchParams.get("status")
-  const type   = searchParams.get("type")
-  const year   = searchParams.get("year")
-  const search = searchParams.get("search")
 
-  const clientId        = searchParams.get("clientId")
-  const memberId        = searchParams.get("memberId")
-  const subcontractorId = searchParams.get("subcontractorId")
-  const dateAssigned    = searchParams.get("dateAssigned")
+  // Read params from searchParams
+  const type              = searchParams.get("type")
+  const year              = searchParams.get("year")
+  const status            = searchParams.get("status")
+  const search            = searchParams.get("search")
+  const clientId          = searchParams.get("client_id")          ?? searchParams.get("clientId")
+  const parentMgmtCoId    = searchParams.get("parent_mgmt_co_id")   ?? searchParams.get("parentMgmtCoId")
+  const dateFrom          = searchParams.get("date_from")          ?? searchParams.get("dateFrom")
+  const dateTo            = searchParams.get("date_to")            ?? searchParams.get("dateTo")
+  
+  // legacy or specific filters
+  const memberId        = searchParams.get("memberId")          ?? searchParams.get("member_id")
+  const subcontractorId   = searchParams.get("subcontractorId")
 
   const params = new URLSearchParams()
-  params.set("page",  page)
-  params.set("limit", limit)
-  if (type)            params.set("type",            type)
-  if (year)            params.set("year",            year)
-  if (status)          params.set("status",          status)
-  if (search)          params.set("search",          search)
-  if (clientId)        params.set("clientId",        clientId)
-  if (memberId)        params.set("memberId",        memberId)
-  if (subcontractorId) params.set("subcontractorId", subcontractorId)
-  if (dateAssigned)    params.set("dateAssigned",    dateAssigned)
+  params.set("page",           page)
+  params.set("limit",          limit)
+  if (type)            params.set("type",              type)
+  if (year)            params.set("year",              year)
+  if (status)          params.set("status",            status)
+  if (search)          params.set("search",            search)
+  if (clientId)        params.set("client_id",         clientId)
+  if (memberId)        params.set("member_id",         memberId)
+  if (parentMgmtCoId)  params.set("parent_mgmt_co_id", parentMgmtCoId)
+  if (dateFrom)        params.set("date_from",         dateFrom)
+  if (dateTo)          params.set("date_to",           dateTo)
+  if (subcontractorId) params.set("subcontractorId",   subcontractorId)
 
   const url = `${JOBS_BASE}/jobs_table?${params.toString()}`
   console.log("[jobs proxy] GET jobs_table ->", url)

@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import type { Permission, Role, PaginatedResponse, IAMDocument } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
+import { apiFetch } from "@/lib/apiFetch"
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
@@ -85,7 +86,7 @@ export default function RoleDetailPage() {
   const fetchRole = async () => {
     try {
       setLoading(true); setLoadError(null)
-      const res = await fetch(`/api/roles/${roleId}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/roles/${roleId}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch role (${res.status})`)
       setRole(await res.json())
     } catch (e: any) {
@@ -96,7 +97,7 @@ export default function RoleDetailPage() {
   const fetchPermissions = async (page: number) => {
     try {
       setPermLoading(true); setPermError(null)
-      const res = await fetch(`/api/permissions?page=${page}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/permissions?page=${page}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch permissions (${res.status})`)
       const data = (await res.json()) as PermissionsListResponse
       const list = Array.isArray(data) ? data : Array.isArray(data.results) ? data.results : []
@@ -121,7 +122,7 @@ export default function RoleDetailPage() {
 
   const linkPermission = async (permissionId: string) => {
     if (!permissionId) return
-    await fetch("/api/permissions/roles", {
+    await apiFetch("/api/permissions/roles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permissionId, roleId }),
@@ -132,7 +133,7 @@ export default function RoleDetailPage() {
 
   const unlinkPermission = async (permissionId: string) => {
     if (!permissionId) return
-    await fetch("/api/permissions/roles", {
+    await apiFetch("/api/permissions/roles", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ permissionId, roleId }),
@@ -145,7 +146,7 @@ export default function RoleDetailPage() {
     if (!role) return
     try {
       setSaving(true)
-      await fetch(`/api/roles/${roleId}`, {
+      await apiFetch(`/api/roles/${roleId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Name: role.Name, Description: role.Description, Active: role.Active }),
@@ -161,14 +162,14 @@ export default function RoleDetailPage() {
       setDeleting(true)
       const perms = Array.isArray(role.permissions) ? role.permissions : []
       for (const p of perms) {
-        await fetch("/api/permissions/roles", {
+        await apiFetch("/api/permissions/roles", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ permissionId: p.ID_Permission, roleId }),
           cache: "no-store",
         })
       }
-      await fetch(`/api/roles/${roleId}`, { method: "DELETE", cache: "no-store" })
+      await apiFetch(`/api/roles/${roleId}`, { method: "DELETE", cache: "no-store" })
       router.push("/roles-permissions")
     } finally { setDeleting(false) }
   }

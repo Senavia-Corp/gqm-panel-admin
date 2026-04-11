@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, X, ArrowLeft, Users, Shield, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react"
 
 import type { Permission, IAMDocument, IAMStatement } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 type PermissionLite = {
   ID_Permission: string
@@ -126,7 +127,7 @@ export default function CreateRolePage() {
   const fetchPermissions = async (pageToFetch: number, mode: "replace" | "append" = "replace") => {
     try {
       setPermLoading(true); setPermError(null)
-      const res = await fetch(`/api/permissions?page=${pageToFetch}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/permissions?page=${pageToFetch}&limit=${ITEMS_PER_PAGE}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch permissions (${res.status})`)
       const data = (await res.json()) as PermissionListResponse
       const list = Array.isArray(data) ? data : Array.isArray(data.results) ? data.results : []
@@ -188,7 +189,7 @@ export default function CreateRolePage() {
     try {
       setQuickSubmitting(true); setQuickError(null)
       const doc: IAMDocument = { Version: "1.0", Statement: qStatements }
-      const res = await fetch("/api/permissions", {
+      const res = await apiFetch("/api/permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -219,7 +220,7 @@ export default function CreateRolePage() {
     try {
       setSubmitting(true); setError(null)
       if (selectedIds.size === 0) throw new Error("Select at least one permission")
-      const roleRes = await fetch("/api/roles", {
+      const roleRes = await apiFetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Name: name.trim(), Description: description.trim() || null, Active: active }),
@@ -229,7 +230,7 @@ export default function CreateRolePage() {
       const roleId = createdRole?.ID_Role
       if (!roleId) throw new Error("Role created but ID_Role was not returned")
       for (const permId of Array.from(selectedIds)) {
-        const linkRes = await fetch("/api/permissions/roles", {
+        const linkRes = await apiFetch("/api/permissions/roles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ permissionId: permId, roleId }),

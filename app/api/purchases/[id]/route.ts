@@ -15,10 +15,11 @@ const asJsonResponse = async (response: Response) => {
 export async function GET(_req: Request, { params }: Params) {
   try {
     const { id } = await params
+    const authHeader = _req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}purchase/${id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       cache: "no-store",
     })
 
@@ -36,10 +37,11 @@ export async function PATCH(req: Request, { params }: Params) {
   try {
     const { id } = await params
     const payload = await req.json()
+    const authHeader = req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}purchase/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       body: JSON.stringify(payload),
       cache: "no-store",
     })
@@ -57,10 +59,11 @@ export async function PATCH(req: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const { id } = await params
+    const authHeader = _req.headers.get("Authorization")
 
     const response = await fetch(`${PYTHON_API_BASE_URL}purchase/${id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
       cache: "no-store",
     })
 

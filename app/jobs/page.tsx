@@ -15,6 +15,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layers, ClipboardList, Wrench, Briefcase } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useJobFilters } from "@/hooks/useJobFilters"
+import { AdvancedJobFilters } from "@/components/organisms/AdvancedJobFilters"
+import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
 
 type JobsTab = "ALL" | JobType
 type YearFilter = "ALL" | "2026" | "2025" | "2024" | "2023"
@@ -68,16 +71,9 @@ export default function JobsPage() {
   const [user, setUser] = useState<any>(null)
   const { hasPermission } = usePermissions()
 
-  // ── Filters ───────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<JobsTab>("ALL")
-  const [selectedYear, setSelectedYear] = useState<YearFilter>("ALL")
-  // searchQuery  = what the user is typing (controls the input only)
-  // appliedSearch = the value actually sent to the backend
-  const [searchQuery, setSearchQuery] = useState("")
-  const [appliedSearch, setAppliedSearch] = useState("")
-
-  // ── Pagination ────────────────────────────────────────────────────────────
-  const [currentPage, setCurrentPage] = useState(1)
+  // ── Filters & Pagination ──────────────────────────────────────────────────
+  const { state: filters, handlers, toServiceFilters, activeFilterCount } = useJobFilters()
+  
   const [totalJobs, setTotalJobs] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const itemsPerPage = 10
@@ -92,6 +88,7 @@ export default function JobsPage() {
   // ── UI ────────────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -108,30 +105,22 @@ export default function JobsPage() {
   }, [router])
 
   // ── Core fetch ────────────────────────────────────────────────────────────
-  // All params are passed explicitly so the function always uses fresh values,
-  // no stale closure or stale ref issues.
-  async function loadJobs(params: {
-    tab: JobsTab
-    year: YearFilter
-    search: string
-    page: number
-  }) {
+  async function loadJobs() {
+    if (!user) return
     setIsLoading(true)
     setLoadError(null)
 
-    const filters: Record<string, string> = {}
-    if (params.tab !== "ALL") filters.type = params.tab
-    if (params.year !== "ALL") filters.year = params.year
-    if (params.search.trim()) filters.search = params.search.trim()
-
     try {
+      const currentFilters = toServiceFilters()
+      
       if (isTechnician) {
         const techRes = await fetch(`/api/technician/${user.id}`, { cache: "no-store" })
         if (!techRes.ok) throw new Error("Failed to fetch technician data")
         const techData = await techRes.json()
         const assignedIds: string[] = techData?.subcontractor?.jobs?.map((j: any) => j.ID_Jobs) ?? []
 
-        const { jobs: allJobs } = await fetchJobs(1, 10_000, filters)
+        // Fetch enough to filter client-side for technicians as requested
+        const { jobs: allJobs } = await fetchJobs(1, 1000, currentFilters)
         const sorted = sortArchivedLast(allJobs.filter((j) => assignedIds.includes(j.ID_Jobs)))
 
         setTechnicianAllJobs(sorted)
@@ -141,9 +130,12 @@ export default function JobsPage() {
         return
       }
 
-      const { jobs: jobsData, total } = await fetchJobs(params.page, itemsPerPage, filters)
+      const { jobs: jobsData, total } = await fetchJobs(
+        filters.page,
+        itemsPerPage,
+        currentFilters
+      )
       const sorted = sortArchivedLast(jobsData)
-
       setJobs(sorted)
       setFilteredJobs(sorted)
       setTotalJobs(total)
@@ -157,74 +149,28 @@ export default function JobsPage() {
     }
   }
 
-  // Reactive fetch — runs when pagination / tab / year / appliedSearch change.
-  // appliedSearch only changes when the user explicitly submits the search,
-  // so typing alone never triggers this effect.
   useEffect(() => {
-    if (!user) return
-    loadJobs({ tab: activeTab, year: selectedYear, search: appliedSearch, page: currentPage })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, currentPage, activeTab, selectedYear, appliedSearch])
-
-  // ── Search handlers ───────────────────────────────────────────────────────
-  const handleSearchSubmit = () => {
-    // Committing appliedSearch triggers the useEffect above with the fresh value.
-    setCurrentPage(1)
-    setAppliedSearch(searchQuery)
-  }
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault()   // avoids any native form / page reload
-      handleSearchSubmit()
+    if (user) {
+      loadJobs()
     }
-  }
-
-  // ── Other filter handlers ─────────────────────────────────────────────────
-  const handleTabChange = (tab: JobsTab) => {
-    setActiveTab(tab)
-    setCurrentPage(1)
-    if (isTechnician) {
-      setTechnicianFilteredJobs(technicianAllJobs)
-      setTotalJobs(technicianAllJobs.length)
-      setTotalPages(Math.max(1, Math.ceil(technicianAllJobs.length / itemsPerPage)))
-    }
-  }
-
-  const handleFilterStatus = (status: JobStatus | "all") => {
-    const base = isTechnician ? technicianAllJobs : jobs
-    const filtered = status === "all" ? base : base.filter((j) => j.Job_status === status)
-    const sorted = sortArchivedLast(filtered)
-    setCurrentPage(1)
-    if (isTechnician) {
-      setTechnicianFilteredJobs(sorted)
-      setTotalJobs(sorted.length)
-      setTotalPages(Math.max(1, Math.ceil(sorted.length / itemsPerPage)))
-    } else {
-      setFilteredJobs(sorted)
-    }
-  }
-
-  const handleResetFilters = () => {
-    setSearchQuery("")
-    setAppliedSearch("")   // triggers useEffect → clean fetch
-    setCurrentPage(1)
-    if (isTechnician) {
-      setTechnicianFilteredJobs(technicianAllJobs)
-      setTotalJobs(technicianAllJobs.length)
-      setTotalPages(Math.max(1, Math.ceil(technicianAllJobs.length / itemsPerPage)))
-    } else {
-      setFilteredJobs(jobs)
-    }
-  }
+  }, [
+    user, 
+    filters.page, 
+    filters.tab, 
+    filters.year, 
+    filters.appliedSearch,
+    filters.status, 
+    filters.clientId, 
+    filters.parentMgmtCoId,
+    filters.dateFrom, 
+    filters.dateTo,
+    filters.memberId
+  ])
 
   const handleRetry = async () => {
-    try {
-      setRetrying(true)
-      await loadJobs({ tab: activeTab, year: selectedYear, search: appliedSearch, page: currentPage })
-    } finally {
-      setRetrying(false)
-    }
+    setRetrying(true)
+    await loadJobs()
+    setRetrying(false)
   }
 
   const handleDelete = (job: JobDTO) =>
@@ -239,24 +185,29 @@ export default function JobsPage() {
     try {
       await deleteJob(job.ID_Jobs, { sync_podio: opts.syncPodio, year: opts.year })
       toast({ title: "Success", description: `Job ${job.ID_Jobs} has been permanently deleted.` })
-      await loadJobs({ tab: activeTab, year: selectedYear, search: appliedSearch, page: currentPage })
+      loadJobs()
+      setDeleteDialog({ open: false, job: null, suggestedYear: null })
     } catch (err) {
       console.error("[jobs] Error deleting job:", err)
       toast({ title: "Error", description: "Failed to delete job. Please try again.", variant: "destructive" })
     }
   }
 
-  const handlePreviousPage = () => currentPage > 1 && setCurrentPage((p) => p - 1)
-  const handleNextPage = () => currentPage < totalPages && setCurrentPage((p) => p + 1)
+  const handlePreviousPage = () => {
+    if (filters.page > 1) handlers.setPage(filters.page - 1)
+  }
+  const handleNextPage = () => {
+    if (filters.page < totalPages) handlers.setPage(filters.page + 1)
+  }
 
   const technicianPageSlice = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage
+    const start = (filters.page - 1) * itemsPerPage
     return technicianFilteredJobs.slice(start, start + itemsPerPage)
-  }, [technicianFilteredJobs, currentPage])
+  }, [technicianFilteredJobs, filters.page])
 
   const displayedJobs = isTechnician ? technicianPageSlice : filteredJobs
-  const yearSuffix = selectedYear === "ALL" ? "" : ` ${selectedYear}`
-  const headerTitle = `${TAB_TITLE[activeTab]}${yearSuffix}`
+  const yearSuffix = filters.year === "ALL" ? "" : ` ${filters.year}`
+  const headerTitle = `${TAB_TITLE[filters.tab]}${yearSuffix}`
 
   if (!user) return null
 
@@ -273,7 +224,7 @@ export default function JobsPage() {
             <h1 className="text-3xl font-bold">Jobs</h1>
 
             <div className="flex flex-1 justify-center">
-              <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as JobsTab)}>
+              <Tabs value={filters.tab} onValueChange={(v) => handlers.setTab(v as any)}>
                 <TabsList className="h-10 rounded-xl border bg-white p-1 shadow-sm">
                   {(["ALL", "QID", "PTL", "PAR"] as JobsTab[]).map((tab) => {
                     const Icon = { ALL: Layers, QID: ClipboardList, PTL: Wrench, PAR: Briefcase }[tab]
@@ -303,20 +254,40 @@ export default function JobsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <JobFilters
+              <AdvancedJobFilters
                 title={headerTitle}
                 count={totalJobs}
-                year={selectedYear}
+                activeFilterCount={activeFilterCount}
+
+                searchValue={filters.searchInput}
+                onSearchChange={handlers.setSearchInput}
+                onSearchSubmit={handlers.submitSearch}
+                onSearchKeyDown={handlers.handleSearchKeyDown}
+
+                year={filters.year}
                 yearOptions={YEAR_OPTIONS}
-                onYearChange={(y) => { setSelectedYear(y as YearFilter); setCurrentPage(1) }}
-                onAddNew={user?.role === "GQM_MEMBER" && hasPermission("job:create") ? () => router.push("/jobs/create") : undefined}
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-                onSearchSubmit={handleSearchSubmit}
-                onSearchKeyDown={handleSearchKeyDown}
-                onFilterType={undefined}
-                onFilterStatus={handleFilterStatus}
-                onResetFilters={handleResetFilters}
+                onYearChange={(y) => handlers.setYear(y as any)}
+
+                memberId={filters.memberId}
+                onMemberChange={handlers.setMemberId}
+                status={filters.status}
+                clientId={filters.clientId}
+                parentMgmtCoId={filters.parentMgmtCoId}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+                onStatusChange={handlers.setStatus}
+                onClientChange={handlers.setClientId}
+                onParentMgmtCoChange={handlers.setParentMgmtCoId}
+                onDateFromChange={handlers.setDateFrom}
+                onDateToChange={handlers.setDateTo}
+                onResetFilters={handlers.resetFilters}
+
+                onAddNew={
+                  user?.role === "GQM_MEMBER" && hasPermission("job:create")
+                    ? () => router.push("/jobs/create")
+                    : undefined
+                }
+                onExportClick={() => setIsExportOpen(true)}
               />
 
               {displayedJobs.length === 0 ? (
@@ -360,22 +331,22 @@ export default function JobsPage() {
                 <>
                   <JobsTable
                     jobs={displayedJobs}
-                    tableVariant={activeTab}
+                    tableVariant={filters.tab}
                     onDelete={user?.role !== "LEAD_TECHNICIAN" ? handleDelete : undefined}
                     userRole={user?.role}
                   />
 
                   <div className="flex items-center justify-between rounded-lg border bg-white p-4">
                     <div className="text-sm text-gray-600">
-                      Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                      {Math.min(currentPage * itemsPerPage, totalJobs)} of {totalJobs} jobs
+                      Showing {(filters.page - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(filters.page * itemsPerPage, totalJobs)} of {totalJobs} jobs
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={currentPage === 1}>
+                      <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={filters.page === 1}>
                         <ChevronLeft className="h-4 w-4" /> Previous
                       </Button>
-                      <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-                      <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages}>
+                      <span>Page {filters.page} of {totalPages}</span>
+                      <Button variant="outline" size="sm" onClick={handleNextPage} disabled={filters.page === totalPages}>
                         Next <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -394,6 +365,12 @@ export default function JobsPage() {
         jobId={deleteDialog.job?.ID_Jobs || ""}
         defaultSyncPodio={false}
         suggestedYear={deleteDialog.suggestedYear}
+      />
+
+      <ExportJobsDialog
+        isOpen={isExportOpen}
+        onOpenChange={setIsExportOpen}
+        filters={filters}
       />
     </div>
   )

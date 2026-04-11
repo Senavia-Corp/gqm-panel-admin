@@ -18,6 +18,7 @@ type LinkPayload = {
 export async function POST(req: Request) {
   try {
     const payload = (await req.json()) as LinkPayload
+    const authHeader = req.headers.get("Authorization")
 
     if (!payload?.permissionId || !payload?.roleId) {
       return NextResponse.json(
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       `${PYTHON_API_BASE_URL}permission_role/permission/${payload.permissionId}/role/${payload.roleId}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
         cache: "no-store",
       }
     )
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const payload = (await req.json()) as LinkPayload
+    const authHeader = req.headers.get("Authorization")
 
     if (!payload?.permissionId || !payload?.roleId) {
       return NextResponse.json(
@@ -60,7 +62,7 @@ export async function DELETE(req: Request) {
       `${PYTHON_API_BASE_URL}permission_role/permission/${payload.permissionId}/role/${payload.roleId}`,
       {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
         cache: "no-store",
       }
     )
