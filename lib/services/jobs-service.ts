@@ -1,6 +1,6 @@
 import { mockClients } from "@/lib/mock-data"
 import { apiFetch } from "@/lib/apiFetch"
-import type { JobDTO, JobsPaginatedResponse, UpdateJobRequest, JobType } from "@/lib/types"
+import type { JobDTO, JobsPaginatedResponse, UpdateJobRequest, JobType, JobFilters, JobExportRequest } from "@/lib/types"
 
 const JOBS_API_URL = "/api/jobs"
 
@@ -53,20 +53,20 @@ interface Client {
 
 function normalizeClient(raw: any): Client {
   return {
-    Address:               raw?.Address              ?? raw?.address               ?? "",
-    Client_Community:      raw?.Client_Community     ?? raw?.clientCommunity       ?? raw?.Client_community ?? "",
-    Client_Status:         raw?.Client_Status        ?? raw?.status                ?? "Active",
-    Email_Address:         raw?.Email_Address        ?? raw?.email                 ?? "",
-    ID_Client:             raw?.ID_Client            ?? raw?.id                    ?? raw?.ID ?? "",
+    Address: raw?.Address ?? raw?.address ?? "",
+    Client_Community: raw?.Client_Community ?? raw?.clientCommunity ?? raw?.Client_community ?? "",
+    Client_Status: raw?.Client_Status ?? raw?.status ?? "Active",
+    Email_Address: raw?.Email_Address ?? raw?.email ?? "",
+    ID_Client: raw?.ID_Client ?? raw?.id ?? raw?.ID ?? "",
     ID_Community_Tracking: raw?.ID_Community_Tracking ?? raw?.communityTrackingId ?? null,
-    Parent_Company:        raw?.Parent_Company       ?? raw?.companyName           ?? raw?.parentCompany ?? "",
-    Parent_Mgmt_Company:   raw?.Parent_Mgmt_Company  ?? raw?.parentMgmtCompany     ?? raw?.companyName ?? "",
-    Phone_Number:          raw?.Phone_Number         ?? raw?.phone                 ?? "",
-    Prop_Manager:          raw?.Prop_Manager         ?? raw?.name                  ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
-    Website:               raw?.Website              ?? raw?.website               ?? "",
-    jobs:                  raw?.jobs                 ?? [],
-    property_manager:      raw?.property_manager     ?? raw?.propertyManager       ?? [],
-    property_mgmt_co:      raw?.property_mgmt_co     ?? raw?.propertyMgmtCo        ?? null,
+    Parent_Company: raw?.Parent_Company ?? raw?.companyName ?? raw?.parentCompany ?? "",
+    Parent_Mgmt_Company: raw?.Parent_Mgmt_Company ?? raw?.parentMgmtCompany ?? raw?.companyName ?? "",
+    Phone_Number: raw?.Phone_Number ?? raw?.phone ?? "",
+    Prop_Manager: raw?.Prop_Manager ?? raw?.name ?? raw?.propertyManagerName ?? raw?.Client_Community ?? "",
+    Website: raw?.Website ?? raw?.website ?? "",
+    jobs: raw?.jobs ?? [],
+    property_manager: raw?.property_manager ?? raw?.propertyManager ?? [],
+    property_mgmt_co: raw?.property_mgmt_co ?? raw?.propertyMgmtCo ?? null,
   }
 }
 
@@ -75,25 +75,26 @@ function normalizeClient(raw: any): Client {
 export async function fetchJobs(
   page = 1,
   limit = 10,
-  filters?: {
-    type?:   JobType
-    status?: string
-    year?:   string
-    search?: string
-  }
+  filters?: JobFilters
 ): Promise<{ jobs: JobDTO[]; total: number }> {
   try {
     const params = new URLSearchParams()
-    params.set("page",  String(page))
+    params.set("page", String(page))
     params.set("limit", String(limit))
-    if (filters?.type)   params.set("type",   filters.type)
-    if (filters?.year)   params.set("year",   filters.year)
+
+    if (filters?.type) params.set("type", filters.type)
+    if (filters?.year) params.set("year", filters.year)
     if (filters?.status) params.set("status", filters.status)
-    if (filters?.search) params.set("search", filters.search)
+    if (filters?.search?.trim()) params.set("search", filters.search.trim())
+    if (filters?.clientId) params.set("client_id", filters.clientId)
+    if (filters?.memberId) params.set("memberId", filters.memberId)
+    if (filters?.parentMgmtCoId) params.set("parent_mgmt_co_id", filters.parentMgmtCoId)
+    if (filters?.dateFrom) params.set("date_from", filters.dateFrom)
+    if (filters?.dateTo) params.set("date_to", filters.dateTo)
 
     const response = await apiFetch(`${JOBS_API_URL}?${params.toString()}`, {
-      method:  "GET",
-      cache:   "no-store",
+      method: "GET",
+      cache: "no-store",
     })
 
     if (!response.ok) {
@@ -115,7 +116,7 @@ export async function fetchJobs(
 export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
   try {
     const response = await apiFetch(`${JOBS_API_URL}/${encodeURIComponent(idJob)}`, {
-      method:  "GET",
+      method: "GET",
     })
     if (response.status === 404) return null
     if (!response.ok) {
@@ -132,7 +133,7 @@ export async function fetchJobById(idJob: string): Promise<JobDTO | null> {
 export async function fetchClients(): Promise<Client[]> {
   try {
     const response = await apiFetch("/api/clients", {
-      method:  "GET",
+      method: "GET",
     })
     if (!response.ok) {
       const err = await response.text().catch(() => "")
@@ -146,19 +147,19 @@ export async function fetchClients(): Promise<Client[]> {
     console.error("[jobs-service] fetchClients error:", error)
     return mockClients.map((c) =>
       normalizeClient({
-        Address:               c.address,
-        Client_Community:      "Sample Community",
-        Client_Status:         c.status,
-        Email_Address:         c.email,
-        ID_Client:             c.id,
-        Parent_Company:        c.companyName,
-        Parent_Mgmt_Company:   c.companyName,
-        Phone_Number:          c.phone,
-        Prop_Manager:          c.name,
-        Website:               "",
-        jobs:                  [],
-        property_manager:      [],
-        property_mgmt_co:      null,
+        Address: c.address,
+        Client_Community: "Sample Community",
+        Client_Status: c.status,
+        Email_Address: c.email,
+        ID_Client: c.id,
+        Parent_Company: c.companyName,
+        Parent_Mgmt_Company: c.companyName,
+        Phone_Number: c.phone,
+        Prop_Manager: c.name,
+        Website: "",
+        jobs: [],
+        property_manager: [],
+        property_mgmt_co: null,
         ID_Community_Tracking: null,
       })
     )
@@ -180,7 +181,7 @@ export async function createJob(
   opts?: CreateJobOptions
 ): Promise<JobDTO> {
   const sync = opts?.sync_podio ?? false
-  const url  = `${JOBS_API_URL}?sync_podio=${sync ? "true" : "false"}`
+  const url = `${JOBS_API_URL}?sync_podio=${sync ? "true" : "false"}`
 
   // Include year in the body so the proxy can forward it as a query param
   const body = {
@@ -190,7 +191,7 @@ export async function createJob(
 
   const response = await apiFetch(url, {
     method: "POST",
-    body:   JSON.stringify(body),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -220,7 +221,7 @@ export async function updateJob(
 
   const response = await apiFetch(url, {
     method: "PATCH",
-    body:   JSON.stringify(updates),
+    body: JSON.stringify(updates),
   })
 
   if (!response.ok) {
@@ -235,7 +236,7 @@ export async function deleteJob(
   opts?: DeleteJobOptions
 ): Promise<{ message?: string; success?: boolean }> {
   const sync = opts?.sync_podio ?? false
-  const qs   = new URLSearchParams()
+  const qs = new URLSearchParams()
   qs.set("sync_podio", sync ? "true" : "false")
   if (sync && opts?.year) qs.set("year", String(opts.year))
 
@@ -254,4 +255,18 @@ export async function deleteJob(
   } catch {
     return { message: text || "Deleted", success: true }
   }
+}
+
+export async function exportJobs(request: JobExportRequest): Promise<Blob> {
+  const response = await apiFetch("/api/jobs/export", {
+    method: "POST",
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "")
+    throw new Error(`exportJobs failed (${response.status}): ${errText}`)
+  }
+
+  return await response.blob()
 }

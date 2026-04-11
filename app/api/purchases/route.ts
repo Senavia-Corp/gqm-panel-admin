@@ -15,10 +15,11 @@ export async function GET(req: Request) {
         const url = new URL(req.url)
         const qs = url.searchParams.toString()
         const target = `${PYTHON_API_BASE_URL}purchase/${qs ? `?${qs}` : ""}`
+        const authHeader = req.headers.get("Authorization")
 
         const response = await fetch(target, {
             method: "GET",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
             cache: "no-store",
         })
 
@@ -35,10 +36,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const payload = await req.json()
+        const authHeader = req.headers.get("Authorization")
 
         const response = await fetch(`${PYTHON_API_BASE_URL}purchase/`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
             body: JSON.stringify(payload),
             cache: "no-store",
         })

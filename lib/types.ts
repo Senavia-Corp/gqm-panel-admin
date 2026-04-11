@@ -210,7 +210,7 @@ export interface JobDTO {
   comdetails?: CommissionDetail[]
 }
 
-export interface JobsPaginatedResponse extends PaginatedResponse<JobDTO> {}
+export interface JobsPaginatedResponse extends PaginatedResponse<JobDTO> { }
 
 export type UpdateJobRequest = Partial<Pick<
   JobDTO,
@@ -500,4 +500,73 @@ export interface PaginatedResponse<T> {
   page: number
   total: number
   results: T[]
+}
+
+export interface JobFilters {
+  type?: JobType
+  status?: string
+  year?: string
+  search?: string
+  clientId?: string
+  parentMgmtCoId?: string
+  dateFrom?: string   // "YYYY-MM-DD"
+  dateTo?: string   // "YYYY-MM-DD"
+  memberId?: string
+}
+
+// --- Excel Export ---
+export enum JobBasicColumn {
+  ID_JOBS = "ID_Jobs",
+  JOB_TYPE = "Job_type",
+  PROJECT_NAME = "Project_name",
+  PROJECT_LOCATION = "Project_location",
+  JOB_STATUS = "Job_status",
+  PO_WTN_WO = "Po_wtn_wo",
+  SERVICE_TYPE = "Service_type",
+  DATE_ASSIGNED = "Date_assigned",
+  DATE_ASSIGNED_END = "Date_assigned_end",
+  ESTIMATED_START_DATE = "Estimated_start_date",
+  ESTIMATED_START_DATE_END = "Estimated_start_date_end",
+  ESTIMATED_PROJECT_DURATION = "Estimated_project_duration",
+  DATE_RECEIVED = "Date_Received",
+  ESTIMATED_COMPLETION_DATE = "Estimated_completion_date",
+  ADDITIONAL_DETAIL = "Additional_detail",
+  ESTIMATED_RENT = "Estimated_rent",
+  ESTIMATED_MATERIAL = "Estimated_material",
+  ESTIMATED_CITY = "Estimated_city",
+  TECH_FORMULA_PRICING = "Tech_formula_pricing",
+  GQM_FORMULA_PRICING = "Gqm_formula_pricing",
+  GQM_FINAL_SOLD_PRICING = "Gqm_final_sold_pricing",
+  GQM_TOTAL_CHANGE_ORDERS = "Gqm_total_change_orders",
+  GQM_TOTAL_MATERIALS_FEES = "Gqm_total_materials_fees",
+  ACC_RECEIVABLE = "Acc_receivable",
+  PERMIT = "Permit",
+  PTL_GC_FEE = "Ptl_gc_fee",
+  GQM_PAID_FEES = "Gqm_paid_fees",
+}
+
+export interface JobExportFilters {
+  statuses?: string[]
+  member_ids?: string[]
+  job_types?: string[]
+  date_from?: string
+  date_to?: string
+  search?: string
+  client_id?: string
+  parent_mgmt_co_id?: string
+}
+
+export interface JobExportColumns {
+  basic_fields: JobBasicColumn[]
+  include_client: boolean
+  include_members: boolean
+  include_subcontractors: boolean
+  include_commissions: boolean
+  include_purchases: boolean
+  include_estimate_costs: boolean
+}
+
+export interface JobExportRequest {
+  filters: JobExportFilters
+  columns: JobExportColumns
 }

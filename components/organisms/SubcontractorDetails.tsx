@@ -277,8 +277,6 @@ export function SubcontractorDetails({
     setTargetOrderForCh(order)
     setCreateChOpen(true)
   }
-
-  console.log("Aqui las orders", orders);
   
 
   return (

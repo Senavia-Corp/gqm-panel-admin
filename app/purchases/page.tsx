@@ -16,6 +16,7 @@ import {
   Loader2, RefreshCw, AlertCircle, ShoppingCart,
   Package, DollarSign, User, MapPin, RotateCcw, X,
 } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ function DeletePurchaseDialog({
     if (!purchase) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/purchases/${purchase.ID_Purchase}`, {
+      const res = await apiFetch(`/api/purchases/${purchase.ID_Purchase}`, {
         method: "DELETE", cache: "no-store",
       })
       if (!res.ok) {
@@ -215,7 +216,7 @@ export default function PurchasesPage() {
       if (q)                    qs.set("q", q)
       if (status && status !== "All") qs.set("status", status)
 
-      const res = await fetch(`/api/purchases/table?${qs}`, {
+      const res = await apiFetch(`/api/purchases/table?${qs}`, {
         signal: ctrl.signal, cache: "no-store",
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)

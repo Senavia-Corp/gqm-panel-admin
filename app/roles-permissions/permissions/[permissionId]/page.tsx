@@ -18,6 +18,7 @@ import {
   AlertCircle, RefreshCcw, CheckCircle2, X, Plus
 } from "lucide-react"
 import type { Permission, IAMDocument, IAMStatement, Role } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 const MODULE_ACTIONS = [
   {
@@ -120,7 +121,7 @@ export default function PermissionDetailPage() {
     if (!permissionId) return
     try {
       setLoading(true); setLoadError(null)
-      const res = await fetch(`/api/permissions/${permissionId}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/permissions/${permissionId}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch permission (${res.status})`)
       const data = await res.json()
       setPermission(data)
@@ -174,7 +175,7 @@ export default function PermissionDetailPage() {
     try {
       setSaving(true)
       const doc: IAMDocument = { Version: "1.0", Statement: statements }
-      await fetch(`/api/permissions/${permissionId}`, {
+      await apiFetch(`/api/permissions/${permissionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -195,14 +196,14 @@ export default function PermissionDetailPage() {
       setDeleting(true)
       const roles = Array.isArray((permission as any).roles) ? ((permission as any).roles as Role[]) : []
       for (const r of roles) {
-        await fetch("/api/permissions/roles", {
+        await apiFetch("/api/permissions/roles", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
           body: JSON.stringify({ permissionId, roleId: (r as any).ID_Role }),
         })
       }
-      await fetch(`/api/permissions/${permissionId}`, { method: "DELETE", cache: "no-store" })
+      await apiFetch(`/api/permissions/${permissionId}`, { method: "DELETE", cache: "no-store" })
       router.push("/roles-permissions")
     } finally { setDeleting(false) }
   }
