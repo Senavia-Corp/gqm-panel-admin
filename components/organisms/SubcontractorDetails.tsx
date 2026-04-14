@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 import type { Subcontractor, Technician, ChangeOrder, Client, TimelineEvent } from "@/lib/types"
 import {
   ArrowLeft,
@@ -17,6 +16,15 @@ import {
   User as UserIcon,
   CheckCircle,
   FileText,
+  Package,
+  Calendar,
+  Layers,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Calculator,
+  Tag,
+  Eye,
 } from "lucide-react"
 import { TechniciansTable } from "./TechniciansTable"
 import { TechnicianDetails } from "./TechnicianDetails"
@@ -29,6 +37,56 @@ import { DeleteOrderDialog } from "./DeleteJobOrderDialog"
 import { EditOrderDialog } from "./EditOrderDialog"
 import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "sonner"
+
+// ── Components ───────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon,
+  iconBg = "bg-slate-100",
+  iconColor = "text-slate-500",
+  title,
+  children,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  iconBg?: string
+  iconColor?: string
+  title: string
+  children: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 bg-slate-50/30">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
+            <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
+          </div>
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+        </div>
+        {action}
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  )
+}
+
+function FieldLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ComponentType<{ className?: string }> }) {
+  return (
+    <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+      {Icon && <Icon className="h-3 w-3" />}
+      {children}
+    </label>
+  )
+}
+
+function ReadonlyField({ value, placeholder = "—" }: { value: any; placeholder?: string }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5 text-sm font-medium text-slate-700 min-h-[40px] flex items-center">
+      {value || <span className="text-slate-300 italic font-normal">{placeholder}</span>}
+    </div>
+  )
+}
 
 interface SubcontractorDetailsProps {
   subcontractor: Subcontractor
@@ -43,15 +101,9 @@ interface SubcontractorDetailsProps {
   jobYearForPodioSync?: number
 }
 
-/**
- * Normalize organization strings coming from backend like:
- * {"JJE Services LLC"}  ->  JJE Services LLC
- */
 function normalizeOrg(raw: any): string {
   if (raw === null || raw === undefined) return ""
-  if (Array.isArray(raw)) {
-    return raw.map((r) => String(r).trim()).filter(Boolean).join(", ")
-  }
+  if (Array.isArray(raw)) return raw.map((r) => String(r).trim()).filter(Boolean).join(", ")
   if (typeof raw === "object") {
     try {
       const vals = Object.values(raw)
@@ -63,12 +115,8 @@ function normalizeOrg(raw: any): string {
 
   let s = String(raw).trim()
   s = s.replace(/\\"/g, '"').replace(/\\'/g, "'")
-  if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
-    s = s.slice(1, -1).trim()
-  }
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1)
-  }
+  if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) s = s.slice(1, -1).trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1)
   s = s.replace(/^[\{\[\]"'\s]+|[\}\]\s"']+$/g, "").trim()
   return s
 }
@@ -78,22 +126,11 @@ function normalizeEmails(raw: any): string[] {
   let s = Array.isArray(raw) ? raw.join(",") : String(raw)
   s = s.trim()
   if (!s) return []
-
   s = s.replace(/\\"/g, '"').replace(/\\'/g, "'")
-
-  if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) {
-    s = s.slice(1, -1).trim()
-  }
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1)
-  }
-
+  if ((s.startsWith("{") && s.endsWith("}")) || (s.startsWith("[") && s.endsWith("]"))) s = s.slice(1, -1).trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1)
   const parts = s.replace(/;/g, ",").split(",").map((p) => p.trim())
-
-  const cleaned = parts
-    .map((p) => p.replace(/^[\{\[\]"']+|[\}\]\s"']+$/g, "").trim())
-    .filter(Boolean)
-
+  const cleaned = parts.map((p) => p.replace(/^[\{\[\]"']+|[\}\]\s"']+$/g, "").trim()).filter(Boolean)
   return Array.from(new Set(cleaned))
 }
 
@@ -110,71 +147,47 @@ export function SubcontractorDetails({
 }: SubcontractorDetailsProps) {
   const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
   const [orders, setOrders] = useState<any[]>([])
-  const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([])
   const [activeSubTab, setActiveSubTab] = useState("orders")
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
   const [loadingOrders, setLoadingOrders] = useState<boolean>(false)
 
-  // change order state
+  // Dialog states
   const [createChOpen, setCreateChOpen] = useState(false)
   const [targetOrderForCh, setTargetOrderForCh] = useState<any | null>(null)
-
   const [editChOpen, setEditChOpen] = useState(false)
   const [deleteChOpen, setDeleteChOpen] = useState(false)
   const [targetChangeOrder, setTargetChangeOrder] = useState<any | null>(null)
-
   const [deleteOrderOpen, setDeleteOrderOpen] = useState(false)
   const [targetOrderForDelete, setTargetOrderForDelete] = useState<any | null>(null)
-
   const [editOrderOpen, setEditOrderOpen] = useState(false)
   const [targetOrderForEdit, setTargetOrderForEdit] = useState<any | null>(null)
 
-  // ── Memoized fetch ──────────────────────────────────────────────────────
   const fetchOrdersForJobAndSub = useCallback(async () => {
     try {
       setLoadingOrders(true)
-
       const subId = String(subcontractor?.ID_Subcontractor ?? "")
-      const jId   = String(jobId ?? "")
-
+      const jId = String(jobId ?? "")
       if (!subId || !jId) {
         setOrders([])
         return
       }
-
-      const qs = new URLSearchParams()
-      qs.set("ID_Jobs", jId)
-      qs.set("ID_Subcontractor", subId)
-
-      const url = `/api/order?${qs.toString()}`
-      const res = await apiFetch(url, { cache: "no-store" })
-
+      const res = await apiFetch(`/api/order?ID_Jobs=${jId}&ID_Subcontractor=${subId}`, { cache: "no-store" })
       if (!res.ok) {
-        console.error("Failed to fetch orders for job+subcontractor:", res.status)
         setOrders([])
         return
       }
-
       const data = await res.json()
-
-      let ordersData: any[] = []
-      if (Array.isArray(data))               ordersData = data
-      else if (Array.isArray(data.results))  ordersData = data.results
-      else if (Array.isArray(data.items))    ordersData = data.items
-      else if (Array.isArray(data.data))     ordersData = data.data
-      else                                   ordersData = []
-
+      let ordersData: any[] = Array.isArray(data) ? data : data.results || data.items || data.data || []
       const mapped = ordersData.map((o) => ({
         ...o,
-        Items:        o.estimate_costs ?? o.Items ?? o.items ?? [],
-        Formula:      o.Formula      ?? o.formula      ?? 0,
-        Adj_formula:  o.Adj_formula  ?? o.adj_formula  ?? 0,
+        Items: o.estimate_costs ?? o.Items ?? o.items ?? [],
+        Formula: o.Formula ?? o.formula ?? 0,
+        Adj_formula: o.Adj_formula ?? o.adj_formula ?? 0,
         change_orders: o.change_orders ?? o.changeOrders ?? [],
       }))
-
       setOrders(mapped)
     } catch (error) {
-      console.error("Error fetching orders for subcontractor detail:", error)
+      console.error("Error fetching orders:", error)
       setOrders([])
     } finally {
       setLoadingOrders(false)
@@ -189,36 +202,27 @@ export function SubcontractorDetails({
     try {
       const currentItems = targetOrderForEdit?.Items || []
       const currentItemIds = currentItems.map((i: any) => String(i.ID_EstimateItem || i.ID_EstimateCost || i.id || i.ID)).filter(Boolean)
-
       const itemsToAdd = selectedItemIds.filter(id => !currentItemIds.includes(id))
       const itemsToRemove = currentItemIds.filter((id: string) => !selectedItemIds.includes(id))
 
-      // 1. Remove items (PATCH with ID_Order: null)
-      const removePromises = itemsToRemove.map((id: string) => 
+      await Promise.all(itemsToRemove.map((id: string) => 
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ID_Order: null })
-        }).then(res => { if (!res.ok) throw new Error("Failed to remove item")})
-      )
-      await Promise.all(removePromises)
-
-      // 2. Add items (PATCH with ID_Order: orderId)
-      const addPromises = itemsToAdd.map((id: string) => 
+        })
+      ))
+      await Promise.all(itemsToAdd.map((id: string) => 
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ID_Order: orderId })
-        }).then(res => { if (!res.ok) throw new Error("Failed to add item")})
-      )
-      await Promise.all(addPromises)
+        })
+      ))
 
-      // 3. Patch Order properties & Sync Podio
       const qs = new URLSearchParams()
       qs.set("sync_podio", syncPodioOverride ? "true" : "false")
-      if (syncPodioOverride && jobYearForPodioSync) {
-        qs.set("year", String(jobYearForPodioSync))
-      }
+      if (syncPodioOverride && jobYearForPodioSync) qs.set("year", String(jobYearForPodioSync))
 
       const orderRes = await apiFetch(`/api/order/${orderId}?${qs.toString()}`, {
         method: "PATCH",
@@ -226,34 +230,16 @@ export function SubcontractorDetails({
         body: JSON.stringify({ Title: orderName })
       })
 
-      if (!orderRes.ok) {
-        const err = await orderRes.json().catch(() => ({}))
-        throw new Error(err?.error || err?.detail || "Failed to update order details")
-      }
-
+      if (!orderRes.ok) throw new Error("Failed to update order")
       toast.success("Order updated successfully")
       await fetchOrdersForJobAndSub()
     } catch (error: any) {
-      console.error("[EditOrder] Error:", error)
-      toast.error(error.message || "An error occurred while editing the order")
-      throw error // Re-throw so EditOrderDialog stays open if it fails
+      toast.error(error.message || "An error occurred")
+      throw error
     }
   }
 
-  useEffect(() => {
-    const subChangeOrders = mockChangeOrders.filter(
-      (co) => co.ID_Subcontractor === subcontractor.ID_Subcontractor && co.ID_Jobs === jobId,
-    )
-    setChangeOrders(subChangeOrders)
-  }, [subcontractor, jobId])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Order.Adj_formula is now recalculated automatically by the backend
-  // whenever a change order is created, updated, or deleted.
-  // The frontend only needs to reload the orders after each mutation.
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const formula    = orders.reduce((sum, order) => sum + (order.Formula     || 0), 0)
+  const formula = orders.reduce((sum, order) => sum + (order.Formula || 0), 0)
   const adjFormula = orders.reduce((sum, order) => sum + (order.Adj_formula || 0), 0)
 
   if (selectedTechnician) {
@@ -268,467 +254,273 @@ export function SubcontractorDetails({
     )
   }
 
-  const subTabs = [{ id: "orders", label: "Orders" }]
-
   const orgText = normalizeOrg(subcontractor.Organization)
-  const emails  = normalizeEmails(subcontractor.Email_Address ?? "")
-
-  const handleOpenCreateChangeOrder = (order: any) => {
-    setTargetOrderForCh(order)
-    setCreateChOpen(true)
-  }
-  
+  const emails = normalizeEmails(subcontractor.Email_Address ?? "")
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-6 lg:col-span-2">
-        {/* Header Card */}
-        <Card>
-          <CardContent className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={onBack} className="flex items-center gap-2 px-0">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">Back</span>
-              </Button>
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-1">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            onClick={onBack} 
+            className="h-10 w-10 p-0 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4 text-slate-600" />
+            <span className="sr-only">Back</span>
+          </Button>
 
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gqm-yellow/10 text-gqm-yellow-600 ring-1 ring-gqm-yellow/20">
-                  <UserIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold">{subcontractor.Name}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">{subcontractor.ID_Subcontractor}</p>
-                </div>
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gqm-yellow/10 text-gqm-yellow-600 ring-2 ring-gqm-yellow/20">
+              <UserIcon className="h-6 w-6" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-bold text-slate-800 leading-tight">{subcontractor.Name}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-mono text-[11px] font-bold text-slate-400 uppercase tracking-wider">{subcontractor.ID_Subcontractor}</span>
+                <Badge variant="outline" className="text-[10px] font-bold py-0 h-4 rounded-full border-slate-200 text-slate-400 uppercase">Linked</Badge>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-3">
-              <Badge className="bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80 text-base px-3 py-1">
-                Score: {subcontractor.Score ?? "—"}
-              </Badge>
-
-              <Badge
-                variant={subcontractor.Status === "Active" ? "default" : "secondary"}
-                className={`${subcontractor.Status === "Active" ? "bg-green-500 hover:bg-green-600" : ""} text-base px-3 py-1`}
-              >
-                {subcontractor.Status ?? "—"}
-              </Badge>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end mr-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Status</span>
+            <Badge
+              className={`${subcontractor.Status === "Active" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"} h-7 rounded-lg border px-3 text-xs font-bold uppercase shadow-none`}
+            >
+              {subcontractor.Status ?? "—"}
+            </Badge>
+          </div>
+          <div className="h-10 w-px bg-slate-200 mx-2 hidden sm:block" />
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Experience Score</span>
+            <div className="flex items-center gap-1.5 font-bold text-slate-700 text-lg">
+              <CheckCircle className="h-4 w-4 text-gqm-yellow-600" />
+              {subcontractor.Score ?? "—"}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
 
-        {/* Organization Information */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Building2 className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Organization Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        {/* Information Section */}
+        <div className="space-y-6">
+          <SectionCard icon={Building2} iconBg="bg-blue-100" iconColor="text-blue-600" title="Organization Details">
+            <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-bold flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" /> Organization Name
-                </Label>
-                <p className="text-base">{orgText || "—"}</p>
+                <FieldLabel icon={Building2}>Organization Name</FieldLabel>
+                <ReadonlyField value={orgText} />
               </div>
               <div>
-                <Label className="mb-2 block text-sm font-bold flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" /> Website
-                </Label>
+                <FieldLabel icon={Globe}>Website</FieldLabel>
                 {subcontractor.Organization_Website ? (
-                  <a
-                    href={`https://${subcontractor.Organization_Website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-base text-blue-600 hover:underline"
-                  >
+                  <a href={`https://${subcontractor.Organization_Website}`} target="_blank" className="block rounded-xl border border-blue-100 bg-blue-50/30 px-3 py-2.5 text-sm font-semibold text-blue-600 hover:underline truncate transition-colors">
                     {subcontractor.Organization_Website}
                   </a>
-                ) : (
-                  <p className="text-base text-muted-foreground">—</p>
-                )}
+                ) : <ReadonlyField value={null} />}
               </div>
             </div>
             <div>
-              <Label className="mb-2 block text-sm font-bold flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" /> Address
-              </Label>
-              <p className="text-base">{subcontractor.Address || "—"}</p>
+              <FieldLabel icon={MapPin}>Address</FieldLabel>
+              <ReadonlyField value={subcontractor.Address} />
             </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
 
-        {/* Contact Information */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Contact Information</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+          <SectionCard icon={Mail} iconBg="bg-indigo-100" iconColor="text-indigo-600" title="Contact Information">
+            <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-bold flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" /> Email
-                </Label>
-                {emails.length === 0 ? (
-                  <p className="text-base text-muted-foreground">—</p>
-                ) : (
-                  <div className="flex flex-col gap-1">
+                <FieldLabel icon={Mail}>Email Addresses</FieldLabel>
+                {emails.length > 0 ? (
+                  <div className="space-y-1.5">
                     {emails.map((e, i) => (
-                      <a
-                        key={i}
-                        href={`mailto:${e}`}
-                        className="text-base text-blue-600 hover:underline break-words max-w-full"
-                        title={e}
-                      >
+                      <a key={i} href={`mailto:${e}`} className="block rounded-xl border border-indigo-100 bg-indigo-50/30 px-3 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 truncate transition-colors">
                         {e}
                       </a>
                     ))}
                   </div>
-                )}
+                ) : <ReadonlyField value={null} />}
               </div>
               <div>
-                <Label className="mb-2 block text-sm font-bold flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" /> Phone Number
-                </Label>
-                <p className="text-base">{subcontractor.Phone_Number || "—"}</p>
+                <FieldLabel icon={Phone}>Phone Number</FieldLabel>
+                <ReadonlyField value={subcontractor.Phone_Number} />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
 
-        {/* GQM Certifications */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>GQM Certifications</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+          <SectionCard icon={CheckCircle} iconBg="bg-emerald-100" iconColor="text-emerald-600" title="Certifications & Compliance">
+            <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <Label className="mb-2 block text-sm font-bold">GQM Compliance</Label>
-                <Badge
-                  variant={String(subcontractor.Gqm_compliance) === "Active" ? "default" : "secondary"}
-                  className={`${String(subcontractor.Gqm_compliance) === "Active" ? "bg-green-500 hover:bg-green-600" : ""} text-base px-3 py-1`}
-                >
+                <FieldLabel>GQM Compliance</FieldLabel>
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_compliance === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
+                  <CheckCircle className={`h-4 w-4 ${subcontractor.Gqm_compliance === "Active" ? "text-emerald-500" : "text-slate-300"}`} />
                   {subcontractor.Gqm_compliance || "—"}
-                </Badge>
+                </div>
               </div>
               <div>
-                <Label className="mb-2 block text-sm font-bold">GQM Best Service Training</Label>
-                <Badge
-                  variant={String(subcontractor.Gqm_best_service_training) === "Active" ? "default" : "secondary"}
-                  className={`${String(subcontractor.Gqm_best_service_training) === "Active" ? "bg-green-500 hover:bg-green-600" : ""} text-base px-3 py-1`}
-                >
+                <FieldLabel>GQM Best Service Training</FieldLabel>
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_best_service_training === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
+                  <Layers className={`h-4 w-4 ${subcontractor.Gqm_best_service_training === "Active" ? "text-emerald-500" : "text-slate-300"}`} />
                   {subcontractor.Gqm_best_service_training || "—"}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pricing Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pricing Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                <Label className="mb-2 block text-sm font-medium text-blue-900">Formula</Label>
-                <div className="text-2xl font-bold text-blue-900">${formula.toFixed(2)}</div>
-                <p className="text-xs text-blue-700 mt-1">Sum of all order builder costs</p>
-              </div>
-              <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                <Label className="mb-2 block text-sm font-medium text-green-900">Adj. Formula</Label>
-                <div className="text-2xl font-bold text-green-900">${adjFormula.toFixed(2)}</div>
-                <p className="text-xs text-blue-700 mt-1">Formula + approved change orders</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabs */}
-        <Card>
-          <CardHeader>
-            <div className="inline-flex rounded-lg border bg-gray-50 p-1">
-              {subTabs.map((tab) => (
-                <Button
-                  key={tab.id}
-                  variant={activeSubTab === tab.id ? "default" : "ghost"}
-                  className={`${activeSubTab === tab.id ? "bg-gqm-green text-white hover:bg-gqm-green/90" : ""}`}
-                  onClick={() => setActiveSubTab(tab.id)}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            {activeSubTab === "orders" && (
-              <>
-                <div className="space-y-4">
-                  {loadingOrders ? (
-                    <div className="space-y-4">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="rounded-lg border p-4 space-y-4 animate-pulse">
-                          <div className="flex items-center justify-between">
-                            <div className="h-6 bg-gray-200 rounded w-48" />
-                            <div className="h-8 w-24 bg-gray-200 rounded" />
-                          </div>
-                          <div className="grid gap-4 md:grid-cols-3 p-4 bg-gray-50 rounded-lg">
-                            <div className="h-6 bg-gray-200 rounded w-full" />
-                            <div className="h-6 bg-gray-200 rounded w-full" />
-                            <div className="h-6 bg-gray-200 rounded w-full" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : orders.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No orders assigned to this subcontractor yet</p>
-                    </div>
-                  ) : (
-                    orders.map((order) => (
-                      <div key={order.ID_Order} className="rounded-lg border p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-lg">{order.Title || "Order"}</h4>
-                            <p className="text-sm text-muted-foreground">{order.ID_Order}</p>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenCreateChangeOrder(order)}
-                              className="gap-2"
-                            >
-                              <Plus className="h-4 w-4" />
-                              Add Change Order
-                            </Button>
-
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => {
-                                setTargetOrderForEdit(order)
-                                setEditOrderOpen(true)
-                              }}
-                              className="gap-2"
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </Button>
-
-                            <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                              View Details
-                            </Button>
-
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              title="Delete order"
-                              onClick={() => {
-                                setTargetOrderForDelete(order)
-                                setDeleteOrderOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-3 p-4 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Formula</p>
-                            <p className="text-lg font-semibold">${(order.Formula || 0).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Adj. Formula</p>
-                            <p className="text-lg font-semibold">${(order.Adj_formula || 0).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Items</p>
-                            <p className="text-lg font-semibold">{order.Items?.length || 0}</p>
-                          </div>
-                        </div>
-
-                        {(order.change_orders ?? order.changeOrders ?? []).map((co: any) => (
-                          <div
-                            key={co.ID_ChangeOrder || `${co.ID_Order}-${co.podio_field || Math.random()}`}
-                            className="flex items-start justify-between gap-4 rounded-md border p-3 bg-white"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                <div className="font-semibold truncate">
-                                  {co.ID_ChangeOrder || "—"} {co.Name ? `— ${co.Name}` : ""}
-                                </div>
-                              </div>
-                              <div className="text-sm text-muted-foreground mt-1 break-words">
-                                {co.Description || "No description"}
-                              </div>
-                            </div>
-
-                            <div className="flex items-start gap-3 flex-shrink-0">
-                              <div className="text-right">
-                                <div className="text-lg font-semibold">
-                                  ${Number(co.ChangeOrderFormula || 0).toFixed(2)}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">{co.State || ""}</div>
-                              </div>
-
-                              <div className="flex flex-col gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title="Edit"
-                                  onClick={() => {
-                                    setTargetOrderForCh(order)
-                                    setTargetChangeOrder(co)
-                                    setEditChOpen(true)
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title="Delete"
-                                  onClick={() => {
-                                    setTargetOrderForCh(order)
-                                    setTargetChangeOrder(co)
-                                    setDeleteChOpen(true)
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))
-                  )}
                 </div>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
 
-                <OrderDetailsDialog
-                  order={selectedOrder}
-                  open={!!selectedOrder}
-                  onOpenChange={(open) => !open && setSelectedOrder(null)}
-                />
+        {/* Pricing & Orders Section */}
+        <div className="space-y-6">
+          <SectionCard icon={Calculator} iconBg="bg-violet-100" iconColor="text-violet-600" title="Financial Summary">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 rounded-2xl bg-violet-50/50 border border-violet-100 relative overflow-hidden group">
+                <Calculator className="absolute -right-4 -top-4 h-16 w-16 text-violet-100 group-hover:text-violet-200 transition-colors" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Formula</span>
+                <div className="text-2xl font-black text-violet-700 tabular-nums my-1">${formula.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+                <p className="text-[10px] text-violet-400 font-medium">Base costs sum</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden group">
+                <Tag className="absolute -right-4 -top-4 h-16 w-16 text-emerald-100 group-hover:text-emerald-200 transition-colors" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Adj. Formula</span>
+                <div className="text-2xl font-black text-emerald-700 tabular-nums my-1">${adjFormula.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+                <p className="text-[10px] text-emerald-400 font-medium whitespace-nowrap">Costs + approved COs</p>
+              </div>
+            </div>
+          </SectionCard>
 
-                <DeleteOrderDialog
-                  open={deleteOrderOpen}
-                  onOpenChange={(open) => {
-                    setDeleteOrderOpen(open)
-                    if (!open) setTargetOrderForDelete(null)
-                  }}
-                  order={targetOrderForDelete}
-                  defaultSyncPodio={defaultSyncPodio}
-                  jobYearForPodioSync={jobYearForPodioSync}
-                  onDeleted={fetchOrdersForJobAndSub}
-                  jobPodioId={jobPodioId}
-                  subcontractorId={subcontractor?.ID_Subcontractor ?? ""}
-                />
+          <SectionCard icon={Package} iconBg="bg-slate-100" iconColor="text-slate-600" title="Purchase Orders">
+            <div className="space-y-4">
+              {loadingOrders ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => <div key={i} className="h-32 rounded-2xl bg-slate-50 animate-pulse border border-slate-100" />)}
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-300 gap-2">
+                  <Package className="h-10 w-10 opacity-20" />
+                  <p className="text-sm font-semibold uppercase tracking-widest opacity-50">No orders assigned</p>
+                </div>
+              ) : (
+                orders.map((order) => (
+                  <div key={order.ID_Order} className="group rounded-2xl border border-slate-200 bg-white shadow-sm hover:border-gqm-green/30 hover:shadow-md transition-all">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30 group-hover:bg-white transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-200 text-slate-500 font-bold text-xs ring-1 ring-slate-300">
+                          {order.ID_Order.slice(-3).toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-700 leading-none">{order.Title || "Standard Order"}</h4>
+                          <p className="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-wider">{order.ID_Order}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 transition-opacity">
+                        <Button 
+                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                          onClick={() => { setTargetOrderForEdit(order); setEditOrderOpen(true); }}
+                        ><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button 
+                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                          onClick={() => setSelectedOrder(order)}
+                        ><Eye className="h-3.5 w-3.5" /></Button>
+                        <Button 
+                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
+                          onClick={() => { setTargetOrderForDelete(order); setDeleteOrderOpen(true); }}
+                        ><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </div>
 
-                <EditOrderDialog
-                  open={editOrderOpen}
-                  onOpenChange={(open) => {
-                    setEditOrderOpen(open)
-                    if (!open) setTargetOrderForEdit(null)
-                  }}
-                  order={targetOrderForEdit}
-                  items={estimateCosts}
-                  subcontractors={[subcontractor]}
-                  defaultSyncPodio={defaultSyncPodio}
-                  jobYearForPodioSync={jobYearForPodioSync}
-                  onEditOrder={handleEditOrderSubmit}
-                />
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-3 gap-2 py-1">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Formula</span>
+                          <span className="font-bold text-slate-600 tabular-nums text-base">${(order.Formula || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Adj. Formula</span>
+                          <span className="font-black text-slate-800 tabular-nums text-base">${(order.Adj_formula || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Items</span>
+                          <Badge variant="secondary" className="h-5 px-2 text-[11px] font-bold rounded-lg border-none bg-slate-100 text-slate-600">{order.Items?.length || 0}</Badge>
+                        </div>
+                      </div>
 
-                {/* ── Create Change Order ──────────────────────────────────── */}
-                {targetOrderForCh?.ID_Order && (
-                  <CreateChangeOrderDialog
-                    open={createChOpen}
-                    onOpenChange={(v) => {
-                      setCreateChOpen(v)
-                      if (!v) setTargetOrderForCh(null)
-                    }}
-                    jobId={String(jobId)}
-                    jobPodioId={jobPodioId}
-                    orderId={String(targetOrderForCh.ID_Order)}
-                    defaultSyncPodio={defaultSyncPodio}
-                    jobYearForPodioSync={jobYearForPodioSync}
-                    onCreated={async () => {
-                      // Adj_formula is now updated automatically by the backend.
-                      // Just reload the orders to reflect the new values.
-                      await fetchOrdersForJobAndSub()
-                    }}
-                  />
-                )}
+                      {/* Change Orders Mini List */}
+                      {order.change_orders?.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-1 rounded bg-amber-50 text-amber-600">
+                              <Layers className="h-2.5 w-2.5" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Change Orders</span>
+                          </div>
+                          <div className="space-y-2">
+                            {order.change_orders.map((co: any) => (
+                              <div key={co.ID_ChangeOrder} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-amber-200 hover:shadow-sm transition-all group/co">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)] flex-shrink-0" />
+                                  <span className="text-xs font-bold text-slate-600 truncate">{co.Name || co.ID_ChangeOrder}</span>
+                                </div>
+                                <div className="flex items-center gap-3 flex-shrink-0">
+                                  <span className="text-xs font-black text-slate-700 tabular-nums">${Number(co.ChangeOrderFormula || 0).toFixed(2)}</span>
+                                  <div className="flex gap-1 transition-opacity">
+                                    <button onClick={() => { setTargetOrderForCh(order); setTargetChangeOrder(co); setEditChOpen(true); }} className="text-slate-300 hover:text-amber-600 p-0.5"><Pencil className="h-3 w-3" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                {/* ── Edit Change Order ────────────────────────────────────── */}
-                {targetOrderForCh?.ID_Order && targetChangeOrder?.ID_ChangeOrder && (
-                  <CreateChangeOrderDialog
-                    open={editChOpen}
-                    onOpenChange={(v) => {
-                      setEditChOpen(v)
-                      if (!v) setTargetChangeOrder(null)
-                    }}
-                    mode="edit"
-                    changeOrderId={String(targetChangeOrder.ID_ChangeOrder)}
-                    jobId={String(jobId)}
-                    jobPodioId={jobPodioId}
-                    orderId={String(targetOrderForCh.ID_Order)}
-                    defaultSyncPodio={defaultSyncPodio}
-                    jobYearForPodioSync={jobYearForPodioSync}
-                    initialData={{
-                      Name:               targetChangeOrder.Name,
-                      Description:        targetChangeOrder.Description,
-                      ChangeOrderFormula: targetChangeOrder.ChangeOrderFormula,
-                      State:              targetChangeOrder.State,
-                    }}
-                    onUpdated={async () => {
-                      // Adj_formula is now updated automatically by the backend.
-                      await fetchOrdersForJobAndSub()
-                    }}
-                  />
-                )}
-
-                {/* ── Delete Change Order ──────────────────────────────────── */}
-                {targetChangeOrder?.ID_ChangeOrder && (
-                  <DeleteChangeOrderDialog
-                    open={deleteChOpen}
-                    onOpenChange={(v) => {
-                      setDeleteChOpen(v)
-                      if (!v) setTargetChangeOrder(null)
-                    }}
-                    changeOrderId={String(targetChangeOrder.ID_ChangeOrder)}
-                    changeOrderName={targetChangeOrder.Name || undefined}
-                    defaultSyncPodio={defaultSyncPodio}
-                    jobYearForPodioSync={jobYearForPodioSync}
-                    onDeleted={async () => {
-                      // Adj_formula is now updated automatically by the backend.
-                      await fetchOrdersForJobAndSub()
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => { setTargetOrderForCh(order); setCreateChOpen(true); }}
+                        className="w-full h-9 border border-dashed border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 rounded-xl"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-2" /> Add Change Order
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </SectionCard>
+        </div>
       </div>
+
+      <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} />
+      <DeleteOrderDialog open={deleteOrderOpen} onOpenChange={(v) => { setDeleteOrderOpen(v); if (!v) setTargetOrderForDelete(null); }} order={targetOrderForDelete} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onDeleted={fetchOrdersForJobAndSub} jobPodioId={jobPodioId} subcontractorId={subcontractor?.ID_Subcontractor ?? ""} />
+      <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={[subcontractor]} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
+      
+      {/* Change Order Dialogs */}
+      {targetOrderForCh?.ID_Order && (
+        <CreateChangeOrderDialog
+          open={createChOpen}
+          onOpenChange={(v) => { setCreateChOpen(v); if (!v) setTargetOrderForCh(null); }}
+          jobId={String(jobId)} jobPodioId={jobPodioId} orderId={String(targetOrderForCh.ID_Order)} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync}
+          onCreated={fetchOrdersForJobAndSub}
+        />
+      )}
+      {targetOrderForCh?.ID_Order && targetChangeOrder?.ID_ChangeOrder && (
+        <CreateChangeOrderDialog
+          open={editChOpen}
+          onOpenChange={(v) => { setEditChOpen(v); if (!v) setTargetChangeOrder(null); }}
+          mode="edit" changeOrderId={String(targetChangeOrder.ID_ChangeOrder)} jobId={String(jobId)} jobPodioId={jobPodioId} orderId={String(targetOrderForCh.ID_Order)} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync}
+          initialData={{ Name: targetChangeOrder.Name, Description: targetChangeOrder.Description, ChangeOrderFormula: targetChangeOrder.ChangeOrderFormula, State: targetChangeOrder.State }}
+          onUpdated={fetchOrdersForJobAndSub}
+        />
+      )}
+      {targetChangeOrder?.ID_ChangeOrder && (
+        <DeleteChangeOrderDialog
+          open={deleteChOpen}
+          onOpenChange={(v) => { setDeleteChOpen(v); if (!v) setTargetChangeOrder(null); }}
+          changeOrderId={String(targetChangeOrder.ID_ChangeOrder)} changeOrderName={targetChangeOrder.Name || undefined} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync}
+          onDeleted={fetchOrdersForJobAndSub}
+        />
+      )}
     </div>
   )
 }
