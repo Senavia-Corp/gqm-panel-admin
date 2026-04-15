@@ -96,6 +96,9 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get("page") ?? DEFAULT_PAGE
     const limit = searchParams.get("limit") ?? DEFAULT_LIMIT
     const status = searchParams.get("status")
+    const q = searchParams.get("q")
+    const skills = searchParams.get("skills")
+    const exclude_job_id = searchParams.get("exclude_job_id")
 
     const endpoint = `${SUBCONTRACTORS_BASE}/subcontractors_table`
 
@@ -103,6 +106,9 @@ export async function GET(request: NextRequest) {
     params.set("page", page)
     params.set("limit", limit)
     if (status) params.set("status", status)
+    if (q) params.set("q", q)
+    if (skills) params.set("skills", skills)
+    if (exclude_job_id) params.set("exclude_job_id", exclude_job_id)
 
     const url = `${endpoint}?${params.toString()}`
     console.log("[subcontractors proxy] GET subcontractors_table ->", url)

@@ -91,14 +91,14 @@ export interface ClientDetails {
   Client_Community: string
   Parent_Mgmt_Company: string
   Parent_Company: string
-  Address: string
+  Address: string | string[]
   Website: string
   Invoice_Collection: string
   Compliance_Partner: "Yes" | "No"
   Risk_Value: RiskValue
   Prop_Manager: string
-  Email_Address: string
-  Phone_Number: string
+  Email_Address: string | string[]
+  Phone_Number: string | string[]
   Client_Status: ClientStatus
   Services_interested_in: ServicesInterestedIn
   jobs?: any[]
@@ -110,9 +110,9 @@ export interface Client {
   id: string
   name: string
   companyName: string
-  email: string
-  phone: string
-  address: string
+  email: string | string[]
+  phone: string | string[]
+  address: string | string[]
   avatar: string
   status: string
   clientCommunity?: string
