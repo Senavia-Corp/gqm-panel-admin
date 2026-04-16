@@ -296,6 +296,7 @@ export interface Attachment {
   Link: string
   Document_type: string
   ID_Jobs: string
+  access_level?: "members" | "technicians" | null
 }
 
 export interface Document {
@@ -376,7 +377,7 @@ export interface Task {
   ID_Multiplier: string | null
 }
 
-export type CostType = "Subcontractor" | "Material" | "Labor" | "None" | ""
+export type CostType = "Subcontractor" | "Material" | "Labor" | "Rent" | "Permit" | "BDF" | "PTLGCF" | "None" | ""
 export type MarkupType = "C/P" | "%" | ""
 
 export interface EstimateItem {

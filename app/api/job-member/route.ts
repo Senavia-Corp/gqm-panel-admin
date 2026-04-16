@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const body     = await request.json().catch(() => ({}))
-    const { jobId, memberId, sync_podio, year } = body ?? {}
+    const { jobId, memberId, rol, sync_podio, year } = body ?? {}
 
     if (!jobId || !memberId) return NextResponse.json({ error: "jobId and memberId are required" }, { status: 400 })
 
@@ -59,6 +59,7 @@ export async function DELETE(request: NextRequest) {
     const url = new URL(`${PYTHON_API_URL}/jobs/${jobId}/members/${memberId}`)
     url.searchParams.set("sync_podio", syncPodio ? "true" : "false")
     if (y) url.searchParams.set("year", String(y))
+    if (rol) url.searchParams.set("rol", String(rol))
 
     // ── Forward X-User-Id ───────────────────────────────────────────────────
     const userId  = request.headers.get("X-User-Id")

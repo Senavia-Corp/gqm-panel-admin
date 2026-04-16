@@ -19,6 +19,7 @@ type Props = {
   onDeleteItem: (item: EstimateItem) => Promise<void>
   onEditItem: (item: EstimateItem) => void
   jobYear?: number
+  jobType?: string
 }
 
 export function JobEstimateTab({
@@ -35,6 +36,7 @@ export function JobEstimateTab({
   onDeleteItem,
   onEditItem,
   jobYear,
+  jobType,
 }: Props) {
   return (
     <div className="space-y-4">
@@ -54,6 +56,7 @@ export function JobEstimateTab({
           onDeleteItem={onDeleteItem}
           onEditItem={onEditItem}
           jobYear={jobYear}
+          jobType={jobType}
         />
       )}
     </div>

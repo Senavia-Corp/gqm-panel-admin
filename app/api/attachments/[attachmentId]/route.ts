@@ -26,9 +26,15 @@ export async function PATCH(
     const url   = `${API_BASE_URL}/attachments/${attachmentId}${qsStr ? `?${qsStr}` : ""}`
     console.log("[attachments proxy] PATCH →", url)
 
+    const authHeader = request.headers.get("Authorization")
+    const userIdHeader = request.headers.get("X-User-Id")
+    const patchHeaders: Record<string, string> = { "Content-Type": "application/json" }
+    if (authHeader)  patchHeaders["Authorization"] = authHeader
+    if (userIdHeader) patchHeaders["X-User-Id"]   = userIdHeader
+
     const response = await fetch(url, {
       method:  "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: patchHeaders,
       body:    JSON.stringify(body),
     })
 
@@ -77,7 +83,13 @@ export async function DELETE(
     const url   = `${API_BASE_URL}/attachments/${attachmentId}${qsStr ? `?${qsStr}` : ""}`
     console.log("[attachments proxy] DELETE →", url)
 
-    const response = await fetch(url, { method: "DELETE" })
+    const authHeader = request.headers.get("Authorization")
+    const userIdHeader = request.headers.get("X-User-Id")
+    const deleteHeaders: Record<string, string> = {}
+    if (authHeader)   deleteHeaders["Authorization"] = authHeader
+    if (userIdHeader) deleteHeaders["X-User-Id"]     = userIdHeader
+
+    const response = await fetch(url, { method: "DELETE", headers: deleteHeaders })
 
     const contentType = response.headers.get("content-type") ?? ""
     const isJson      = contentType.includes("application/json")

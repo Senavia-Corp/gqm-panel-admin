@@ -1086,6 +1086,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteItem={handleDeleteEstimateItem}
             onEditItem={handleEditEstimateItem}
             jobYear={resolveJobYearForPodioSync(job)}
+            jobType={String((job as any)?.Job_type ?? "")}
           />
         </JobTabLayout>
       )

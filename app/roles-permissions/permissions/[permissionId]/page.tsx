@@ -19,55 +19,7 @@ import {
 } from "lucide-react"
 import type { Permission, IAMDocument, IAMStatement, Role } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
-
-const MODULE_ACTIONS = [
-  {
-    module: "Jobs",
-    actions: [
-      { id: "job:read", label: "Full Read", desc: "Access to all job info including financial data." },
-      { id: "job:read_basics", label: "Read Basics", desc: "Limited access to public/basic fields only." },
-      { id: "job:create", label: "Create", desc: "Create new job records." },
-      { id: "job:update", label: "Update", desc: "Edit existing job information." },
-      { id: "job:delete", label: "Delete", desc: "Delete job records." },
-    ]
-  },
-  {
-    module: "Members",
-    actions: [
-      { id: "member:read", label: "Read", desc: "View the team member list and details." },
-      { id: "member:create", label: "Create", desc: "Register new team members." },
-      { id: "member:update", label: "Update", desc: "Edit member profiles." },
-      { id: "member:delete", label: "Delete", desc: "Remove members from the system." },
-    ]
-  },
-  {
-    module: "Subcontractors",
-    actions: [
-      { id: "subcontractor:read", label: "Read", desc: "View subcontractor lists and details." },
-      { id: "subcontractor:create", label: "Create", desc: "Register new subcontractors." },
-      { id: "subcontractor:update", label: "Update", desc: "Edit subcontractor profiles." },
-      { id: "subcontractor:delete", label: "Delete", desc: "Delete subcontractor records." },
-    ]
-  },
-  {
-    module: "Clients / Communities",
-    actions: [
-      { id: "client:read", label: "Read", desc: "View clients and communities." },
-      { id: "client:create", label: "Create", desc: "Create new client/community records." },
-      { id: "client:update", label: "Update", desc: "Update client information." },
-      { id: "client:delete", label: "Delete", desc: "Delete clients from the system." },
-    ]
-  },
-  {
-    module: "PMC (Parent Companies)",
-    actions: [
-      { id: "parent_mgmt_co:read", label: "Read", desc: "Consult PMCs." },
-      { id: "parent_mgmt_co:create", label: "Create", desc: "Create new PMC records." },
-      { id: "parent_mgmt_co:update", label: "Update", desc: "Edit PMC information." },
-      { id: "parent_mgmt_co:delete", label: "Delete", desc: "Delete PMC records." },
-    ]
-  },
-]
+import { MODULE_ACTIONS } from "@/lib/permissions-modules"
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 

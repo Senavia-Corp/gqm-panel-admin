@@ -40,11 +40,18 @@ export async function POST(request: NextRequest) {
     const targetUrl = `${PYTHON_API_URL}/attachments/upload?sync_podio=${syncPodio}`
     console.log("[upload proxy] POST →", targetUrl)
 
+    const authHeader   = request.headers.get("Authorization")
+    const userIdHeader = request.headers.get("X-User-Id")
+    const uploadHeaders: Record<string, string> = {}
+    if (authHeader)   uploadHeaders["Authorization"] = authHeader
+    if (userIdHeader) uploadHeaders["X-User-Id"]     = userIdHeader
+    // Do NOT set Content-Type — fetch sets it automatically with the correct
+    // multipart boundary when body is FormData.
+
     const response = await fetch(targetUrl, {
       method: "POST",
+      headers: uploadHeaders,
       body: outgoingForm,
-      // Do NOT set Content-Type — fetch sets it automatically with the correct
-      // multipart boundary when body is FormData.
     })
 
     const contentType = response.headers.get("content-type") ?? ""
