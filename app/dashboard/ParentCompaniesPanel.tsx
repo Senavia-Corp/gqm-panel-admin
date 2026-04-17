@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Building,
+  Building2,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Clock,
   BarChart2,
+  Users,
+  Info,
 } from "lucide-react"
 
 import { KpiCard } from "./components/KpiCard"
@@ -36,26 +38,40 @@ interface DashboardStats {
   dollars_in_progress:    number
   paid_jobs_count:        number
   dollars_paid:           number
-  ave_target_sold_pct:    number
+  ave_target_sold_pct:    number   // 0–1
 }
 
-interface Client {
-  rank_closed: number
-  rank_revenue:number
+interface TopCommunity {
+  name:      string
+  total_jobs:number
+  paid_jobs: number
+  revenue:   number
+}
+
+interface CommunityAssignment {
+  member_name: string
+  community:   string
+  revenue:     number
+  job_count:   number
+}
+
+interface ParentCo {
+  rank_closed:          number
+  rank_revenue:         number
   client: {
     id:      string
     name:    string
     address: string
   }
-  dashboard_stats: DashboardStats
-  // communities / top_communities may or may not come from the backend
-  communities_count?: number
-  top_communities?:   Array<{ name: string; total_jobs: number; paid_jobs: number; revenue: number }>
+  dashboard_stats:      DashboardStats
+  communities_count:    number
+  top_communities:      TopCommunity[]
+  community_assignments:CommunityAssignment[]
 }
 
 interface ApiResponse {
-  pagination: { page: number; limit: number; total_pages: number }
-  clients:    Client[]
+  pagination: { page: number; limit: number; total_parent_mgmt_cos?: number; total_pages: number }
+  parent_mgmt_cos: ParentCo[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,7 +91,7 @@ function hashToIndex(str: string, mod: number) {
 }
 
 const ACCENT_COLORS = [
-  "bg-sky-100 text-sky-700",
+  "bg-blue-100 text-blue-700",
   "bg-emerald-100 text-emerald-700",
   "bg-violet-100 text-violet-700",
   "bg-amber-100 text-amber-700",
@@ -89,33 +105,35 @@ const getAccent = (id: string) => ACCENT_COLORS[hashToIndex(id, ACCENT_COLORS.le
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClientsPanel({ jobTab, yearTab }: Props) {
+export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
   const [isLoading,  setIsLoading]  = useState(true)
   const [page,       setPage]       = useState(1)
   const limit = 25
 
-  const [items,      setItems]      = useState<Client[]>([])
+  const [items,      setItems]      = useState<ParentCo[]>([])
   const [totalPages, setTotalPages] = useState(1)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search,     setSearch]     = useState("")
   const [orderBy,    setOrderBy]    = useState<"closed" | "revenue">("closed")
 
+  // Reset on filter change
   useEffect(() => { setPage(1); setSelectedId(null) }, [jobTab, yearTab, orderBy])
 
+  // Fetch
   useEffect(() => {
     const run = async () => {
       try {
         setIsLoading(true)
         const qs = new URLSearchParams({ type: jobTab, page: String(page), limit: String(limit), order_by: orderBy, include_status_breakdown: "0" })
         if (yearTab !== "ALL") qs.set("year", yearTab)
-        const res = await apiFetch(`/api/metrics/clients?${qs}`)
+        const res = await apiFetch(`/api/metrics/parent-mgmt-co?${qs}`)
         if (!res.ok) throw new Error(`status ${res.status}`)
         const data: ApiResponse = await res.json()
-        setItems(data.clients ?? [])
+        setItems(data.parent_mgmt_cos ?? [])
         setTotalPages(data.pagination?.total_pages ?? 1)
       } catch (e) {
-        console.error("[ClientsPanel] error:", e)
+        console.error("[ParentCompaniesPanel] error:", e)
         setItems([])
       } finally {
         setIsLoading(false)
@@ -132,6 +150,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
     return items.filter((i) => i.client.name.toLowerCase().includes(q))
   }, [items, search])
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       {/* ===== Carousel ===================================================== */}
@@ -142,7 +161,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
             type="button"
             aria-label={`Scroll ${dir}`}
             onClick={() => {
-              const el = document.getElementById("clients-scroller")
+              const el = document.getElementById("parent-co-scroller")
               if (el) el.scrollBy({ left: dir === "left" ? -340 : 340, behavior: "smooth" })
             }}
             className={[
@@ -155,31 +174,33 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         ))}
 
         <div
-          id="clients-scroller"
+          id="parent-co-scroller"
           className="flex gap-4 overflow-x-auto pb-2 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0"
         >
           {isLoading ? (
             <CardCarouselSkeleton count={5} />
           ) : (
-            items.map((cl) => {
-              const s      = cl.dashboard_stats
-              const accent = getAccent(cl.client.id)
+            items.map((co) => {
+              const s      = co.dashboard_stats
+              const accent = getAccent(co.client.id)
               return (
                 <div
-                  key={cl.client.id}
+                  key={co.client.id}
                   className="flex-none w-[300px] rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition flex flex-col"
                 >
                   <div className="p-5 flex-1">
+                    {/* Header */}
                     <div className="flex items-start gap-3 mb-4">
                       <div className={["h-10 w-10 shrink-0 rounded-full flex items-center justify-center", accent].join(" ")}>
-                        <Building className="h-5 w-5" />
+                        <Building2 className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold leading-tight text-sm truncate">{cl.client.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{cl.client.address || "—"}</p>
+                        <p className="font-semibold leading-tight text-sm truncate">{co.client.name}</p>
+                        <p className="text-xs text-muted-foreground">{co.communities_count} communities</p>
                       </div>
                     </div>
 
+                    {/* Stats */}
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                       <div className="text-muted-foreground">Total Quotes</div>
                       <div className="text-right font-semibold tabular-nums">{s.total_amount_of_quotes}</div>
@@ -213,7 +234,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
           )}
         </div>
 
-        {/* Order + Pagination */}
+        {/* Pagination */}
         <div className="mt-4 flex items-center justify-between">
           <div className="inline-flex rounded-lg border bg-white/10 p-1 text-xs">
             {(["closed", "revenue"] as const).map((v) => (
@@ -242,24 +263,24 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
 
         {/* Picker */}
-        <SectionCard title="All Clients" subtitle="Click to see individual stats">
+        <SectionCard title="All Parent Companies" subtitle="Click to see individual stats">
           <div className="relative mb-4">
             <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..." className="pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search companies..." className="pl-9" />
           </div>
           {isLoading ? (
             <TableSkeleton rows={6} cols={3} />
           ) : (
             <div className="space-y-2">
-              {filtered.map((cl) => {
-                const s      = cl.dashboard_stats
-                const accent = getAccent(cl.client.id)
-                const isSelected = selectedId === cl.client.id
+              {filtered.map((co) => {
+                const s      = co.dashboard_stats
+                const accent = getAccent(co.client.id)
+                const isSelected = selectedId === co.client.id
                 return (
                   <button
-                    key={cl.client.id}
+                    key={co.client.id}
                     type="button"
-                    onClick={() => setSelectedId(isSelected ? null : cl.client.id)}
+                    onClick={() => setSelectedId(isSelected ? null : co.client.id)}
                     className={[
                       "w-full rounded-xl border p-3 text-left transition hover:shadow-sm",
                       isSelected ? "border-gqm-green-dark bg-emerald-50" : "border-gray-200 bg-white hover:bg-gray-50",
@@ -267,11 +288,11 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                   >
                     <div className="flex items-center gap-3">
                       <div className={["h-9 w-9 shrink-0 rounded-full flex items-center justify-center", accent].join(" ")}>
-                        <Building className="h-4 w-4" />
+                        <Building2 className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-sm truncate">{cl.client.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">{cl.client.address || "—"}</div>
+                        <div className="font-semibold text-sm truncate">{co.client.name}</div>
+                        <div className="text-xs text-muted-foreground">{co.communities_count} communities</div>
                       </div>
                       <div className="text-right text-xs shrink-0">
                         <div className="font-semibold text-emerald-700">{fmtK(s.dollars_paid)}</div>
@@ -281,7 +302,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                   </button>
                 )
               })}
-              {filtered.length === 0 && <EmptyState message="No clients found." />}
+              {filtered.length === 0 && <EmptyState message="No companies found." />}
             </div>
           )}
         </SectionCard>
@@ -289,11 +310,13 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         {/* Detail */}
         <SectionCard
           title={selected ? selected.client.name : "Individual Statistics"}
-          subtitle={selected ? selected.client.address || "Community / Client" : "Select a client on the left"}
-          action={selected ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear</Button> : undefined}
+          subtitle={selected ? selected.client.address || "Select a company to see details" : "Select a company on the left"}
+          action={selected ? (
+            <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear</Button>
+          ) : undefined}
         >
           {!selected ? (
-            <EmptyState message="Select a client to see detailed stats." />
+            <EmptyState message="Select a parent company to see detailed stats." />
           ) : (
             <div className="space-y-5">
               {/* KPI chips */}
@@ -302,16 +325,16 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                 <KpiCard title="$ Quoted"      value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
                 <KpiCard title="$ In Progress" value={fmtK(selected.dashboard_stats.dollars_in_progress)}      Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
                 <KpiCard title="$ Paid"        value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title="# In Progress" value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-amber-100 text-amber-700" />
-                <KpiCard title="Avg Target %"  value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title="Avg Target %" value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}     Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title="Communities"   value={String(selected.communities_count)}                       Icon={Users}        accentClass="bg-amber-100 text-amber-700" />
               </div>
 
-              {/* Top communities (if backend returns them) */}
-              {(selected.top_communities?.length ?? 0) > 0 && (
+              {/* Top communities */}
+              {selected.top_communities?.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
-                    Top Communities by Jobs
+                    Top Communities
                   </h3>
                   <table className="w-full text-xs">
                     <thead>
@@ -323,12 +346,42 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {selected.top_communities!.map((c, i) => (
+                      {selected.top_communities.map((c, i) => (
                         <tr key={i} className="border-b hover:bg-gray-50 transition">
                           <td className="px-2 py-1.5 font-medium">{c.name}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{c.total_jobs}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{c.paid_jobs}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(c.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Community assignments by member */}
+              {selected.community_assignments?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-600" />
+                    Community Assignment by Member
+                  </h3>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+                        <th className="px-2 py-1.5 font-medium">Member</th>
+                        <th className="px-2 py-1.5 font-medium">Community</th>
+                        <th className="px-2 py-1.5 font-medium text-right">Jobs</th>
+                        <th className="px-2 py-1.5 font-medium text-right">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.community_assignments.map((a, i) => (
+                        <tr key={i} className="border-b hover:bg-gray-50 transition">
+                          <td className="px-2 py-1.5 font-medium">{a.member_name}</td>
+                          <td className="px-2 py-1.5 text-muted-foreground">{a.community}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{a.job_count}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(a.revenue)}</td>
                         </tr>
                       ))}
                     </tbody>
