@@ -14,6 +14,7 @@ type Props = {
   jobId: string
   memberId: string
   memberName?: string
+  rol?: string
   defaultSyncPodio?: boolean
   jobYear?: number
   onUnlinked?: () => Promise<void> | void
@@ -39,6 +40,7 @@ export function UnlinkMemberDialog({
   jobId,
   memberId,
   memberName,
+  rol,
   defaultSyncPodio = true,
   jobYear,
   onUnlinked,
@@ -63,7 +65,7 @@ export function UnlinkMemberDialog({
       const res = await apiFetch("/api/job-member", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, memberId, sync_podio: syncPodio, year: jobYear }),
+        body: JSON.stringify({ jobId, memberId, rol, sync_podio: syncPodio, year: jobYear }),
       })
 
       const text = await res.text()

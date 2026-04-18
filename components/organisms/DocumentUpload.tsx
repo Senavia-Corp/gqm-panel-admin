@@ -5,6 +5,7 @@ import { useState, useCallback } from "react"
 import { Upload, Loader2, Zap, ZapOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ interface DocumentUploadProps {
   jobId: string
   jobType: string
   jobYear?: number        // ← required by backend when sync_podio=true
+  accessLevel?: "members" | "technicians"
   onUploadComplete?: () => void
 }
 
@@ -74,7 +76,7 @@ function PodioToggle({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function DocumentUpload({ jobId, jobType, jobYear, onUploadComplete }: DocumentUploadProps) {
+export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadComplete }: DocumentUploadProps) {
   const [isDragging,             setIsDragging]             = useState(false)
   const [isUploading,            setIsUploading]            = useState(false)
   const [pendingFile,            setPendingFile]            = useState<File | null>(null)
@@ -106,12 +108,13 @@ export function DocumentUpload({ jobId, jobType, jobYear, onUploadComplete }: Do
       formData.append("entity_id",   jobId)
       formData.append("description", fileDescription)
       formData.append("tag",         "general")
-      if (resolvedYear) formData.append("year", String(resolvedYear))
+      if (resolvedYear)  formData.append("year",         String(resolvedYear))
+      if (accessLevel)   formData.append("access_level", accessLevel)
 
       const qs = new URLSearchParams()
       qs.set("sync_podio", withPodio ? "true" : "false")
 
-      const response = await fetch(`/api/upload?${qs.toString()}`, {
+      const response = await apiFetch(`/api/upload?${qs.toString()}`, {
         method: "POST",
         body:   formData,
         // No Content-Type header — browser sets multipart boundary automatically

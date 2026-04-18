@@ -1,5 +1,6 @@
 "use client"
 
+import { apiFetch } from "@/lib/apiFetch"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
@@ -102,7 +103,7 @@ const API = {
 }
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -121,7 +122,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 }
 
 async function patchJson<T>(url: string, payload: unknown): Promise<T> {
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -179,7 +180,7 @@ function MemberPickerModal({
     try {
       const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
       if (search) qs.set("q", search)
-      const res = await fetch(`${API.membersTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(`${API.membersTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setRows(Array.isArray(data.results) ? data.results : [])
@@ -333,7 +334,7 @@ function JobPickerModal({
     try {
       const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
       if (search) qs.set("search", search)
-      const res = await fetch(`${API.jobsTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      const res = await apiFetch(`${API.jobsTable}?${qs}`, { signal: ctrl.signal, cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setRows(Array.isArray(data.results) ? data.results : [])
@@ -560,6 +561,7 @@ export default function CreatePurchasePage() {
   const searchParams = useSearchParams()
   const returnTo = searchParams?.get("returnTo") ?? null
   const backUrl = returnTo ? decodeURIComponent(returnTo) : "/purchases"
+  const presetJobId = searchParams?.get("job_id") ?? null
   const [user, setUser] = useState<any>(null)
   const [step, setStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
@@ -585,6 +587,7 @@ export default function CreatePurchasePage() {
   // Step 4 state
   const [selectedJob, setSelectedJob] = useState<JobRow | null>(null)
   const [jobLinked, setJobLinked] = useState(false)
+  const [presetJob, setPresetJob] = useState<JobRow | null>(null)
 
   // Created entities
   const [created, setCreated] = useState<CreatedPurchase>({
@@ -602,6 +605,22 @@ export default function CreatePurchasePage() {
     if (!u) { router.push("/login"); return }
     setUser(JSON.parse(u))
   }, [router])
+
+  // Fetch preset job details when coming from a Job's Purchases tab
+  useEffect(() => {
+    if (!presetJobId) return
+    apiFetch(`/api/jobs/${encodeURIComponent(presetJobId)}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: JobRow | null) => { if (data?.ID_Jobs) setPresetJob(data) })
+      .catch(() => {/* silent — job picker remains available as fallback */})
+  }, [presetJobId])
+
+  // Auto-link the preset job as soon as the purchase exists and step 4 is reached
+  useEffect(() => {
+    if (step !== 4 || !presetJob || !created.ID_Purchase || jobLinked) return
+    handleLinkJob(presetJob)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, presetJob, created.ID_Purchase])
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const activeOrder = useMemo(() => {
@@ -1040,8 +1059,21 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 4 ── */}
                   {step === 4 && (
-                    <SectionCard icon={Link2} title="Vincular Job" subtitle="Opcional — puede vincularse después desde el detalle de la compra" accent="slate">
+                    <SectionCard
+                      icon={Link2}
+                      title="Vincular Job"
+                      subtitle={presetJobId ? "Job vinculado automáticamente desde la sección del Job" : "Opcional — puede vincularse después desde el detalle de la compra"}
+                      accent="slate"
+                    >
                       <div className="space-y-4">
+                        {/* Auto-linking in progress */}
+                        {presetJobId && !jobLinked && (
+                          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500 flex-shrink-0" />
+                            <p className="text-xs text-slate-500">Vinculando job automáticamente…</p>
+                          </div>
+                        )}
+
                         {jobLinked && selectedJob ? (
                           <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
                             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
@@ -1058,16 +1090,19 @@ export default function CreatePurchasePage() {
                               </div>
                               <p className="text-xs text-slate-500 truncate">{selectedJob.Project_name ?? "Sin nombre"}</p>
                             </div>
-                            <button onClick={() => { setSelectedJob(null); setJobLinked(false) }}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-600 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
+                            {/* Only allow removing the job link when not coming from a job context */}
+                            {!presetJobId && (
+                              <button onClick={() => { setSelectedJob(null); setJobLinked(false) }}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-600 transition-colors">
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         ) : jobLinked && !selectedJob ? (
                           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
                             <p className="text-xs text-slate-400">Sin job vinculado — se puede agregar después</p>
                           </div>
-                        ) : (
+                        ) : !presetJobId ? (
                           <button
                             onClick={() => setShowJobPicker(true)}
                             className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3.5 text-left text-xs text-slate-500 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-700 transition-colors"
@@ -1076,9 +1111,9 @@ export default function CreatePurchasePage() {
                             <span>Buscar y vincular un Job a esta compra…</span>
                             <Search className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-50" />
                           </button>
-                        )}
+                        ) : null}
 
-                        {!jobLinked && (
+                        {!jobLinked && !presetJobId && (
                           <Button variant="outline" className="w-full text-xs text-slate-500" onClick={handleSkipJob}>
                             Omitir por ahora
                           </Button>

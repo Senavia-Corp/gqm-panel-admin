@@ -10,6 +10,11 @@ import {
   Mail, Building2, Star, AlertCircle,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
+import { Badge as UIBadge } from "@/components/ui/badge"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +32,12 @@ type TableResponse = {
   limit: number
   total: number
   results: SubRow[]
+}
+
+type Skill = {
+  ID_Skill: string
+  Skill_name: string
+  Division_trade?: string
 }
 
 interface Props {
@@ -171,6 +182,12 @@ export function LinkSubcontractorDialog({
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter]       = useState("")
   const [syncPodio, setSyncPodio]             = useState(defaultSyncPodio)
+  
+  // Skills Filter State
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
+  const [skillSearch, setSkillSearch] = useState("")
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false)
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil((total || 0) / limit)), [total, limit])
 
@@ -178,8 +195,29 @@ export function LinkSubcontractorDialog({
   useEffect(() => {
     if (!open) return
     setPage(1); setSearchTerm(""); setDebouncedSearch(""); setStatusFilter(""); setSyncPodio(defaultSyncPodio)
+    setSelectedSkillIds([])
+    void fetchAvailableSkills()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  const fetchAvailableSkills = async () => {
+    setIsLoadingSkills(true)
+    try {
+      const res = await apiFetch("/api/skills")
+      if (!res.ok) {
+        console.error("Skills API error:", res.status)
+        return
+      }
+      const data = await res.json()
+      // The backend uses a @paginate decorator, so the skills are under 'results'
+      const skills = Array.isArray(data) ? data : (data?.results || [])
+      setAvailableSkills(skills)
+    } catch (err) {
+      console.error("Error fetching skills:", err)
+    } finally {
+      setIsLoadingSkills(false)
+    }
+  }
 
   // Debounce search
   useEffect(() => {
@@ -187,12 +225,17 @@ export function LinkSubcontractorDialog({
     return () => clearTimeout(t)
   }, [searchTerm])
 
+  // Reset page when search or filters change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, statusFilter, selectedSkillIds])
+
   // Fetch
   useEffect(() => {
     if (!open) return
     void fetchSubcontractors()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, page, statusFilter])
+  }, [open, page, debouncedSearch, statusFilter, selectedSkillIds])
 
   const fetchSubcontractors = async () => {
     setLoading(true)
@@ -202,6 +245,10 @@ export function LinkSubcontractorDialog({
       params.set("page", String(page))
       params.set("limit", String(limit))
       if (statusFilter) params.set("status", statusFilter)
+      if (debouncedSearch) params.set("q", debouncedSearch)
+      if (selectedSkillIds.length > 0) params.set("skills", selectedSkillIds.join(","))
+      if (jobId) params.set("exclude_job_id", jobId)
+      
       const res = await apiFetch(`/api/subcontractors?${params.toString()}`)
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -217,16 +264,8 @@ export function LinkSubcontractorDialog({
     }
   }
 
-  const filteredRows = useMemo(() => {
-    if (!debouncedSearch) return rows
-    const q = debouncedSearch.toLowerCase()
-    return rows.filter((s) =>
-      String(s.ID_Subcontractor ?? "").toLowerCase().includes(q) ||
-      String(s.Name ?? "").toLowerCase().includes(q) ||
-      normalizeOrg(s.Organization).toLowerCase().includes(q) ||
-      parseEmails(s.Email_Address).some((e) => e.toLowerCase().includes(q))
-    )
-  }, [rows, debouncedSearch])
+  // No local filtering needed anymore as the server returns correctly filtered results
+  const displayRows = rows
 
   const handleLink = async (subcontractorId: string) => {
     if (!jobId || !subcontractorId) return
@@ -249,6 +288,20 @@ export function LinkSubcontractorDialog({
       setLinking(null)
     }
   }
+
+  const toggleSkill = (id: string) => {
+    setSelectedSkillIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const filteredAvailableSkills = availableSkills.filter(s => {
+    const name = (s.Skill_name || "").toLowerCase()
+    const trade = (s.Division_trade || "").toLowerCase()
+    const id = (s.ID_Skill || "").toLowerCase()
+    const search = skillSearch.toLowerCase()
+    return name.includes(search) || trade.includes(search) || id.includes(search)
+  })
 
   if (!open) return null
 
@@ -335,6 +388,79 @@ export function LinkSubcontractorDialog({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Skills Filter Dropdown */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
+                    selectedSkillIds.length > 0
+                      ? "border-violet-300 bg-violet-50 text-violet-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                  }`}
+                >
+                  <Star className={`h-4 w-4 ${selectedSkillIds.length > 0 ? "fill-violet-400" : ""}`} />
+                  {selectedSkillIds.length > 0 ? `${selectedSkillIds.length} Skills` : "Filter by Skill"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-72 p-0 rounded-2xl shadow-xl border-slate-100 z-[10001]" 
+                align="end"
+              >
+                <div className="p-3 border-b border-slate-50">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search skills..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border-none bg-slate-100 focus:ring-1 focus:ring-violet-200 focus:outline-none"
+                      value={skillSearch}
+                      onChange={(e) => setSkillSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <ScrollArea className="h-64">
+                  <div className="p-2 space-y-0.5">
+                    {isLoadingSkills ? (
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
+                        <span className="text-[10px] text-slate-400 font-medium">Loading skills...</span>
+                      </div>
+                    ) : filteredAvailableSkills.map(skill => (
+                      <div
+                        key={skill.ID_Skill}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => toggleSkill(skill.ID_Skill)}
+                      >
+                        <Checkbox 
+                          checked={selectedSkillIds.includes(skill.ID_Skill)} 
+                          onCheckedChange={() => {}} // The div onClick handles the state
+                          onClick={(e) => e.stopPropagation()} // Prevent double-toggle
+                          className="rounded-md border-slate-300 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600 cursor-pointer" 
+                        />
+                        <span className="text-xs font-medium text-slate-700">
+                          {skill.Skill_name || skill.Division_trade || skill.ID_Skill}
+                        </span>
+                      </div>
+                    ))}
+                    {!isLoadingSkills && filteredAvailableSkills.length === 0 && (
+                      <p className="text-[11px] text-slate-400 text-center py-8">No skills found</p>
+                    )}
+                  </div>
+                </ScrollArea>
+                {selectedSkillIds.length > 0 && (
+                  <div className="p-3 bg-slate-50 border-t border-slate-100 rounded-b-2xl">
+                    <button 
+                      onClick={() => setSelectedSkillIds([])}
+                      className="text-[10px] font-bold text-violet-600 uppercase tracking-widest hover:text-violet-700"
+                    >
+                      Clear all skills
+                    </button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+
             {/* Active filter */}
             <button
               type="button"
@@ -373,6 +499,16 @@ export function LinkSubcontractorDialog({
             </div>
           </div>
         </div>
+        
+        {/* Match all info */}
+        {selectedSkillIds.length > 1 && (
+          <div className="flex items-center gap-2 px-5 py-2 bg-indigo-50 border-y border-indigo-100/50">
+            <Zap className="h-3 w-3 text-indigo-500 fill-indigo-500" />
+            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest leading-none">
+              Highlighting subcontractors with <span className="underline decoration-indigo-300 underline-offset-2">all</span> selected skills
+            </p>
+          </div>
+        )}
 
         {/* ── Table ───────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-auto min-h-0">
@@ -380,7 +516,7 @@ export function LinkSubcontractorDialog({
             <div className="flex h-48 items-center justify-center">
               <Loader2 className="h-7 w-7 animate-spin text-slate-300" />
             </div>
-          ) : filteredRows.length === 0 ? (
+          ) : displayRows.length === 0 ? (
             <div className="flex flex-col h-48 items-center justify-center gap-3">
               <AlertCircle className="h-8 w-8 text-slate-200" />
               <p className="text-sm text-slate-400">No subcontractors found</p>
@@ -397,11 +533,23 @@ export function LinkSubcontractorDialog({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filteredRows.map((s) => {
-                  const org = normalizeOrg(s.Organization)
-                  const isLinking = linking === s.ID_Subcontractor
-                  return (
-                    <tr key={s.ID_Subcontractor} className="hover:bg-slate-50/70 transition-colors group">
+                  {displayRows.map((s) => {
+                    const org = normalizeOrg(s.Organization)
+                    const isLinking = linking === s.ID_Subcontractor
+                    
+                    // Match ALL highlighting logic
+                    const subSkillIds = (s as any).skill_ids || []
+                    const matchesAll = selectedSkillIds.length > 0 && selectedSkillIds.every(id => subSkillIds.includes(id))
+                    
+                    return (
+                      <tr 
+                        key={s.ID_Subcontractor} 
+                        className={`transition-colors group ${
+                          matchesAll 
+                            ? "bg-indigo-50/50 hover:bg-indigo-100/50 border-l-4 border-l-indigo-400" 
+                            : "hover:bg-slate-50/70"
+                        }`}
+                      >
                       {/* ID */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="font-mono text-xs text-slate-400">{s.ID_Subcontractor}</span>
@@ -474,7 +622,7 @@ export function LinkSubcontractorDialog({
         {/* ── Footer ──────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
           <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{filteredRows.length}</span> of <span className="font-semibold text-slate-600">{total}</span> subcontractors
+            Showing <span className="font-semibold text-slate-600">{displayRows.length}</span> of <span className="font-semibold text-slate-600">{total}</span> subcontractors
           </p>
           <div className="flex items-center gap-2">
             <button

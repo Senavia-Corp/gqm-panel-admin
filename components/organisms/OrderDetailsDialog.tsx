@@ -31,14 +31,13 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
         ].join(" ")}
       >
         {/* Header fijo */}
-        <div className="border-b bg-white px-6 py-5">
+        <div className="border-b bg-white px-8 py-6">
           <DialogHeader className="space-y-1">
-            <DialogTitle className="text-2xl">Order Details</DialogTitle>
+            <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Order Details</DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4 space-y-1">
-            <h3 className="text-xl font-semibold">{order.Title}</h3>
-            <p className="text-sm text-muted-foreground">{order.ID_Order}</p>
+          <div className="mt-4">
+            <h3 className="text-3xl font-black text-slate-800 tracking-tight">{order.Title || "Standard Order"}</h3>
           </div>
         </div>
 
@@ -46,76 +45,81 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-6">
             {/* Order Summary */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                <Label className="mb-2 block text-sm font-medium text-blue-900">Formula</Label>
-                <div className="text-2xl font-bold text-blue-900">${Number(order.Formula || 0).toFixed(2)}</div>
-                <p className="text-xs text-blue-700 mt-1">Sum of builder costs</p>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="p-6 rounded-2xl bg-violet-50/50 border border-violet-100 relative overflow-hidden group">
+                <div className="relative z-10">
+                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-violet-400">Formula</Label>
+                  <div className="text-3xl font-black text-violet-700 tabular-nums">
+                    ${Number(order.Formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-violet-400 font-medium mt-1">Sum of builder costs</p>
+                </div>
               </div>
 
-              <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                <Label className="mb-2 block text-sm font-medium text-green-900">Adj. Formula</Label>
-                <div className="text-2xl font-bold text-green-900">${Number(order.Adj_formula || 0).toFixed(2)}</div>
-                <p className="text-xs text-green-700 mt-1">Adjusted formula</p>
+              <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden group">
+                <div className="relative z-10">
+                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-emerald-400">Adj. Formula</Label>
+                  <div className="text-3xl font-black text-emerald-700 tabular-nums">
+                    ${Number(order.Adj_formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-emerald-400 font-medium mt-1">Adjusted formula (COs included)</p>
+                </div>
               </div>
             </div>
 
             {/* Estimate Costs Table */}
             <div>
-              <h4 className="font-semibold text-lg mb-3">Estimate Costs</h4>
+              <div className="flex items-center gap-2 mb-4 px-1">
+                <div className="h-5 w-1 rounded-full bg-slate-300" />
+                <h4 className="font-black text-slate-700 uppercase tracking-wider text-xs">Estimate Costs</h4>
+              </div>
 
               {items.length > 0 ? (
-                <div className="rounded-md border bg-white">
+                <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
-                    {/* ✅ min-w-max ayuda a que la tabla no “colapse” y se vea apretada */}
-                    <table className="min-w-max w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
+                    <table className="min-w-max w-full">
+                      <thead className="bg-slate-50/50 border-b border-slate-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Title</th>
-                          <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Cost Code</th>
-                          <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Category</th>
-                          <th className="px-4 py-3 text-right font-medium whitespace-nowrap">Quantity</th>
-                          <th className="px-4 py-3 text-right font-medium whitespace-nowrap">Unit Cost</th>
-                          <th className="px-4 py-3 text-right font-medium whitespace-nowrap">Builder Cost</th>
-                          <th className="px-4 py-3 text-right font-medium whitespace-nowrap">Client Price</th>
+                          <th className="px-6 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Title</th>
+                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Cost Code</th>
+                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Qty</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Unit Cost</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Builder Cost</th>
+                          <th className="px-6 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Client Price</th>
                         </tr>
                       </thead>
 
-                      <tbody className="divide-y">
+                      <tbody className="divide-y divide-slate-50">
                         {items.map((item: any, index: number) => (
-                          <tr key={item.ID_EstimateCost || index} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 font-medium whitespace-nowrap">{item.Title ?? "—"}</td>
-                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{item.Cost_code ?? "—"}</td>
-                            <td
-                              className="px-4 py-3 text-muted-foreground text-xs max-w-[32rem] truncate"
-                              title={item.Category ?? ""}
-                            >
-                              {item.Category ?? "—"}
+                          <tr key={item.ID_EstimateCost || index} className="hover:bg-slate-50/30 transition-colors group">
+                            <td className="px-6 py-4 font-bold text-slate-700 whitespace-nowrap">{item.Title ?? "—"}</td>
+                            <td className="px-4 py-4 text-slate-400 font-mono text-xs whitespace-nowrap">{item.Cost_code ?? "—"}</td>
+                            <td className="px-4 py-4 text-slate-400 text-[11px] max-w-[320px] truncate" title={item.Category ?? ""}>{item.Category ?? "—"}</td>
+                            <td className="px-4 py-4 text-right tabular-nums text-slate-600 font-bold whitespace-nowrap">{item.Quatity || item.Quantity || "—"}</td>
+                            <td className="px-4 py-4 text-right tabular-nums text-slate-500 whitespace-nowrap">
+                              ${Number(item.Unit_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">{item.Quatity ?? "—"}</td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
-                              ${Number(item.Unit_cost || 0).toFixed(2)}
+                            <td className="px-4 py-4 text-right font-bold text-violet-600 tabular-nums whitespace-nowrap">
+                              ${Number(item.Builder_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold text-blue-900 whitespace-nowrap">
-                              ${Number(item.Builder_cost || 0).toFixed(2)}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-green-900 whitespace-nowrap">
-                              ${Number(item.Client_price || 0).toFixed(2)}
+                            <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                              ${Number(item.Client_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </td>
                           </tr>
                         ))}
                       </tbody>
 
-                      <tfoot className="bg-gray-50 border-t-2">
+                      <tfoot className="bg-slate-50/50 border-t border-slate-100">
                         <tr>
-                          <td colSpan={5} className="px-4 py-3 text-right font-semibold whitespace-nowrap">
-                            Totals:
+                          <td colSpan={5} className="px-6 py-5 text-right font-black text-slate-400 uppercase tracking-widest text-[11px] whitespace-nowrap">
+                            Totals
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-blue-900 whitespace-nowrap">
-                            ${totalBuilder.toFixed(2)}
+                          <td className="px-4 py-5 text-right font-black text-violet-700 text-lg tabular-nums whitespace-nowrap">
+                            ${totalBuilder.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-green-900 whitespace-nowrap">
-                            ${totalClient.toFixed(2)}
+                          <td className="px-6 py-5 text-right font-black text-emerald-700 text-lg tabular-nums whitespace-nowrap">
+                            ${totalClient.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
                       </tfoot>
