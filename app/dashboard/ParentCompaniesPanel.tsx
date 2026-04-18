@@ -113,12 +113,16 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
   const [items,      setItems]      = useState<ParentCo[]>([])
   const [totalPages, setTotalPages] = useState(1)
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [search,     setSearch]     = useState("")
-  const [orderBy,    setOrderBy]    = useState<"closed" | "revenue">("closed")
+  const [selectedId,          setSelectedId]          = useState<string | null>(null)
+  const [search,              setSearch]              = useState("")
+  const [orderBy,             setOrderBy]             = useState<"closed" | "revenue">("closed")
+  const [assignmentsVisible,  setAssignmentsVisible]  = useState(10)
 
   // Reset on filter change
   useEffect(() => { setPage(1); setSelectedId(null) }, [jobTab, yearTab, orderBy])
+
+  // Reset assignments pagination when selected company changes
+  useEffect(() => { setAssignmentsVisible(10) }, [selectedId])
 
   // Fetch
   useEffect(() => {
@@ -365,6 +369,9 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <Users className="h-4 w-4 text-indigo-600" />
                     Community Assignment by Member
+                    <span className="rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-normal">
+                      {selected.community_assignments.length}
+                    </span>
                   </h3>
                   <table className="w-full text-xs">
                     <thead>
@@ -376,7 +383,7 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {selected.community_assignments.map((a, i) => (
+                      {selected.community_assignments.slice(0, assignmentsVisible).map((a, i) => (
                         <tr key={i} className="border-b hover:bg-gray-50 transition">
                           <td className="px-2 py-1.5 font-medium">{a.member_name}</td>
                           <td className="px-2 py-1.5 text-muted-foreground">{a.community}</td>
@@ -386,6 +393,28 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                       ))}
                     </tbody>
                   </table>
+                  {selected.community_assignments.length > 10 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {assignmentsVisible < selected.community_assignments.length && (
+                        <button
+                          type="button"
+                          onClick={() => setAssignmentsVisible((v) => Math.min(v + 10, selected.community_assignments.length))}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                          Load more ({selected.community_assignments.length - assignmentsVisible} remaining)
+                        </button>
+                      )}
+                      {assignmentsVisible > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setAssignmentsVisible(10)}
+                          className="text-xs text-muted-foreground hover:text-gray-700 font-medium"
+                        >
+                          Show less
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -9,9 +9,10 @@ type Props = {
   onCreateTask:   () => void
   onTaskOpen:     (task: Task) => void
   onTaskStatusChange: (taskId: string, newStatus: string) => void
+  namesMap?: Record<string, string>
 }
 
-export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange }: Props) {
+export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
   const safeTasks = tasks ?? []
 
   const total     = safeTasks.length
@@ -130,6 +131,7 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
           tasks={safeTasks}
           onTaskOpen={onTaskOpen}
           onTaskStatusChange={onTaskStatusChange}
+          namesMap={namesMap}
         />
       )}
     </div>

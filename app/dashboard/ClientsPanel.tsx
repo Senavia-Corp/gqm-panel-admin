@@ -97,11 +97,21 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
   const [items,      setItems]      = useState<Client[]>([])
   const [totalPages, setTotalPages] = useState(1)
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [search,     setSearch]     = useState("")
-  const [orderBy,    setOrderBy]    = useState<"closed" | "revenue">("closed")
+  const [selectedId,          setSelectedId]          = useState<string | null>(null)
+  const [search,              setSearch]              = useState("")
+  const [debouncedSearch,     setDebouncedSearch]     = useState("")
+  const [orderBy,             setOrderBy]             = useState<"closed" | "revenue">("closed")
 
   useEffect(() => { setPage(1); setSelectedId(null) }, [jobTab, yearTab, orderBy])
+
+  // Debounce search → reset to page 1 on new query
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1)
+      setDebouncedSearch(search.trim())
+    }, 400)
+    return () => clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     const run = async () => {
@@ -109,6 +119,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         setIsLoading(true)
         const qs = new URLSearchParams({ type: jobTab, page: String(page), limit: String(limit), order_by: orderBy, include_status_breakdown: "0" })
         if (yearTab !== "ALL") qs.set("year", yearTab)
+        if (debouncedSearch) qs.set("search", debouncedSearch)
         const res = await apiFetch(`/api/metrics/clients?${qs}`)
         if (!res.ok) throw new Error(`status ${res.status}`)
         const data: ApiResponse = await res.json()
@@ -122,15 +133,9 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
       }
     }
     run()
-  }, [jobTab, yearTab, page, orderBy])
+  }, [jobTab, yearTab, page, orderBy, debouncedSearch])
 
   const selected = useMemo(() => items.find((i) => i.client.id === selectedId) ?? null, [items, selectedId])
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return items
-    return items.filter((i) => i.client.name.toLowerCase().includes(q))
-  }, [items, search])
 
   return (
     <>
@@ -251,7 +256,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
             <TableSkeleton rows={6} cols={3} />
           ) : (
             <div className="space-y-2">
-              {filtered.map((cl) => {
+              {items.map((cl) => {
                 const s      = cl.dashboard_stats
                 const accent = getAccent(cl.client.id)
                 const isSelected = selectedId === cl.client.id
@@ -281,7 +286,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                   </button>
                 )
               })}
-              {filtered.length === 0 && <EmptyState message="No clients found." />}
+              {items.length === 0 && <EmptyState message="No clients found." />}
             </div>
           )}
         </SectionCard>

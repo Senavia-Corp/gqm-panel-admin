@@ -12,7 +12,8 @@ export async function GET(req: Request) {
     const page = url.searchParams.get("page") ?? "1"
     const limit = url.searchParams.get("limit") ?? "25"
     const orderBy = url.searchParams.get("order_by") ?? "closed"
-    const includeStatusBreakdown = url.searchParams.get("include_status_breakdown") ?? "1" // ✅ add
+    const includeStatusBreakdown = url.searchParams.get("include_status_breakdown") ?? "1"
+    const search = url.searchParams.get("search")
 
     const backend = PYTHON_BASE_URL
     if (!backend) {
@@ -24,8 +25,9 @@ export async function GET(req: Request) {
     qs.set("page", page)
     qs.set("limit", limit)
     qs.set("order_by", orderBy)
-    qs.set("include_status_breakdown", includeStatusBreakdown) // ✅ forward
+    qs.set("include_status_breakdown", includeStatusBreakdown)
     if (year) qs.set("year", year)
+    if (search) qs.set("search", search)
 
     const target = `${backend.replace(/\/$/, "")}/communities/clients?${qs.toString()}`
 

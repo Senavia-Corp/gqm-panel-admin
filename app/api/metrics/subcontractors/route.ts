@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const page   = url.searchParams.get("page")   ?? "1"
     const limit  = url.searchParams.get("limit")  ?? "25"
     const status = url.searchParams.get("status")
+    const search = url.searchParams.get("search")
 
     const backend = PYTHON_BASE_URL
     if (!backend) {
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
 
     const qs = new URLSearchParams({ page, limit })
     if (status) qs.set("status", status)
+    if (search) qs.set("search", search)
 
     const target = `${backend.replace(/\/$/, "")}/subcontractor_metrics?${qs.toString()}`
 

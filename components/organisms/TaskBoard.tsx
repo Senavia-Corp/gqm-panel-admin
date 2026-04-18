@@ -23,6 +23,7 @@ interface TaskBoardProps {
   tasks: Task[]
   onTaskOpen: (task: Task) => void
   onTaskStatusChange: (taskId: string, newStatus: TaskStatus) => void
+  namesMap?: Record<string, string>
 }
 
 const STATUS_COLUMNS: {
@@ -47,11 +48,13 @@ function Column({
   tasks,
   onTaskOpen,
   isOver,
+  namesMap = {},
 }: {
   col: (typeof STATUS_COLUMNS)[number]
   tasks: Task[]
   onTaskOpen: (t: Task) => void
   isOver: boolean
+  namesMap?: Record<string, string>
 }) {
   const { setNodeRef } = useDroppable({ id: col.id })
 
@@ -106,7 +109,7 @@ function Column({
         <div style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "8px", minHeight: "80px" }}>
           <SortableContext items={tasks.map(t => t.ID_Tasks)} strategy={verticalListSortingStrategy}>
             {tasks.map(task => (
-              <TaskCard key={task.ID_Tasks} task={task} onOpen={onTaskOpen} />
+              <TaskCard key={task.ID_Tasks} task={task} onOpen={onTaskOpen} namesMap={namesMap} />
             ))}
           </SortableContext>
 
@@ -134,7 +137,7 @@ function Column({
 
 // ── Board ─────────────────────────────────────────────────────────────────────
 
-export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange }: TaskBoardProps) {
+export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {} }: TaskBoardProps) {
   const [activeTask,   setActiveTask]   = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<TaskStatus | null>(null)
 
@@ -213,6 +216,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange }: TaskBoardPr
             tasks={safeTasks.filter(t => t.Task_status === col.id)}
             onTaskOpen={onTaskOpen}
             isOver={overColumnId === col.id}
+            namesMap={namesMap}
           />
         ))}
       </div>
@@ -220,7 +224,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange }: TaskBoardPr
       <DragOverlay>
         {activeTask ? (
           <div style={{ width: "320px", opacity: 0.92, transform: "rotate(1.5deg)", pointerEvents: "none" }}>
-            <TaskCard task={activeTask} onOpen={() => {}} />
+            <TaskCard task={activeTask} onOpen={() => {}} namesMap={namesMap} />
           </div>
         ) : null}
       </DragOverlay>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -152,12 +152,13 @@ export default function SubcontractorsPanel() {
   const [tab,          setTab]         = useState<SubTab>("list")
 
   // List state
-  const [isLoading,    setIsLoading]   = useState(true)
-  const [page,         setPage]        = useState(1)
+  const [isLoading,       setIsLoading]      = useState(true)
+  const [page,            setPage]           = useState(1)
   const limit = 25
-  const [items,        setItems]       = useState<SubItem[]>([])
-  const [totalPages,   setTotalPages]  = useState(1)
-  const [search,       setSearch]      = useState("")
+  const [items,           setItems]          = useState<SubItem[]>([])
+  const [totalPages,      setTotalPages]     = useState(1)
+  const [search,          setSearch]         = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
 
   // Detail state
   const [selectedId,   setSelectedId]  = useState<string | null>(null)
@@ -168,12 +169,22 @@ export default function SubcontractorsPanel() {
   const [tradeGroups,  setTradeGroups] = useState<TradeGroup[]>([])
   const [tradeLoading, setTradeLoading] = useState(false)
 
+  // ── Debounce search → reset page to 1 on new query ───────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1)
+      setDebouncedSearch(search.trim())
+    }, 400)
+    return () => clearTimeout(t)
+  }, [search])
+
   // ── List fetch ────────────────────────────────────────────────────────────
   useEffect(() => {
     const run = async () => {
       try {
         setIsLoading(true)
         const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
+        if (debouncedSearch) qs.set("search", debouncedSearch)
         const res = await apiFetch(`/api/metrics/subcontractors?${qs}`)
         if (!res.ok) throw new Error(`status ${res.status}`)
         const data: SubListResponse = await res.json()
@@ -187,7 +198,7 @@ export default function SubcontractorsPanel() {
       }
     }
     run()
-  }, [page])
+  }, [page, debouncedSearch])
 
   // ── Detail fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -230,15 +241,6 @@ export default function SubcontractorsPanel() {
     run()
   }, [tab, tradeGroups.length])
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return items
-    return items.filter(
-      (s) =>
-        s.subcontractor.name.toLowerCase().includes(q) ||
-        (s.subcontractor.specialty ?? "").toLowerCase().includes(q)
-    )
-  }, [items, search])
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -304,14 +306,16 @@ export default function SubcontractorsPanel() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-sm truncate leading-tight">{s.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{s.specialty ?? s.organization ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {s.specialty ?? s.organization ?? <span className="italic opacity-50">No Organization</span>}
+                            </p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                           <div className="text-muted-foreground">Status</div>
                           <div className="text-right">
-                            {s.status ? <StatusBadge status={s.status} /> : <span className="text-muted-foreground">—</span>}
+                            {s.status ? <StatusBadge status={s.status} /> : <span className="italic opacity-50">No Status</span>}
                           </div>
 
                           <div className="text-muted-foreground">Active Tasks</div>
@@ -322,7 +326,7 @@ export default function SubcontractorsPanel() {
 
                           <div className="text-muted-foreground">Score</div>
                           <div className="text-right font-semibold tabular-nums">
-                            {s.score != null ? `${s.score}/10` : "—"}
+                            {s.score != null ? `${s.score}/10` : <span className="italic opacity-50">No Score</span>}
                           </div>
 
                           <div className="text-muted-foreground">Total Paid</div>
@@ -367,7 +371,7 @@ export default function SubcontractorsPanel() {
                 <TableSkeleton rows={6} cols={3} />
               ) : (
                 <div className="space-y-2">
-                  {filtered.map((sub) => {
+                  {items.map((sub) => {
                     const s      = sub.subcontractor
                     const accent = getAccent(s.id)
                     const isSel  = selectedId === s.id
@@ -387,7 +391,9 @@ export default function SubcontractorsPanel() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm truncate">{s.name}</div>
-                            <div className="text-xs text-muted-foreground">{s.specialty ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {s.specialty ?? <span className="italic opacity-50">No Specialty</span>}
+                            </div>
                           </div>
                           <div className="text-right text-xs shrink-0">
                             <div className="font-semibold text-emerald-700">{fmtK(sub.total_paid_usd)}</div>
@@ -397,7 +403,7 @@ export default function SubcontractorsPanel() {
                       </button>
                     )
                   })}
-                  {filtered.length === 0 && <EmptyState message="No subcontractors found." />}
+                  {items.length === 0 && <EmptyState message="No subcontractors found." />}
                 </div>
               )}
             </SectionCard>
@@ -546,10 +552,12 @@ export default function SubcontractorsPanel() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-violet-600 shrink-0" />
-                      <span className="font-semibold text-sm">{group.skill_name}</span>
-                      {group.division_trade && (
+                      <span className="font-semibold text-sm">
+                        {group.division_trade || (group.skill_name !== "—" ? group.skill_name : null) || "Unknown"}
+                      </span>
+                      {group.skill_name && group.skill_name !== "—" && group.division_trade && group.skill_name !== group.division_trade && (
                         <span className="rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-xs">
-                          {group.division_trade}
+                          {group.skill_name}
                         </span>
                       )}
                     </div>
