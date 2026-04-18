@@ -27,24 +27,61 @@ interface EstimateBreakdownTableProps {
   onDeleteItem?: (item: EstimateItem) => Promise<void>
   onEditItem?: (item: EstimateItem) => void
   jobYear?: number
+  jobType?: string
 }
 
 // Cost types that need Podio sync on delete
 const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF", "Rent", "Material", "Permit"])
 
 
+// ─── Currency formatter ────────────────────────────────────────────────────────
+
+function fmtCurrency(n: number): string {
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
+type StatColor = "blue" | "emerald" | "amber" | "violet" | "rose" | "slate" | "orange" | "teal"
+
 function StatCard({ label, value, sub, color }: {
-  label: string; value: string; sub?: string; color: "blue" | "emerald" | "amber"
+  label: string; value: string; sub?: string; color: StatColor
 }) {
-  const map = { blue: "border-blue-100 bg-blue-50", emerald: "border-emerald-100 bg-emerald-50", amber: "border-amber-100 bg-amber-50" }
-  const txt = { blue: "text-blue-600", emerald: "text-emerald-600", amber: "text-amber-600" }
+  const map: Record<StatColor, string> = {
+    blue:    "border-blue-100 bg-blue-50",
+    emerald: "border-emerald-100 bg-emerald-50",
+    amber:   "border-amber-100 bg-amber-50",
+    violet:  "border-violet-100 bg-violet-50",
+    rose:    "border-rose-100 bg-rose-50",
+    slate:   "border-slate-200 bg-slate-50",
+    orange:  "border-orange-100 bg-orange-50",
+    teal:    "border-teal-100 bg-teal-50",
+  }
+  const lightTxt: Record<StatColor, string> = {
+    blue:    "text-blue-600",
+    emerald: "text-emerald-600",
+    amber:   "text-amber-600",
+    violet:  "text-violet-600",
+    rose:    "text-rose-600",
+    slate:   "text-slate-500",
+    orange:  "text-orange-600",
+    teal:    "text-teal-600",
+  }
+  const darkTxt: Record<StatColor, string> = {
+    blue:    "text-blue-800",
+    emerald: "text-emerald-800",
+    amber:   "text-amber-800",
+    violet:  "text-violet-800",
+    rose:    "text-rose-800",
+    slate:   "text-slate-700",
+    orange:  "text-orange-800",
+    teal:    "text-teal-800",
+  }
   return (
     <div className={`rounded-xl border p-4 ${map[color]}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-wide ${txt[color]}`}>{label}</p>
-      <p className={`mt-1 text-2xl font-black ${txt[color].replace("600", "800")}`}>{value}</p>
-      {sub && <p className={`mt-0.5 text-[11px] ${txt[color]}`}>{sub}</p>}
+      <p className={`text-[11px] font-semibold uppercase tracking-wide ${lightTxt[color]}`}>{label}</p>
+      <p className={`mt-1 text-xl font-black ${darkTxt[color]}`}>{value}</p>
+      {sub && <p className={`mt-0.5 text-[11px] ${lightTxt[color]}`}>{sub}</p>}
     </div>
   )
 }
@@ -239,7 +276,7 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<vo
 export function EstimateBreakdownTable({
   items, onViewDetails, onCreateOrder, onItemsImported, jobId,
   hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport,
-  onDeleteItem, onEditItem, jobYear,
+  onDeleteItem, onEditItem, jobYear, jobType,
 }: EstimateBreakdownTableProps) {
   const [search, setSearch]               = useState("")
   const [expandedGroups, setExpanded]     = useState<Set<string>>(new Set())
@@ -392,10 +429,22 @@ export function EstimateBreakdownTable({
     return acc
   }, {} as Record<string, EstimateItem[]>)
 
-  const totals = safeItems.reduce(
-    (acc, i) => ({ bc: acc.bc + i.Builder_Cost, cp: acc.cp + i.Client_Price, profit: acc.profit + i.Profit }),
-    { bc: 0, cp: 0, profit: 0 }
-  )
+  const isPTL = String(jobType ?? "").toUpperCase().startsWith("PTL")
+
+  const subItems     = safeItems.filter((i) => i.Cost_Type === "Subcontractor")
+  const subInOrders  = subItems.filter((i) => !!i.ID_Order)
+  const subNoOrders  = subItems.filter((i) => !i.ID_Order)
+
+  const sumBC = (arr: EstimateItem[]) => arr.reduce((s, i) => s + i.Builder_Cost, 0)
+
+  const totSubInOrders = sumBC(subInOrders)
+  const totSubNoOrders = sumBC(subNoOrders)
+  const totSub         = sumBC(subItems)
+  const totRent        = sumBC(safeItems.filter((i) => i.Cost_Type === "Rent"))
+  const totMaterial    = sumBC(safeItems.filter((i) => i.Cost_Type === "Material"))
+  const totPermit      = sumBC(safeItems.filter((i) => i.Cost_Type === "Permit"))
+  const totBDF         = sumBC(safeItems.filter((i) => i.Cost_Type === "BDF"))
+  const totPTLGCF      = sumBC(safeItems.filter((i) => i.Cost_Type === "PTLGCF"))
 
   const canCreateOrder = !hasUnsaved
   const bdfCount       = safeItems.filter((i) => i.Cost_Type === "BDF").length
@@ -483,15 +532,36 @@ export function EstimateBreakdownTable({
       </div>
 
       {/* ── Stats ────────────────────────────────────────────────────────── */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatCard label="Builder Cost" value={`$${totals.bc.toFixed(2)}`} color="blue" sub={`${safeItems.length} items`} />
-        <StatCard
-          label="Profit"
-          value={`${totals.profit >= 0 ? "+" : ""}$${totals.profit.toFixed(2)}`}
-          color="emerald"
-          sub={totals.bc > 0 ? `${((totals.profit / totals.bc) * 100).toFixed(1)}% margin` : undefined}
-        />
-        <StatCard label="Client Price" value={`$${totals.cp.toFixed(2)}`} color="amber" />
+      <div className="space-y-3">
+        {/* Subcontractor breakdown */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard
+            label="Total Estimated in Orders"
+            value={`$${fmtCurrency(totSubInOrders)}`}
+            color="emerald"
+            sub={`${subInOrders.length} item${subInOrders.length !== 1 ? "s" : ""} linked to orders`}
+          />
+          <StatCard
+            label="Total Estimated with no Orders"
+            value={`$${fmtCurrency(totSubNoOrders)}`}
+            color="amber"
+            sub={`${subNoOrders.length} item${subNoOrders.length !== 1 ? "s" : ""} not in orders`}
+          />
+          <StatCard
+            label="Total Estimated"
+            value={`$${fmtCurrency(totSub)}`}
+            color="blue"
+            sub={`${subItems.length} subcontractor item${subItems.length !== 1 ? "s" : ""}`}
+          />
+        </div>
+        {/* Type breakdown */}
+        <div className={`grid gap-3 sm:grid-cols-2 ${isPTL ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
+          <StatCard label="Total Estimated Rent"           value={`$${fmtCurrency(totRent)}`}     color="teal"   />
+          <StatCard label="Total Estimated Material"       value={`$${fmtCurrency(totMaterial)}`} color="violet" />
+          <StatCard label="Total Estimated City Permits"   value={`$${fmtCurrency(totPermit)}`}   color="orange" />
+          <StatCard label="Total Building Dept. Fees"      value={`$${fmtCurrency(totBDF)}`}      color="rose"   />
+          {isPTL && <StatCard label="Total PTL G.C. Fees"  value={`$${fmtCurrency(totPTLGCF)}`}  color="slate"  />}
+        </div>
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
@@ -554,8 +624,8 @@ export function EstimateBreakdownTable({
                             {groupItems.length}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-right text-xs font-bold text-slate-700">${gbc.toFixed(2)}</td>
-                        <td className="px-4 py-2.5 text-right text-xs font-bold text-slate-700">${gcp.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-right text-xs font-bold text-slate-700">${fmtCurrency(gbc)}</td>
+                        <td className="px-4 py-2.5 text-right text-xs font-bold text-slate-700">${fmtCurrency(gcp)}</td>
                         <td />
                       </tr>
 
@@ -585,7 +655,7 @@ export function EstimateBreakdownTable({
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-500">{item.Cost_Code}</td>
                           <td className="px-4 py-3 text-right text-sm text-slate-600">{item.Quantity.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">${item.Unit_Cost.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">${fmtCurrency(item.Unit_Cost)}</td>
                           <td className="px-4 py-3">
                             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                               PODIO_SYNC_TYPES.has(item.Cost_Type ?? "")
@@ -595,8 +665,8 @@ export function EstimateBreakdownTable({
                               {item.Cost_Type || "—"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${item.Builder_Cost.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${item.Client_Price.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${fmtCurrency(item.Builder_Cost)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${fmtCurrency(item.Client_Price)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1">
                               <button

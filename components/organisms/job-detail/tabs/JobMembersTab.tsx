@@ -9,7 +9,7 @@ type Props = {
   role: UserRole
   job: any
   onOpenLinkMember?: () => void
-  onRequestUnlinkMember?: (payload: { memberId: string; name?: string }) => void
+  onRequestUnlinkMember?: (payload: { memberId: string; rol?: string; name?: string }) => void
 }
 
 // ── Avatar color palette (earthy/construction tones) ──────────────────────
@@ -72,11 +72,13 @@ function ContactRow({
 // ── Member card ───────────────────────────────────────────────────────────
 function MemberCard({
   member,
+  projectRole,
   index,
   role,
   onUnlink,
 }: {
   member: any
+  projectRole: string | null
   index: number
   role: UserRole
   onUnlink: () => void
@@ -84,7 +86,6 @@ function MemberCard({
   const name        = member.Member_Name || member.Acc_Rep || "Unknown"
   const memberId    = member.ID_Member || `member-${index}`
   const companyRole = member.Company_Role || null
-  const projectRole = member.rol || member.Rol || null
   const email       = member.Email_Address || member.Email || ""
   const phone       = member.Phone_Number || member.Phone || ""
   const address     = member.Address || ""
@@ -184,9 +185,24 @@ function EmptyState({ onAdd, canAdd }: { onAdd?: () => void; canAdd: boolean }) 
   )
 }
 
+// ── Expand members with multiple roles into one entry per role ────────────
+type MemberRow = { member: any; rol: string | null }
+
+function expandMembers(members: any[]): MemberRow[] {
+  return members.flatMap((member) => {
+    const roles = Array.isArray(member.rol)
+      ? member.rol
+      : member.rol
+        ? [member.rol]
+        : [null]
+    return roles.map((rol: string | null) => ({ member, rol }))
+  })
+}
+
 // ── Main component ────────────────────────────────────────────────────────
 export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMember }: Props) {
   const members = Array.isArray(job?.members) ? job.members : []
+  const rows = expandMembers(members)
   const canManage = role === "GQM_MEMBER"
 
   return (
@@ -200,14 +216,14 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
           <div>
             <h3 className="text-base font-semibold text-slate-900">Team Members</h3>
             <p className="text-xs text-slate-500">
-              {members.length === 0
+              {rows.length === 0
                 ? "No members assigned"
-                : `${members.length} member${members.length !== 1 ? "s" : ""} assigned`}
+                : `${rows.length} role${rows.length !== 1 ? "s" : ""} assigned`}
             </p>
           </div>
         </div>
 
-        {canManage && members.length > 0 && (
+        {canManage && rows.length > 0 && (
           <Button
             onClick={onOpenLinkMember}
             size="sm"
@@ -220,20 +236,21 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
       </div>
 
       {/* Grid or empty */}
-      {members.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState onAdd={onOpenLinkMember} canAdd={canManage} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {members.map((member: any, index: number) => {
+          {rows.map(({ member, rol }, index) => {
             const memberId = member.ID_Member || `member-${index}`
             const name     = member.Member_Name || member.Acc_Rep || "Unknown"
             return (
               <MemberCard
-                key={memberId}
+                key={`${memberId}-${rol ?? "no-role"}`}
                 member={member}
+                projectRole={rol}
                 index={index}
                 role={role}
-                onUnlink={() => onRequestUnlinkMember?.({ memberId, name })}
+                onUnlink={() => onRequestUnlinkMember?.({ memberId, rol: rol ?? undefined, name })}
               />
             )
           })}

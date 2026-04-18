@@ -91,14 +91,14 @@ export interface ClientDetails {
   Client_Community: string
   Parent_Mgmt_Company: string
   Parent_Company: string
-  Address: string
+  Address: string | string[]
   Website: string
   Invoice_Collection: string
   Compliance_Partner: "Yes" | "No"
   Risk_Value: RiskValue
   Prop_Manager: string
-  Email_Address: string
-  Phone_Number: string
+  Email_Address: string | string[]
+  Phone_Number: string | string[]
   Client_Status: ClientStatus
   Services_interested_in: ServicesInterestedIn
   jobs?: any[]
@@ -110,9 +110,9 @@ export interface Client {
   id: string
   name: string
   companyName: string
-  email: string
-  phone: string
-  address: string
+  email: string | string[]
+  phone: string | string[]
+  address: string | string[]
   avatar: string
   status: string
   clientCommunity?: string
@@ -296,6 +296,7 @@ export interface Attachment {
   Link: string
   Document_type: string
   ID_Jobs: string
+  access_level?: "members" | "technicians" | null
 }
 
 export interface Document {
@@ -364,19 +365,21 @@ export type TaskStatus = "Not started" | "Work-in-progress" | "Completed"
 export interface Task {
   ID_Tasks: string
   Name: string
-  Task_description: string
+  Task_description: string | null
   Task_status: TaskStatus
-  Priority: "Low" | "Medium" | "High"
-  Designation_date: string
-  Delivery_date: string
+  Priority: "Low" | "Medium" | "High" | null
+  Designation_date: string | null
+  Delivery_date: string | null
   ID_Jobs: string
-  ID_Technician: string
+  ID_Technician: string | null
+  ID_Member: string | null
+  ID_Subcontractor: string | null
   job_podio_id: string | null
   podio_item_id: string | null
   ID_Multiplier: string | null
 }
 
-export type CostType = "Subcontractor" | "Material" | "Labor" | "None" | ""
+export type CostType = "Subcontractor" | "Material" | "Labor" | "Rent" | "Permit" | "BDF" | "PTLGCF" | "None" | ""
 export type MarkupType = "C/P" | "%" | ""
 
 export interface EstimateItem {

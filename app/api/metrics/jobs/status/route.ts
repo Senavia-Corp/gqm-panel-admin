@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const qs = new URLSearchParams({ type })
     if (year) qs.set("year", year)
 
-    const target = `${backend.replace(/\/$/, "")}/metrics/jobs/status?${qs.toString()}`
+    const target = `${backend.replace(/\/$/, "")}/job_metrics/status?${qs.toString()}`
     const res = await fetch(target, {
       method: "GET",
       headers: {
@@ -24,6 +24,12 @@ export async function GET(req: Request) {
       },
     })
 
+    const ct = res.headers.get("content-type") ?? ""
+    if (!ct.includes("application/json")) {
+      const text = await res.text()
+      console.error(`[jobs/status] non-JSON response (${res.status}):`, text.slice(0, 300))
+      return NextResponse.json({ detail: `Backend error ${res.status}` }, { status: res.status || 502 })
+    }
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })
   } catch (err) {

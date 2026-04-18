@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     qs.set("include_status_breakdown", includeStatusBreakdown)
     if (year) qs.set("year", year)
 
-    const target = `${backend.replace(/\/$/, "")}/metrics/members/acc-rep-selling?${qs.toString()}`
+    const target = `${backend.replace(/\/$/, "")}/member_metrics/acc-rep-selling?${qs.toString()}`
 
     const res = await fetch(target, {
       method: "GET",
@@ -34,6 +34,12 @@ export async function GET(req: Request) {
       cache: "no-store",
     })
 
+    const ct = res.headers.get("content-type") ?? ""
+    if (!ct.includes("application/json")) {
+      const text = await res.text()
+      console.error(`[members/acc-rep-selling] non-JSON response (${res.status}):`, text.slice(0, 300))
+      return NextResponse.json({ detail: `Backend error ${res.status}` }, { status: res.status || 502 })
+    }
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })
   } catch (err) {

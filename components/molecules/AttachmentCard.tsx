@@ -19,6 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import type { Attachment } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface AttachmentCardProps {
   attachment: Attachment
@@ -29,6 +30,9 @@ interface AttachmentCardProps {
   jobYear?:  number
   /** App type (QID / PTL / PAR) — required by Python when sync_podio=true */
   appType?:  string
+  /** Permission gates — hide edit/delete buttons when false */
+  canEdit?:   boolean
+  canDelete?: boolean
 }
 
 // ─── File type helpers ────────────────────────────────────────────────────────
@@ -117,6 +121,8 @@ export function AttachmentCard({
   onUpdate,
   jobYear,
   appType,
+  canEdit   = true,
+  canDelete = true,
 }: AttachmentCardProps) {
   const [showEditDialog,   setShowEditDialog]   = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -155,7 +161,7 @@ export function AttachmentCard({
     setIsUpdating(true)
     try {
       const qs  = buildSyncQs(editSyncPodio, appType, jobYear)
-      const res = await fetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
+      const res = await apiFetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ Attachment_descr: editedDescription }),
@@ -183,7 +189,7 @@ export function AttachmentCard({
     try {
       // Backend now handles Cloudinary deletion internally — no publicId needed.
       const qs  = buildSyncQs(deleteSyncPodio, appType, jobYear)
-      const res = await fetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
+      const res = await apiFetch(`/api/attachments/${attachment.ID_Attachment}?${qs}`, {
         method: "DELETE",
       })
       if (!res.ok) {
@@ -271,24 +277,28 @@ export function AttachmentCard({
               <Download className="h-3.5 w-3.5" />
               Download
             </button>
-            <button
-              onClick={handleOpenEdit}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-              title="Edit description"
-            >
-              <Edit className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={handleOpenDelete}
-              disabled={isDeleting}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-              title="Delete file"
-            >
-              {isDeleting
-                ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-red-400" />
-                : <Trash2 className="h-3.5 w-3.5" />
-              }
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleOpenEdit}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                title="Edit description"
+              >
+                <Edit className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleOpenDelete}
+                disabled={isDeleting}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                title="Delete file"
+              >
+                {isDeleting
+                  ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-red-400" />
+                  : <Trash2 className="h-3.5 w-3.5" />
+                }
+              </button>
+            )}
           </div>
         </div>
       </div>

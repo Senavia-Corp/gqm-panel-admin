@@ -1044,6 +1044,25 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     if (activeTab === "tasks") {
+      // Build id→name map for members, subcontractors and technicians in this job
+      const taskNamesMap: Record<string, string> = {}
+      const cleanOrg = (s: string | null | undefined) => {
+        if (!s) return ""
+        const m = /^\{"(.+)"\}$/.exec(s.trim())
+        return m ? m[1] : s
+      }
+      ;(job.members ?? []).forEach((mem: any) => {
+        if (mem.ID_Member) taskNamesMap[mem.ID_Member] = mem.Member_Name || mem.Acc_Rep || mem.ID_Member
+      })
+      ;(job.subcontractors ?? []).forEach((sub: any) => {
+        if (sub.ID_Subcontractor) {
+          taskNamesMap[sub.ID_Subcontractor] = cleanOrg(sub.Organization) || cleanOrg(sub.Name) || sub.ID_Subcontractor
+          ;(sub.technicians ?? []).forEach((tech: any) => {
+            if (tech.ID_Technician) taskNamesMap[tech.ID_Technician] = tech.Name || tech.ID_Technician
+          })
+        }
+      })
+
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Tasks
@@ -1052,6 +1071,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onCreateTask={() => setCreateTaskOpen(true)}
             onTaskOpen={handleTaskOpen}
             onTaskStatusChange={handleTaskStatusChange}
+            namesMap={taskNamesMap}
           />
         </JobTabLayout>
       )
@@ -1086,6 +1106,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onDeleteItem={handleDeleteEstimateItem}
             onEditItem={handleEditEstimateItem}
             jobYear={resolveJobYearForPodioSync(job)}
+            jobType={String((job as any)?.Job_type ?? "")}
           />
         </JobTabLayout>
       )
@@ -1297,6 +1318,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       {selectedTask && (
         <TaskDetailsDialog
+          key={selectedTask.ID_Tasks}
           task={selectedTask}
           open={taskDetailsOpen}
           onOpenChange={(open) => {
@@ -1305,6 +1327,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           }}
           onSave={handleTaskSave}
           onDelete={handleTaskDelete}
+          jobData={job as any}
           technicians={
             (job as any)?.subcontractors?.flatMap(
               (sub: any) =>
