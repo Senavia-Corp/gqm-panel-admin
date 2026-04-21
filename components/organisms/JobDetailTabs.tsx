@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils"
 import {
   FileText,
   Users,
-  MessageSquare,
   DollarSign,
   UserCircle2,
   ClipboardList,
   Calculator,
   Briefcase,
   BadgeDollarSign,
+  Activity,
 } from "lucide-react"
 
 type TabDef = { id: string; label: string }
@@ -27,12 +27,13 @@ const tabIconById: Record<string, React.ComponentType<{ className?: string }>> =
   details: FileText,
   subcontractors: Users,
   documents: FileText,
-  chat: MessageSquare,
+  chat: ClipboardList,
   pricing: DollarSign,
   members: UserCircle2,
   tasks: ClipboardList,
   estimate: Calculator,
   commissions: BadgeDollarSign,
+  timeline: Activity,
 
   // fallback / futuros
   default: Briefcase,

@@ -7,7 +7,7 @@ import {
   useCallback,
   type KeyboardEvent,
 } from "react"
-import { Send, RefreshCw, AlertCircle, MessageSquare } from "lucide-react"
+import { Send, RefreshCw, AlertCircle, BookOpen, NotebookText } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useJobChat, type ChatMessageData } from "@/app/jobs/[id]/useJobChat"
 import { useToast } from "@/hooks/use-toast"
@@ -96,11 +96,11 @@ function MessageBubble({
         {/* Bubble */}
         <div
           className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${isSelf
-            ? "rounded-br-sm bg-emerald-600 text-white"
+            ? "rounded-br-sm bg-indigo-600 text-white"
             : "rounded-bl-sm bg-white text-slate-800 border border-slate-100"
             }`}
         >
-          {msg.content}
+          <span className="whitespace-pre-wrap">{msg.content}</span>
         </div>
 
         {/* Time */}
@@ -196,11 +196,11 @@ export function JobChatTab({ role, jobId }: Props) {
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
-          <MessageSquare className="h-4 w-4 text-emerald-600" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100">
+          <BookOpen className="h-4 w-4 text-indigo-600" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-800">Job Chat</p>
+          <p className="text-sm font-semibold text-slate-800">Logbook and Documentation</p>
           <p className="text-[11px] text-slate-400">
             {isLoading ? "Loading…" : `${messages.length} message${messages.length !== 1 ? "s" : ""}`}
           </p>
@@ -222,11 +222,11 @@ export function JobChatTab({ role, jobId }: Props) {
       <div ref={messagesContainerRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {!isLoading && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-              <MessageSquare className="h-7 w-7 text-slate-400" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
+              <NotebookText className="h-7 w-7 text-indigo-300" />
             </div>
-            <p className="text-sm font-medium text-slate-500">No messages yet</p>
-            <p className="text-xs text-slate-400">Be the first to say something about this job.</p>
+            <p className="text-sm font-medium text-slate-500">No entries yet</p>
+            <p className="text-xs text-slate-400">Start documenting events, notes, and updates for this job.</p>
           </div>
         )}
 
@@ -249,7 +249,7 @@ export function JobChatTab({ role, jobId }: Props) {
         <div className="flex items-end gap-3">
           <textarea
             rows={1}
-            placeholder="Write a message… (Enter to send, Shift+Enter for new line)"
+            placeholder="Add a log entry… (Enter to save, Shift+Enter for new line)"
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
@@ -259,13 +259,13 @@ export function JobChatTab({ role, jobId }: Props) {
             }}
             onKeyDown={handleKeyDown}
             disabled={isSending}
-            className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:opacity-50 transition-all"
+            className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 transition-all"
             style={{ minHeight: "42px" }}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isSending}
-            className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition-all hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Send message (Enter)"
           >
             {isSending
@@ -275,7 +275,7 @@ export function JobChatTab({ role, jobId }: Props) {
           </button>
         </div>
         <p className="mt-1.5 text-[10px] text-slate-400">
-          Shift+Enter for a new line · messages update every 10 s
+          Shift+Enter for a new line · entries update every 10 s
         </p>
       </div>
     </div>

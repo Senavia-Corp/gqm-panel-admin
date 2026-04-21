@@ -16,7 +16,7 @@ import type { EstimateItem } from "@/lib/types"
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
 const FIELD_ERR  = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
 
-const COST_TYPES   = ["Subcontractor", "Rent", "Material", "Permit", "BDF", "PTLGCF", "Labor", "Equipment", "Other"] as const
+const COST_TYPES   = ["Subcontractor", "Rent", "Permit", "BDF", "PTLGCF", "Labor", "Equipment", "Other"] as const
 const MARKUP_TYPES = ["%", "$"] as const
 const BDF_MAX      = 3   // Podio hard limit
 
