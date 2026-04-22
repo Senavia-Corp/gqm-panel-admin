@@ -223,6 +223,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const jobDetail = useJobDetail(jobId)
   const job = jobDetail.job
+  const patch = jobDetail.patch
+  const isSaving = jobDetail.isSaving
 
   // ---------------------------
   // helpers basados en jobDetail
@@ -1094,6 +1096,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onFieldChange={handleFieldChange}
             isFieldChanged={isFieldChanged}
             readOnly={!hasPermission("job:update")}
+            patch={patch}
+            isSaving={isSaving}
           />
         </JobTabLayout>
       )
