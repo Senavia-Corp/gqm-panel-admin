@@ -39,9 +39,11 @@ type PurchaseOrderItem = {
   Quote_shop?: string | null
   Quote_link?: string | null
   Quote_value?: number | null
+  Quote_notes?: string | null
   Purchase_shop?: string | null
   Purchase_link?: string | null
   Purchase_value?: number | null
+  Purchase_notes?: string | null
 }
 
 type PurchaseOrder = {
@@ -115,12 +117,14 @@ function avatarColor(id?: string | null) {
   return AVATAR_COLORS[id.charCodeAt(id.length - 1) % AVATAR_COLORS.length]
 }
 
-const STATUS_OPTIONS = ["In Progress", "Completed", "Pending", "Cancelled"]
+const STATUS_OPTIONS = ["Pending", "In Review", "Approved", "In Progress", "Completed", "Cancelled"]
 const STATUS_COLORS: Record<string, string> = {
   "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
   "Completed": "bg-emerald-100 text-emerald-700 border-emerald-200",
   "Pending": "bg-amber-100 text-amber-700 border-amber-200",
   "Cancelled": "bg-red-100 text-red-600 border-red-200",
+  "In Review": "bg-violet-100 text-violet-700 border-violet-200",
+  "Approved": "bg-teal-100 text-teal-700 border-teal-200",
 }
 
 const JOB_TYPE_COLORS: Record<string, string> = {
@@ -479,9 +483,11 @@ function ItemRow({
       if (draft.Quote_shop !== item.Quote_shop) patch.Quote_shop = draft.Quote_shop
       if (draft.Quote_link !== item.Quote_link) patch.Quote_link = draft.Quote_link
       if (draft.Quote_value !== item.Quote_value) patch.Quote_value = asNumber(draft.Quote_value)
+      if (draft.Quote_notes !== item.Quote_notes) patch.Quote_notes = draft.Quote_notes
       if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
       if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
       if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
+      if (draft.Purchase_notes !== item.Purchase_notes) patch.Purchase_notes = draft.Purchase_notes
       await onUpdate(item.ID_PurchaseOrderItem, patch)
       setEditing(false)
     } catch (e: any) {
@@ -530,6 +536,16 @@ function ItemRow({
             <Input value={draft.Quote_link ?? ""} onChange={e => setDraft(p => ({ ...p, Quote_link: e.target.value }))}
               className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
           </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Quote Notes</label>
+            <textarea
+              value={draft.Quote_notes ?? ""}
+              onChange={e => setDraft(p => ({ ...p, Quote_notes: e.target.value }))}
+              placeholder="Document the quoting process…"
+              rows={2}
+              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+            />
+          </div>
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Shop</label>
             <Input value={draft.Purchase_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_shop: e.target.value }))}
@@ -547,6 +563,16 @@ function ItemRow({
             <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Link</label>
             <Input value={draft.Purchase_link ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_link: e.target.value }))}
               className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Notes</label>
+            <textarea
+              value={draft.Purchase_notes ?? ""}
+              onChange={e => setDraft(p => ({ ...p, Purchase_notes: e.target.value }))}
+              placeholder="Notes on the actual purchase made…"
+              rows={2}
+              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+            />
           </div>
         </div>
         {err && <p className="text-[11px] text-red-500">{err}</p>}
@@ -583,6 +609,12 @@ function ItemRow({
               View link <ExternalLink className="h-2.5 w-2.5" />
             </a>
           )}
+          {item.Quote_notes && (
+            <div className="mt-2 rounded-md bg-amber-50 border border-amber-100 px-2.5 py-1.5">
+              <p className="text-[10px] font-semibold uppercase text-amber-600 mb-0.5">Quote notes</p>
+              <p className="text-[11px] text-slate-700 whitespace-pre-wrap">{item.Quote_notes}</p>
+            </div>
+          )}
         </div>
         {/* Purchase */}
         <div>
@@ -596,6 +628,12 @@ function ItemRow({
               className="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:underline mt-0.5">
               View link <ExternalLink className="h-2.5 w-2.5" />
             </a>
+          )}
+          {item.Purchase_notes && (
+            <div className="mt-2 rounded-md bg-blue-50 border border-blue-100 px-2.5 py-1.5">
+              <p className="text-[10px] font-semibold uppercase text-blue-600 mb-0.5">Purchase notes</p>
+              <p className="text-[11px] text-slate-700 whitespace-pre-wrap">{item.Purchase_notes}</p>
+            </div>
           )}
         </div>
       </div>
@@ -637,8 +675,9 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
   const [shop, setShop] = useState("")
   const [link, setLink] = useState("")
   const [value, setValue] = useState("")
+  const [notes, setNotes] = useState("")
 
-  const valid = name.trim().length > 0 && shop.trim().length > 0 && asNumber(value) > 0
+  const valid = name.trim().length > 0 && shop.trim().length > 0 && asNumber(value) > 0 && notes.trim().length > 0
 
   const handleAdd = async () => {
     setLoading(true); setErr(null)
@@ -648,6 +687,7 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
         Quote_shop: shop.trim(),
         Quote_link: link.trim() ? (link.trim().startsWith("http") ? link.trim() : `https://${link.trim()}`) : "",
         Quote_value: asNumber(value),
+        Quote_notes: notes.trim(),
         Purchase_shop: "",
         Purchase_link: "",
         Purchase_value: null,
@@ -655,7 +695,7 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
       }
       const data = await apiCall<PurchaseOrderItem>(API.purchaseOrderItems, "POST", payload)
       onAdded(data)
-      setName(""); setShop(""); setLink(""); setValue("")
+      setName(""); setShop(""); setLink(""); setValue(""); setNotes("")
       setOpen(false)
     } catch (e: any) {
       setErr(e?.message ?? "Error adding item")
@@ -691,6 +731,19 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
         <div className="col-span-2">
           <Input value={link} onChange={e => setLink(e.target.value)} placeholder="Quote link"
             className="text-sm border-slate-200 focus:border-emerald-400" />
+        </div>
+        <div className="col-span-2">
+          <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 mb-1.5">
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-blue-500 mt-0.5" />
+            <p className="text-[11px] text-blue-700"><strong>Required:</strong> document the quoting process for this item.</p>
+          </div>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Quote notes: comparisons, selection reason, special conditions… *"
+            rows={2}
+            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+          />
         </div>
       </div>
       {err && <p className="text-[11px] text-red-500">{err}</p>}
@@ -750,7 +803,7 @@ function OrderBlock({
     if (!order.ID_PurchaseOrder) return
     setDeletingOrder(true)
     try { await onDeleteOrder(order.ID_PurchaseOrder) }
-    catch (e: any) { setErr(e?.message ?? "Error deleting orden"); setDeletingOrder(false); setConfirmDeleteOrder(false) }
+    catch (e: any) { setErr(e?.message ?? "Error deleting order"); setDeletingOrder(false); setConfirmDeleteOrder(false) }
   }
 
   return (
@@ -787,7 +840,7 @@ function OrderBlock({
             {totalPurchased > 0 && <span className="text-[10px] text-slate-600 font-semibold">Purchased: {money(totalPurchased)}</span>}
             {order.Est_delivery_date && <span className="text-[10px] text-slate-400">Delivery: {fmtDate(order.Est_delivery_date)}</span>}
             <span className={`text-[10px] font-semibold ${order.Order_confirmation ? "text-emerald-600" : "text-amber-600"}`}>
-              {order.Order_confirmation ? "✓ Confirmed" : "Pending confirmación"}
+              {order.Order_confirmation ? "✓ Confirmed" : "Pending confirmation"}
             </span>
           </div>
         </div>
@@ -868,6 +921,11 @@ export default function PurchaseDetailsPage() {
   const [showMemberPicker, setShowMemberPicker] = useState(false)
   const [showJobPicker, setShowJobPicker] = useState(false)
 
+  // Status inline edit
+  const [editingStatus, setEditingStatus] = useState(false)
+  const [statusDraft, setStatusDraft] = useState("")
+  const [statusSaving, setStatusSaving] = useState(false)
+
   // New order form
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [newOrderTitle, setNewOrderTitle] = useState("")
@@ -913,14 +971,22 @@ export default function PurchaseDetailsPage() {
       const updated = await apiCall<Purchase>(`${API.purchases}/${id}`, "PATCH", patch)
       setPurchase(prev => {
         if (!prev) return prev
-        // Backend PATCH may not return relational fields — preserve them from prev
-        return {
+        // Merge order: prev → server response → explicit patch (patch always wins)
+        // This ensures the UI reflects what was sent even if the PATCH response
+        // omits or returns null for certain fields.
+        const merged: Purchase = {
           ...prev,
           ...updated,
           purchase_orders: updated.purchase_orders ?? prev.purchase_orders,
           ID_Jobs: "ID_Jobs" in patch ? (patch.ID_Jobs ?? updated.ID_Jobs ?? prev.ID_Jobs) : prev.ID_Jobs,
           ID_Member: "ID_Member" in patch ? (patch.ID_Member ?? updated.ID_Member ?? prev.ID_Member) : prev.ID_Member,
         }
+        for (const [k, v] of Object.entries(patch) as [keyof Purchase, any][]) {
+          if (v !== undefined && k !== "ID_Jobs" && k !== "ID_Member") {
+            (merged as any)[k] = v
+          }
+        }
+        return merged
       })
     } catch (e: any) {
       setSaveErr(e?.message ?? "Error saving")
@@ -1058,7 +1124,7 @@ export default function PurchaseDetailsPage() {
     <Shell user={user}>
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-500">Invalid purchase ID.</p>
-        <Button onClick={() => router.push("/purchases")} variant="outline" className="mt-4 text-xs">← Volver</Button>
+        <Button onClick={() => router.push("/purchases")} variant="outline" className="mt-4 text-xs">← Back</Button>
       </div>
     </Shell>
   )
@@ -1144,7 +1210,7 @@ export default function PurchaseDetailsPage() {
               <div className="border-b border-amber-100 bg-amber-50 px-6 py-2.5 flex items-center gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-amber-600" />
                 <p className="text-xs text-amber-800">
-                  El <strong>Total_spending</strong> guardado ({money(computed.totalSpendingDb)}) does not match the sum of item Purchase_value ({money(computed.totalPurchased)}).
+                  The <strong>Total_spending</strong> stored ({money(computed.totalSpendingDb)}) does not match the sum of item Purchase_value ({money(computed.totalPurchased)}).
                 </p>
               </div>
             )}
@@ -1227,15 +1293,52 @@ export default function PurchaseDetailsPage() {
                         onSave={v => patchPurchase({ Description: v })}
                       />
                       {/* Status */}
-                      <div>
-                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</p>
-                        <select
-                          value={purchase.Status ?? ""}
-                          onChange={e => patchPurchase({ Status: e.target.value })}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
-                        >
-                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                      <div className="group">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</p>
+                        {editingStatus ? (
+                          <div className="space-y-1.5">
+                            <select
+                              value={statusDraft}
+                              onChange={e => setStatusDraft(e.target.value)}
+                              autoFocus
+                              className="w-full rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
+                            >
+                              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <div className="flex gap-1.5">
+                              <button
+                                disabled={statusSaving}
+                                onClick={async () => {
+                                  setStatusSaving(true)
+                                  try {
+                                    await patchPurchase({ Status: statusDraft })
+                                    setEditingStatus(false)
+                                  } catch { /* error shown by patchPurchase */ }
+                                  finally { setStatusSaving(false) }
+                                }}
+                                className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                                {statusSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                              </button>
+                              <button
+                                disabled={statusSaving}
+                                onClick={() => { setEditingStatus(false) }}
+                                className="rounded-md border border-slate-200 px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-50">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold ${STATUS_COLORS[purchase.Status ?? ""] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                              {purchase.Status ?? "—"}
+                            </span>
+                            <button
+                              onClick={() => { setStatusDraft(purchase.Status ?? STATUS_OPTIONS[0]); setEditingStatus(true) }}
+                              className="rounded p-1 text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-600 transition-all">
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <InlineField label="Pick Up Person" value={purchase.PickUp_person ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ PickUp_person: v })} />
@@ -1245,8 +1348,6 @@ export default function PurchaseDetailsPage() {
                         onSave={v => patchPurchase({ Return_request: v })} />
                       <InlineField label="Return Status" value={purchase.Return_status ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ Return_status: v })} />
-                      <InlineField label="Notes" value={purchase.Purchase_note ?? ""} placeholder="No notes…"
-                        multiline onSave={v => patchPurchase({ Purchase_note: v })} />
                     </div>
                   </div>
 
@@ -1276,7 +1377,7 @@ export default function PurchaseDetailsPage() {
                       ) : (
                         <button onClick={() => setShowMemberPicker(true)}
                           className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs text-slate-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors">
-                          <User className="h-3.5 w-3.5" /> Asignar member
+                          <User className="h-3.5 w-3.5" /> Assign member
                         </button>
                       )}
                     </div>

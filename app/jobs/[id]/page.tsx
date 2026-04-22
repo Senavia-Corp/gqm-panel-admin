@@ -21,7 +21,8 @@ import { CostDialog } from "@/components/organisms/CostDialog"
 import { AddMemberDialog } from "@/components/organisms/AddMemberDialog"
 import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
 import { TaskDetailsDialog } from "@/components/organisms/TaskDetailsDialog"
-import { CreateTaskDialog } from "@/components/organisms/CreateTaskDialog"
+import { CreateTaskDialog, type TaskPrefill } from "@/components/organisms/CreateTaskDialog"
+import { CompleteTaskOnStatusChangeDialog } from "@/components/organisms/CompleteTaskOnStatusChangeDialog"
 import { LinkSubcontractorDialog } from "@/components/organisms/LinkSubcontractorDialog"
 import { EditEstimateItemDialog } from "@/components/organisms/EditEstimateItemDialog"
 
@@ -44,6 +45,7 @@ import { JobSubcontractorsTab } from "@/components/organisms/job-detail/tabs/Job
 import { JobTechniciansTab } from "@/components/organisms/job-detail/tabs/JobTechniciansTab"
 import { JobPurchasesTab } from "@/components/organisms/job-detail/tabs/JobPurchasesTab"
 import { JobCommissionsTab } from "@/components/organisms/job-detail/tabs/JobCommissionsTab"
+import { JobTimelineTab } from "@/components/organisms/job-detail/tabs/JobTimelineTab"
 
 import { useParams } from "next/navigation"
 import { Switch } from "@/components/ui/switch"
@@ -145,6 +147,20 @@ const STATUS_BADGE: Record<string, string> = {
   "Completed PVI / POs": "bg-teal-50 text-teal-700 border-teal-200",
 }
 
+function getBusinessDateRange(businessDays: number): { minDate: string; maxDate: string } {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const minDate = today.toISOString().split("T")[0]
+  let count = 0
+  const maxDay = new Date(today)
+  while (count < businessDays) {
+    const d = maxDay.getDay()
+    if (d !== 0 && d !== 6) count++
+    if (count < businessDays) maxDay.setDate(maxDay.getDate() + 1)
+  }
+  return { minDate, maxDate: maxDay.toISOString().split("T")[0] }
+}
+
 type JobDetailPageProps = {
   params: { id: string }
 }
@@ -164,7 +180,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams?.get("tab")
     const validTabs = ["details", "subcontractors", "documents", "pricing",
-      "members", "chat", "tasks", "estimate", "purchases", "technicians", "commissions"]
+      "members", "chat", "tasks", "estimate", "purchases", "technicians", "commissions", "timeline"]
     return validTabs.includes(tab ?? "") ? (tab as string) : "details"
   })
 
@@ -187,6 +203,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false)
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
+  const autoTaskTriggered = React.useRef(false)
+  const [taskPrefill, setTaskPrefill] = useState<TaskPrefill | undefined>(undefined)
+  const [completeTaskDialogOpen, setCompleteTaskDialogOpen] = useState(false)
+  const pendingSaveRef = React.useRef(false)
 
   const [selectedEstimateItem, setSelectedEstimateItem] = useState<EstimateItem | null>(null)
   const [editingEstimateItemTarget, setEditingEstimateItemTarget] = useState<EstimateItem | null>(null)
@@ -203,6 +223,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const jobDetail = useJobDetail(jobId)
   const job = jobDetail.job
+  const patch = jobDetail.patch
+  const isSaving = jobDetail.isSaving
 
   // ---------------------------
   // helpers basados en jobDetail
@@ -294,6 +316,31 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, jobId])
+
+  // ---------------------------
+  // auto-open task dialog for QID jobs
+  // ---------------------------
+  useEffect(() => {
+    const shouldAutoCreate = searchParams?.get("autoCreateTask") === "true"
+    if (!shouldAutoCreate || autoTaskTriggered.current || !job || jobDetail.isLoading) return
+
+    autoTaskTriggered.current = true
+
+    const { minDate, maxDate } = getBusinessDateRange(5)
+
+    setTaskPrefill({
+      name: `Send Proposal for ${jobId}`,
+      priority: "High",
+      minDate,
+      maxDate,
+      businessDays: 5,
+    })
+    setCreateTaskOpen(true)
+
+    // Remove the param from the URL without triggering a navigation
+    router.replace(`/jobs/${jobId}`)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job, jobDetail.isLoading])
 
   // ---------------------------
   // data loaders
@@ -473,24 +520,125 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     await jobDetail.reload()
   }
 
-  const handleSaveChanges = async () => {
+  const executeSave = async () => {
     const anyDetail = jobDetail as any
-    try {
-      if (typeof anyDetail.save === "function") {
-        await anyDetail.save({ sync_podio: syncPodio })
-        toast({ title: "Saved", description: "Changes saved successfully." })
-        await jobDetail.reload()
-        return
-      }
-
+    if (typeof anyDetail.save === "function") {
+      await anyDetail.save({ sync_podio: syncPodio })
+      toast({ title: "Saved", description: "Changes saved successfully." })
+      await jobDetail.reload()
+    } else {
       toast({
         title: "Save not wired",
         description: "Your useJobDetail hook doesn't expose save(). Add it to persist changes.",
         variant: "destructive",
       })
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    try {
+      const pendingStatus = (job as any)?.status ?? (job as any)?.Job_status ?? ""
+      const jobType = (job as any)?.Job_type ?? (job as any)?.jobType ?? ""
+      const tasks: Task[] = (job as any)?.tasks ?? []
+      const hasOpenTasks = tasks.some(t => t.Task_status !== "Completed")
+
+      const isWaitingForApprovalTransition =
+        changedFields.has("status") &&
+        pendingStatus === "Waiting for Approval" &&
+        jobType === "QID" &&
+        hasOpenTasks
+
+      if (isWaitingForApprovalTransition) {
+        pendingSaveRef.current = true
+        setCompleteTaskDialogOpen(true)
+        return
+      }
+
+      const isScheduledTransition =
+        changedFields.has("status") &&
+        pendingStatus === "Scheduled / Work in Progress" &&
+        jobType === "QID"
+
+      if (isScheduledTransition) {
+        pendingSaveRef.current = true
+        setTaskPrefill({
+          name: `Schedule/Manage ${jobId}`,
+          priority: "Medium",
+        })
+        setCreateTaskOpen(true)
+        return
+      }
+
+      const isCompletedInvoiceTransition =
+        changedFields.has("status") &&
+        pendingStatus === "Completed P. INV / POs" &&
+        jobType === "QID"
+
+      if (isCompletedInvoiceTransition) {
+        pendingSaveRef.current = true
+        const { minDate, maxDate } = getBusinessDateRange(3)
+        setTaskPrefill({
+          name: `Upload Invoice for ${jobId}`,
+          priority: "High",
+          minDate,
+          maxDate,
+          businessDays: 3,
+        })
+        setCreateTaskOpen(true)
+        return
+      }
+
+      await executeSave()
     } catch (error) {
       console.error("[job] save error:", error)
       toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+    }
+  }
+
+  const handleCompleteTaskConfirm = async (taskId: string) => {
+    setCompleteTaskDialogOpen(false)
+    try {
+      await handleTaskStatusChange(taskId, "Completed")
+    } catch {
+      // handleTaskStatusChange already shows a toast on error
+    }
+    if (pendingSaveRef.current) {
+      pendingSaveRef.current = false
+      try {
+        await executeSave()
+      } catch (error) {
+        console.error("[job] save error after task complete:", error)
+        toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+      }
+    }
+  }
+
+  const handleCreateTaskOpenChange = async (v: boolean) => {
+    setCreateTaskOpen(v)
+    if (!v) {
+      setTaskPrefill(undefined)
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false
+        try {
+          await executeSave()
+        } catch (error) {
+          console.error("[job] save error after task dialog close:", error)
+          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+        }
+      }
+    }
+  }
+
+  const handleCompleteTaskSkip = async () => {
+    setCompleteTaskDialogOpen(false)
+    if (pendingSaveRef.current) {
+      pendingSaveRef.current = false
+      try {
+        await executeSave()
+      } catch (error) {
+        console.error("[job] save error after skip:", error)
+        toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+      }
     }
   }
 
@@ -838,6 +986,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       await jobDetail.reload()
 
       toast({ title: "Success", description: `Order "${orderName}" created successfully.` })
+
+      setTaskPrefill({
+        name: `Schedule a visit to the community for ${orderName}`,
+        priority: "Medium",
+      })
+      setCreateTaskOpen(true)
     } catch (error) {
       console.error("[order] create error:", error)
       toast({
@@ -879,7 +1033,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     if (canReadDocs) {
-      items.push({ id: "chat", label: "Chat" })
+      items.push({ id: "chat", label: "Logbook" })
       items.push({ id: "tasks", label: "Tasks" })
       items.push({ id: "estimate", label: "Estimate" })
     }
@@ -893,6 +1047,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (canReadDocs) {
       items.push({ id: "purchases", label: "Purchases" })
       items.push({ id: "commissions", label: "Commissions" })
+      items.push({ id: "timeline", label: "Timeline" })
     }
 
     return items
@@ -941,6 +1096,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onFieldChange={handleFieldChange}
             isFieldChanged={isFieldChanged}
             readOnly={!hasPermission("job:update")}
+            patch={patch}
+            isSaving={isSaving}
           />
         </JobTabLayout>
       )
@@ -1068,7 +1225,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           <Tasks
             role={user.role}
             tasks={job.tasks ?? []}
-            onCreateTask={() => setCreateTaskOpen(true)}
+            onCreateTask={() => { setTaskPrefill(undefined); setCreateTaskOpen(true) }}
             onTaskOpen={handleTaskOpen}
             onTaskStatusChange={handleTaskStatusChange}
             namesMap={taskNamesMap}
@@ -1124,6 +1281,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <JobCommissionsTab job={job} reload={jobDetail.reload} />
+        </JobTabLayout>
+      )
+    }
+
+    if (activeTab === "timeline") {
+      return (
+        <JobTabLayout sidebar={rightSidebar}>
+          <JobTimelineTab jobId={jobId} />
         </JobTabLayout>
       )
     }
@@ -1343,10 +1508,21 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       <CreateTaskDialog
         open={createTaskOpen}
-        onOpenChange={setCreateTaskOpen}
+        onOpenChange={handleCreateTaskOpenChange}
         jobId={jobId}
         jobData={job as any}
         onTaskCreated={handleTaskCreated}
+        prefill={taskPrefill}
+        isRecommended={!!taskPrefill}
+      />
+
+      <CompleteTaskOnStatusChangeDialog
+        open={completeTaskDialogOpen}
+        onOpenChange={setCompleteTaskDialogOpen}
+        tasks={((job as any)?.tasks ?? []) as Task[]}
+        jobId={jobId}
+        onConfirm={handleCompleteTaskConfirm}
+        onSkip={handleCompleteTaskSkip}
       />
 
       <LinkSubcontractorDialog

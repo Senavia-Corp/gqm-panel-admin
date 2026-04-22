@@ -64,6 +64,8 @@ function StatusBadge({ status }: { status?: string | null }) {
     "In Progress": "bg-blue-100 text-blue-700 border-blue-200",
     "Pending":     "bg-amber-100 text-amber-700 border-amber-200",
     "Cancelled":   "bg-red-100 text-red-600 border-red-200",
+    "In Review":   "bg-violet-100 text-violet-700 border-violet-200",
+    "Approved":    "bg-teal-100 text-teal-700 border-teal-200",
   }
   const cls = map[status] ?? "bg-slate-100 text-slate-600 border-slate-200"
   return (
@@ -178,7 +180,7 @@ function DeletePurchaseDialog({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const LIMIT = 20
-const STATUS_OPTIONS = ["All", "In Progress", "Completed", "Pending", "Cancelled"]
+const STATUS_OPTIONS = ["All", "Pending", "In Review", "Approved", "In Progress", "Completed", "Cancelled"]
 
 export default function PurchasesPage() {
   const router = useRouter()

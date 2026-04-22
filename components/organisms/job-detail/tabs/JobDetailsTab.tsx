@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ClientSelect } from "@/components/organisms/ClientSelect"
 // NOTE: Make sure ClientSelect is the new version that uses /api/clients/table
+import { BuildingDeptSection } from "@/components/organisms/job-detail/BuildingDeptSection"
 import type { UserRole } from "@/lib/types"
 import {
   Briefcase, MapPin, FileText, Calendar, Clock,
@@ -20,6 +21,8 @@ type Props = {
   onFieldChange: (field: string, value: any) => void
   isFieldChanged: (field: string) => boolean
   readOnly?: boolean
+  patch?: (updates: Record<string, any>, opts?: { sync_podio?: boolean }) => Promise<void>
+  isSaving?: boolean
 }
 
 function pick<T = any>(obj: any, keys: string[], fallback: T): T {
@@ -191,6 +194,8 @@ export function JobDetailsTab({
   onFieldChange,
   isFieldChanged,
   readOnly = false,
+  patch,
+  isSaving = false,
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
   const isReadOnly = readOnly || isTech
@@ -465,7 +470,17 @@ export function JobDetailsTab({
         </div>
       </SectionCard>
 
-      {/* ── 5. Additional Details ──────────────────────────────────────── */}
+      {/* ── 5. Building Department ────────────────────────────────────── */}
+      {patch ? (
+        <BuildingDeptSection
+          job={job}
+          isReadOnly={isReadOnly}
+          patch={patch}
+          isSaving={isSaving}
+        />
+      ) : null}
+
+      {/* ── 6. Additional Details ──────────────────────────────────────── */}
       <SectionCard icon={Info} title="Additional Details">
         {isReadOnly ? (
           <ReadonlyField value={additionalDetail} />

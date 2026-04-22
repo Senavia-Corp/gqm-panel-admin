@@ -601,8 +601,10 @@ const memberId = toForm(task.ID_Member)
                 <div style={{
                   ...viewFieldStyle(),
                   alignItems: "flex-start",
-                  lineHeight: 1.6,
+                  lineHeight: 1.7,
                   minHeight: "56px",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
                   color: formData.Task_description ? "#374151" : "#9CA3AF",
                   fontStyle: formData.Task_description ? "normal" : "italic",
                 }}>
