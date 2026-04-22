@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { TaskBoard } from "@/components/organisms/TaskBoard"
+import { apiFetch } from "@/lib/apiFetch"
 import type { Task } from "@/lib/types"
 
 type Props = {
@@ -13,12 +15,29 @@ type Props = {
 }
 
 export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
+  const [memberNames, setMemberNames] = useState<Record<string, string>>({})
+
+  // Fetch all GQM members once to resolve member names in task cards
+  useEffect(() => {
+    apiFetch("/api/members?page=1&limit=200")
+      .then(r => r.json())
+      .then(data => {
+        const results: any[] = data?.results ?? data?.items ?? (Array.isArray(data) ? data : [])
+        const map: Record<string, string> = {}
+        results.forEach(m => {
+          if (m.ID_Member) map[m.ID_Member] = m.Member_Name || m.Acc_Rep || m.ID_Member
+        })
+        setMemberNames(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  const resolvedNamesMap = { ...namesMap, ...memberNames }
   const safeTasks = tasks ?? []
 
   const total     = safeTasks.length
   const done      = safeTasks.filter(t => t.Task_status === "Completed").length
   const inProg    = safeTasks.filter(t => t.Task_status === "Work-in-progress").length
-  const notStart  = safeTasks.filter(t => t.Task_status === "Not started").length
   const overdue   = safeTasks.filter(t => {
     if (!t.Delivery_date) return false
     return new Date(t.Delivery_date as any) < new Date() && t.Task_status !== "Completed"
@@ -131,7 +150,7 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
           tasks={safeTasks}
           onTaskOpen={onTaskOpen}
           onTaskStatusChange={onTaskStatusChange}
-          namesMap={namesMap}
+          namesMap={resolvedNamesMap}
         />
       )}
     </div>

@@ -185,6 +185,10 @@ export interface JobDTO {
   Ptl_property_id: string | null
   Ptl_gc_fee: string | null
 
+  // Building Department
+  ID_BldgDept: string | null
+  building_dept: BuildingDept | null
+
   // Fees
   Gqm_paid_fees: number | null
   Bldg_dept_fees: number[] | null
@@ -214,6 +218,7 @@ export interface JobsPaginatedResponse extends PaginatedResponse<JobDTO> { }
 
 export type UpdateJobRequest = Partial<Pick<
   JobDTO,
+  | "ID_BldgDept"
   | "Job_status"
   | "Service_type"
   | "Project_name"
@@ -572,4 +577,46 @@ export interface JobExportColumns {
 export interface JobExportRequest {
   filters: JobExportFilters
   columns: JobExportColumns
+}
+
+// ─── Building Departments ──────────────────────────────────────────────────────
+
+export interface BuildingDept {
+  ID_BldgDept: string
+  City_BldgDept: string | null
+  Location: string | null
+  /** Backend may return a plain string or a JSON array */
+  Office_Email: string | string[] | null
+  Portal_Log_In: string | null
+  PW: string | null
+  /** Backend may return a plain string or a JSON array */
+  Phone: string | string[] | null
+  Link: string | null
+  Notes_Inspectors: string | null
+  podio_item_id?: string | null
+  jobs?: BuildingDeptJob[]
+}
+
+/** Lightweight row returned by the /table endpoint */
+export interface BuildingDeptRow {
+  ID_BldgDept: string
+  City_BldgDept: string | null
+  Location: string | null
+  /** Backend may return a plain string or a JSON array */
+  Office_Email: string | string[] | null
+  /** Backend may return a plain string or a JSON array */
+  Phone: string | string[] | null
+  Link: string | null
+  jobs_count: number
+}
+
+/** Minimal job snapshot shown in the Building Dept detail */
+export interface BuildingDeptJob {
+  ID_Jobs: string
+  Job_type: string | null
+  Project_name: string | null
+  Project_location: string | null
+  Job_status: string | null
+  Date_assigned: string | null
+  Po_wtn_wo: string | null
 }

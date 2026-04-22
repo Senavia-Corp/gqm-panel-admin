@@ -38,6 +38,7 @@ type CreatedItem = {
   Quote_shop?: string | null
   Quote_link?: string | null
   Quote_value?: number | null
+  Quote_notes?: string | null
 }
 
 type CreatedOrder = {
@@ -188,7 +189,7 @@ function MemberPickerModal({
       setPage(p)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError("No se pudo cargar la lista de miembros.")
+      setError("Could not load the members list.")
     } finally {
       setLoading(false)
     }
@@ -208,8 +209,8 @@ function MemberPickerModal({
               <User className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Seleccionar Selling Rep</p>
-              <p className="text-xs text-slate-400">{total} miembro{total !== 1 ? "s" : ""} disponibles</p>
+              <p className="text-sm font-semibold text-slate-800">Select Selling Rep</p>
+              <p className="text-xs text-slate-400">{total} member{total !== 1 ? "s" : ""} available</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -225,7 +226,7 @@ function MemberPickerModal({
               autoFocus
               value={q}
               onChange={e => { setQ(e.target.value) }}
-              placeholder="Buscar por nombre, rol, email…"
+              placeholder="Search by name, role, email…"
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30"
             />
             {q && (
@@ -246,11 +247,11 @@ function MemberPickerModal({
             <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
               <AlertCircle className="h-6 w-6 text-red-400" />
               <p className="text-xs text-slate-500">{error}</p>
-              <button onClick={() => fetchMembers(page, dq)} className="text-xs text-emerald-600 hover:underline">Reintentar</button>
+              <button onClick={() => fetchMembers(page, dq)} className="text-xs text-emerald-600 hover:underline">Retry</button>
             </div>
           ) : rows.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-xs text-slate-400">{q ? "Sin resultados para esta búsqueda" : "No hay miembros disponibles"}</p>
+              <p className="text-xs text-slate-400">{q ? "No results for this search" : "No members available"}</p>
             </div>
           ) : rows.map(m => (
             <button
@@ -263,7 +264,7 @@ function MemberPickerModal({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-slate-800 truncate group-hover:text-emerald-700">{m.Member_Name}</p>
-                <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "Sin rol"} · {m.ID_Member}</p>
+                <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "No role"} · {m.ID_Member}</p>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
             </button>
@@ -342,7 +343,7 @@ function JobPickerModal({
       setPage(p)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError("No se pudo cargar la lista de jobs.")
+      setError("Could not load the jobs list.")
     } finally {
       setLoading(false)
     }
@@ -362,8 +363,8 @@ function JobPickerModal({
               <Briefcase className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Vincular Job</p>
-              <p className="text-xs text-slate-400">{total} job{total !== 1 ? "s" : ""} disponibles · Opcional</p>
+              <p className="text-sm font-semibold text-slate-800">Link Job</p>
+              <p className="text-xs text-slate-400">{total} job{total !== 1 ? "s" : ""} available · Optional</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -379,7 +380,7 @@ function JobPickerModal({
               autoFocus
               value={q}
               onChange={e => { setQ(e.target.value) }}
-              placeholder="Buscar por ID o nombre de proyecto…"
+              placeholder="Search by ID or project name…"
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30"
             />
             {q && (
@@ -400,11 +401,11 @@ function JobPickerModal({
             <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
               <AlertCircle className="h-6 w-6 text-red-400" />
               <p className="text-xs text-slate-500">{error}</p>
-              <button onClick={() => fetchJobs(page, dq)} className="text-xs text-emerald-600 hover:underline">Reintentar</button>
+              <button onClick={() => fetchJobs(page, dq)} className="text-xs text-emerald-600 hover:underline">Retry</button>
             </div>
           ) : rows.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-xs text-slate-400">{q ? "Sin resultados para esta búsqueda" : "No hay jobs disponibles"}</p>
+              <p className="text-xs text-slate-400">{q ? "No results for this search" : "No jobs available"}</p>
             </div>
           ) : rows.map(j => (
             <button
@@ -430,7 +431,7 @@ function JobPickerModal({
                   )}
                 </div>
                 <p className="mt-0.5 text-[11px] text-slate-400 truncate">
-                  {j.Project_name ?? "Sin nombre"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}
+                  {j.Project_name ?? "Unnamed"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}
                 </p>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
@@ -444,7 +445,7 @@ function JobPickerModal({
             onClick={onSkip}
             className="text-xs text-slate-500 hover:text-slate-700 underline underline-offset-2"
           >
-            Omitir por ahora
+            Skip for now
           </button>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
@@ -471,10 +472,10 @@ function JobPickerModal({
 // Step indicator
 // ─────────────────────────────────────────────────────────────────────────────
 const STEPS = [
-  { n: 1, label: "Compra", icon: ShoppingCart },
-  { n: 2, label: "Orden", icon: ClipboardList },
+  { n: 1, label: "Purchase", icon: ShoppingCart },
+  { n: 2, label: "Order", icon: ClipboardList },
   { n: 3, label: "Items", icon: Tag },
-  { n: 4, label: "Vincular Job", icon: Link2 },
+  { n: 4, label: "Link Job", icon: Link2 },
 ]
 
 function StepIndicator({ step, done }: { step: Step; done: Partial<Record<Step, boolean>> }) {
@@ -583,6 +584,7 @@ export default function CreatePurchasePage() {
   const [quoteShop, setQuoteShop] = useState("")
   const [quoteLink, setQuoteLink] = useState("")
   const [quoteValue, setQuoteValue] = useState("")
+  const [quoteNotes, setQuoteNotes] = useState("")
 
   // Step 4 state
   const [selectedJob, setSelectedJob] = useState<JobRow | null>(null)
@@ -594,7 +596,7 @@ export default function CreatePurchasePage() {
     ID_Purchase: null,
     Selling_rep: null,
     Description: null,
-    Status: "In Progress",
+    Status: "Pending",
     ID_Member: null,
     ID_Jobs: null,
     orders: [],
@@ -650,7 +652,8 @@ export default function CreatePurchasePage() {
     itemName.trim().length > 0 &&
     quoteShop.trim().length > 0 &&
     safeUrl(quoteLink).length > 0 &&
-    asNumber(quoteValue) > 0
+    asNumber(quoteValue) > 0 &&
+    quoteNotes.trim().length > 0
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleCreatePurchase = async () => {
@@ -660,24 +663,24 @@ export default function CreatePurchasePage() {
       const payload = {
         Selling_rep: selectedMember.Member_Name,
         Description: description.trim(),
-        Status: "In Progress",
+        Status: "Pending",
         ID_Member: selectedMember.ID_Member,
       }
       const data = await postJson<{ ID_Purchase?: string }>(API.purchases, payload)
       const id = data?.ID_Purchase
-      if (!id) throw new Error("Purchase creada pero sin ID_Purchase en la respuesta")
+      if (!id) throw new Error("Purchase created but no ID_Purchase in response")
       setCreated({
         ID_Purchase: id,
         Selling_rep: payload.Selling_rep,
         Description: payload.Description,
-        Status: "In Progress",
+        Status: "Pending",
         ID_Member: payload.ID_Member,
         ID_Jobs: null,
         orders: [],
       })
       setStep(2)
     } catch (e: any) {
-      setError(e?.message ?? "Error al crear la compra")
+      setError(e?.message ?? "Error creating purchase")
     } finally {
       setLoading(false)
     }
@@ -694,7 +697,7 @@ export default function CreatePurchasePage() {
       }
       const data = await postJson<{ ID_PurchaseOrder?: string }>(API.purchaseOrders, payload)
       const id = data?.ID_PurchaseOrder
-      if (!id) throw new Error("Orden creada pero sin ID_PurchaseOrder en la respuesta")
+      if (!id) throw new Error("Order created but no ID_PurchaseOrder in response")
       setCreated(prev => ({
         ...prev,
         orders: [...prev.orders, { ID_PurchaseOrder: id, Order_title: payload.Order_title, items: [] }],
@@ -702,7 +705,7 @@ export default function CreatePurchasePage() {
       setOrderTitle("")
       setStep(3)
     } catch (e: any) {
-      setError(e?.message ?? "Error al crear la orden de compra")
+      setError(e?.message ?? "Error creating purchase order")
     } finally {
       setLoading(false)
     }
@@ -717,6 +720,7 @@ export default function CreatePurchasePage() {
         Quote_shop: quoteShop.trim(),
         Quote_link: safeUrl(quoteLink),
         Quote_value: asNumber(quoteValue),
+        Quote_notes: quoteNotes.trim(),
         Purchase_shop: "",
         Purchase_link: "",
         Purchase_value: null,
@@ -724,16 +728,16 @@ export default function CreatePurchasePage() {
       }
       const data = await postJson<{ ID_PurchaseOrderItem?: string }>(API.purchaseOrderItems, payload)
       const id = data?.ID_PurchaseOrderItem
-      if (!id) throw new Error("Item creado pero sin ID en la respuesta")
+      if (!id) throw new Error("Item created but no ID in response")
       setCreated(prev => {
         const orders = prev.orders.map(o => ({ ...o, items: [...o.items] }))
         const last = orders[orders.length - 1]
         orders[orders.length - 1] = { ...last, items: [...last.items, { ...payload, ID_PurchaseOrderItem: id }] }
         return { ...prev, orders }
       })
-      setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue("")
+      setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue(""); setQuoteNotes("")
     } catch (e: any) {
-      setError(e?.message ?? "Error al agregar el item")
+      setError(e?.message ?? "Error adding item")
     } finally {
       setLoading(false)
     }
@@ -749,7 +753,7 @@ export default function CreatePurchasePage() {
       setSelectedJob(job)
       setJobLinked(true)
     } catch (e: any) {
-      setError(e?.message ?? "Error al vincular el job")
+      setError(e?.message ?? "Error linking job")
     } finally {
       setLoading(false)
     }
@@ -809,10 +813,10 @@ export default function CreatePurchasePage() {
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
                         <ShoppingCart className="h-4.5 w-4.5 text-emerald-600" />
                       </div>
-                      <h1 className="text-lg font-bold text-slate-900">Nueva Compra</h1>
+                      <h1 className="text-lg font-bold text-slate-900">New Purchase</h1>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      Cotización guiada paso a paso · Compra → Orden → Items → Job
+                      Guided quote step by step · Purchase → Order → Items → Job
                     </p>
                   </div>
                 </div>
@@ -821,14 +825,14 @@ export default function CreatePurchasePage() {
                 {created.ID_Purchase && (
                   <div className="flex flex-wrap items-center gap-2 self-center">
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                      {totals.ordersCount} orden{totals.ordersCount !== 1 ? "es" : ""}
+                      {totals.ordersCount} order{totals.ordersCount !== 1 ? "s" : ""}
                     </span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
                       {totals.itemsCount} item{totals.itemsCount !== 1 ? "s" : ""}
                     </span>
                     {totals.totalQuoted > 0 && (
                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                        {money(totals.totalQuoted)} cotizado
+                        {money(totals.totalQuoted)} quoted
                       </span>
                     )}
                   </div>
@@ -861,7 +865,7 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 1 ── */}
                   {step === 1 && (
-                    <SectionCard icon={ShoppingCart} title="Información de la Compra" subtitle="El estado se establece automáticamente como In Progress" accent="emerald">
+                    <SectionCard icon={ShoppingCart} title="Purchase Information" subtitle="Purchase is created with Pending status — awaiting review by the purchasing department" accent="emerald">
                       <div className="space-y-4">
 
                         {/* Selling Rep picker */}
@@ -874,7 +878,7 @@ export default function CreatePurchasePage() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-semibold text-slate-800">{selectedMember.Member_Name}</p>
-                                <p className="text-[11px] text-slate-500">{selectedMember.Company_Role ?? "Sin rol"} · {selectedMember.ID_Member}</p>
+                                <p className="text-[11px] text-slate-500">{selectedMember.Company_Role ?? "No role"} · {selectedMember.ID_Member}</p>
                               </div>
                               <button
                                 onClick={() => setSelectedMember(null)}
@@ -889,7 +893,7 @@ export default function CreatePurchasePage() {
                               className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-left text-xs text-slate-500 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-700 transition-colors"
                             >
                               <User className="h-4 w-4 flex-shrink-0" />
-                              <span>Seleccionar un miembro GQM como selling rep…</span>
+                              <span>Select a GQM member as selling rep…</span>
                               <Search className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-50" />
                             </button>
                           )}
@@ -897,11 +901,11 @@ export default function CreatePurchasePage() {
 
                         {/* Description */}
                         <div>
-                          <FieldLabel required>Descripción</FieldLabel>
+                          <FieldLabel required>Description</FieldLabel>
                           <Input
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            placeholder="ej. Tile 12x8 para baño principal"
+                            placeholder="e.g. Tile 12x8 for main bathroom"
                             className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
                           />
                         </div>
@@ -913,7 +917,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                            Crear Compra
+                            Create Purchase
                           </Button>
                         </div>
                       </div>
@@ -922,20 +926,20 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 2 ── */}
                   {step === 2 && (
-                    <SectionCard icon={ClipboardList} title="Orden de Compra" subtitle="La confirmación y fecha de entrega se pueden agregar después" accent="blue">
+                    <SectionCard icon={ClipboardList} title="Purchase Order" subtitle="Confirmation and delivery date can be added later" accent="blue">
                       <div className="space-y-4">
                         <div>
-                          <FieldLabel required>Título de la orden</FieldLabel>
+                          <FieldLabel required>Order title</FieldLabel>
                           <Input
                             value={orderTitle}
                             onChange={e => setOrderTitle(e.target.value)}
-                            placeholder="ej. Primera porción de Tile"
+                            placeholder="e.g. First batch of Tile"
                             className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
                           />
                         </div>
                         <div className="flex items-center justify-between pt-1">
                           <Button variant="outline" onClick={() => setStep(1)} disabled={loading} className="gap-1.5 text-xs">
-                            <ArrowLeft className="h-3.5 w-3.5" /> Atrás
+                            <ArrowLeft className="h-3.5 w-3.5" /> Back
                           </Button>
                           <Button
                             disabled={!canCreateOrder || loading}
@@ -943,7 +947,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                            Crear Orden
+                            Create Order
                           </Button>
                         </div>
                       </div>
@@ -952,7 +956,7 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 3 ── */}
                   {step === 3 && (
-                    <SectionCard icon={Tag} title="Items de Cotización" subtitle="Los campos de compra real se completan después cuando se confirme la orden" accent="amber">
+                    <SectionCard icon={Tag} title="Quote Items" subtitle="Actual purchase fields are filled in after the order is confirmed" accent="amber">
 
                       {/* Current order badge */}
                       <div className="mb-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
@@ -966,18 +970,18 @@ export default function CreatePurchasePage() {
                       {/* Item form */}
                       <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
                         <div>
-                          <FieldLabel required>Nombre del item</FieldLabel>
+                          <FieldLabel required>Item name</FieldLabel>
                           <Input value={itemName} onChange={e => setItemName(e.target.value)}
-                            placeholder="ej. 1/4 Tile" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                            placeholder="e.g. 1/4 Tile" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <FieldLabel required>Tienda (Quote)</FieldLabel>
+                            <FieldLabel required>Shop (Quote)</FieldLabel>
                             <Input value={quoteShop} onChange={e => setQuoteShop(e.target.value)}
-                              placeholder="ej. Amazon" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                              placeholder="e.g. Amazon" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                           </div>
                           <div>
-                            <FieldLabel required>Valor cotizado</FieldLabel>
+                            <FieldLabel required>Quoted value</FieldLabel>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                               <Input value={quoteValue} onChange={e => setQuoteValue(e.target.value)}
@@ -987,19 +991,35 @@ export default function CreatePurchasePage() {
                           </div>
                         </div>
                         <div>
-                          <FieldLabel required>Link de cotización</FieldLabel>
+                          <FieldLabel required>Quote link</FieldLabel>
                           <Input value={quoteLink} onChange={e => setQuoteLink(e.target.value)}
                             placeholder="https://www.amazon.com/…" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                        </div>
+                        <div>
+                          <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 mb-2">
+                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-blue-500 mt-0.5" />
+                            <p className="text-[11px] text-blue-700">
+                              <strong>Quote notes are required.</strong> Document the process: why this store, comparisons made, special conditions, etc.
+                            </p>
+                          </div>
+                          <FieldLabel required>Quote notes</FieldLabel>
+                          <textarea
+                            value={quoteNotes}
+                            onChange={e => setQuoteNotes(e.target.value)}
+                            placeholder="e.g. Compared with Home Depot and Lowe's. Amazon offers a better price and 2-day delivery…"
+                            rows={3}
+                            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+                          />
                         </div>
                         <div className="flex gap-2 pt-1">
                           <Button disabled={!canAddItem || loading} onClick={handleAddItem}
                             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
                             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                            Agregar Item
+                            Add Item
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => { setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue("") }}
+                          <Button variant="outline" size="sm" onClick={() => { setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue(""); setQuoteNotes("") }}
                             className="text-xs">
-                            Limpiar
+                            Clear
                           </Button>
                         </div>
                       </div>
@@ -1008,7 +1028,7 @@ export default function CreatePurchasePage() {
                       {(activeOrder?.items?.length ?? 0) > 0 && (
                         <div className="mt-4 space-y-2">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                            {activeOrder!.items.length} item{activeOrder!.items.length !== 1 ? "s" : ""} en esta orden
+                            {activeOrder!.items.length} item{activeOrder!.items.length !== 1 ? "s" : ""} in this order
                           </p>
                           {activeOrder!.items.map((it, idx) => (
                             <div key={(it.ID_PurchaseOrderItem ?? "") + idx}
@@ -1035,24 +1055,24 @@ export default function CreatePurchasePage() {
                       {/* Step 3 actions */}
                       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
                         <Button variant="outline" onClick={() => setStep(2)} disabled={loading} className="gap-1.5 text-xs">
-                          <ArrowLeft className="h-3.5 w-3.5" /> Atrás
+                          <ArrowLeft className="h-3.5 w-3.5" /> Back
                         </Button>
                         <Button variant="outline"
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => { setError(null); setOrderTitle(""); setStep(2) }}
                           className="text-xs gap-1.5">
-                          <Plus className="h-3.5 w-3.5" /> Otra orden
+                          <Plus className="h-3.5 w-3.5" /> Another order
                         </Button>
                         <Button
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => setStep(4)}
                           className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs ml-auto"
                         >
-                          Continuar <ChevronRight className="h-3.5 w-3.5" />
+                          Continue <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                       {(activeOrder?.items?.length ?? 0) < 1 && (
-                        <p className="mt-2 text-[11px] text-slate-400 text-center">Agrega al menos 1 item para continuar</p>
+                        <p className="mt-2 text-[11px] text-slate-400 text-center">Add at least 1 item to continue</p>
                       )}
                     </SectionCard>
                   )}
@@ -1061,8 +1081,8 @@ export default function CreatePurchasePage() {
                   {step === 4 && (
                     <SectionCard
                       icon={Link2}
-                      title="Vincular Job"
-                      subtitle={presetJobId ? "Job vinculado automáticamente desde la sección del Job" : "Opcional — puede vincularse después desde el detalle de la compra"}
+                      title="Link Job"
+                      subtitle={presetJobId ? "Job auto-linked from the Job section" : "Optional — can be linked later from the purchase detail"}
                       accent="slate"
                     >
                       <div className="space-y-4">
@@ -1070,7 +1090,7 @@ export default function CreatePurchasePage() {
                         {presetJobId && !jobLinked && (
                           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                             <Loader2 className="h-4 w-4 animate-spin text-emerald-500 flex-shrink-0" />
-                            <p className="text-xs text-slate-500">Vinculando job automáticamente…</p>
+                            <p className="text-xs text-slate-500">Linking job automatically…</p>
                           </div>
                         )}
 
@@ -1088,7 +1108,7 @@ export default function CreatePurchasePage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-500 truncate">{selectedJob.Project_name ?? "Sin nombre"}</p>
+                              <p className="text-xs text-slate-500 truncate">{selectedJob.Project_name ?? "Unnamed"}</p>
                             </div>
                             {/* Only allow removing the job link when not coming from a job context */}
                             {!presetJobId && (
@@ -1100,7 +1120,7 @@ export default function CreatePurchasePage() {
                           </div>
                         ) : jobLinked && !selectedJob ? (
                           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
-                            <p className="text-xs text-slate-400">Sin job vinculado — se puede agregar después</p>
+                            <p className="text-xs text-slate-400">No job linked — can be added later</p>
                           </div>
                         ) : !presetJobId ? (
                           <button
@@ -1108,20 +1128,20 @@ export default function CreatePurchasePage() {
                             className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3.5 text-left text-xs text-slate-500 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-700 transition-colors"
                           >
                             <Briefcase className="h-4 w-4 flex-shrink-0" />
-                            <span>Buscar y vincular un Job a esta compra…</span>
+                            <span>Search and link a Job to this purchase…</span>
                             <Search className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-50" />
                           </button>
                         ) : null}
 
                         {!jobLinked && !presetJobId && (
                           <Button variant="outline" className="w-full text-xs text-slate-500" onClick={handleSkipJob}>
-                            Omitir por ahora
+                            Skip for now
                           </Button>
                         )}
 
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                           <Button variant="outline" onClick={() => setStep(3)} disabled={loading} className="gap-1.5 text-xs">
-                            <ArrowLeft className="h-3.5 w-3.5" /> Atrás
+                            <ArrowLeft className="h-3.5 w-3.5" /> Back
                           </Button>
                           <Button
                             disabled={!jobLinked || loading}
@@ -1129,7 +1149,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Finalizar
+                            Finish
                           </Button>
                         </div>
                       </div>
@@ -1143,7 +1163,7 @@ export default function CreatePurchasePage() {
                   {/* Progress summary */}
                   <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Resumen</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Summary</p>
                     </div>
                     <div className="px-5 py-4 space-y-3">
 
@@ -1151,7 +1171,7 @@ export default function CreatePurchasePage() {
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-[11px] text-slate-400 flex-shrink-0">Purchase ID</span>
                         <span className="text-xs font-mono font-semibold text-slate-700 text-right">
-                          {created.ID_Purchase ?? <span className="text-slate-300 font-sans font-normal">Pendiente</span>}
+                          {created.ID_Purchase ?? <span className="text-slate-300 font-sans font-normal">Pending</span>}
                         </span>
                       </div>
 
@@ -1172,7 +1192,7 @@ export default function CreatePurchasePage() {
 
                       {/* Description */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Descripción</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">Description</span>
                         <span className="text-xs text-slate-700 text-right max-w-[160px] truncate">
                           {description || <span className="text-slate-300">—</span>}
                         </span>
@@ -1180,8 +1200,8 @@ export default function CreatePurchasePage() {
 
                       {/* Status */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Estado</span>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">In Progress</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">Status</span>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Pending</span>
                       </div>
 
                       {/* Job */}
@@ -1197,16 +1217,16 @@ export default function CreatePurchasePage() {
                         <>
                           <div className="h-px bg-slate-100" />
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-slate-400">Órdenes</span>
+                            <span className="text-[11px] text-slate-400">Orders</span>
                             <span className="text-sm font-bold text-slate-700">{totals.ordersCount}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-slate-400">Items totales</span>
+                            <span className="text-[11px] text-slate-400">Total items</span>
                             <span className="text-sm font-bold text-slate-700">{totals.itemsCount}</span>
                           </div>
                           {totals.totalQuoted > 0 && (
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] text-slate-400">Total cotizado</span>
+                              <span className="text-[11px] text-slate-400">Total quoted</span>
                               <span className="text-sm font-bold text-emerald-700">{money(totals.totalQuoted)}</span>
                             </div>
                           )}
@@ -1220,13 +1240,13 @@ export default function CreatePurchasePage() {
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                       <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Órdenes ({created.orders.length})
+                          Orders ({created.orders.length})
                         </p>
                       </div>
                       <div className="divide-y divide-slate-50">
                         {created.orders.map((o, i) => (
                           <div key={(o.ID_PurchaseOrder ?? "") + i} className="px-5 py-3">
-                            <p className="text-xs font-semibold text-slate-700 truncate">{o.Order_title ?? "Sin título"}</p>
+                            <p className="text-xs font-semibold text-slate-700 truncate">{o.Order_title ?? "Untitled"}</p>
                             <div className="mt-0.5 flex items-center gap-2">
                               <span className="font-mono text-[10px] text-slate-400">{o.ID_PurchaseOrder}</span>
                               <span className="text-[10px] text-slate-400">· {o.items.length} item{o.items.length !== 1 ? "s" : ""}</span>
@@ -1243,7 +1263,7 @@ export default function CreatePurchasePage() {
                     className="w-full text-xs text-slate-500"
                     onClick={() => router.push(backUrl)}
                   >
-                    Cancelar
+                    Cancel
                   </Button>
                 </div>
               </div>

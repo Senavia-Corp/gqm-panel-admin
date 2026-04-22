@@ -210,7 +210,11 @@ export default function CreateJobPage() {
       })
 
       toast({ title: "Success", description: `Job created successfully (${createdJob?.ID_Jobs ?? "OK"})` })
-      router.push("/jobs")
+      if (formData.jobType === "QID" && createdJob?.ID_Jobs) {
+        router.push(`/jobs/${createdJob.ID_Jobs}?autoCreateTask=true`)
+      } else {
+        router.push("/jobs")
+      }
     } catch (error) {
       console.error("Error creating job:", error)
       toast({ title: "Error", description: "Failed to create job. Please try again.", variant: "destructive" })
