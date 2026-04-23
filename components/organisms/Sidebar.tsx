@@ -21,6 +21,7 @@ import {
   FileBadge,
   BadgeDollarSign,
   Landmark,
+  Megaphone,
 } from "lucide-react"
 import { Logo } from "@/components/atoms/Logo"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ const gqmMemberMenuItems = [
   { icon: ShoppingBag, label: "Purchases", href: "/purchases" },
   { icon: BadgeDollarSign, label: "Commissions", href: "/commissions" },
   { icon: Landmark, label: "Building Depts", href: "/building-departments" },
+  { icon: Megaphone, label: "Opportunities", href: "/opportunities" },
   { icon: FileBadge, label: "Roles & Permissions", href: "/roles-permissions" },
 ]
 
@@ -73,6 +75,7 @@ export function Sidebar() {
       if (item.href === "/clients") return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
       if (item.href === "/subcontractors") return hasPermission("subcontractor:read")
       if (item.href === "/building-departments") return hasPermission("bldg_dept:read")
+      if (item.href === "/opportunities") return hasPermission("subcontractor:read")
       if (item.href === "/roles-permissions") return hasPermission("iam_pm:read")
       return true
     })

@@ -620,3 +620,62 @@ export interface BuildingDeptJob {
   Date_assigned: string | null
   Po_wtn_wo: string | null
 }
+
+// ─── Opportunities ────────────────────────────────────────────────────────────
+
+export type OpportunityPriority = "Low" | "Medium" | "High" | "Critical"
+export type ApplicationState = "Pending" | "Reviewing" | "Accepted" | "Rejected"
+
+export interface OpportunitySkill {
+  ID_Skill: string
+  Skill_name: string | null
+  Division_trade: string | null
+}
+
+export interface OpportunityApplicant {
+  ID_Subcontractor: string
+  Name: string | null
+  Organization: string | null
+  Email_Address: string | null
+  Phone_Number: string | null
+  Status: string | null
+  Score: number | null
+  application_state: string | null
+}
+
+export interface Opportunity {
+  ID_Opportunities: string
+  Project_name: string | null
+  Description: string | null
+  State: boolean | null
+  Priority: string | null
+  Start_Date: string | null
+  ID_Jobs: string | null
+  job: {
+    ID_Jobs: string
+    Job_type: string | null
+    Project_Name: string | null
+    Project_location: string | null
+    Job_status: string | null
+  } | null
+  skills: OpportunitySkill[]
+  subcontractors: any[]
+}
+
+/** Lightweight row for the list table */
+export interface OpportunityRow {
+  ID_Opportunities: string
+  Project_name: string | null
+  Description: string | null
+  State: boolean | null
+  Priority: string | null
+  Start_Date: string | null
+  ID_Jobs: string | null
+  job: {
+    ID_Jobs: string
+    Job_type: string | null
+    Project_Name: string | null
+  } | null
+  skills: OpportunitySkill[]
+  subcontractors: { ID_Subcontractor: string }[]
+}
