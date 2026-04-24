@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/apiFetch"
+import { SupplierBrowserPanel } from "@/components/organisms/SupplierBrowserPanel"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -1161,7 +1162,7 @@ export default function PurchaseDetailsPage() {
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto">
 
             {/* ── Page header ─────────────────────────────────────────────── */}
@@ -1455,6 +1456,9 @@ export default function PurchaseDetailsPage() {
                     </div>
                   </div>
 
+                  {/* Supplier Directory */}
+                  <SupplierBrowserPanel />
+
                 </div>
               </div>
             </div>
@@ -1468,12 +1472,12 @@ export default function PurchaseDetailsPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shell wrapper for error states
 // ─────────────────────────────────────────────────────────────────────────────
-function Shell({ user, children }: { user: any; children: React.ReactNode }) {
+function Shell({ children }: { user?: any; children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

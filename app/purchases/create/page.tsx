@@ -12,6 +12,7 @@ import {
   ShoppingCart, ClipboardList, Tag, Link2, Search,
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle,
 } from "lucide-react"
+import { SupplierBrowserPanel } from "@/components/organisms/SupplierBrowserPanel"
 import { useSearchParams } from "next/navigation"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -795,7 +796,7 @@ export default function CreatePurchasePage() {
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto">
 
             {/* ── Page header ─────────────────────────────────────────────── */}
@@ -1265,6 +1266,9 @@ export default function CreatePurchasePage() {
                   >
                     Cancel
                   </Button>
+
+                  {/* Supplier Directory */}
+                  <SupplierBrowserPanel />
                 </div>
               </div>
             </div>

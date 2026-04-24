@@ -679,3 +679,31 @@ export interface OpportunityRow {
   skills: OpportunitySkill[]
   subcontractors: { ID_Subcontractor: string }[]
 }
+
+// ─── Suppliers ────────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  ID_Supplier: string
+  Company_Name: string | null
+  Company_Website: string | null
+  Description: string | null
+  Acc_Status: string | null
+  Acc_Rep: string | null
+  Speciality: string | null
+  Email_Address: string | null
+  Coverage_Area: string | null
+  Phone_Number: string | null
+  Address: string | null
+  podio_item_id: string | null
+}
+
+export interface SupplierRow {
+  ID_Supplier: string
+  Company_Name: string | null
+  Speciality: string | null
+  Coverage_Area: string | null
+  Acc_Status: string | null
+  Email_Address: string | null
+  Phone_Number: string | null
+  podio_item_id: string | null
+}
