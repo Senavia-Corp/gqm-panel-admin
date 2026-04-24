@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
@@ -181,6 +181,10 @@ const PRIORITIES = ["Low", "Medium", "High", "Critical"]
 
 export default function CreateOpportunityPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get("returnTo")
+  const initialJobId = searchParams.get("job_id")
+  
   const [saving, setSaving] = useState(false)
 
   const [projectName, setProjectName] = useState("")
@@ -195,6 +199,17 @@ export default function CreateOpportunityPage() {
   const [availableSkills, setAvailableSkills] = useState<OpportunitySkill[]>([])
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
   const [skillSearch, setSkillSearch] = useState("")
+
+  useEffect(() => {
+    if (initialJobId && !linkedJob) {
+      apiFetch(`/api/jobs/${initialJobId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d && !d.error) setLinkedJob(d)
+        })
+        .catch(() => {})
+    }
+  }, [initialJobId, linkedJob])
 
   useEffect(() => {
     const u = localStorage.getItem("user_data")
@@ -251,7 +266,11 @@ export default function CreateOpportunityPage() {
       )
 
       toast({ title: "Created", description: "Opportunity created successfully." })
-      router.push(`/opportunities/${oppId}`)
+      if (returnTo) {
+        router.push(`/opportunities/${oppId}?returnTo=${encodeURIComponent(returnTo)}`)
+      } else {
+        router.push(`/opportunities/${oppId}`)
+      }
     } catch (e: any) {
       toast({ title: "Error", description: e?.message ?? "Failed to create", variant: "destructive" })
     } finally {
@@ -270,7 +289,7 @@ export default function CreateOpportunityPage() {
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
             <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700">
+                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.back()} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">

@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -461,6 +461,8 @@ export default function OpportunityDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get("returnTo")
 
   const [opp, setOpp] = useState<Opportunity | null>(null)
   const [applicants, setApplicants] = useState<OpportunityApplicant[]>([])
@@ -656,7 +658,7 @@ export default function OpportunityDetailPage() {
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
             <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4">
               <div className="flex items-center gap-3 min-w-0">
-                <Button variant="ghost" size="icon" onClick={() => router.push("/opportunities")} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700 flex-shrink-0">
+                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.push("/opportunities")} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700 flex-shrink-0">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm flex-shrink-0">

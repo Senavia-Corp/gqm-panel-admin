@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const authHeader = request.headers.get("Authorization")
   const params = new URLSearchParams()
-  ;(["page", "limit", "q", "state", "priority"] as const).forEach((k) => {
+  ;(["page", "limit", "q", "state", "priority", "job_id"] as const).forEach((k) => {
     const v = searchParams.get(k)
     if (v) params.set(k, v)
   })
