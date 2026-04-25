@@ -12,8 +12,14 @@ import { apiFetch } from "@/lib/apiFetch"
 import {
   User, Mail, Phone, MapPin, Briefcase, Shield,
   Lock, Eye, EyeOff, Pencil, Check, X, Loader2,
-  Building2, IdCard, KeyRound, ChevronRight,
+  Building2, IdCard, KeyRound, ChevronRight, CheckSquare, DollarSign,
 } from "lucide-react"
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ProfilePipelineJobs } from "./components/ProfilePipelineJobs"
+import { ProfileWeeklyTasks } from "./components/ProfileWeeklyTasks"
+import { ProfileCommunities } from "./components/ProfileCommunities"
+import { ProfileCommissions } from "./components/ProfileCommissions"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface MemberProfile {
@@ -353,9 +359,18 @@ export default function ProfilePage() {
                   <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-200" />
                 ))}
               </div>
-            ) : (
-              <>
-                {/* ── Personal Information Card ─────────────────────────── */}
+            ) : profile && (
+              <Tabs defaultValue="personal" className="w-full">
+                <TabsList className="mb-6 grid w-full grid-cols-2 lg:grid-cols-5 h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm">
+                  <TabsTrigger value="personal" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Personal Info</TabsTrigger>
+                  <TabsTrigger value="jobs" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Pipeline Jobs</TabsTrigger>
+                  <TabsTrigger value="tasks" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Weekly Tasks</TabsTrigger>
+                  <TabsTrigger value="communities" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
+                  <TabsTrigger value="commissions" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="personal" className="space-y-6 mt-0">
+                  {/* ── Personal Information Card ─────────────────────────── */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                   {/* Header */}
                   <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -528,7 +543,24 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 </div>
-              </>
+                </TabsContent>
+
+                <TabsContent value="jobs" className="mt-0">
+                  <ProfilePipelineJobs memberId={profile.ID_Member} />
+                </TabsContent>
+
+                <TabsContent value="tasks" className="mt-0">
+                  <ProfileWeeklyTasks memberId={profile.ID_Member} />
+                </TabsContent>
+
+                <TabsContent value="communities" className="mt-0">
+                  <ProfileCommunities memberId={profile.ID_Member} />
+                </TabsContent>
+
+                <TabsContent value="commissions" className="mt-0">
+                  <ProfileCommissions memberId={profile.ID_Member} />
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </main>

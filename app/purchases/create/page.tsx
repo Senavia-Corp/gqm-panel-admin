@@ -12,6 +12,8 @@ import {
   ShoppingCart, ClipboardList, Tag, Link2, Search,
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle,
 } from "lucide-react"
+import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
+import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
 import { useSearchParams } from "next/navigation"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -602,6 +604,28 @@ export default function CreatePurchasePage() {
     orders: [],
   })
 
+  // Linked suppliers state
+  const [linkedSuppliers, setLinkedSuppliers] = useState<SupplierEntry[]>([])
+  const [unlinkingIds, setUnlinkingIds] = useState<Set<string>>(new Set())
+  const linkedSupplierIds = useMemo(() => new Set(linkedSuppliers.map(s => s.ID_Supplier)), [linkedSuppliers])
+
+  const handleLinkSupplier = async (supplier: SupplierEntry) => {
+    if (!created.ID_Purchase) return
+    const res = await apiFetch(`/api/purchase-supplier/${created.ID_Purchase}/${supplier.ID_Supplier}`, { method: "POST" })
+    if (res.ok) setLinkedSuppliers(prev => [...prev, supplier])
+  }
+
+  const handleUnlinkSupplier = async (supplierId: string) => {
+    if (!created.ID_Purchase) return
+    setUnlinkingIds(prev => new Set(prev).add(supplierId))
+    try {
+      const res = await apiFetch(`/api/purchase-supplier/${created.ID_Purchase}/${supplierId}`, { method: "DELETE" })
+      if (res.ok) setLinkedSuppliers(prev => prev.filter(s => s.ID_Supplier !== supplierId))
+    } finally {
+      setUnlinkingIds(prev => { const n = new Set(prev); n.delete(supplierId); return n })
+    }
+  }
+
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
@@ -795,7 +819,7 @@ export default function CreatePurchasePage() {
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto">
 
             {/* ── Page header ─────────────────────────────────────────────── */}
@@ -1265,6 +1289,25 @@ export default function CreatePurchasePage() {
                   >
                     Cancel
                   </Button>
+
+                  {/* Linked Suppliers */}
+                  {created.ID_Purchase && (
+                    <LinkedSuppliersCard
+                      suppliers={linkedSuppliers}
+                      onUnlink={handleUnlinkSupplier}
+                      unlinking={unlinkingIds}
+                    />
+                  )}
+
+                  {/* Supplier Directory */}
+                  <SupplierBrowserPanel
+                    linkContext={created.ID_Purchase ? {
+                      purchaseId: created.ID_Purchase,
+                      linkedIds: linkedSupplierIds,
+                      onLink: handleLinkSupplier,
+                      onUnlink: handleUnlinkSupplier,
+                    } : undefined}
+                  />
                 </div>
               </div>
             </div>
