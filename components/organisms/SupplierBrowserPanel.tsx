@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { apiFetch } from "@/lib/apiFetch"
 import {
   Store, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Globe, Mail, Phone, ExternalLink, Loader2, AlertCircle, X,
+  Globe, Mail, Phone, ExternalLink, Loader2, AlertCircle, X, Link2, Link2Off,
 } from "lucide-react"
 
-const SPECIALTIES = [
+export const SPECIALTIES = [
   "Doors", "Windows/Glazing", "Plumbing Materials", "Fencing",
   "Landscaping Supplies", "Tile/Flooring", "Stones/Masonry", "Rental Equip",
   "Electrical Materials", "HVAC Materials", "Paint Suppliers", "Roll Up Doors",
@@ -15,7 +15,7 @@ const SPECIALTIES = [
   "Bathroom Supplies", "Gutters / Screens",
 ]
 
-type SupplierEntry = {
+export type SupplierEntry = {
   ID_Supplier: string
   Company_Name: string | null
   Speciality: string | null
@@ -24,6 +24,13 @@ type SupplierEntry = {
   Phone_Number: string | null
   Company_Website: string | null
   Acc_Status: string | null
+}
+
+export type LinkContext = {
+  purchaseId: string
+  linkedIds: Set<string>
+  onLink: (supplier: SupplierEntry) => Promise<void>
+  onUnlink: (supplierId: string) => Promise<void>
 }
 
 function useDebounce<T>(value: T, ms: number): T {
@@ -35,7 +42,7 @@ function useDebounce<T>(value: T, ms: number): T {
   return d
 }
 
-function safeUrl(url?: string | null) {
+export function safeUrl(url?: string | null) {
   if (!url) return null
   const t = url.trim()
   if (!t) return null
@@ -44,7 +51,7 @@ function safeUrl(url?: string | null) {
 
 const LIMIT = 5
 
-export function SupplierBrowserPanel() {
+export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContext }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState("")
   const [specialty, setSpecialty] = useState("")
@@ -53,6 +60,8 @@ export function SupplierBrowserPanel() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // track per-row pending state
+  const [pending, setPending] = useState<Record<string, boolean>>({})
   const abortRef = useRef<AbortController | null>(null)
   const dq = useDebounce(q, 350)
 
@@ -82,19 +91,33 @@ export function SupplierBrowserPanel() {
   }, [])
 
   useEffect(() => { setPage(1) }, [dq, specialty])
-
   useEffect(() => {
     if (open) fetch_(page, dq, specialty)
   }, [open, page, dq, specialty, fetch_])
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
+  const handleLinkToggle = async (s: SupplierEntry) => {
+    if (!linkContext) return
+    const isLinked = linkContext.linkedIds.has(s.ID_Supplier)
+    setPending(prev => ({ ...prev, [s.ID_Supplier]: true }))
+    try {
+      if (isLinked) {
+        await linkContext.onUnlink(s.ID_Supplier)
+      } else {
+        await linkContext.onLink(s)
+      }
+    } finally {
+      setPending(prev => ({ ...prev, [s.ID_Supplier]: false }))
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
       {/* Header toggle */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex w-full items-center gap-2.5 px-5 py-3.5 text-left transition-colors hover:bg-violet-50/60 bg-violet-50/40 border-b border-violet-100"
+        className="flex w-full items-center gap-2.5 border-b border-violet-100 bg-violet-50/40 px-5 py-3.5 text-left transition-colors hover:bg-violet-50/60"
       >
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100">
           <Store className="h-3.5 w-3.5 text-violet-600" />
@@ -102,6 +125,11 @@ export function SupplierBrowserPanel() {
         <p className="flex-1 text-xs font-bold uppercase tracking-wide text-violet-700">
           Supplier Directory
         </p>
+        {linkContext && (
+          <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+            {linkContext.linkedIds.size} linked
+          </span>
+        )}
         {open
           ? <ChevronUp className="h-3.5 w-3.5 text-violet-400 flex-shrink-0" />
           : <ChevronDown className="h-3.5 w-3.5 text-violet-400 flex-shrink-0" />
@@ -111,7 +139,7 @@ export function SupplierBrowserPanel() {
       {open && (
         <div>
           {/* Search + specialty filter */}
-          <div className="space-y-2 px-4 py-3 border-b border-slate-50">
+          <div className="space-y-2 border-b border-slate-50 px-4 py-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
@@ -121,10 +149,8 @@ export function SupplierBrowserPanel() {
                 className="w-full pl-8 pr-7 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-violet-400 focus:bg-white"
               />
               {q && (
-                <button
-                  onClick={() => setQ("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
+                <button onClick={() => setQ("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   <X className="h-3 w-3" />
                 </button>
               )}
@@ -157,18 +183,43 @@ export function SupplierBrowserPanel() {
             <div className="divide-y divide-slate-50">
               {rows.map(s => {
                 const websiteUrl = safeUrl(s.Company_Website)
+                const isLinked = linkContext?.linkedIds.has(s.ID_Supplier) ?? false
+                const isPending = pending[s.ID_Supplier] ?? false
+
                 return (
-                  <div key={s.ID_Supplier} className="px-4 py-3 space-y-1.5 hover:bg-slate-50/60 transition-colors">
+                  <div key={s.ID_Supplier} className={`px-4 py-3 space-y-1.5 transition-colors hover:bg-slate-50/60 ${isLinked ? "bg-violet-50/30" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-800 leading-tight">
+                      <p className="text-sm font-semibold text-slate-800 leading-tight flex-1 min-w-0 truncate">
                         {s.Company_Name ?? "—"}
                       </p>
-                      {s.Acc_Status === "Active" && (
-                        <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-600">Active</span>
-                      )}
-                      {s.Acc_Status === "Inactive" && (
-                        <span className="flex-shrink-0 text-[10px] font-semibold text-slate-400">Inactive</span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {s.Acc_Status === "Active" && (
+                          <span className="text-[10px] font-semibold text-emerald-600">Active</span>
+                        )}
+                        {s.Acc_Status === "Inactive" && (
+                          <span className="text-[10px] font-semibold text-slate-400">Inactive</span>
+                        )}
+                        {linkContext && (
+                          <button
+                            onClick={() => handleLinkToggle(s)}
+                            disabled={isPending}
+                            title={isLinked ? "Unlink" : "Link to purchase"}
+                            className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:opacity-50 ${
+                              isLinked
+                                ? "border-violet-200 bg-violet-50 text-violet-700 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                                : "border-slate-200 bg-white text-slate-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                            }`}
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            ) : isLinked ? (
+                              <><Link2Off className="h-2.5 w-2.5" />Unlink</>
+                            ) : (
+                              <><Link2 className="h-2.5 w-2.5" />Link</>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
@@ -186,30 +237,22 @@ export function SupplierBrowserPanel() {
 
                     <div className="flex flex-col gap-1 pt-0.5">
                       {s.Email_Address && (
-                        <a
-                          href={`mailto:${s.Email_Address}`}
-                          className="inline-flex items-center gap-1.5 text-[11px] text-blue-600 hover:underline min-w-0"
-                        >
+                        <a href={`mailto:${s.Email_Address}`}
+                          className="inline-flex items-center gap-1.5 text-[11px] text-blue-600 hover:underline min-w-0">
                           <Mail className="h-2.5 w-2.5 flex-shrink-0" />
                           <span className="truncate">{s.Email_Address}</span>
                         </a>
                       )}
                       {s.Phone_Number && (
-                        <a
-                          href={`tel:${s.Phone_Number}`}
-                          className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700"
-                        >
+                        <a href={`tel:${s.Phone_Number}`}
+                          className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700">
                           <Phone className="h-2.5 w-2.5 flex-shrink-0" />
                           {s.Phone_Number}
                         </a>
                       )}
                       {websiteUrl && (
-                        <a
-                          href={websiteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-[11px] text-violet-600 hover:underline"
-                        >
+                        <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[11px] text-violet-600 hover:underline">
                           <Globe className="h-2.5 w-2.5 flex-shrink-0" />
                           Website
                           <ExternalLink className="h-2 w-2 flex-shrink-0" />
@@ -229,21 +272,15 @@ export function SupplierBrowserPanel() {
                 {total} supplier{total !== 1 ? "s" : ""}
               </span>
               <div className="flex items-center gap-1">
-                <button
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage(p => p - 1)}
-                  className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-colors"
-                >
+                <button disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-colors">
                   <ChevronLeft className="h-3 w-3" />
                 </button>
-                <span className="text-[10px] font-semibold text-slate-500 min-w-[28px] text-center">
+                <span className="min-w-[28px] text-center text-[10px] font-semibold text-slate-500">
                   {page}/{totalPages}
                 </span>
-                <button
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage(p => p + 1)}
-                  className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-colors"
-                >
+                <button disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)}
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30 transition-colors">
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>

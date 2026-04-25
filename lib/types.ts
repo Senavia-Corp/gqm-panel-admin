@@ -705,5 +705,6 @@ export interface SupplierRow {
   Acc_Status: string | null
   Email_Address: string | null
   Phone_Number: string | null
+  Company_Website: string | null
   podio_item_id: string | null
 }
