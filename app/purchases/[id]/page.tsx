@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/apiFetch"
+import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
+import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -932,6 +934,28 @@ export default function PurchaseDetailsPage() {
   const [addingOrder, setAddingOrder] = useState(false)
   const [addOrderErr, setAddOrderErr] = useState<string | null>(null)
 
+  // Linked suppliers
+  const [linkedSuppliers, setLinkedSuppliers] = useState<SupplierEntry[]>([])
+  const [unlinkingIds, setUnlinkingIds] = useState<Set<string>>(new Set())
+  const linkedSupplierIds = useMemo(() => new Set(linkedSuppliers.map(s => s.ID_Supplier)), [linkedSuppliers])
+
+  const handleLinkSupplier = useCallback(async (supplier: SupplierEntry) => {
+    if (!id) return
+    const res = await apiFetch(`/api/purchase-supplier/${id}/${supplier.ID_Supplier}`, { method: "POST" })
+    if (res.ok) setLinkedSuppliers(prev => [...prev, supplier])
+  }, [id])
+
+  const handleUnlinkSupplier = useCallback(async (supplierId: string) => {
+    if (!id) return
+    setUnlinkingIds(prev => new Set(prev).add(supplierId))
+    try {
+      const res = await apiFetch(`/api/purchase-supplier/${id}/${supplierId}`, { method: "DELETE" })
+      if (res.ok) setLinkedSuppliers(prev => prev.filter(s => s.ID_Supplier !== supplierId))
+    } finally {
+      setUnlinkingIds(prev => { const n = new Set(prev); n.delete(supplierId); return n })
+    }
+  }, [id])
+
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
@@ -952,6 +976,7 @@ export default function PurchaseDetailsPage() {
         purchase_orders: Array.isArray(raw.purchase_orders) ? raw.purchase_orders : [],
       }
       setPurchase(normalizedData)
+      if (Array.isArray(raw.suppliers)) setLinkedSuppliers(raw.suppliers)
     } catch (e: any) {
       setLoadError(e?.message ?? "Error loading purchase")
     } finally {
@@ -1161,7 +1186,7 @@ export default function PurchaseDetailsPage() {
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar user={user} />
+          <TopBar />
           <main className="flex-1 overflow-y-auto">
 
             {/* ── Page header ─────────────────────────────────────────────── */}
@@ -1455,6 +1480,23 @@ export default function PurchaseDetailsPage() {
                     </div>
                   </div>
 
+                  {/* Linked Suppliers */}
+                  <LinkedSuppliersCard
+                    suppliers={linkedSuppliers}
+                    onUnlink={handleUnlinkSupplier}
+                    unlinking={unlinkingIds}
+                  />
+
+                  {/* Supplier Directory */}
+                  <SupplierBrowserPanel
+                    linkContext={{
+                      purchaseId: id,
+                      linkedIds: linkedSupplierIds,
+                      onLink: handleLinkSupplier,
+                      onUnlink: handleUnlinkSupplier,
+                    }}
+                  />
+
                 </div>
               </div>
             </div>
@@ -1468,12 +1510,12 @@ export default function PurchaseDetailsPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shell wrapper for error states
 // ─────────────────────────────────────────────────────────────────────────────
-function Shell({ user, children }: { user: any; children: React.ReactNode }) {
+function Shell({ children }: { user?: any; children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

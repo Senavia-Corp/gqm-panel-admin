@@ -21,6 +21,7 @@ function jsonError(message: string, status = 500) {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const jobType          = searchParams.get("job_type")
+  const memberId         = searchParams.get("member_id")
 
   // Validación temprana en el proxy — evita un round-trip innecesario al backend
   if (jobType && !VALID_JOB_TYPES.includes(jobType as JobType)) {
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
 
   const url = new URL(`${API_BASE_URL}/tasks/weekly`)
   if (jobType) url.searchParams.set("job_type", jobType)
+  if (memberId) url.searchParams.set("member_id", memberId)
 
   const controller = new AbortController()
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)

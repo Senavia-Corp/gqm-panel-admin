@@ -5,6 +5,7 @@ import { SubcontractorsTable } from "@/components/organisms/SubcontractorsTable"
 import { SubcontractorDetails } from "@/components/organisms/SubcontractorDetails"
 import type { Subcontractor } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
+import { JobOpportunitiesSection } from "./JobOpportunitiesSection"
 
 type Props = {
   role: string
@@ -78,13 +79,16 @@ export function JobSubcontractorsTab({
 
   if (!selectedSubcontractor) {
     return (
-      <SubcontractorsTable
-        jobId={jobId}
-        onViewDetails={setSelectedSubcontractor}
-        subcontractors={job?.subcontractors || []}
-        onLinkClick={onOpenLinkDialog}
-        onUnlink={handleUnlink}
-      />
+      <div className="space-y-8">
+        <SubcontractorsTable
+          jobId={jobId}
+          onViewDetails={setSelectedSubcontractor}
+          subcontractors={job?.subcontractors || []}
+          onLinkClick={onOpenLinkDialog}
+          onUnlink={handleUnlink}
+        />
+        <JobOpportunitiesSection jobId={jobId} userRole={role} />
+      </div>
     )
   }
 

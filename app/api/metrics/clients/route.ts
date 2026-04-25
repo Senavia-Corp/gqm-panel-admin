@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const orderBy = url.searchParams.get("order_by") ?? "closed"
     const includeStatusBreakdown = url.searchParams.get("include_status_breakdown") ?? "1"
     const search = url.searchParams.get("search")
+    const memberId = url.searchParams.get("member_id")
 
     const backend = PYTHON_BASE_URL
     if (!backend) {
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
     qs.set("include_status_breakdown", includeStatusBreakdown)
     if (year) qs.set("year", year)
     if (search) qs.set("search", search)
+    if (memberId) qs.set("member_id", memberId)
 
     const target = `${backend.replace(/\/$/, "")}/communities/clients?${qs.toString()}`
 
