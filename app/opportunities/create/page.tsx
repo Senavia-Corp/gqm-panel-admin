@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -179,7 +179,7 @@ const PRIORITIES = ["Low", "Medium", "High", "Critical"]
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function CreateOpportunityPage() {
+function CreateOpportunityContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams.get("returnTo")
@@ -468,5 +468,13 @@ export default function CreateOpportunityPage() {
 
       <JobPickerModal open={jobPickerOpen} onClose={() => setJobPickerOpen(false)} onSelect={setLinkedJob} />
     </div>
+  )
+}
+
+export default function CreateOpportunityPage() {
+  return (
+    <Suspense>
+      <CreateOpportunityContent />
+    </Suspense>
   )
 }
