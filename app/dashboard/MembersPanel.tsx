@@ -24,6 +24,7 @@ import {
 import { KpiCard } from "./components/KpiCard"
 import { EmptyState } from "./components/EmptyState"
 import { TableSkeleton, CardCarouselSkeleton } from "./components/LoadingSkeleton"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type JobTab  = "ALL" | "QID" | "PTL" | "PAR"
 type YearTab = "ALL" | "2026" | "2025" | "2024" | "2023"
@@ -147,6 +148,8 @@ const bgHex = (cls: string) => BG_HEX[cls] ?? "#E5E7EB"
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MembersPanel({ jobTab, yearTab }: Props) {
+  const t = useTranslations("dashboard")
+  const tCommon = useTranslations("common")
   const [isLoading,   setIsLoading]   = useState(true)
   const [page,        setPage]        = useState(1)
   const limit = 50
@@ -223,8 +226,6 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
     [members, selectedId]
   )
 
-  const pageLabel = `Page ${page} / ${Math.max(1, totalPages)}`
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -286,28 +287,28 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
 
                     {/* Stats grid */}
                     <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                      <div className="text-muted-foreground">Total Quotes</div>
+                      <div className="text-muted-foreground">{t("statTotalQuotes")}</div>
                       <div className="text-right font-semibold tabular-nums">{s?.total_quotes ?? 0}</div>
 
-                      <div className="text-muted-foreground">$ Quoted</div>
+                      <div className="text-muted-foreground">{t("statDollarsQuoted")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtK(s?.total_quoted_usd ?? 0)}</div>
 
-                      <div className="text-muted-foreground"># In Progress</div>
+                      <div className="text-muted-foreground">{t("statInProgressCount")}</div>
                       <div className="text-right font-semibold tabular-nums">{s?.inprogress_count ?? 0}</div>
 
-                      <div className="text-muted-foreground">$ In Progress</div>
+                      <div className="text-muted-foreground">{t("statDollarsInProgress")}</div>
                       <div className="text-right font-semibold tabular-nums text-sky-700">{fmtK(s?.inprogress_usd ?? 0)}</div>
 
-                      <div className="text-muted-foreground"># Paid Jobs</div>
+                      <div className="text-muted-foreground">{t("statPaidJobsCount")}</div>
                       <div className="text-right font-semibold tabular-nums">{s?.paid_count ?? 0}</div>
 
-                      <div className="text-muted-foreground">$ Paid</div>
+                      <div className="text-muted-foreground">{t("statDollarsPaid")}</div>
                       <div className="text-right font-semibold tabular-nums text-emerald-700">{fmtK(s?.paid_usd ?? 0)}</div>
 
-                      <div className="text-muted-foreground">Avg $ / Job</div>
+                      <div className="text-muted-foreground">{t("statAvgSalePerJob")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtK(s?.avg_sale_per_job ?? 0)}</div>
 
-                      <div className="text-muted-foreground">Avg Target %</div>
+                      <div className="text-muted-foreground">{t("statAvgTargetPct")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtPct(s?.avg_target_sold_pct ?? 0)}</div>
                     </div>
                   </div>
@@ -317,7 +318,7 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
                     className="px-5 py-2.5 mt-auto text-sm font-semibold text-black"
                     style={{ backgroundColor: "#37D260" }}
                   >
-                    {fmtPct(s?.avg_target_sold_pct ?? 0)} Avg Target Sold
+                    {fmtPct(s?.avg_target_sold_pct ?? 0)} {t("statAvgTargetSold")}
                   </div>
                 </div>
               )
@@ -327,9 +328,9 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
 
         {/* Pagination */}
         <div className="mt-4 flex items-center justify-end gap-2">
-          <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-          <span className="text-white text-sm">{pageLabel}</span>
-          <Button variant="outline" className="bg-white" disabled={page >= Math.max(1, totalPages) || isLoading} onClick={() => setPage((p) => Math.min(Math.max(1, totalPages), p + 1))}>Next</Button>
+          <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t("prevPage")}</Button>
+          <span className="text-white text-sm">{page} / {Math.max(1, totalPages)}</span>
+          <Button variant="outline" className="bg-white" disabled={page >= Math.max(1, totalPages) || isLoading} onClick={() => setPage((p) => Math.min(Math.max(1, totalPages), p + 1))}>{t("nextPage")}</Button>
         </div>
       </div>
 
@@ -340,17 +341,17 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
         <div className="rounded-lg bg-gqm-green-dark p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-white text-lg font-semibold">Top 10 — Paid Jobs</h2>
-              <p className="text-white/70 text-sm mt-0.5">Ranking by number of paid jobs</p>
+              <h2 className="text-white text-lg font-semibold">{t("top10PaidJobs")}</h2>
+              <p className="text-white/70 text-sm mt-0.5">{t("top10Subtitle")}</p>
             </div>
-            <div title="Paid jobs count" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+            <div title={t("paidJobsCountTooltip")} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
               <Info className="h-4 w-4 text-white" />
             </div>
           </div>
 
           <div className="space-y-3">
             {top10.length === 0 && !isLoading ? (
-              <p className="text-white/70 text-sm">No data.</p>
+              <p className="text-white/70 text-sm">{t("noData")}</p>
             ) : (
               top10.map((m) => {
                 const paid  = m.summary?.paid_count ?? 0
@@ -398,14 +399,14 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
         <div className="rounded-lg bg-white p-6 shadow-sm border">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Individual Member Statistics</h2>
+              <h2 className="text-lg font-semibold">{t("individualMemberStats")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {selectedMember ? `Details for ${selectedMember.member.name}` : "Select a member below"}
+                {selectedMember ? `${t("detailsFor")} ${selectedMember.member.name}` : t("selectMemberBelow")}
               </p>
             </div>
             {selectedId && (
               <Button variant="outline" size="sm" onClick={() => { setSelectedId(null); setDetail(null) }}>
-                Back
+                {tCommon("back")}
               </Button>
             )}
           </div>
@@ -414,7 +415,7 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
             <>
               <div className="mt-4 relative">
                 <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchMembers")} className="pl-9" />
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {filtered.map((m) => {
@@ -436,9 +437,9 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                        <span className="text-muted-foreground">Quotes</span>
+                        <span className="text-muted-foreground">{t("statQuotes")}</span>
                         <span className="text-right font-semibold">{m.summary?.total_quotes ?? 0}</span>
-                        <span className="text-muted-foreground">$ Paid</span>
+                        <span className="text-muted-foreground">{t("statDollarsPaid")}</span>
                         <span className="text-right font-semibold text-emerald-700">{fmtK(m.summary?.paid_usd ?? 0)}</span>
                       </div>
                     </button>
@@ -454,19 +455,19 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
             <div className="mt-5 space-y-5">
               {/* KPI chips */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard title="Total Quotes"    value={String(detail.summary.total_quotes)}          Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
-                <KpiCard title="$ Quoted"        value={fmtK(detail.summary.total_quoted_usd)}        Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
-                <KpiCard title="$ In Progress"   value={fmtK(detail.summary.inprogress_usd)}          Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                <KpiCard title="$ Paid"          value={fmtK(detail.summary.paid_usd)}                Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title="Avg $ / Job"     value={fmtK(detail.summary.avg_sale_per_job)}        Icon={TrendingUp}   accentClass="bg-amber-100 text-amber-700" />
-                <KpiCard title="Avg Target %"    value={fmtPct(detail.summary.avg_target_sold_pct)}   Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statTotalQuotes")}     value={String(detail.summary.total_quotes)}        Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
+                <KpiCard title={t("statDollarsQuoted")}   value={fmtK(detail.summary.total_quoted_usd)}      Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
+                <KpiCard title={t("statDollarsInProgress")} value={fmtK(detail.summary.inprogress_usd)}      Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                <KpiCard title={t("statDollarsPaid")}     value={fmtK(detail.summary.paid_usd)}              Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statAvgSalePerJob")}   value={fmtK(detail.summary.avg_sale_per_job)}      Icon={TrendingUp}   accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statAvgTargetPct")}    value={fmtPct(detail.summary.avg_target_sold_pct)} Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
               </div>
 
               {/* Communities assigned */}
               <div className="flex items-center justify-between rounded-xl border p-4 bg-gray-50">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  Communities Assigned
+                  {t("communitiesAssigned")}
                 </div>
                 <span className="text-2xl font-bold tabular-nums">{detail.communities_assigned}</span>
               </div>
@@ -475,22 +476,22 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
               <div>
                 <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <XCircle className="h-4 w-4 text-amber-500" />
-                  QIDs with Pending Vendor Quote
+                  {t("qidsWithPendingVendorQuote")}
                   <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs">
                     {detail.pending_vendor_quotes.length}
                   </span>
                 </h3>
                 {detail.pending_vendor_quotes.length === 0 ? (
-                  <EmptyState message="No pending vendor quotes." />
+                  <EmptyState message={t("noPendingVendorQuotes")} />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b bg-gray-50 text-left text-muted-foreground">
                           <th className="px-2 py-1.5 font-medium">QID</th>
-                          <th className="px-2 py-1.5 font-medium">Date</th>
-                          <th className="px-2 py-1.5 font-medium">Client</th>
-                          <th className="px-2 py-1.5 font-medium">Description</th>
+                          <th className="px-2 py-1.5 font-medium">{t("colDate")}</th>
+                          <th className="px-2 py-1.5 font-medium">{t("colClient")}</th>
+                          <th className="px-2 py-1.5 font-medium">{t("colDescription")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -512,17 +513,17 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
               <div>
                 <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <BarChart2 className="h-4 w-4 text-violet-500" />
-                  QIDs Created per Month
+                  {t("qidsCreatedPerMonth")}
                 </h3>
                 {detail.qids_by_month.length === 0 ? (
-                  <EmptyState message="No monthly data available." />
+                  <EmptyState message={t("noMonthlyData")} />
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                          <th className="px-2 py-1.5 font-medium">Month</th>
-                          <th className="px-2 py-1.5 font-medium text-right">QIDs Created</th>
+                          <th className="px-2 py-1.5 font-medium">{t("colMonth")}</th>
+                          <th className="px-2 py-1.5 font-medium text-right">{t("colQidsCreated")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -539,7 +540,7 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
               </div>
             </div>
           ) : (
-            <EmptyState message="Could not load member details." />
+            <EmptyState message={t("errorLoadMemberDetails")} />
           )}
         </div>
       </div>

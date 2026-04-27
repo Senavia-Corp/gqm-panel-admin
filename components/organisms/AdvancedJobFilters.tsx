@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { 
   Filter, X, Search, ChevronDown, ChevronUp, 
   Calendar, Building2, Globe, Tag, 
@@ -20,21 +21,21 @@ interface MemberOption       { ID_Member: string; Member_Name: string | null }
 
 type YearOption = { label: string; value: string }
 
-const JOB_STATUSES: Array<{ label: string; value: string; color?: string }> = [
-  { label: "All statuses",                 value: "all" },
-  { label: "Assigned / P. Quote",          value: "Assigned/P. Quote",          color: "bg-blue-500" },
-  { label: "Waiting for approval",         value: "Waiting for Approval",       color: "bg-yellow-500" },
-  { label: "Scheduled / Work in progress", value: "Scheduled / Work in Progress", color: "bg-green-500" },
-  { label: "Completed P. INV / POs",       value: "Completed P. INV / POs",       color: "bg-emerald-600" },
-  { label: "Invoiced",                     value: "Invoiced",                   color: "bg-purple-500" },
-  { label: "Hold",                         value: "HOLD",                       color: "bg-orange-600" },
-  { label: "Paid",                         value: "PAID",                       color: "bg-green-600" },
-  { label: "Warranty",                     value: "Warranty",                   color: "bg-indigo-500" },
-  { label: "Received — stand by",          value: "Received-Stand By",          color: "bg-slate-500" },
-  { label: "In progress",                  value: "In Progress",                color: "bg-sky-500" },
-  { label: "Completed PVI / POs",          value: "Completed PVI / POs",          color: "bg-teal-600" },
-  { label: "Cancelled",                    value: "Cancelled",                  color: "bg-red-500" },
-  { label: "Archived",                     value: "Archived",                   color: "bg-gray-700" },
+const JOB_STATUS_VALUES: Array<{ key: string; value: string; color?: string }> = [
+  { key: "filterAllStatuses", value: "all" },
+  { key: "statusAssignedQuote",   value: "Assigned/P. Quote",            color: "bg-blue-500" },
+  { key: "statusWaitingApproval", value: "Waiting for Approval",         color: "bg-yellow-500" },
+  { key: "statusScheduled",       value: "Scheduled / Work in Progress", color: "bg-green-500" },
+  { key: "statusCompletedInv",    value: "Completed P. INV / POs",       color: "bg-emerald-600" },
+  { key: "statusInvoiced",        value: "Invoiced",                     color: "bg-purple-500" },
+  { key: "statusHold",            value: "HOLD",                         color: "bg-orange-600" },
+  { key: "statusPaid",            value: "PAID",                         color: "bg-green-600" },
+  { key: "statusWarranty",        value: "Warranty",                     color: "bg-indigo-500" },
+  { key: "statusReceivedStandBy", value: "Received-Stand By",            color: "bg-slate-500" },
+  { key: "statusInProgress",      value: "In Progress",                  color: "bg-sky-500" },
+  { key: "statusCompletedPvi",    value: "Completed PVI / POs",          color: "bg-teal-600" },
+  { key: "statusCancelled",       value: "Cancelled",                    color: "bg-red-500" },
+  { key: "statusArchived",        value: "Archived",                     color: "bg-gray-700" },
 ]
 
 interface AdvancedJobFiltersProps {
@@ -102,6 +103,14 @@ export function AdvancedJobFilters({
   onAddNew,
   onExportClick,
 }: AdvancedJobFiltersProps) {
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
+
+  const jobStatuses = useMemo(() =>
+    JOB_STATUS_VALUES.map((s) => ({ ...s, label: t(s.key as any) })),
+    [t]
+  )
+
   const [expanded, setExpanded]       = useState(false)
   const [clients,  setClients]        = useState<ClientOption[]>([])
   const [parents,  setParents]        = useState<ParentMgmtCoOption[]>([])
@@ -154,7 +163,7 @@ export function AdvancedJobFilters({
             <div className="flex flex-col">
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h2>
               <p className="text-xs text-slate-500 font-medium font-mono uppercase tracking-wider">
-                System Registry • Total Records: {count.toLocaleString()}
+                {t("filtersSystemRegistry")} {count.toLocaleString()}
               </p>
             </div>
           </div>
@@ -165,7 +174,7 @@ export function AdvancedJobFilters({
                 <SelectTrigger className="h-10 w-[140px] border-none bg-transparent focus:ring-0 shadow-none font-semibold text-slate-700">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-slate-400" />
-                    <SelectValue placeholder="All years" />
+                    <SelectValue placeholder={t("allYears")} />
                   </div>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -186,7 +195,7 @@ export function AdvancedJobFilters({
               )}
             >
               <Filter className={cn("h-4 w-4", activeFilterCount > 0 && "text-gqm-yellow")} />
-              <span className="font-semibold">Filters</span>
+              <span className="font-semibold">{t("filtersButton")}</span>
               {activeFilterCount > 0 && (
                 <Badge className="ml-1 h-5 min-w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gqm-yellow text-gqm-green-dark border-none">
                   {activeFilterCount}
@@ -202,13 +211,13 @@ export function AdvancedJobFilters({
                 className="h-10 border-slate-200 text-slate-600 hover:text-primary hover:border-primary/20 hover:bg-primary/5 rounded-xl gap-2 font-semibold transition-all px-4"
               >
                 <FileSpreadsheet className="h-4 w-4" />
-                <span className="hidden sm:inline">Export</span>
+                <span className="hidden sm:inline">{tCommon("export")}</span>
               </Button>
             )}
 
             {onAddNew && (
               <Button onClick={onAddNew} className="h-10 bg-gqm-green-dark hover:bg-gqm-green text-white rounded-xl shadow-sm border-none gap-2 font-semibold">
-                <PlusCircle className="h-4 w-4" /> Add new job
+                <PlusCircle className="h-4 w-4" /> {t("filtersAddNew")}
               </Button>
             )}
           </div>
@@ -220,7 +229,7 @@ export function AdvancedJobFilters({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-gqm-green-dark transition-colors" />
             <Input
               type="text"
-              placeholder="Quick search by Job ID, Project Name, or Location..."
+              placeholder={t("filtersSearch")}
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={onSearchKeyDown}
@@ -228,11 +237,11 @@ export function AdvancedJobFilters({
             />
           </div>
           <Button onClick={onSearchSubmit} size="lg" className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md gap-2 font-bold shrink-0">
-            <Search className="h-5 w-5" /> Analyze
+            <Search className="h-5 w-5" /> {t("filtersAnalyze")}
           </Button>
           {activeFilterCount > 0 && (
             <Button variant="outline" onClick={onResetFilters} size="lg" className="h-12 px-6 rounded-xl border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all font-bold shrink-0 gap-2">
-              <RefreshCcw className="h-4 w-4" /> Reset
+              <RefreshCcw className="h-4 w-4" /> {t("filtersReset")}
             </Button>
           )}
         </div>
@@ -248,13 +257,13 @@ export function AdvancedJobFilters({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
               {/* Estado */}
               <FilterSelect
-                label="Status"
+                label={t("filterStatus")}
                 icon={<Tag className="h-3.5 w-3.5" />}
                 value={status || "all"}
                 onValueChange={onStatusChange}
-                placeholder="Filter by phase"
+                placeholder={t("filterStatusPlaceholder")}
               >
-                {JOB_STATUSES.map((s) => (
+                {jobStatuses.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
                     <div className="flex items-center gap-2">
                        {s.color && <div className={cn("h-2 w-2 rounded-full", s.color)} />}
@@ -266,14 +275,14 @@ export function AdvancedJobFilters({
 
               {/* Miembro / Asociado */}
               <FilterSelect
-                label="Representative"
+                label={t("filterRep")}
                 icon={<Users className="h-3.5 w-3.5" />}
                 value={memberId || "all"}
                 onValueChange={onMemberChange}
                 disabled={loading}
-                placeholder={loading ? "Loading..." : "Search associate"}
+                placeholder={loading ? t("filterLoading") : t("filterRepPlaceholder")}
               >
-                <SelectItem value="all">All members</SelectItem>
+                <SelectItem value="all">{t("filterAllMembers")}</SelectItem>
                 {members.map((m) => (
                   <SelectItem key={m.ID_Member} value={m.ID_Member}>
                     {m.Member_Name ?? m.ID_Member}
@@ -283,14 +292,14 @@ export function AdvancedJobFilters({
 
               {/* Cliente */}
               <FilterSelect
-                label="Client Community"
+                label={t("filterClient")}
                 icon={<Building2 className="h-3.5 w-3.5" />}
                 value={clientId || "all"}
                 onValueChange={onClientChange}
                 disabled={loading}
-                placeholder={loading ? "Loading..." : "Search community"}
+                placeholder={loading ? t("filterLoading") : t("filterClientPlaceholder")}
               >
-                <SelectItem value="all">All communities</SelectItem>
+                <SelectItem value="all">{t("filterAllCommunities")}</SelectItem>
                 {clients.map((c) => (
                   <SelectItem key={c.ID_Client} value={c.ID_Client}>
                     {c.Client_Community ?? c.ID_Client}
@@ -300,14 +309,14 @@ export function AdvancedJobFilters({
 
               {/* Compañía padre */}
               <FilterSelect
-                 label="Management / Parent"
+                 label={t("filterParent")}
                  icon={<Globe className="h-3.5 w-3.5" />}
                  value={parentMgmtCoId || "all"}
                  onValueChange={onParentMgmtCoChange}
                  disabled={loading}
-                 placeholder={loading ? "Loading..." : "All entities"}
+                 placeholder={loading ? t("filterLoading") : t("filterParentPlaceholder")}
                >
-                <SelectItem value="all">Global (All entities)</SelectItem>
+                <SelectItem value="all">{t("filterAllEntities")}</SelectItem>
                 {parents.map((p) => (
                   <SelectItem key={p.ID_Community_Tracking} value={p.ID_Community_Tracking}>
                     {p.Property_mgmt_co ?? p.ID_Community_Tracking}
@@ -319,7 +328,7 @@ export function AdvancedJobFilters({
               <div className="space-y-2 group">
                 <div className="flex items-center gap-2 px-1">
                   <Calendar className="h-3.5 w-3.5 text-slate-400 group-focus-within:text-gqm-green-dark" />
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Date From</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">{t("filterDateFrom")}</label>
                 </div>
                 <Input
                   type="date"
@@ -332,7 +341,7 @@ export function AdvancedJobFilters({
               <div className="space-y-2 group">
                 <div className="flex items-center gap-2 px-1">
                   <Calendar className="h-3.5 w-3.5 text-slate-400 group-focus-within:text-gqm-green-dark" />
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Date To</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">{t("filterDateTo")}</label>
                 </div>
                 <Input
                   type="date"

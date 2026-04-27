@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useMemo } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   CalendarDays,
   Clock,
@@ -103,20 +104,20 @@ function getWeekDays(): Date[] {
   })
 }
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri", "daySat", "daySun"]
+const MONTH_KEYS = [
+  "monthJan", "monthFeb", "monthMar", "monthApr", "monthMay", "monthJun",
+  "monthJul", "monthAug", "monthSep", "monthOct", "monthNov", "monthDec",
 ]
 
-function fmtShortDate(d: Date) {
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`
+function fmtShortDate(d: Date, t: any) {
+  return `${t(MONTH_KEYS[d.getMonth()])} ${d.getDate()}`
 }
 
-function fmtFullDate(iso: string | null) {
+function fmtFullDate(iso: string | null, t: any) {
   if (!iso) return "—"
   const d = new Date(iso + "T00:00:00")
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+  return `${t(MONTH_KEYS[d.getMonth()])} ${d.getDate()}, ${d.getFullYear()}`
 }
 
 function isToday(d: Date) {
@@ -180,86 +181,93 @@ function getBarPosition(task: WeeklyTask, weekDays: Date[]): [number, number] {
 
 const PRIORITY_CONFIG: Record<
   string,
-  { dot: string; badge: string; label: string }
+  { dot: string; badge: string; key: string }
 > = {
   Critical: {
     dot: "bg-red-500",
     badge: "bg-red-100 text-red-700 border border-red-200",
-    label: "Critical",
+    key: "priorityCritical",
   },
   High: {
     dot: "bg-orange-500",
     badge: "bg-orange-100 text-orange-700 border border-orange-200",
-    label: "High",
+    key: "priorityHigh",
   },
   Medium: {
     dot: "bg-yellow-500",
     badge: "bg-yellow-100 text-yellow-700 border border-yellow-200",
-    label: "Medium",
+    key: "priorityMedium",
   },
   Low: {
     dot: "bg-blue-400",
     badge: "bg-blue-100 text-blue-700 border border-blue-200",
-    label: "Low",
+    key: "priorityLow",
   },
   default: {
     dot: "bg-gray-400",
     badge: "bg-gray-100 text-gray-600 border border-gray-200",
-    label: "—",
+    key: "priorityNone",
   },
 }
 
-function getPriority(p: string | null) {
-  if (!p) return PRIORITY_CONFIG.default
-  return PRIORITY_CONFIG[p] ?? { ...PRIORITY_CONFIG.default, label: p }
+function getPriority(p: string | null, t: any) {
+  const cfg = (p && PRIORITY_CONFIG[p]) ? PRIORITY_CONFIG[p] : PRIORITY_CONFIG.default
+  return { ...cfg, label: t(cfg.key) }
 }
 
 const STATUS_CONFIG: Record<
   string,
-  { icon: React.ReactNode; bar: string; badge: string }
+  { icon: React.ReactNode; bar: string; badge: string; key?: string }
 > = {
   completed: {
     icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />,
     bar: "bg-emerald-400",
     badge: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    key: "statusCompleted",
   },
   "in progress": {
     icon: <Loader2 className="h-3.5 w-3.5 text-blue-600 animate-spin" />,
     bar: "bg-blue-400",
     badge: "bg-blue-50 text-blue-700 border border-blue-200",
+    key: "statusInProgress",
   },
   "work-in-progress": {
     icon: <Loader2 className="h-3.5 w-3.5 text-blue-600 animate-spin" />,
     bar: "bg-blue-400",
     badge: "bg-blue-50 text-blue-700 border border-blue-200",
+    key: "statusInProgress",
   },
   pending: {
     icon: <Clock className="h-3.5 w-3.5 text-amber-600" />,
     bar: "bg-amber-400",
     badge: "bg-amber-50 text-amber-700 border border-amber-200",
+    key: "legendPending",
   },
   "not started": {
     icon: <Circle className="h-3.5 w-3.5 text-gray-500" />,
     bar: "bg-gray-300",
     badge: "bg-gray-50 text-gray-600 border border-gray-200",
+    key: "statusNotStarted",
   },
   overdue: {
     icon: <AlertTriangle className="h-3.5 w-3.5 text-red-600" />,
     bar: "bg-red-400",
     badge: "bg-red-50 text-red-700 border border-red-200",
+    key: "legendOverdue",
   },
   default: {
     icon: <Circle className="h-3.5 w-3.5 text-gray-400" />,
     bar: "bg-gray-300",
     badge: "bg-gray-50 text-gray-600 border border-gray-200",
+    key: "legendOther",
   },
 }
 
-function getStatus(s: string | null) {
-  if (!s) return { ...STATUS_CONFIG.default, label: "—" }
+function getStatus(s: string | null, t: any) {
+  if (!s) return { ...STATUS_CONFIG.default, label: t(STATUS_CONFIG.default.key!) }
   const key = s.toLowerCase().trim()
   const cfg = STATUS_CONFIG[key] ?? STATUS_CONFIG.default
-  return { ...cfg, label: s }
+  return { ...cfg, label: cfg.key ? t(cfg.key) : s }
 }
 
 const JOB_TYPE_COLORS: Record<string, string> = {
@@ -308,9 +316,10 @@ function TaskRow({
   weekDays: Date[]
   onClick: () => void
 }) {
+  const t = useTranslations("dashboard")
   const [col, span] = getBarPosition(task, weekDays)
-  const priority = getPriority(task.Priority)
-  const status = getStatus(task.Task_status)
+  const priority = getPriority(task.Priority, t)
+  const status = getStatus(task.Task_status, t)
   const jobType = task.job?.Job_type ?? null
   const memberName = getMemberName(task.member)
 
@@ -394,11 +403,11 @@ function TaskRow({
 
       {/* Info row: dates + job + member */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-white/60">
-        <span>Start: {fmtFullDate(task.Designation_date)}</span>
-        <span>Due: {fmtFullDate(task.Delivery_date)}</span>
+        <span>{t("taskStart")} {fmtFullDate(task.Designation_date, t)}</span>
+        <span>{t("taskDue")} {fmtFullDate(task.Delivery_date, t)}</span>
         {task.job && (
           <span className="truncate">
-            <span className="text-white/40 mr-1">Job</span>
+            <span className="text-white/40 mr-1">{t("colJob")}</span>
             <span className="font-medium text-white/75">
               #{task.job.ID_Jobs}
             </span>
@@ -439,10 +448,11 @@ function TaskDetailDialog({
   task: WeeklyTask | null
   onClose: () => void
 }) {
+  const t = useTranslations("dashboard")
   if (!task) return null
 
-  const priority = getPriority(task.Priority)
-  const status = getStatus(task.Task_status)
+  const priority = getPriority(task.Priority, t)
+  const status = getStatus(task.Task_status, t)
   const jobType = task.job?.Job_type ?? null
   const memberName = getMemberName(task.member)
 
@@ -473,7 +483,7 @@ function TaskDetailDialog({
             ].join(" ")}
           >
             <span className={["h-2 w-2 rounded-full", priority.dot].join(" ")} />
-            {priority.label} Priority
+            {priority.label} {t("dialogPrioritySuffix")}
           </span>
           {jobType && (
             <span
@@ -492,7 +502,7 @@ function TaskDetailDialog({
         {task.Task_description && (
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-              Description
+              {t("dialogDescription")}
             </p>
             <p className="text-sm text-gray-700 leading-relaxed">
               {task.Task_description}
@@ -503,15 +513,15 @@ function TaskDetailDialog({
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-            <p className="text-xs text-gray-400 mb-1">Assigned</p>
+            <p className="text-xs text-gray-400 mb-1">{t("dialogAssigned")}</p>
             <p className="font-semibold text-gray-900 text-sm">
-              {fmtFullDate(task.Designation_date)}
+              {fmtFullDate(task.Designation_date, t)}
             </p>
           </div>
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-            <p className="text-xs text-gray-400 mb-1">Due</p>
+            <p className="text-xs text-gray-400 mb-1">{t("dialogDue")}</p>
             <p className="font-semibold text-gray-900 text-sm">
-              {fmtFullDate(task.Delivery_date)}
+              {fmtFullDate(task.Delivery_date, t)}
             </p>
           </div>
         </div>
@@ -521,13 +531,13 @@ function TaskDetailDialog({
           <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">
-                Job
+                {t("dialogJob")}
               </p>
               <Link
                 href={`/jobs/${task.job.ID_Jobs}`}
                 className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
               >
-                View job <ExternalLink className="h-3 w-3" />
+                {t("dialogViewJob")} <ExternalLink className="h-3 w-3" />
               </Link>
             </div>
             <div className="space-y-1.5">
@@ -560,7 +570,7 @@ function TaskDetailDialog({
               )}
               {task.job.Job_status && (
                 <p className="text-xs text-gray-500">
-                  <span className="text-gray-400">Status: </span>
+                  <span className="text-gray-400">{t("dialogStatus")} </span>
                   {task.job.Job_status}
                 </p>
               )}
@@ -572,7 +582,7 @@ function TaskDetailDialog({
         {task.member && (
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Assigned Member
+              {t("dialogAssignedMember")}
             </p>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-gqm-green/10 flex items-center justify-center shrink-0">
@@ -597,7 +607,7 @@ function TaskDetailDialog({
         {task.subcontractor && (
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Assigned Subcontractor
+              {t("dialogAssignedSub")}
             </p>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-cyan-50 flex items-center justify-center shrink-0">
@@ -633,6 +643,7 @@ function MemberPickerDialog({
   onSelect: (o: FilterOption) => void
   onClose: () => void
 }) {
+  const t = useTranslations("dashboard")
   const [items, setItems] = useState<MemberRow[]>([])
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(true)
@@ -671,14 +682,14 @@ function MemberPickerDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Filter by Member</DialogTitle>
+          <DialogTitle>{t("filterByMember")}</DialogTitle>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gqm-green/30"
-            placeholder="Search members…"
+            placeholder={t("searchMembersEllipsis")}
             value={q}
             onChange={(e) => {
               setQ(e.target.value)
@@ -691,11 +702,11 @@ function MemberPickerDialog({
           {loading ? (
             <div className="py-8 text-center text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-              Loading…
+              {t("loadingEllipsis")}
             </div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-400">
-              No members found
+              {t("noMembersFound")}
             </div>
           ) : (
             items.map((m) => (
@@ -757,6 +768,7 @@ function SubcontractorPickerDialog({
   onSelect: (o: FilterOption) => void
   onClose: () => void
 }) {
+  const t = useTranslations("dashboard")
   const [items, setItems] = useState<SubRow[]>([])
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(true)
@@ -795,14 +807,14 @@ function SubcontractorPickerDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Filter by Subcontractor</DialogTitle>
+          <DialogTitle>{t("filterBySubcontractor")}</DialogTitle>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gqm-green/30"
-            placeholder="Search subcontractors…"
+            placeholder={t("searchSubsEllipsis")}
             value={q}
             onChange={(e) => {
               setQ(e.target.value)
@@ -815,11 +827,11 @@ function SubcontractorPickerDialog({
           {loading ? (
             <div className="py-8 text-center text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-              Loading…
+              {t("loadingEllipsis")}
             </div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-400">
-              No subcontractors found
+              {t("noSubsFound")}
             </div>
           ) : (
             items.map((s) => (
@@ -884,6 +896,7 @@ function JobPickerDialog({
   onSelect: (o: FilterOption) => void
   onClose: () => void
 }) {
+  const t = useTranslations("dashboard")
   const [items, setItems] = useState<JobRow[]>([])
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(true)
@@ -920,14 +933,14 @@ function JobPickerDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Filter by Job</DialogTitle>
+          <DialogTitle>{t("filterByJob")}</DialogTitle>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gqm-green/30"
-            placeholder="Search jobs…"
+            placeholder={t("searchJobsEllipsis")}
             value={q}
             onChange={(e) => {
               setQ(e.target.value)
@@ -940,11 +953,11 @@ function JobPickerDialog({
           {loading ? (
             <div className="py-8 text-center text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-              Loading…
+              {t("loadingEllipsis")}
             </div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-400">
-              No jobs found
+              {t("noJobsFound")}
             </div>
           ) : (
             items.map((j) => (
@@ -1062,6 +1075,7 @@ function FilterChip({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function WeeklyTasksPanel() {
+  const t = useTranslations("dashboard")
   const [jobType, setJobType] = useState<JobType>("ALL")
   const [tasks, setTasks] = useState<WeeklyTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1185,13 +1199,13 @@ export default function WeeklyTasksPanel() {
         <div>
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-white" />
-            <h2 className="text-white text-lg font-semibold">Weekly Tasks</h2>
+            <h2 className="text-white text-lg font-semibold">{t("weeklyTasks")}</h2>
           </div>
           <p className="text-white/70 text-sm mt-0.5">
-            {fmtShortDate(weekDays[0])} – {fmtShortDate(weekDays[6])} ·{" "}
+            {fmtShortDate(weekDays[0], t)} – {fmtShortDate(weekDays[6], t)} ·{" "}
             {hasActiveFilters
-              ? `${filteredTasks.length} of ${tasks.length} tasks`
-              : `${tasks.length} task${tasks.length !== 1 ? "s" : ""}`}
+              ? `${filteredTasks.length} ${t("ofPagination")} ${tasks.length} ${t("tasksSuffix")}`
+              : `${tasks.length} ${tasks.length !== 1 ? t("tasksSuffix") : t("taskSuffix")}`}
           </p>
         </div>
 
@@ -1199,15 +1213,15 @@ export default function WeeklyTasksPanel() {
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
-            {summary.completed} Done
+            {summary.completed} {t("summaryDone")}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
             <Loader2 className="h-3.5 w-3.5 text-blue-300" />
-            {summary.inProg} In Progress
+            {summary.inProg} {t("summaryInProgress")}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
             <AlertTriangle className="h-3.5 w-3.5 text-orange-300" />
-            {summary.high} High Priority
+            {summary.high} {t("summaryHighPriority")}
           </span>
         </div>
       </div>
@@ -1221,7 +1235,7 @@ export default function WeeklyTasksPanel() {
               className="h-8 min-w-[80px] rounded-lg px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
             >
               <span className="flex items-center gap-2">
-                <Briefcase className="h-3.5 w-3.5" />All
+                <Briefcase className="h-3.5 w-3.5" />{t("all_m")}
               </span>
             </TabsTrigger>
             <TabsTrigger
@@ -1258,10 +1272,10 @@ export default function WeeklyTasksPanel() {
         <div className="flex items-center gap-1 bg-white/10 rounded-full p-1">
           {(
             [
-              { value: "ALL", label: "All Status" },
-              { value: "Not started", label: "Not Started" },
-              { value: "Work-in-progress", label: "In Progress" },
-              { value: "Completed", label: "Completed" },
+              { value: "ALL", label: t("statusAllStatus") },
+              { value: "Not started", label: t("statusNotStarted") },
+              { value: "Work-in-progress", label: t("statusInProgress") },
+              { value: "Completed", label: t("statusCompleted") },
             ] as { value: TaskStatusFilter; label: string }[]
           ).map(({ value, label }) => (
             <button
@@ -1282,7 +1296,7 @@ export default function WeeklyTasksPanel() {
 
         {/* Member filter */}
         <FilterChip
-          label="Member"
+          label={t("filterMember")}
           activeLabel={memberFilter?.name}
           onClick={() => setMemberPickerOpen(true)}
           onClear={() => setMemberFilter(null)}
@@ -1290,7 +1304,7 @@ export default function WeeklyTasksPanel() {
 
         {/* Subcontractor filter */}
         <FilterChip
-          label="Subcontractor"
+          label={t("filterSubcontractor")}
           activeLabel={subFilter?.name}
           onClick={() => setSubPickerOpen(true)}
           onClear={() => setSubFilter(null)}
@@ -1298,7 +1312,7 @@ export default function WeeklyTasksPanel() {
 
         {/* Job filter */}
         <FilterChip
-          label="Job"
+          label={t("filterJob")}
           activeLabel={jobFilter?.name}
           onClick={() => setJobPickerOpen(true)}
           onClear={() => setJobFilter(null)}
@@ -1316,7 +1330,7 @@ export default function WeeklyTasksPanel() {
             }}
             className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/90 transition-colors ml-1"
           >
-            <X className="h-3 w-3" /> Clear all
+            <X className="h-3 w-3" /> {t("clearAll")}
           </button>
         )}
       </div>
@@ -1339,7 +1353,7 @@ export default function WeeklyTasksPanel() {
                   today ? "text-gqm-green-dark" : "text-white/80",
                 ].join(" ")}
               >
-                {DAY_LABELS[i]}
+                {t(DAY_KEYS[i])}
               </p>
               <p
                 className={[
@@ -1363,13 +1377,13 @@ export default function WeeklyTasksPanel() {
       ) : filteredTasks.length === 0 ? (
         <div className="rounded-xl border border-white/20 bg-white/10 py-14 text-center">
           <CalendarDays className="mx-auto h-10 w-10 text-white/40 mb-3" />
-          <p className="text-white font-semibold">No tasks found</p>
+          <p className="text-white font-semibold">{t("noTasksFound")}</p>
           <p className="text-white/60 text-sm mt-1">
             {hasActiveFilters
-              ? "Try adjusting your filters."
+              ? t("tryAdjustingFilters")
               : jobType !== "ALL"
-              ? `No ${jobType} tasks with delivery dates in this range.`
-              : "No tasks with delivery dates in this week."}
+              ? t("errorNoTasksForJobType", { type: jobType })
+              : t("noTasksThisWeek")}
           </p>
         </div>
       ) : (
@@ -1417,14 +1431,14 @@ export default function WeeklyTasksPanel() {
       {/* ── Legend ── */}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-4">
         <span className="text-xs text-white/50 font-medium uppercase tracking-wide">
-          Legend
+          {t("legendLabel")}
         </span>
         {[
-          { bar: "bg-emerald-400", label: "Completed" },
-          { bar: "bg-blue-400", label: "In Progress" },
-          { bar: "bg-amber-400", label: "Pending" },
-          { bar: "bg-red-400", label: "Overdue" },
-          { bar: "bg-gray-300", label: "Other" },
+          { bar: "bg-emerald-400", label: t("legendCompleted") },
+          { bar: "bg-blue-400", label: t("legendInProgress") },
+          { bar: "bg-amber-400", label: t("legendPending") },
+          { bar: "bg-red-400", label: t("legendOverdue") },
+          { bar: "bg-gray-300", label: t("legendOther") },
         ].map(({ bar, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className={["h-2.5 w-6 rounded-full", bar].join(" ")} />

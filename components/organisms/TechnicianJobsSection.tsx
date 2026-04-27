@@ -12,12 +12,14 @@ import { useRouter } from "next/navigation"
 import type { Technician, Job } from "@/lib/types"
 import { fetchJobs } from "@/lib/services/jobs-service"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface TechnicianJobsSectionProps {
   technician: Technician
 }
 
 export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps) {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { toast } = useToast()
   const [jobs, setJobs] = useState<Job[]>([])
@@ -78,8 +80,8 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
     } catch (error) {
       console.error("[v0] Error loading jobs:", error)
       toast({
-        title: "Error",
-        description: "Failed to load jobs",
+        title: t("error"),
+        description: t("failedToLoadJobs"),
         variant: "destructive",
       })
     } finally {
@@ -109,8 +111,8 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
 
     setIsAssignDialogOpen(false)
     toast({
-      title: "Success",
-      description: `Job ${job.id} assigned to ${technician.Name}`,
+      title: t("success"),
+      description: t("jobAssignedSuccess", { id: job.id, name: technician.Name }),
     })
   }
 
@@ -154,12 +156,12 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Jobs</CardTitle>
+          <CardTitle>{t("tabJobs")}</CardTitle>
           <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gqm-green hover:bg-gqm-green/90 text-white">
                 <Plus className="mr-2 h-4 w-4" />
-                Assign New Job
+                {t("assignNewJob")}
               </Button>
             </DialogTrigger>
             <DialogContent
@@ -167,13 +169,13 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
               style={{ width: "85vw", minWidth: "1200px" }}
             >
               <DialogHeader className="p-6 pb-4 border-b">
-                <DialogTitle className="text-xl">Assign Job to {technician.Name}</DialogTitle>
+                <DialogTitle className="text-xl">{t("assignJobTo", { name: technician.Name })}</DialogTitle>
               </DialogHeader>
               <div className="flex-1 overflow-hidden flex flex-col px-6 pb-6 pt-4">
                 <div className="relative mb-4">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search jobs by ID, name, client, or status..."
+                    placeholder={t("searchJobsPlaceholder")}
                     value={assignSearchQuery}
                     onChange={(e) => setAssignSearchQuery(e.target.value)}
                     className="pl-10 h-11"
@@ -183,18 +185,18 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                   <Table>
                     <TableHeader className="sticky top-0 bg-muted z-10">
                       <TableRow>
-                        <TableHead className="pl-6 w-[140px] font-semibold">Job ID</TableHead>
-                        <TableHead className="w-[32%] font-semibold">Job Name</TableHead>
-                        <TableHead className="w-[24%] font-semibold">Client</TableHead>
-                        <TableHead className="w-[28%] font-semibold">Status</TableHead>
-                        <TableHead className="text-right pr-6 w-[120px] font-semibold">Action</TableHead>
+                        <TableHead className="pl-6 w-[140px] font-semibold">{t("jobId")}</TableHead>
+                        <TableHead className="w-[32%] font-semibold">{t("jobName")}</TableHead>
+                        <TableHead className="w-[24%] font-semibold">{t("client")}</TableHead>
+                        <TableHead className="w-[28%] font-semibold">{t("status")}</TableHead>
+                        <TableHead className="text-right pr-6 w-[120px] font-semibold">{t("action")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredAvailableJobs.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-12 text-base">
-                            No jobs found
+                            {t("noJobsFound")}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -204,7 +206,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                             <TableCell className="text-base">{job.projectName}</TableCell>
                             <TableCell className="text-base">{job.client.name}</TableCell>
                             <TableCell>
-                              <Badge className={`${getStatusColor(job.status)} text-sm px-3 py-1`}>{job.status}</Badge>
+                              <Badge className={`${getStatusColor(job.status)} text-sm px-3 py-1`}>{t(job.status.toLowerCase())}</Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
                               <Button
@@ -212,7 +214,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                                 onClick={() => handleAssignJob(job)}
                                 className="bg-gqm-green hover:bg-gqm-green/90 text-white px-4 py-2"
                               >
-                                Assign
+                                {t("assign")}
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -230,7 +232,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search jobs..."
+            placeholder={t("searchJobs")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -241,24 +243,24 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-6">Job ID</TableHead>
-                <TableHead>Job Name</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right pr-6">Actions</TableHead>
+                <TableHead className="pl-6">{t("jobId")}</TableHead>
+                <TableHead>{t("jobName")}</TableHead>
+                <TableHead>{t("client")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead className="text-right pr-6">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Loading jobs...
+                    {t("loadingJobs")}
                   </TableCell>
                 </TableRow>
               ) : filteredJobs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No jobs found
+                    {t("noJobsFound")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -268,7 +270,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                     <TableCell>{job.projectName}</TableCell>
                     <TableCell>{job.client.name}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
+                      <Badge className={getStatusColor(job.status)}>{t(job.status.toLowerCase())}</Badge>
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-2">
@@ -276,11 +278,11 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewDetails(job.id)}
-                          title="View Details"
+                          title={t("viewDetails")}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleViewTasks(job)} title="View Tasks">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewTasks(job)} title={t("viewTasks")}>
                           <ClipboardList className="h-4 w-4" />
                         </Button>
                       </div>

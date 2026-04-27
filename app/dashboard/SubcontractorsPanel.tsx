@@ -23,6 +23,7 @@ import { SectionCard } from "./components/SectionCard"
 import { StatusBadge } from "./components/StatusBadge"
 import { EmptyState } from "./components/EmptyState"
 import { CardCarouselSkeleton, TableSkeleton } from "./components/LoadingSkeleton"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,8 @@ type SubTab = "list" | "trade"
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SubcontractorsPanel() {
+  const t = useTranslations("dashboard")
+  const tCommon = useTranslations("common")
   const [tab,          setTab]         = useState<SubTab>("list")
 
   // List state
@@ -247,17 +250,17 @@ export default function SubcontractorsPanel() {
     <div className="space-y-6">
       {/* Tab selector */}
       <div className="inline-flex rounded-lg border bg-white p-1">
-        {(["list", "trade"] as SubTab[]).map((t) => (
+        {(["list", "trade"] as SubTab[]).map((tabKey) => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
-            onClick={() => { setTab(t); setSelectedId(null) }}
+            onClick={() => { setTab(tabKey); setSelectedId(null) }}
             className={[
               "rounded-md px-5 py-2 text-sm font-medium transition",
-              tab === t ? "bg-gqm-green-dark text-white shadow" : "text-muted-foreground hover:text-gray-900",
+              tab === tabKey ? "bg-gqm-green-dark text-white shadow" : "text-muted-foreground hover:text-gray-900",
             ].join(" ")}
           >
-            {t === "list" ? "Subcontractors" : "Tech per Trade"}
+            {tabKey === "list" ? t("tabSubcontractors") : t("tabTechPerTrade")}
           </button>
         ))}
       </div>
@@ -313,36 +316,36 @@ export default function SubcontractorsPanel() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                          <div className="text-muted-foreground">Status</div>
+                          <div className="text-muted-foreground">{t("colStatus")}</div>
                           <div className="text-right">
-                            {s.status ? <StatusBadge status={s.status} /> : <span className="italic opacity-50">No Status</span>}
+                            {s.status ? <StatusBadge status={s.status} /> : <span className="italic opacity-50">{t("noStatus")}</span>}
                           </div>
 
-                          <div className="text-muted-foreground">Active Tasks</div>
+                          <div className="text-muted-foreground">{t("kpiActiveTasks")}</div>
                           <div className="text-right font-semibold tabular-nums">{sub.active_tasks_count}</div>
 
                           <div className="text-muted-foreground">Skills</div>
                           <div className="text-right font-semibold tabular-nums">{sub.skills_count}</div>
 
-                          <div className="text-muted-foreground">Score</div>
+                          <div className="text-muted-foreground">{t("score")}</div>
                           <div className="text-right font-semibold tabular-nums">
-                            {s.score != null ? `${s.score}/10` : <span className="italic opacity-50">No Score</span>}
+                            {s.score != null ? `${s.score}/10` : <span className="italic opacity-50">{t("noScore")}</span>}
                           </div>
 
-                          <div className="text-muted-foreground">Total Paid</div>
+                          <div className="text-muted-foreground">{t("colTotalPaid")}</div>
                           <div className="text-right font-semibold tabular-nums text-emerald-700">{fmtK(sub.total_paid_usd)}</div>
                         </div>
 
                         {sub.has_overlap && (
                           <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-700 font-medium">
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                            Schedule overlap detected
+                            {t("scheduleOverlap")}
                           </div>
                         )}
                       </div>
 
                       <div className="px-5 py-2.5 mt-auto text-sm font-semibold text-black" style={{ backgroundColor: "#37D260" }}>
-                        {fmtK(sub.total_paid_usd)} Total Paid
+                        {fmtK(sub.total_paid_usd)} {t("colTotalPaid")}
                       </div>
                     </div>
                   )
@@ -352,9 +355,9 @@ export default function SubcontractorsPanel() {
 
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-              <span className="text-white text-sm">Page {page} / {Math.max(1, totalPages)}</span>
-              <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+              <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t("prevPage")}</Button>
+              <span className="text-white text-sm">{page} / {Math.max(1, totalPages)}</span>
+              <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t("nextPage")}</Button>
             </div>
           </div>
 
@@ -362,10 +365,10 @@ export default function SubcontractorsPanel() {
           <div className="grid gap-6 md:grid-cols-2">
 
             {/* Picker */}
-            <SectionCard title="All Subcontractors" subtitle="Click to see active tasks and billing">
+            <SectionCard title={t("allSubcontractors")} subtitle={t("allSubcontractorsSubtitle")}>
               <div className="relative mb-4">
                 <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or specialty..." className="pl-9" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchByNameOrSpecialty")} className="pl-9" />
               </div>
               {isLoading ? (
                 <TableSkeleton rows={6} cols={3} />
@@ -392,48 +395,48 @@ export default function SubcontractorsPanel() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm truncate">{s.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {s.specialty ?? <span className="italic opacity-50">No Specialty</span>}
+                              {s.specialty ?? <span className="italic opacity-50">{t("noSpecialty")}</span>}
                             </div>
                           </div>
                           <div className="text-right text-xs shrink-0">
                             <div className="font-semibold text-emerald-700">{fmtK(sub.total_paid_usd)}</div>
-                            <div className="text-muted-foreground">{sub.active_tasks_count} active</div>
+                            <div className="text-muted-foreground">{sub.active_tasks_count} {tCommon("active")}</div>
                           </div>
                         </div>
                       </button>
                     )
                   })}
-                  {items.length === 0 && <EmptyState message="No subcontractors found." />}
+                  {items.length === 0 && <EmptyState message={t("noSubcontractorsFound")} />}
                 </div>
               )}
             </SectionCard>
 
             {/* Detail */}
             <SectionCard
-              title={detail?.subcontractor.name ?? "Individual Statistics"}
-              subtitle={detail?.subcontractor.specialty ?? "Select a subcontractor on the left"}
-              action={selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear</Button> : undefined}
+              title={detail?.subcontractor.name ?? t("individualStats")}
+              subtitle={detail?.subcontractor.specialty ?? t("selectSubcontractorLeft")}
+              action={selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t("clear")}</Button> : undefined}
             >
               {!selectedId ? (
-                <EmptyState message="Select a subcontractor to see details." />
+                <EmptyState message={t("selectSubcontractorDetail")} />
               ) : detailLoading ? (
                 <TableSkeleton rows={5} cols={2} />
               ) : !detail ? (
-                <EmptyState message="Could not load details." />
+                <EmptyState message={t("errorLoadSubDetails")} />
               ) : (
                 <div className="space-y-5">
                   {/* KPI chips */}
                   <div className="grid grid-cols-2 gap-3">
-                    <KpiCard title="Active Tasks"  value={String(detail.active_tasks.count)}           Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                    <KpiCard title="Total Paid"    value={fmtK(detail.billing.totals.total_paid)}      Icon={DollarSign}   accentClass="bg-emerald-100 text-emerald-700" />
-                    <KpiCard title="Bills"         value={String(detail.billing.totals.bill_count)}    Icon={FileText}     accentClass="bg-violet-100 text-violet-700" />
-                    <KpiCard title="Pending Bills" value={String(detail.pending_bills.count)}          Icon={CheckCircle2} accentClass="bg-amber-100 text-amber-700" />
+                    <KpiCard title={t("kpiActiveTasks")}  value={String(detail.active_tasks.count)}        Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                    <KpiCard title={t("colTotalPaid")}   value={fmtK(detail.billing.totals.total_paid)}  Icon={DollarSign}   accentClass="bg-emerald-100 text-emerald-700" />
+                    <KpiCard title={t("kpiBills")}       value={String(detail.billing.totals.bill_count)} Icon={FileText}    accentClass="bg-violet-100 text-violet-700" />
+                    <KpiCard title={t("kpiPendingBills")} value={String(detail.pending_bills.count)}      Icon={CheckCircle2} accentClass="bg-amber-100 text-amber-700" />
                   </div>
 
                   {detail.subcontractor.score != null && (
                     <div className="flex items-center gap-2 rounded-xl border bg-gray-50 px-4 py-3">
                       <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm text-muted-foreground">Score</span>
+                      <span className="text-sm text-muted-foreground">{t("score")}</span>
                       <span className="ml-auto text-xl font-bold tabular-nums">{detail.subcontractor.score}/10</span>
                     </div>
                   )}
@@ -443,29 +446,29 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-sky-600" />
-                        In Progress Jobs
+                        {t("inProgressJobs")}
                         {detail.active_tasks.has_overlap && (
                           <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 font-normal">
-                            <AlertTriangle className="h-3 w-3" /> Overlap
+                            <AlertTriangle className="h-3 w-3" /> {t("overlap")}
                           </span>
                         )}
                       </h3>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Task</th>
-                            <th className="px-2 py-1.5 font-medium">Job</th>
-                            <th className="px-2 py-1.5 font-medium">Status</th>
-                            <th className="px-2 py-1.5 font-medium">Due</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colTask")}</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colJob")}</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colStatus")}</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colDue")}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {detail.active_tasks.tasks.map((t) => (
-                            <tr key={t.task_id} className="border-b hover:bg-gray-50 transition">
-                              <td className="px-2 py-1.5 font-medium max-w-[120px] truncate">{t.task_name}</td>
-                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{t.job?.job_id ?? "—"}</td>
-                              <td className="px-2 py-1.5"><StatusBadge status={t.status} /></td>
-                              <td className="px-2 py-1.5 tabular-nums">{t.delivery_date ?? "—"}</td>
+                          {detail.active_tasks.tasks.map((task) => (
+                            <tr key={task.task_id} className="border-b hover:bg-gray-50 transition">
+                              <td className="px-2 py-1.5 font-medium max-w-[120px] truncate">{task.task_name}</td>
+                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{task.job?.job_id ?? "—"}</td>
+                              <td className="px-2 py-1.5"><StatusBadge status={task.status} /></td>
+                              <td className="px-2 py-1.5 tabular-nums">{task.delivery_date ?? "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -478,14 +481,14 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-emerald-600" />
-                        Paid per Period
+                        {t("paidPerPeriod")}
                       </h3>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Period</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Invoices</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Total Paid</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colPeriod")}</th>
+                            <th className="px-2 py-1.5 font-medium text-right">{t("colInvoices")}</th>
+                            <th className="px-2 py-1.5 font-medium text-right">{t("colTotalPaid")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -506,17 +509,17 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <FileText className="h-4 w-4 text-violet-600" />
-                        POs Released
+                        {t("posReleased")}
                         <span className="rounded-full bg-violet-100 text-violet-800 px-2 py-0.5 text-xs">{detail.pending_bills.count}</span>
                       </h3>
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Bill ID</th>
-                            <th className="px-2 py-1.5 font-medium">Order</th>
-                            <th className="px-2 py-1.5 font-medium">Due Date</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Balance</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Total</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colBillId")}</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colOrder")}</th>
+                            <th className="px-2 py-1.5 font-medium">{t("colDueDate")}</th>
+                            <th className="px-2 py-1.5 font-medium text-right">{t("colBalance")}</th>
+                            <th className="px-2 py-1.5 font-medium text-right">{t("colTotal")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -540,11 +543,11 @@ export default function SubcontractorsPanel() {
         </>
       ) : (
         /* ===== Tech per Trade ============================================== */
-        <SectionCard title="Technicians per Trade" subtitle="Subcontractors grouped by skill / service type">
+        <SectionCard title={t("techsPerTrade")} subtitle={t("techsPerTradeSubtitle")}>
           {tradeLoading ? (
             <TableSkeleton rows={8} cols={4} />
           ) : tradeGroups.length === 0 ? (
-            <EmptyState message="No trade data available." />
+            <EmptyState message={t("noTradeData")} />
           ) : (
             <div className="space-y-4">
               {tradeGroups.map((group, gi) => (
@@ -553,7 +556,7 @@ export default function SubcontractorsPanel() {
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-violet-600 shrink-0" />
                       <span className="font-semibold text-sm">
-                        {group.division_trade || (group.skill_name !== "—" ? group.skill_name : null) || "Unknown"}
+                        {group.division_trade || (group.skill_name !== "—" ? group.skill_name : null) || t("unknown")}
                       </span>
                       {group.skill_name && group.skill_name !== "—" && group.division_trade && group.skill_name !== group.division_trade && (
                         <span className="rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-xs">
@@ -562,7 +565,7 @@ export default function SubcontractorsPanel() {
                       )}
                     </div>
                     <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium">
-                      {group.total_subs} subs
+                      {group.total_subs} {t("subs")}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">

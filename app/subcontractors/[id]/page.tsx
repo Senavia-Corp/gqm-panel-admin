@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
@@ -157,18 +158,20 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 function StatusBadge({ status }: { status?: string | null }) {
-  if (!status) return <span className="text-xs italic text-slate-400">No status</span>
+  const t = useTranslations("subcontractors")
+  if (!status) return <span className="text-xs italic text-slate-400">{t("noStatus")}</span>
   const map: Record<string, string> = {
     active: "bg-emerald-100 text-emerald-700 border-emerald-200",
     inactive: "bg-slate-100 text-slate-500 border-slate-200",
     pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
   }
   const cls = map[status.toLowerCase()] ?? "bg-blue-100 text-blue-700 border-blue-200"
-  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>{status}</span>
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>{t(status.toLowerCase())}</span>
 }
 
 function ScoreBadge({ score }: { score?: number | null }) {
-  if (score == null) return <span className="text-xs italic text-slate-400">No score</span>
+  const t = useTranslations("subcontractors")
+  if (score == null) return <span className="text-xs italic text-slate-400">{t("noScore")}</span>
   const pct = Math.min(100, Math.max(0, score))
   const cls = pct >= 80 ? "bg-emerald-100 text-emerald-700 border-emerald-200"
     : pct >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200"
@@ -195,6 +198,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
   values: string[]; icon: React.ElementType; placeholder: string
   onChange: (v: string[]) => void
 }) {
+  const t = useTranslations("subcontractors")
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
@@ -214,7 +218,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
       ))}
       <button type="button" onClick={() => onChange([...items, ""])}
         className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
-        <Plus className="h-3 w-3" /> Add another
+        <Plus className="h-3 w-3" /> {t("addAnother")}
       </button>
     </div>
   )
@@ -224,6 +228,7 @@ function ArrayDisplayChips({ values, icon: Icon, href, emptyLabel }: {
   values: string[]; icon: React.ElementType
   href?: (v: string) => string; emptyLabel: string
 }) {
+  const t = useTranslations("subcontractors")
   if (!values.length) return <span className="text-sm italic text-slate-400">{emptyLabel}</span>
   return (
     <div className="flex flex-col gap-1">
@@ -270,6 +275,7 @@ function PageSkeleton({ user }: { user: any }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SubcontractorDetailsPage() {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const searchParams = useSearchParams()
   const params = useParams<{ id: string }>()
@@ -381,7 +387,7 @@ export default function SubcontractorDetailsPage() {
       initForm(normalized)
       setChangedFields(new Set())
     } catch (e: any) {
-      setLoadError(e?.message ?? "Failed to load subcontractor")
+      setLoadError(e?.message ?? t("loadError"))
     } finally {
       setLoading(false)
     }
@@ -439,9 +445,9 @@ export default function SubcontractorDetailsPage() {
       initForm(normalized)
       setEditing(false)
       setChangedFields(new Set())
-      toast({ title: "Saved", description: "Subcontractor updated successfully." })
+      toast({ title: t("toastSaved"), description: t("toastSavedDesc") })
     } catch (e: any) {
-      toast({ title: "Error saving", description: e?.message ?? "Unknown error.", variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message ?? "Unknown error.", variant: "destructive" })
     } finally { setSaving(false) }
   }
 
@@ -576,7 +582,7 @@ export default function SubcontractorDetailsPage() {
               onClick={() => router.push("/subcontractors")}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
             >
-              Return to Subcontractors
+              {t("backToSubs")}
             </Button>
           </main>
         </div>
@@ -594,16 +600,16 @@ export default function SubcontractorDetailsPage() {
         <main className="flex-1 overflow-y-auto p-6">
           <button onClick={() => router.push("/subcontractors")}
             className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Back to Subcontractors
+            <ArrowLeft className="h-4 w-4" /> {t("backToSubs")}
           </button>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-red-500" />
-              <h2 className="font-semibold text-red-800">Could not load subcontractor</h2>
+              <h2 className="font-semibold text-red-800">{t("loadError")}</h2>
             </div>
             <p className="mt-2 text-sm text-red-600">{loadError}</p>
             <Button onClick={fetchSubc} className="mt-4 gap-2" variant="outline">
-              <RefreshCw className="h-4 w-4" /> Retry
+              <RefreshCw className="h-4 w-4" /> {t("retry")}
             </Button>
           </div>
         </main>
@@ -639,7 +645,7 @@ export default function SubcontractorDetailsPage() {
                     {(subc.Name ?? "??").slice(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">{subc.Name ?? "Unnamed"}</h1>
+                    <h1 className="text-lg font-bold text-slate-900 leading-none">{subc.Name ?? t("unnamed")}</h1>
                     <p className="mt-0.5 font-mono text-xs text-slate-400">{subc.ID_Subcontractor}</p>
                   </div>
                 </div>
@@ -660,7 +666,7 @@ export default function SubcontractorDetailsPage() {
                       onClick={() => setSyncPodio((v) => !v)}>
                       <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </div>
-                    Sync Podio
+                    {t("syncPodio")}
                   </label>
                 )}
 
@@ -668,19 +674,19 @@ export default function SubcontractorDetailsPage() {
                   <>
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}
                       className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /> {t("cancel")}
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving}
                       className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Saving…" : "Save Changes"}
+                      {saving ? t("saving") : t("saveChanges")}
                     </Button>
                   </>
                 ) : (
                   hasPermission("subcontractor:update") && (
                     <Button size="sm" variant="outline" onClick={() => setEditing(true)}
                       className="gap-1.5 text-xs border-slate-200">
-                      ✎ Edit
+                      ✎ {t("edit")}
                     </Button>
                   )
                 )}
@@ -690,7 +696,7 @@ export default function SubcontractorDetailsPage() {
             {syncPodio && (
               <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-xs font-medium text-emerald-700">Podio sync enabled — changes will be reflected in Podio</p>
+                <p className="text-xs font-medium text-emerald-700">{t("podioSyncNotice")}</p>
               </div>
             )}
           </div>
@@ -706,12 +712,12 @@ export default function SubcontractorDetailsPage() {
                   <div className="mb-5 overflow-x-auto">
                     <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {[
-                        { value: "details", label: "Details", count: null },
-                        /* { value: "technicians", label: "Technicians", count: technicians.length }, */
-                        { value: "orders", label: "Orders", count: subc.orders?.length ?? 0 },
-                        { value: "jobs", label: "Jobs", count: subc.jobs?.length ?? 0 },
-                        { value: "skills", label: "Skills", count: subc.skills?.length ?? 0 },
-                        { value: "timeline", label: "Timeline", count: subc.tlactivity?.length ?? 0 },
+                        { value: "details", label: t("tabDetails"), count: null },
+                        /* { value: "technicians", label: t("tabTechnicians"), count: technicians.length }, */
+                        { value: "orders", label: t("tabOrders"), count: subc.orders?.length ?? 0 },
+                        { value: "jobs", label: t("tabJobs"), count: subc.jobs?.length ?? 0 },
+                        { value: "skills", label: t("tabSkills"), count: subc.skills?.length ?? 0 },
+                        { value: "timeline", label: t("tabTimeline"), count: subc.tlactivity?.length ?? 0 },
                       ].map(({ value, label, count }) => (
                         <TabsTrigger key={value} value={value}
                           className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm">
@@ -730,24 +736,24 @@ export default function SubcontractorDetailsPage() {
                   <TabsContent value="details" className="space-y-4">
 
                     {/* Organization */}
-                    <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Organization Information">
+                    <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("orgInfo")}>
                       <div className="grid gap-5 md:grid-cols-2">
                         <div>
-                          <FieldLabel>Organization Name</FieldLabel>
+                          <FieldLabel>{t("organization")}</FieldLabel>
                           {editing
-                            ? <Input value={form.Organization} onChange={(e) => setField("Organization", e.target.value)} className={`${inputCls} ${changedCls("Organization")}`} placeholder="Organization name" />
+                            ? <Input value={form.Organization} onChange={(e) => setField("Organization", e.target.value)} className={`${inputCls} ${changedCls("Organization")}`} placeholder={t("orgName")} />
                             : <p className="text-sm text-slate-800">{displayOrg || <span className="italic text-slate-400">—</span>}</p>
                           }
                         </div>
                         <div>
-                          <FieldLabel>Specialty</FieldLabel>
+                          <FieldLabel>{t("specialty")}</FieldLabel>
                           {editing
                             ? <Input value={form.Specialty} onChange={(e) => setField("Specialty", e.target.value)} className={`${inputCls} ${changedCls("Specialty")}`} placeholder="e.g. Plumbing, HVAC…" />
                             : <p className="text-sm text-slate-800">{subc.Specialty || <span className="italic text-slate-400">—</span>}</p>
                           }
                         </div>
                         <div>
-                          <FieldLabel>Website</FieldLabel>
+                          <FieldLabel>{t("website")}</FieldLabel>
                           {editing
                             ? <Input value={form.Organization_Website} onChange={(e) => setField("Organization_Website", e.target.value)} className={`${inputCls} ${changedCls("Organization_Website")}`} placeholder="https://…" />
                             : safeUrl(subc.Organization_Website)
@@ -759,22 +765,22 @@ export default function SubcontractorDetailsPage() {
                           }
                         </div>
                         <div>
-                          <FieldLabel>Status</FieldLabel>
+                          <FieldLabel>{t("status")}</FieldLabel>
                           {editing
                             ? <Select value={form.Status || "Active"} onValueChange={(v) => setField("Status", v)}>
                               <SelectTrigger className={`${inputCls} ${changedCls("Status")}`}><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {["Active", "Inactive", "Pending", "Banned"].map(s =>
-                                  <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                  <SelectItem key={s} value={s}>{t(s.toLowerCase() as any)}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             : <StatusBadge status={subc.Status} />
                           }
                         </div>
                         <div className="md:col-span-2">
-                          <FieldLabel>Address</FieldLabel>
+                          <FieldLabel>{t("address")}</FieldLabel>
                           {editing
-                            ? <Textarea value={form.Address} onChange={(e) => setField("Address", e.target.value)} className={`${inputCls} resize-none ${changedCls("Address")}`} rows={2} placeholder="Full address" />
+                            ? <Textarea value={form.Address} onChange={(e) => setField("Address", e.target.value)} className={`${inputCls} resize-none ${changedCls("Address")}`} rows={2} placeholder={t("address")} />
                             : <p className="flex items-start gap-1.5 text-sm text-slate-800">
                               {subc.Address ? <><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{subc.Address}</> : <span className="italic text-slate-400">—</span>}
                             </p>
@@ -784,27 +790,27 @@ export default function SubcontractorDetailsPage() {
                     </SectionCard>
 
                     {/* Contact */}
-                    <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title="Contact Information">
+                    <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("contactInfo")}>
                       <div className="grid gap-5 md:grid-cols-2">
                         <div>
-                          <FieldLabel>Email Address</FieldLabel>
+                          <FieldLabel>{t("email")}</FieldLabel>
                           {editing
                             ? <ArrayEditField values={form.Email_Address} icon={Mail} placeholder="email@example.com" onChange={(v) => setField("Email_Address", v)} />
-                            : <ArrayDisplayChips values={displayEmails} icon={Mail} href={(e) => `mailto:${e}`} emptyLabel="No email" />
+                            : <ArrayDisplayChips values={displayEmails} icon={Mail} href={(e) => `mailto:${e}`} emptyLabel={t("noEmail")} />
                           }
                         </div>
                         <div>
-                          <FieldLabel>Phone Number</FieldLabel>
+                          <FieldLabel>{t("phone")}</FieldLabel>
                           {editing
                             ? <ArrayEditField values={form.Phone_Number} icon={Phone} placeholder="(555) 000-0000" onChange={(v) => setField("Phone_Number", v)} />
-                            : <ArrayDisplayChips values={displayPhones} icon={Phone} href={(p) => `tel:${p}`} emptyLabel="No phone" />
+                            : <ArrayDisplayChips values={displayPhones} icon={Phone} href={(p) => `tel:${p}`} emptyLabel={t("noPhone")} />
                           }
                         </div>
                       </div>
                     </SectionCard>
 
                     {/* Coverage Area */}
-                    <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title="Coverage Area">
+                    <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title={t("coverageArea")}>
                       <div className="space-y-3">
                         {editing && (
                           <div className="flex gap-2">
@@ -813,7 +819,7 @@ export default function SubcontractorDetailsPage() {
                               <Select value={coveragePick || undefined}
                                 onValueChange={(v) => { setCoveragePick(v); addCoverageArea(v) }}>
                                 <SelectTrigger className={`pl-9 ${inputCls}`}>
-                                  <SelectValue placeholder="Select a county…" />
+                                  <SelectValue placeholder={t("selectCounty")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {COVERAGE_AREA_OPTIONS.map((opt) => (
@@ -842,23 +848,23 @@ export default function SubcontractorDetailsPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm italic text-slate-400">No coverage areas added yet</p>
+                          <p className="text-sm italic text-slate-400">{t("noCoverageAreas")}</p>
                         )}
                       </div>
                     </SectionCard>
 
                     {/* GQM */}
-                    <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title="GQM Information">
+                    <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title={t("certsCompliance")}>
                       <div className="grid gap-5 md:grid-cols-3">
                         <div>
-                          <FieldLabel>Score</FieldLabel>
+                          <FieldLabel>{t("score")}</FieldLabel>
                           {editing
                             ? <Input type="number" min={0} max={100} value={form.Score} onChange={(e) => setField("Score", e.target.value)} className={`${inputCls} ${changedCls("Score")}`} placeholder="0–100" />
                             : <ScoreBadge score={subc.Score} />
                           }
                         </div>
                         <div>
-                          <FieldLabel>GQM Compliance</FieldLabel>
+                          <FieldLabel>{t("gqmCompliance")}</FieldLabel>
                           {editing
                             ? <Select value={form.Gqm_compliance || "N/A"} onValueChange={(v) => setField("Gqm_compliance", v)}>
                               <SelectTrigger className={`${inputCls} ${changedCls("Gqm_compliance")}`}><SelectValue /></SelectTrigger>
@@ -870,7 +876,7 @@ export default function SubcontractorDetailsPage() {
                           }
                         </div>
                         <div>
-                          <FieldLabel>Best Service Training</FieldLabel>
+                          <FieldLabel>{t("gqmTraining")}</FieldLabel>
                           {editing
                             ? <Select value={form.Gqm_best_service_training || "N/A"} onValueChange={(v) => setField("Gqm_best_service_training", v)}>
                               <SelectTrigger className={`${inputCls} ${changedCls("Gqm_best_service_training")}`}><SelectValue /></SelectTrigger>
@@ -882,9 +888,9 @@ export default function SubcontractorDetailsPage() {
                           }
                         </div>
                         <div className="md:col-span-3">
-                          <FieldLabel>Notes</FieldLabel>
+                          <FieldLabel>{t("notes")}</FieldLabel>
                           {editing
-                            ? <Textarea value={form.Notes} onChange={(e) => setField("Notes", e.target.value)} className={`${inputCls} resize-none ${changedCls("Notes")}`} rows={3} placeholder="Additional notes…" />
+                            ? <Textarea value={form.Notes} onChange={(e) => setField("Notes", e.target.value)} className={`${inputCls} resize-none ${changedCls("Notes")}`} rows={3} placeholder={t("notesPlaceholder")} />
                             : <p className="whitespace-pre-wrap text-sm text-slate-700">{subc.Notes || <span className="italic text-slate-400">No notes</span>}</p>
                           }
                         </div>
@@ -894,12 +900,12 @@ export default function SubcontractorDetailsPage() {
 
                   {/* ── TECHNICIANS tab ──────────────────────────────────── */}
                   <TabsContent value="technicians">
-                    <SectionCard icon={Wrench} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Technicians"
+                    <SectionCard icon={Wrench} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("tabTechnicians")}
                       action={
                         hasPermission("subcontractor:update") && (
                           <Button size="sm" onClick={() => router.push(`/subcontractors/${id}/technicians/create`)}
                             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                            <Plus className="h-3.5 w-3.5" /> Add Technician
+                            <Plus className="h-3.5 w-3.5" /> {t("addTechnician")}
                           </Button>
                         )
                       }>
@@ -913,9 +919,9 @@ export default function SubcontractorDetailsPage() {
                         <Select value={techTypeFilter} onValueChange={(v: any) => setTechTypeFilter(v)}>
                           <SelectTrigger className={`w-36 ${inputCls}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="Leader">Leader</SelectItem>
-                            <SelectItem value="Worker">Worker</SelectItem>
+                            <SelectItem value="all">{t("allTypes")}</SelectItem>
+                            <SelectItem value="Leader">{t("leader")}</SelectItem>
+                            <SelectItem value="Worker">{t("worker")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -951,12 +957,12 @@ export default function SubcontractorDetailsPage() {
                             <div className="flex items-center gap-2">
                               <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
                                 onClick={() => setTechPage(p => Math.max(1, p - 1))} disabled={techPage === 1}>
-                                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                                <ChevronLeft className="h-3.5 w-3.5" /> {t("prev")}
                               </Button>
                               <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{techPage}/{techTotalPages}</span>
                               <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200"
                                 onClick={() => setTechPage(p => Math.min(techTotalPages, p + 1))} disabled={techPage >= techTotalPages}>
-                                Next <ChevronRight className="h-3.5 w-3.5" />
+                                {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </div>
@@ -964,7 +970,7 @@ export default function SubcontractorDetailsPage() {
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-2 py-12">
                           <Wrench className="h-8 w-8 text-slate-300" />
-                          <p className="text-sm text-slate-500">No technicians found</p>
+                          <p className="text-sm text-slate-500">{t("noTechniciansFound")}</p>
                         </div>
                       )}
                     </SectionCard>
@@ -972,7 +978,7 @@ export default function SubcontractorDetailsPage() {
 
                   {/* ── SKILLS tab ───────────────────────────────────────── */}
                   <TabsContent value="skills">
-                    <SectionCard icon={Wrench} iconBg="bg-amber-50" iconColor="text-amber-600" title="Skills"
+                    <SectionCard icon={Wrench} iconBg="bg-amber-50" iconColor="text-amber-600" title={t("tabSkills")}
                       action={
                         <div className="flex items-center gap-2">
                           {hasPermission("subcontractor:update") && (
@@ -982,11 +988,11 @@ export default function SubcontractorDetailsPage() {
                                   onClick={() => setSkillsSyncPodio(v => !v)}>
                                   <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${skillsSyncPodio ? "translate-x-3" : "translate-x-0.5"}`} />
                                 </div>
-                                Podio
+                                {t("syncPodio")}
                               </label>
                               <Button size="sm" onClick={openSkillsModal}
                                 className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                                <Plus className="h-3.5 w-3.5" /> Link Skill
+                                <Plus className="h-3.5 w-3.5" /> {t("linkSkill")}
                               </Button>
                             </>
                           )}
@@ -1001,9 +1007,9 @@ export default function SubcontractorDetailsPage() {
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
                                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                                      {asStr(s.Division_trade) || "No division"}
+                                      {asStr(s.Division_trade) || t("noDivision")}
                                     </span>
-                                    <span className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "Unnamed"}</span>
+                                    <span className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || t("unnamed")}</span>
                                   </div>
                                   <p className="mt-0.5 font-mono text-[11px] text-slate-400">{s.ID_Skill}</p>
                                 </div>
@@ -1011,7 +1017,7 @@ export default function SubcontractorDetailsPage() {
                                   <Button variant="outline" size="sm" onClick={() => unlinkSkill(s.ID_Skill)} disabled={busy}
                                     className="gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600">
                                     {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
-                                    Unlink
+                                    {t("unlink")}
                                   </Button>
                                 )}
                               </div>
@@ -1021,10 +1027,10 @@ export default function SubcontractorDetailsPage() {
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-3 py-12">
                           <Wrench className="h-8 w-8 text-slate-300" />
-                          <p className="text-sm text-slate-500">No skills linked yet</p>
+                          <p className="text-sm text-slate-500">{t("noSkillsLinked")}</p>
                           {hasPermission("subcontractor:update") && (
                             <Button size="sm" onClick={openSkillsModal} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                              <Plus className="h-3.5 w-3.5" /> Link first skill
+                              <Plus className="h-3.5 w-3.5" /> {t("linkFirstSkill")}
                             </Button>
                           )}
                         </div>
@@ -1040,7 +1046,7 @@ export default function SubcontractorDetailsPage() {
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
                             <Briefcase className="h-4 w-4 text-blue-600" />
                           </div>
-                          <h3 className="text-sm font-semibold text-slate-800">Jobs</h3>
+                          <h3 className="text-sm font-semibold text-slate-800">{t("tabJobs")}</h3>
                           <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                             {subc.jobs?.length ?? 0}
                           </span>
@@ -1050,7 +1056,7 @@ export default function SubcontractorDetailsPage() {
                         {(subc.jobs ?? []).length === 0 ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-12">
                             <Briefcase className="h-8 w-8 text-slate-300" />
-                            <p className="text-sm text-slate-500">No jobs associated with this subcontractor</p>
+                            <p className="text-sm text-slate-500">{t("noJobs")}</p>
                           </div>
                         ) : (
                           <div className="grid gap-3 sm:grid-cols-2">
@@ -1122,7 +1128,7 @@ export default function SubcontractorDetailsPage() {
                                     {fmtDate(job.Date_assigned) && (
                                       <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                         <Calendar className="h-3 w-3 flex-shrink-0 text-slate-400" />
-                                        <span>Assigned {fmtDate(job.Date_assigned)}</span>
+                                        <span>{t("assigned")} {fmtDate(job.Date_assigned)}</span>
                                       </div>
                                     )}
                                   </div>
@@ -1133,19 +1139,19 @@ export default function SubcontractorDetailsPage() {
                                       {sold != null && (
                                         <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
                                           <DollarSign className="h-3 w-3" />${sold.toLocaleString()}
-                                          <span className="font-normal text-slate-400">sold</span>
+                                          <span className="font-normal text-slate-400">{t("sold")}</span>
                                         </div>
                                       )}
                                       {formula != null && (
                                         <div className="flex items-center gap-1 text-xs font-semibold text-blue-700">
                                           <DollarSign className="h-3 w-3" />${formula.toLocaleString()}
-                                          <span className="font-normal text-slate-400">formula</span>
+                                          <span className="font-normal text-slate-400">{t("formula")}</span>
                                         </div>
                                       )}
                                       {cos != null && (
                                         <div className="flex items-center gap-1 text-xs font-semibold text-orange-600">
                                           <Tag className="h-3 w-3" />${cos.toLocaleString()}
-                                          <span className="font-normal text-slate-400">COs</span>
+                                          <span className="font-normal text-slate-400">{t("cos")}</span>
                                         </div>
                                       )}
                                     </div>
@@ -1155,7 +1161,7 @@ export default function SubcontractorDetailsPage() {
                                   <div className="flex items-center justify-between">
                                     {job.Permit && job.Permit !== "No" && job.Permit !== "N/A" ? (
                                       <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                                        Permit: {job.Permit}
+                                        {t("permit")}: {job.Permit}
                                       </span>
                                     ) : <div />}
                                     <button
@@ -1181,7 +1187,7 @@ export default function SubcontractorDetailsPage() {
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
                             <ClipboardList className="h-4 w-4 text-amber-600" />
                           </div>
-                          <h3 className="text-sm font-semibold text-slate-800">Orders</h3>
+                          <h3 className="text-sm font-semibold text-slate-800">{t("tabOrders")}</h3>
                           <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                             {subc.orders?.length ?? 0}
                           </span>
@@ -1191,7 +1197,7 @@ export default function SubcontractorDetailsPage() {
                         {(subc.orders ?? []).length === 0 ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-12">
                             <ClipboardList className="h-8 w-8 text-slate-300" />
-                            <p className="text-sm text-slate-500">No orders associated with this subcontractor</p>
+                            <p className="text-sm text-slate-500">{t("noOrders")}</p>
                           </div>
                         ) : (
                           <div className="grid gap-3 sm:grid-cols-2">
@@ -1216,7 +1222,7 @@ export default function SubcontractorDetailsPage() {
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
                                       <p className="truncate text-sm font-semibold text-slate-800 leading-none">
-                                        {order.Title ?? "Untitled Order"}
+                                        {order.Title ?? t("untitledOrder")}
                                       </p>
                                       <p className="mt-1 font-mono text-[11px] text-slate-400">{order.ID_Order}</p>
                                     </div>
@@ -1230,19 +1236,19 @@ export default function SubcontractorDetailsPage() {
                                   {/* Pricing grid */}
                                   <div className="grid grid-cols-3 divide-x divide-slate-100 rounded-lg border border-slate-100 bg-slate-50">
                                     <div className="px-3 py-2.5">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Formula</p>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("formula")}</p>
                                       <p className="mt-0.5 text-sm font-bold text-slate-800">
                                         {formula != null ? `$${formula.toLocaleString()}` : <span className="italic text-slate-400">—</span>}
                                       </p>
                                     </div>
                                     <div className="px-3 py-2.5">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Adj. Formula</p>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("adjFormula")}</p>
                                       <p className="mt-0.5 text-sm font-bold text-emerald-700">
                                         {adjFormula != null ? `$${adjFormula.toLocaleString()}` : <span className="italic text-slate-400">—</span>}
                                       </p>
                                     </div>
                                     <div className="px-3 py-2.5">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Delta</p>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("delta")}</p>
                                       {delta != null ? (
                                         <p className={`mt-0.5 text-sm font-bold ${delta > 0 ? "text-orange-600" : delta < 0 ? "text-red-600" : "text-slate-500"}`}>
                                           {delta > 0 ? "+" : ""}{delta.toLocaleString()}
@@ -1288,20 +1294,20 @@ export default function SubcontractorDetailsPage() {
                         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100">
                           <Clock className="h-4 w-4 text-slate-500" />
                         </div>
-                        <h3 className="text-sm font-semibold text-slate-800">Timeline</h3>
+                        <h3 className="text-sm font-semibold text-slate-800">{t("tabTimeline")}</h3>
                       </div>
                       <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
                           <Sparkles className="h-6 w-6 text-slate-400" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-700">Coming Soon</p>
+                          <p className="text-sm font-semibold text-slate-700">{t("comingSoon")}</p>
                           <p className="mt-1 max-w-xs text-xs text-slate-400">
-                            The activity timeline will be available in a future update. It will display all actions and changes related to this subcontractor.
+                            {t("timelineDesc")}
                           </p>
                         </div>
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-600">
-                          In development
+                          {t("inDevelopment")}
                         </span>
                       </div>
                     </div>
@@ -1316,7 +1322,7 @@ export default function SubcontractorDetailsPage() {
                 {/* Leader card */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Team Leader</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("teamLeader")}</p>
                   </div>
                   <div className="p-5">
                     {leaderTechnician ? (
@@ -1332,10 +1338,10 @@ export default function SubcontractorDetailsPage() {
                         </div>
                         <div className="space-y-2 text-xs text-slate-600">
                           {[
-                            { label: "Phone", value: leaderTechnician.Phone_Number },
-                            { label: "Location", value: leaderTechnician.Location },
-                            { label: "Email", value: leaderTechnician.Email_Address },
-                            { label: "Type", value: leaderTechnician.Type_of_technician },
+                            { label: t("phone"), value: leaderTechnician.Phone_Number },
+                            { label: t("location"), value: leaderTechnician.Location },
+                            { label: t("email"), value: leaderTechnician.Email_Address },
+                            { label: t("type"), value: leaderTechnician.Type_of_technician },
                           ].map(({ label, value }) => value ? (
                             <div key={label} className="flex items-start gap-1.5">
                               <span className="w-14 flex-shrink-0 font-semibold text-slate-400">{label}</span>
@@ -1345,7 +1351,7 @@ export default function SubcontractorDetailsPage() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm italic text-slate-400">No leader assigned</p>
+                      <p className="text-sm italic text-slate-400">{t("noLeaderAssigned")}</p>
                     )}
                   </div>
                 </div>
@@ -1353,27 +1359,27 @@ export default function SubcontractorDetailsPage() {
                 {/* Quick Summary */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Summary</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("quickSummary")}</p>
                   </div>
                   <div className="divide-y divide-slate-50 px-5">
                     {[
                       { label: "ID", value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
-                      { label: "Status", value: <StatusBadge status={subc.Status} /> },
-                      { label: "Score", value: <ScoreBadge score={subc.Score} /> },
-                      { label: "Compliance", value: <CertBadge value={subc.Gqm_compliance} /> },
-                      { label: "BST", value: <CertBadge value={subc.Gqm_best_service_training} /> },
-                      { label: "Technicians", value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
-                      { label: "Skills", value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
-                      { label: "Orders", value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
-                      { label: "Jobs", value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
-                      { label: "Attachments", value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
-                      { label: "Opportunities", value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
+                      { label: t("status"), value: <StatusBadge status={subc.Status} /> },
+                      { label: t("experienceScore"), value: <ScoreBadge score={subc.Score} /> },
+                      { label: t("compliance"), value: <CertBadge value={subc.Gqm_compliance} /> },
+                      { label: t("bst"), value: <CertBadge value={subc.Gqm_best_service_training} /> },
+                      { label: t("tabTechnicians"), value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
+                      { label: t("tabSkills"), value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
+                      { label: t("tabOrders"), value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
+                      { label: t("tabJobs"), value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
+                      { label: t("attachments"), value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
+                      { label: t("opportunities"), value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
                       {
-                        label: "Podio", value: subc.podio_item_id
+                        label: t("podio"), value: subc.podio_item_id
                           ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                            <CheckCircle className="h-3 w-3" /> Linked
+                            <CheckCircle className="h-3 w-3" /> {t("podioLinked")}
                           </span>
-                          : <span className="text-[11px] italic text-slate-400">Not linked</span>
+                          : <span className="text-[11px] italic text-slate-400">{t("podioNotLinked")}</span>
                       },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between py-2.5">
@@ -1388,7 +1394,7 @@ export default function SubcontractorDetailsPage() {
                 {(subc.Coverage_Area ?? []).length > 0 && (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Coverage Areas</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("coverageAreas")}</p>
                     </div>
                     <div className="flex flex-wrap gap-2 p-5">
                       {(subc.Coverage_Area ?? []).map((area) => (
@@ -1412,10 +1418,10 @@ export default function SubcontractorDetailsPage() {
           {/* ── Header fijo ─────────────────────────────────────────────────── */}
           <div className="flex-shrink-0 border-b border-slate-100 px-6 py-5">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
-              <Link2 className="h-4 w-4 text-emerald-600" /> Link a Skill
+              <Link2 className="h-4 w-4 text-emerald-600" /> {t("linkSkillTitle")}
             </DialogTitle>
             <DialogDescription className="mt-0.5 text-xs text-slate-500">
-              Search and link skills. Already linked ones are marked as Linked.
+              {t("linkSkillDesc")}
             </DialogDescription>
 
             {/* Search + refresh — parte del header para que nunca se oculten */}
@@ -1438,7 +1444,7 @@ export default function SubcontractorDetailsPage() {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <RefreshCw className="h-3.5 w-3.5" />
                 }
-                Refresh
+                {t("refresh")}
               </Button>
             </div>
 

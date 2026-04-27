@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Eye, ChevronRight } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Job } from "@/lib/types"
 
 interface Task {
@@ -21,6 +22,7 @@ interface Task {
 }
 
 export function LeadTechnicianDashboard() {
+  const t = useTranslations("dashboard")
   const [jobs, setJobs] = useState<Job[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,20 +147,20 @@ export function LeadTechnicianDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <h1 className="text-3xl font-bold">{t("title")}</h1>
 
       {/* Top Row: Recent Tasks and Assigned Jobs */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Recent Tasks Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Recent Tasks</CardTitle>
+            <CardTitle className="text-xl">{t("recentTasks")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading tasks...</p>
+              <p className="text-sm text-muted-foreground">{t("loadingTasks")}</p>
             ) : tasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks for this week.</p>
+              <p className="text-sm text-muted-foreground">{t("noTasksThisWeekLead")}</p>
             ) : (
               tasks.map((task) => (
                 <div
@@ -179,17 +181,17 @@ export function LeadTechnicianDashboard() {
         {/* Assigned Jobs Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Assigned Jobs</CardTitle>
+            <CardTitle className="text-xl">{t("assignedJobs")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading jobs...</p>
+              <p className="text-sm text-muted-foreground">{t("loadingJobs")}</p>
             ) : jobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No jobs assigned yet.</p>
+              <p className="text-sm text-muted-foreground">{t("noJobsAssigned")}</p>
             ) : (
               jobs.map((job: any) => {
                 const jobId = job.ID_Jobs
-                const projectName = job.Project_name || "Untitled Project"
+                const projectName = job.Project_name || t("untitledProject")
                 const jobStatus = job.Job_status || "N/A"
 
                 return (
@@ -220,7 +222,7 @@ export function LeadTechnicianDashboard() {
       {/* Weekly Tasks Calendar */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">Weekly Tasks</CardTitle>
+          <CardTitle className="text-xl">{t("weeklyTasks")}</CardTitle>
           <span className="text-sm text-muted-foreground">25-29 JAN</span>
         </CardHeader>
         <CardContent>

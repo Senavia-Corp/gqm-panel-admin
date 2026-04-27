@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
 import { SubcontractorManagementTable } from "@/components/organisms/SubcontractorManagementTable"
@@ -67,6 +68,7 @@ function TableSkeleton() {
 const PER_PAGE = 10
 
 export default function SubcontractorsPage() {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
@@ -120,7 +122,7 @@ export default function SubcontractorsPage() {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("errorLoad"))
     } finally { setLoading(false) }
   }, [])
 
@@ -167,16 +169,15 @@ export default function SubcontractorsPage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 group-hover:scale-110 transition-transform duration-500">
               <AlertCircle className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("accessDeniedTitle")}</h1>
             <p className="text-slate-500 max-w-md mb-8">
-              You do not have the required permissions (`subcontractor:read`) to view this section. 
-              Please contact your administrator if you believe this is an error.
+              {t("accessDeniedDesc")}
             </p>
             <Button 
               onClick={() => router.push("/dashboard")}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
             >
-              Return to Dashboard
+              {t("returnDashboard")}
             </Button>
           </main>
         </div>
@@ -198,8 +199,8 @@ export default function SubcontractorsPage() {
                 <Wrench className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900">Subcontractors</h1>
-                <p className="text-xs text-slate-500">Manage all subcontractors and their information</p>
+                <h1 className="text-2xl font-black text-slate-900">{t("title")}</h1>
+                <p className="text-xs text-slate-500">{t("subtitle")}</p>
               </div>
             </div>
           </div>
@@ -210,13 +211,13 @@ export default function SubcontractorsPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-base font-bold text-slate-800">All Subcontractors</h2>
+                  <h2 className="text-base font-bold text-slate-800">{t("toolbarTitle")}</h2>
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {activeFilters > 0 && (
                     <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      <Filter className="h-2.5 w-2.5" /> {activeFilters} filter{activeFilters > 1 ? "s" : ""}
+                      <Filter className="h-2.5 w-2.5" /> {activeFilters} {activeFilters > 1 ? t("filtersCountSuffix") : t("filterCountSuffix")}
                     </span>
                   )}
                 </div>
@@ -225,7 +226,7 @@ export default function SubcontractorsPage() {
                     onClick={() => router.push("/subcontractors/create")}
                     className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
                   >
-                    <Plus className="h-4 w-4" /> Add Subcontractor
+                    <Plus className="h-4 w-4" /> {t("addSub")}
                   </Button>
                 )}
               </div>
@@ -237,7 +238,7 @@ export default function SubcontractorsPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Global search: name, organization, email, specialty, ID…"
+                    placeholder={t("searchPlaceholder")}
                     className="pl-9 text-sm border-slate-200 focus:border-emerald-400"
                   />
                   {search && (
@@ -251,12 +252,12 @@ export default function SubcontractorsPage() {
                 {/* Status filter */}
                 <Select value={status} onValueChange={(v) => setStatus(v)}>
                   <SelectTrigger className="w-40 border-slate-200 text-sm focus:border-emerald-400">
-                    <SelectValue placeholder="All Statuses" />
+                    <SelectValue placeholder={t("allStatuses")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="all">{t("allStatuses")}</SelectItem>
+                    <SelectItem value="Active">{t("active")}</SelectItem>
+                    <SelectItem value="Inactive">{t("inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -265,7 +266,7 @@ export default function SubcontractorsPage() {
                   <Button variant="outline" size="sm"
                     onClick={() => { setSearch(""); setStatus("all") }}
                     className="gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600">
-                    <X className="h-3.5 w-3.5" /> Reset
+                    <X className="h-3.5 w-3.5" /> {t("reset")}
                   </Button>
                 )}
               </div>
@@ -279,7 +280,7 @@ export default function SubcontractorsPage() {
                 <AlertCircle className="h-8 w-8 text-red-400" />
                 <p className="text-sm font-medium text-red-600">{error}</p>
                 <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch, status)} className="gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                 </Button>
               </div>
             ) : (
@@ -290,20 +291,24 @@ export default function SubcontractorsPage() {
             {!loading && !error && (
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
                 <p className="text-sm text-slate-500">
-                  Showing <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span> of{" "}
-                  <span className="font-semibold text-slate-800">{total}</span> subcontractors
+                  {t.rich("showingRange", {
+                    from: showFrom,
+                    to: showTo,
+                    total: total,
+                    span: (chunks) => <span className="font-semibold text-slate-800">{chunks}</span>
+                  })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                    <ChevronLeft className="h-3.5 w-3.5" /> {t("prev")}
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
                   </span>
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-                    Next <ChevronRight className="h-3.5 w-3.5" />
+                    {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

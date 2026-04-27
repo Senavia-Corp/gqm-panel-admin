@@ -16,6 +16,7 @@ import { TopBar } from "@/components/organisms/TopBar"
 import type { Task, TaskStatus, Technician } from "@/lib/types"
 import { TimelineItem } from "@/components/molecules/TimelineItem"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { mockSubcontractors } from "@/lib/mock-data/subcontractors"
 import { fetchJobById } from "@/lib/services/jobs-service"
 
@@ -65,6 +66,7 @@ function TechnicianTasksClient({
 }: {
   params: { id: string; technicianId: string; jobId: string }
 }) {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { toast } = useToast()
   const [user, setUser] = useState<{ name: string; role: string; avatar: string } | null>(null)
@@ -124,8 +126,8 @@ function TechnicianTasksClient({
   const handleCreateTask = () => {
     if (!newTaskTitle.trim()) {
       toast({
-        title: "Error",
-        description: "Task title is required",
+        title: t("error"),
+        description: t("taskTitleRequired"),
         variant: "destructive",
       })
       return
@@ -150,8 +152,8 @@ function TechnicianTasksClient({
     setIsCreateOpen(false)
 
     toast({
-      title: "Success",
-      description: "Task created successfully",
+      title: t("success"),
+      description: t("taskCreatedSuccess"),
     })
   }
 
@@ -159,8 +161,8 @@ function TechnicianTasksClient({
     setTasks(tasks.filter((t) => t.ID_Task !== taskId))
     setIsDetailsOpen(false)
     toast({
-      title: "Success",
-      description: "Task deleted successfully",
+      title: t("success"),
+      description: t("taskDeletedSuccess"),
     })
   }
 
@@ -183,8 +185,8 @@ function TechnicianTasksClient({
     setSelectedTask({ ...selectedTask, Status: editedTaskStatus })
 
     toast({
-      title: "Success",
-      description: `Task status updated to ${TASK_STATUSES.find((s) => s.value === editedTaskStatus)?.label}`,
+      title: t("success"),
+      description: t("taskStatusUpdated", { status: t(editedTaskStatus) }),
     })
   }
 
@@ -207,18 +209,18 @@ function TechnicianTasksClient({
           <div className="mb-6">
             <Button variant="ghost" onClick={handleBack} className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Technician
+              {t("backToTech")}
             </Button>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <span>Subcontractors Details</span>
+              <span>{t("subcontractors")}</span>
               <span>|</span>
-              <span>Technician Documentation</span>
+              <span>{t("technicianDocumentation")}</span>
               <span>|</span>
-              <span>{jobName || "Job Name"}</span>
+              <span>{jobName || t("jobNamePlaceholder")}</span>
               <span>|</span>
-              <span className="text-foreground font-medium">Tasks</span>
+              <span className="text-foreground font-medium">{t("tabTasks")}</span>
             </div>
-            <h1 className="text-3xl font-bold">Tasks</h1>
+            <h1 className="text-3xl font-bold">{t("tabTasks")}</h1>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
@@ -232,7 +234,7 @@ function TechnicianTasksClient({
                       return (
                         <div key={statusConfig.value} className="space-y-3">
                           <div className="flex items-center gap-3">
-                            <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>
+                            <Badge className={`${statusConfig.color} text-white`}>{t(statusConfig.value)}</Badge>
                             <span className="text-lg font-semibold">{statusTasks.length}</span>
                             <Button variant="ghost" size="icon" className="h-6 w-6">
                               <MoreVertical className="h-4 w-4" />
@@ -248,14 +250,14 @@ function TechnicianTasksClient({
                                   }}
                                 >
                                   <Plus className="mr-1 h-4 w-4" />
-                                  Add Task
+                                  {t("addTask")}
                                 </Button>
                               </DialogTrigger>
                             </Dialog>
                           </div>
 
                           <div className="space-y-2">
-                            <div className="text-sm font-medium text-muted-foreground">Name</div>
+                            <div className="text-sm font-medium text-muted-foreground">{t("name")}</div>
                             {statusTasks.map((task) => (
                               <div
                                 key={task.ID_Task}
@@ -275,7 +277,7 @@ function TechnicianTasksClient({
                               onClick={() => setIsCreateOpen(true)}
                             >
                               <Plus className="mr-1 h-4 w-4" />
-                              Add Task
+                              {t("addTask")}
                             </Button>
                           </div>
                         </div>
@@ -286,11 +288,10 @@ function TechnicianTasksClient({
               </Card>
             </div>
 
-            {/* Timeline Sidebar */}
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
-                  <CardTitle>Timeline</CardTitle>
+                  <CardTitle>{t("timeline")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {mockTimelineEvents.map((event) => (
@@ -305,60 +306,58 @@ function TechnicianTasksClient({
             </div>
           </div>
 
-          {/* Create Task Dialog */}
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
+                <DialogTitle>{t("createTask")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Task Title</Label>
+                  <Label>{t("taskTitle")}</Label>
                   <Input
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Enter task title"
+                    placeholder={t("enterTaskTitle")}
                   />
                 </div>
                 <div>
-                  <Label>Description</Label>
+                  <Label>{t("taskDescription")}</Label>
                   <Textarea
                     value={newTaskDescription}
                     onChange={(e) => setNewTaskDescription(e.target.value)}
-                    placeholder="Enter task description"
+                    placeholder={t("enterTaskDescription")}
                     rows={4}
                   />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button onClick={handleCreateTask} className="bg-gqm-green hover:bg-gqm-green/90 text-white">
-                  Create Task
+                  {t("createTask")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* Task Details Dialog */}
           <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Task Details</DialogTitle>
+                <DialogTitle>{t("taskDetails")}</DialogTitle>
               </DialogHeader>
               {selectedTask && (
                 <div className="space-y-4">
                   <div>
-                    <Label className="font-bold">Title</Label>
+                    <Label className="font-bold">{t("taskTitle")}</Label>
                     <p className="text-base mt-1">{selectedTask.Title}</p>
                   </div>
                   <div>
-                    <Label className="font-bold">Description</Label>
-                    <p className="text-base mt-1">{selectedTask.Description || "No description provided"}</p>
+                    <Label className="font-bold">{t("taskDescription")}</Label>
+                    <p className="text-base mt-1">{selectedTask.Description || t("noDescriptionProvided")}</p>
                   </div>
                   <div>
-                    <Label className="font-bold">Status</Label>
+                    <Label className="font-bold">{t("status")}</Label>
                     <Select
                       value={editedTaskStatus}
                       onValueChange={(value) => setEditedTaskStatus(value as TaskStatus)}
@@ -369,7 +368,7 @@ function TechnicianTasksClient({
                       <SelectContent>
                         {TASK_STATUSES.map((status) => (
                           <SelectItem key={status.value} value={status.value}>
-                            {status.label}
+                            {t(status.value)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -377,18 +376,18 @@ function TechnicianTasksClient({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-bold">Assignment Date</Label>
+                      <Label className="font-bold">{t("assignmentDate")}</Label>
                       <p className="text-base mt-1">{new Date(selectedTask.Assignment_date).toLocaleDateString()}</p>
                     </div>
                     {selectedTask.Completion_date && (
                       <div>
-                        <Label className="font-bold">Completion Date</Label>
+                        <Label className="font-bold">{t("completionDate")}</Label>
                         <p className="text-base mt-1">{new Date(selectedTask.Completion_date).toLocaleDateString()}</p>
                       </div>
                     )}
                   </div>
                   <div>
-                    <Label className="font-bold">Assigned Technician</Label>
+                    <Label className="font-bold">{t("assignedTechnician")}</Label>
                     <p className="text-base mt-1">{technician?.Name || "N/A"}</p>
                   </div>
                 </div>
@@ -396,18 +395,18 @@ function TechnicianTasksClient({
               <DialogFooter className="flex justify-between">
                 <Button variant="destructive" onClick={() => selectedTask && handleDeleteTask(selectedTask.ID_Task)}>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Task
+                  {t("deleteTask")}
                 </Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-                    Close
+                    {t("close")}
                   </Button>
                   <Button
                     onClick={handleStatusChange}
                     disabled={!editedTaskStatus || editedTaskStatus === selectedTask?.Status}
                     className="bg-gqm-green hover:bg-gqm-green/90 text-white"
                   >
-                    Save Changes
+                    {t("saveChanges")}
                   </Button>
                 </div>
               </DialogFooter>

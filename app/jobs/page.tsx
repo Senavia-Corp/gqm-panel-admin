@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { JobFilters } from "@/components/organisms/JobFilters"
@@ -22,20 +23,6 @@ import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
 type JobsTab = "ALL" | JobType
 type YearFilter = "ALL" | "2026" | "2025" | "2024" | "2023"
 
-const TAB_TITLE: Record<JobsTab, string> = {
-  ALL: "All Jobs",
-  QID: "All QIDs",
-  PTL: "All PTLs",
-  PAR: "All PARs",
-}
-
-const YEAR_OPTIONS: { value: YearFilter; label: string }[] = [
-  { value: "ALL", label: "All years" },
-  { value: "2026", label: "2026" },
-  { value: "2025", label: "2025" },
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-]
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,6 +57,23 @@ export default function JobsPage() {
 
   const [user, setUser] = useState<any>(null)
   const { hasPermission } = usePermissions()
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
+
+  const tabTitles: Record<JobsTab, string> = useMemo(() => ({
+    ALL: t("tabTitleAll"),
+    QID: t("tabTitleQid"),
+    PTL: t("tabTitlePtl"),
+    PAR: t("tabTitlePar"),
+  }), [t])
+
+  const yearOptions = useMemo(() => [
+    { value: "ALL" as YearFilter, label: t("allYears") },
+    { value: "2026" as YearFilter, label: "2026" },
+    { value: "2025" as YearFilter, label: "2025" },
+    { value: "2024" as YearFilter, label: "2024" },
+    { value: "2023" as YearFilter, label: "2023" },
+  ], [t])
 
   // ── Filters & Pagination ──────────────────────────────────────────────────
   const { state: filters, handlers, toServiceFilters, activeFilterCount } = useJobFilters()
@@ -143,7 +147,7 @@ export default function JobsPage() {
     } catch (err) {
       console.error("[jobs] Error loading jobs:", err)
       setLoadError(err instanceof Error ? err.message : "Unknown error")
-      toast({ title: "Error", description: "Failed to load jobs. Please try again.", variant: "destructive" })
+      toast({ title: "Error", description: t("loadError"), variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -179,17 +183,17 @@ export default function JobsPage() {
   const handleDeleteConfirm = async (opts: { syncPodio: boolean; year?: number }) => {
     const job = deleteDialog.job
     if (!job?.ID_Jobs) {
-      toast({ title: "Error", description: "Missing job ID.", variant: "destructive" })
+      toast({ title: "Error", description: t("missingId"), variant: "destructive" })
       return
     }
     try {
       await deleteJob(job.ID_Jobs, { sync_podio: opts.syncPodio, year: opts.year })
-      toast({ title: "Success", description: `Job ${job.ID_Jobs} has been permanently deleted.` })
+      toast({ title: "Success", description: `${t("deletedSuccess").replace("{id}", job.ID_Jobs)}` })
       loadJobs()
       setDeleteDialog({ open: false, job: null, suggestedYear: null })
     } catch (err) {
       console.error("[jobs] Error deleting job:", err)
-      toast({ title: "Error", description: "Failed to delete job. Please try again.", variant: "destructive" })
+      toast({ title: "Error", description: t("deletedError"), variant: "destructive" })
     }
   }
 
@@ -207,7 +211,7 @@ export default function JobsPage() {
 
   const displayedJobs = isTechnician ? technicianPageSlice : filteredJobs
   const yearSuffix = filters.year === "ALL" ? "" : ` ${filters.year}`
-  const headerTitle = `${TAB_TITLE[filters.tab]}${yearSuffix}`
+  const headerTitle = `${tabTitles[filters.tab]}${yearSuffix}`
 
   if (!user) return null
 
@@ -221,7 +225,7 @@ export default function JobsPage() {
         <main className="flex-1 overflow-y-auto p-6">
           {/* Tabs */}
           <div className="mb-6 flex items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold">Jobs</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
 
             <div className="flex flex-1 justify-center">
               <Tabs value={filters.tab} onValueChange={(v) => handlers.setTab(v as any)}>
@@ -236,7 +240,7 @@ export default function JobsPage() {
                       >
                         <span className="flex items-center gap-2">
                           <Icon className="h-4 w-4" />
-                          {tab === "ALL" ? "All" : tab}
+                          {tab === "ALL" ? t("tabAll") : tab}
                         </span>
                       </TabsTrigger>
                     )
@@ -250,7 +254,7 @@ export default function JobsPage() {
 
           {isLoading ? (
             <div className="flex h-64 items-center justify-center">
-              <div className="text-lg text-gray-500">Loading jobs...</div>
+              <div className="text-lg text-gray-500">{t("loading")}</div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -265,7 +269,7 @@ export default function JobsPage() {
                 onSearchKeyDown={handlers.handleSearchKeyDown}
 
                 year={filters.year}
-                yearOptions={YEAR_OPTIONS}
+                yearOptions={yearOptions}
                 onYearChange={(y) => handlers.setYear(y as any)}
 
                 memberId={filters.memberId}
@@ -294,14 +298,14 @@ export default function JobsPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-12">
                   <div className="text-center">
                     <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                      {loadError ? "Couldn't load jobs" : "No jobs available"}
+                      {loadError ? t("errorTitle") : t("emptyTitle")}
                     </h3>
                     <p className="mb-4 text-sm text-gray-500">
                       {loadError
-                        ? "There was a problem fetching jobs from the server. Please retry."
+                        ? t("errorDesc")
                         : totalJobs === 0
-                          ? "There are no jobs in the database yet."
-                          : "No jobs match your current filters."}
+                          ? t("emptyDesc")
+                          : t("emptyFiltersDesc")}
                     </p>
                     <div className="flex items-center justify-center gap-2">
                       {loadError ? (
@@ -309,18 +313,18 @@ export default function JobsPage() {
                           <Button onClick={handleRetry} disabled={retrying} className="bg-gqm-green hover:bg-gqm-green-dark">
                             {retrying ? "Retrying..." : "Retry"}
                           </Button>
-                          <Button variant="outline" onClick={() => window.location.reload()}>Reload page</Button>
+                          <Button variant="outline" onClick={() => window.location.reload()}>{t("reloadPage")}</Button>
                         </>
                       ) : (
                         user?.role === "GQM_MEMBER" && hasPermission("job:create") && totalJobs === 0 && (
                           <>
                             <Button onClick={() => router.push("/jobs/create")} className="bg-gqm-green hover:bg-gqm-green-dark">
-                              Create Your First Job
+                              {t("createFirstJob")}
                             </Button>
                             <Button onClick={handleRetry} disabled={retrying} className="bg-gqm-green hover:bg-gqm-green-dark">
                               {retrying ? "Retrying..." : "Retry"}
                             </Button>
-                            <Button variant="outline" onClick={() => window.location.reload()}>Reload page</Button>
+                            <Button variant="outline" onClick={() => window.location.reload()}>{t("reloadPage")}</Button>
                           </>
                         )
                       )}
@@ -338,16 +342,16 @@ export default function JobsPage() {
 
                   <div className="flex items-center justify-between rounded-lg border bg-white p-4">
                     <div className="text-sm text-gray-600">
-                      Showing {(filters.page - 1) * itemsPerPage + 1} to{" "}
-                      {Math.min(filters.page * itemsPerPage, totalJobs)} of {totalJobs} jobs
+                      {t("paginationShowing")} {(filters.page - 1) * itemsPerPage + 1} {t("paginationTo")}{" "}
+                      {Math.min(filters.page * itemsPerPage, totalJobs)} {t("paginationOf")} {totalJobs} {t("paginationJobs")}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={filters.page === 1}>
-                        <ChevronLeft className="h-4 w-4" /> Previous
+                        <ChevronLeft className="h-4 w-4" /> {tCommon("previous")}
                       </Button>
-                      <span>Page {filters.page} of {totalPages}</span>
+                      <span>{t("paginationPage")} {filters.page} {t("paginationOf")} {totalPages}</span>
                       <Button variant="outline" size="sm" onClick={handleNextPage} disabled={filters.page === totalPages}>
-                        Next <ChevronRight className="h-4 w-4" />
+                        {tCommon("next")} <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

@@ -21,6 +21,7 @@ import { KpiCard } from "./components/KpiCard"
 import { SectionCard } from "./components/SectionCard"
 import { EmptyState } from "./components/EmptyState"
 import { CardCarouselSkeleton, TableSkeleton } from "./components/LoadingSkeleton"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type JobTab  = "ALL" | "QID" | "PTL" | "PAR"
 type YearTab = "ALL" | "2026" | "2025" | "2024" | "2023"
@@ -90,6 +91,7 @@ const getAccent = (id: string) => ACCENT_COLORS[hashToIndex(id, ACCENT_COLORS.le
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ClientsPanel({ jobTab, yearTab }: Props) {
+  const t = useTranslations("dashboard")
   const [isLoading,  setIsLoading]  = useState(true)
   const [page,       setPage]       = useState(1)
   const limit = 25
@@ -186,31 +188,31 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                      <div className="text-muted-foreground">Total Quotes</div>
+                      <div className="text-muted-foreground">{t("statTotalQuotes")}</div>
                       <div className="text-right font-semibold tabular-nums">{s.total_amount_of_quotes}</div>
 
-                      <div className="text-muted-foreground">$ Quoted</div>
+                      <div className="text-muted-foreground">{t("statDollarsQuoted")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtK(s.dollars_quoted)}</div>
 
-                      <div className="text-muted-foreground"># In Progress</div>
+                      <div className="text-muted-foreground">{t("statInProgressCount")}</div>
                       <div className="text-right font-semibold tabular-nums">{s.in_progress_jobs_count}</div>
 
-                      <div className="text-muted-foreground">$ In Progress</div>
+                      <div className="text-muted-foreground">{t("statDollarsInProgress")}</div>
                       <div className="text-right font-semibold tabular-nums text-sky-700">{fmtK(s.dollars_in_progress)}</div>
 
-                      <div className="text-muted-foreground"># Paid Jobs</div>
+                      <div className="text-muted-foreground">{t("statPaidJobsCount")}</div>
                       <div className="text-right font-semibold tabular-nums">{s.paid_jobs_count}</div>
 
-                      <div className="text-muted-foreground">$ Paid</div>
+                      <div className="text-muted-foreground">{t("statDollarsPaid")}</div>
                       <div className="text-right font-semibold tabular-nums text-emerald-700">{fmtK(s.dollars_paid)}</div>
 
-                      <div className="text-muted-foreground">Avg Target %</div>
+                      <div className="text-muted-foreground">{t("statAvgTargetPct")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtPct(s.ave_target_sold_pct)}</div>
                     </div>
                   </div>
 
                   <div className="px-5 py-2.5 mt-auto text-sm font-semibold text-black" style={{ backgroundColor: "#37D260" }}>
-                    {fmtPct(s.ave_target_sold_pct)} Avg Target Sold
+                    {fmtPct(s.ave_target_sold_pct)} {t("statAvgTargetSold")}
                   </div>
                 </div>
               )
@@ -221,24 +223,27 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         {/* Order + Pagination */}
         <div className="mt-4 flex items-center justify-between">
           <div className="inline-flex rounded-lg border bg-white/10 p-1 text-xs">
-            {(["closed", "revenue"] as const).map((v) => (
+            {([
+              { v: "closed",  label: t("orderByClosed")  },
+              { v: "revenue", label: t("orderByRevenue") },
+            ] as const).map(({ v, label }) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => setOrderBy(v)}
                 className={[
-                  "rounded px-3 py-1 font-medium transition capitalize",
+                  "rounded px-3 py-1 font-medium transition",
                   orderBy === v ? "bg-white text-gray-900 shadow" : "text-white/80",
                 ].join(" ")}
               >
-                By {v}
+                {label}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-            <span className="text-white text-sm">Page {page} / {Math.max(1, totalPages)}</span>
-            <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+            <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t("prevPage")}</Button>
+            <span className="text-white text-sm">{page} / {Math.max(1, totalPages)}</span>
+            <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t("nextPage")}</Button>
           </div>
         </div>
       </div>
@@ -247,10 +252,10 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
 
         {/* Picker */}
-        <SectionCard title="All Clients" subtitle="Click to see individual stats">
+        <SectionCard title={t("allClients")} subtitle={t("allClientsSubtitle")}>
           <div className="relative mb-4">
             <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..." className="pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchClients")} className="pl-9" />
           </div>
           {isLoading ? (
             <TableSkeleton rows={6} cols={3} />
@@ -280,35 +285,35 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                       </div>
                       <div className="text-right text-xs shrink-0">
                         <div className="font-semibold text-emerald-700">{fmtK(s.dollars_paid)}</div>
-                        <div className="text-muted-foreground">{s.paid_jobs_count} paid</div>
+                        <div className="text-muted-foreground">{s.paid_jobs_count} {t("paid")}</div>
                       </div>
                     </div>
                   </button>
                 )
               })}
-              {items.length === 0 && <EmptyState message="No clients found." />}
+              {items.length === 0 && <EmptyState message={t("noClientsFound")} />}
             </div>
           )}
         </SectionCard>
 
         {/* Detail */}
         <SectionCard
-          title={selected ? selected.client.name : "Individual Statistics"}
-          subtitle={selected ? selected.client.address || "Community / Client" : "Select a client on the left"}
-          action={selected ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear</Button> : undefined}
+          title={selected ? selected.client.name : t("individualStats")}
+          subtitle={selected ? selected.client.address || "—" : t("selectClientLeft")}
+          action={selected ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t("clear")}</Button> : undefined}
         >
           {!selected ? (
-            <EmptyState message="Select a client to see detailed stats." />
+            <EmptyState message={t("selectClientDetail")} />
           ) : (
             <div className="space-y-5">
               {/* KPI chips */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard title="Total Quotes"  value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
-                <KpiCard title="$ Quoted"      value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
-                <KpiCard title="$ In Progress" value={fmtK(selected.dashboard_stats.dollars_in_progress)}      Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                <KpiCard title="$ Paid"        value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title="# In Progress" value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-amber-100 text-amber-700" />
-                <KpiCard title="Avg Target %"  value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statTotalQuotes")}    value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
+                <KpiCard title={t("statDollarsQuoted")} value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
+                <KpiCard title={t("statDollarsInProgress")} value={fmtK(selected.dashboard_stats.dollars_in_progress)}  Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                <KpiCard title={t("statDollarsPaid")}   value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statInProgressCount")} value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}  accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statAvgTargetPct")}  value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
               </div>
 
               {/* Top communities (if backend returns them) */}
@@ -316,15 +321,15 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
-                    Top Communities by Jobs
+                    {t("topCommunitiesByJobs")}
                   </h3>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                        <th className="px-2 py-1.5 font-medium">Community</th>
-                        <th className="px-2 py-1.5 font-medium text-right">Total Jobs</th>
-                        <th className="px-2 py-1.5 font-medium text-right">Paid Jobs</th>
-                        <th className="px-2 py-1.5 font-medium text-right">Revenue</th>
+                        <th className="px-2 py-1.5 font-medium">{t("colCommunity")}</th>
+                        <th className="px-2 py-1.5 font-medium text-right">{t("colTotalJobs")}</th>
+                        <th className="px-2 py-1.5 font-medium text-right">{t("colPaidJobs")}</th>
+                        <th className="px-2 py-1.5 font-medium text-right">{t("colRevenue")}</th>
                       </tr>
                     </thead>
                     <tbody>

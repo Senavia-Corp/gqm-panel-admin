@@ -3,6 +3,7 @@
 import { Eye, Trash2, Mail, Building2, Hash, Star, ShieldCheck, Wrench, MapPin, AlertCircle } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import Link from "next/link"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -28,9 +29,10 @@ function parseEmailField(raw: string | null | undefined): string[] {
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status?: string | null }) {
+  const t = useTranslations("subcontractors")
   if (!status) return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400 italic">
-      <AlertCircle className="h-2.5 w-2.5" /> No Status
+      <AlertCircle className="h-2.5 w-2.5" /> {t("noStatus")}
     </span>
   )
   const map: Record<string, string> = {
@@ -42,15 +44,16 @@ function StatusBadge({ status }: { status?: string | null }) {
   const cls = map[status.toLowerCase()] ?? "bg-blue-100 text-blue-700 border-blue-200"
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
-      {status}
+      {t(status.toLowerCase() as any)}
     </span>
   )
 }
 
 function ScoreBadge({ score }: { score?: number | null }) {
+  const t = useTranslations("subcontractors")
   if (score == null) return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400 italic">
-      <Star className="h-2.5 w-2.5" /> No Score
+      <Star className="h-2.5 w-2.5" /> {t("noScore")}
     </span>
   )
   const pct = Math.min(100, Math.max(0, score))
@@ -90,7 +93,7 @@ function EmailCell({ raw }: { raw?: string | null }) {
   const emails = parseEmailField(raw)
   if (!emails.length) return (
     <span className="flex items-center gap-1 text-xs italic text-slate-300">
-      <Mail className="h-3 w-3 flex-shrink-0" /> No email
+      <Mail className="h-3 w-3 flex-shrink-0" /> {useTranslations("subcontractors")("noEmail")}
     </span>
   )
   return (
@@ -114,12 +117,13 @@ interface Props {
 }
 
 export function SubcontractorManagementTable({ subcontractors, onDelete }: Props) {
+  const t = useTranslations("subcontractors")
   if (subcontractors.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white py-16">
         <Wrench className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-medium text-slate-500">No subcontractors found</p>
-        <p className="text-xs text-slate-400">Try adjusting your search or filter</p>
+        <p className="text-sm font-medium text-slate-500">{t("noSubsFound")}</p>
+        <p className="text-xs text-slate-400">{t("tryAdjusting")}</p>
       </div>
     )
   }
@@ -130,19 +134,19 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80">
             {[
-              { icon: Hash,       label: "ID" },
-              { icon: Building2,  label: "Subcontractor" },
-              { icon: Building2,  label: "Organization" },
-              { icon: ShieldCheck,label: "Status" },
-              { icon: Mail,       label: "Email" },
-              { icon: Star,       label: "Score" },
+              { icon: Hash,       label: t("items") },
+              { icon: Building2,  label: t("title") },
+              { icon: Building2,  label: t("organization") },
+              { icon: ShieldCheck,label: t("status") },
+              { icon: Mail,       label: t("email") },
+              { icon: Star,       label: t("score") },
             ].map(({ icon: Icon, label }) => (
               <th key={label} className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pl-5">
                 <span className="flex items-center gap-1"><Icon className="h-3 w-3" />{label}</span>
               </th>
             ))}
             <th className="py-3 pl-3 pr-5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Actions
+              {t("actions")}
             </th>
           </tr>
         </thead>
@@ -162,14 +166,14 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                   <SubcAvatar name={s.Name} />
                   <div className="min-w-0">
                     <p className="max-w-[160px] truncate text-sm font-semibold text-slate-800">
-                      {s.Name ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                      {s.Name ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
                     </p>
                     {s.Specialty ? (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
                         <Wrench className="h-2.5 w-2.5 text-slate-400" />{s.Specialty}
                       </span>
                     ) : (
-                      <span className="mt-0.5 text-[11px] italic text-slate-300">No specialty</span>
+                      <span className="mt-0.5 text-[11px] italic text-slate-300">{t("noSpecialty")}</span>
                     )}
                   </div>
                 </div>
@@ -183,7 +187,7 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                     <span className="max-w-[140px] truncate" title={s.Organization}>{s.Organization}</span>
                   </span>
                 ) : (
-                  <span className="text-xs italic text-slate-300">No organization</span>
+                  <span className="text-xs italic text-slate-300">{t("noOrganization")}</span>
                 )}
               </td>
 
@@ -208,14 +212,14 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                   <Link href={`/subcontractors/${s.ID_Subcontractor}`}>
                     <Button variant="ghost" size="icon"
                       className="h-8 w-8 rounded-lg bg-amber-500 text-white shadow-sm hover:bg-amber-600"
-                      title="View details">
+                      title={t("viewDetails")}>
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
                   <Button variant="ghost" size="icon"
                     className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
                     onClick={() => onDelete?.(s)}
-                    title="Delete">
+                    title={t("delete")}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>

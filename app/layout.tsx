@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "sonner"
+import { LocaleProvider } from "@/components/providers/LocaleProvider"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -39,9 +40,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <Analytics />
-        <Toaster richColors position="top-right" />
+        <LocaleProvider>
+          {children}
+          <Analytics />
+          <Toaster richColors position="top-right" />
+        </LocaleProvider>
       </body>
     </html>
   )

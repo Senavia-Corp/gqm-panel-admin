@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Pencil, Trash2, Building2, User, Eye } from "lucide-react"
 import type { JobDTO, JobType } from "@/lib/types"
 import { StatusBadge } from "@/components/atoms/StatusBadge"
@@ -58,9 +59,9 @@ function safeDateLabel(dateString: string | null | undefined) {
 }
 
 function getMidColumnConfig(variant: JobsTableVariant) {
-  if (variant === "ALL" || variant === "QID") return { key: "project", header: "Project Name" }
-  if (variant === "PTL") return { key: "location", header: "Location" }
-  return { key: "none", header: "" }
+  if (variant === "ALL" || variant === "QID") return { key: "project" }
+  if (variant === "PTL") return { key: "location" }
+  return { key: "none" }
 }
 
 function ClientAvatar() {
@@ -91,22 +92,23 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
   const mid = getMidColumnConfig(tableVariant)
   const { hasPermission } = usePermissions()
   const canReadFull = hasPermission("job:read")
+  const t = useTranslations("jobs")
 
-  const dateHeader = isPtl ? "Start Date" : isQid || isPar ? "Date Assigned" : "Date"
+  const dateHeader = isPtl ? t("colStartDate") : isQid || isPar ? t("colDateAssigned") : t("colDate")
 
   return (
     <div className="rounded-lg border bg-white">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="px-6">Job ID</TableHead>
-            <TableHead className="px-4">Client</TableHead>
-            <TableHead className="px-4">Representative</TableHead>
-            {!isPar && <TableHead className="px-4">{mid.header}</TableHead>}
-            {canReadFull && <TableHead className="px-4">Target S. Pricing</TableHead>}
-            {canReadFull && <TableHead className="px-4">Target %</TableHead>}
-            <TableHead className="px-4">Status</TableHead>
-            <TableHead className="px-6 text-right">Actions</TableHead>
+            <TableHead className="px-6">{t("colJobId")}</TableHead>
+            <TableHead className="px-4">{t("colClient")}</TableHead>
+            <TableHead className="px-4">{t("colRepresentative")}</TableHead>
+            {!isPar && <TableHead className="px-4">{mid.key === "project" ? t("colProjectName") : t("colLocation")}</TableHead>}
+            {canReadFull && <TableHead className="px-4">{t("colTargetPricing")}</TableHead>}
+            {canReadFull && <TableHead className="px-4">{t("colTargetPct")}</TableHead>}
+            <TableHead className="px-4">{t("colStatus")}</TableHead>
+            <TableHead className="px-6 text-right">{t("colActions")}</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -156,12 +158,12 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     <div className="flex items-center gap-3">
                       <ClientAvatar />
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{clientCommunity ?? "Client"}</span>
+                        <span className="text-sm font-medium text-gray-900">{clientCommunity ?? t("colClient")}</span>
                         <span className="text-xs text-muted-foreground">{clientId ?? "-"}</span>
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400 italic">Client not available</span>
+                    <span className="text-sm text-gray-400 italic">{t("clientNotAvailable")}</span>
                   )}
                 </TableCell>
 
@@ -176,7 +178,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400 italic">Representative not available</span>
+                    <span className="text-sm text-gray-400 italic">{t("repNotAvailable")}</span>
                   )}
                 </TableCell>
 
@@ -214,7 +216,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                         variant="ghost"
                         className="h-8 w-8 bg-red-500 text-white hover:bg-red-600"
                         onClick={() => onDelete?.(job)}
-                        title="Delete job"
+                        title={t("deleteJobTitle")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

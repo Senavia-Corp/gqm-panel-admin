@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Technician } from "@/lib/types"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface TechnicianCardProps {
   technician: Technician
@@ -13,6 +14,7 @@ interface TechnicianCardProps {
 }
 
 export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardProps) {
+  const t = useTranslations("subcontractors")
   return (
     <Card className="group relative overflow-hidden p-6 transition-shadow hover:shadow-lg">
       <div className="flex flex-col items-center space-y-4">
@@ -38,7 +40,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
             technician.Type === "Leader" ? "bg-yellow-500 text-white" : "bg-blue-500 text-white"
           }`}
         >
-          {technician.Type}
+          {t((technician.Type || "worker").toLowerCase())}
         </span>
 
         {/* Contact Information */}
@@ -66,7 +68,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
             onClick={() => onView(technician.ID_Technician)}
           >
             <Eye className="mr-2 h-4 w-4" />
-            View
+            {t("view")}
           </Button>
           <Button
             variant="outline"
@@ -75,7 +77,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
             onClick={() => onDelete(technician.ID_Technician)}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            {t("delete")}
           </Button>
         </div>
       </div>

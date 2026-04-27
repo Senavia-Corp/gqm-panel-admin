@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import {
   LayoutDashboard,
@@ -10,7 +11,6 @@ import {
   Users,
   UserCircle,
   UsersRound,
-  Bell,
   Settings,
   LogOut,
   ChevronLeft,
@@ -26,39 +26,53 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/atoms/Logo"
 import { Button } from "@/components/ui/button"
+import type { ElementType } from "react"
 import type { UserRole } from "@/lib/types"
 
-const gqmMemberMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Briefcase, label: "Jobs", href: "/jobs" },
-  { icon: Users, label: "Subcontractors", href: "/subcontractors" },
-  { icon: UserCircle, label: "Clients", href: "/clients" },
-  { icon: UsersRound, label: "GQM Members", href: "/members" },
-  { icon: ShoppingBag, label: "Purchases", href: "/purchases" },
-  { icon: BadgeDollarSign, label: "Commissions", href: "/commissions" },
-  { icon: Landmark, label: "Building Depts", href: "/building-departments" },
-  { icon: Megaphone, label: "Opportunities", href: "/opportunities" },
-  { icon: Store, label: "Suppliers", href: "/suppliers" },
-  { icon: FileBadge, label: "Roles & Permissions", href: "/roles-permissions" },
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type NavItem = {
+  icon: ElementType
+  labelKey: string
+  href: string
+}
+
+// ─── Static nav config (icons + routes only — labels translated at render) ────
+
+const gqmMemberMenuItems: NavItem[] = [
+  { icon: LayoutDashboard, labelKey: "dashboard",          href: "/dashboard" },
+  { icon: Briefcase,       labelKey: "jobs",               href: "/jobs" },
+  { icon: Users,           labelKey: "subcontractors",     href: "/subcontractors" },
+  { icon: UserCircle,      labelKey: "clients",            href: "/clients" },
+  { icon: UsersRound,      labelKey: "members",            href: "/members" },
+  { icon: ShoppingBag,     labelKey: "purchases",          href: "/purchases" },
+  { icon: BadgeDollarSign, labelKey: "commissions",        href: "/commissions" },
+  { icon: Landmark,        labelKey: "buildingDepartments",href: "/building-departments" },
+  { icon: Megaphone,       labelKey: "opportunities",      href: "/opportunities" },
+  { icon: Store,           labelKey: "suppliers",          href: "/suppliers" },
+  { icon: FileBadge,       labelKey: "rolesPermissions",   href: "/roles-permissions" },
 ]
 
-const leadTechnicianMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Briefcase, label: "Jobs", href: "/jobs" },
-  { icon: Wrench, label: "Technicians", href: "/technicians" },
-  { icon: FileText, label: "Reports", href: "/reports" },
+const leadTechnicianMenuItems: NavItem[] = [
+  { icon: LayoutDashboard, labelKey: "dashboard",    href: "/dashboard" },
+  { icon: Briefcase,       labelKey: "jobs",         href: "/jobs" },
+  { icon: Wrench,          labelKey: "technicians",  href: "/technicians" },
+  { icon: FileText,        labelKey: "reports",      href: "/reports" },
 ]
 
-const bottomItems = [
-  { icon: UserCircle, label: "Profile", href: "/profile" },
-  { icon: Settings, label: "Settings", href: "/settings" },
-  { icon: LogOut, label: "Log out", href: "/login" },
+const bottomItems: NavItem[] = [
+  { icon: UserCircle, labelKey: "profile",  href: "/profile" },
+  { icon: Settings,   labelKey: "settings", href: "/settings" },
+  { icon: LogOut,     labelKey: "logout",   href: "/login" },
 ]
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const pathname = usePathname()
+  const t = useTranslations("navigation")
 
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
@@ -73,13 +87,13 @@ export function Sidebar() {
   const menuItems = useMemo(() => {
     const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
     return base.filter((item) => {
-      if (item.href === "/members") return hasPermission("member:read")
-      if (item.href === "/clients") return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
-      if (item.href === "/subcontractors") return hasPermission("subcontractor:read")
-      if (item.href === "/building-departments") return hasPermission("bldg_dept:read")
-      if (item.href === "/opportunities") return hasPermission("subcontractor:read")
-      if (item.href === "/suppliers") return hasPermission("subcontractor:read")
-      if (item.href === "/roles-permissions") return hasPermission("iam_pm:read")
+      if (item.href === "/members")              return hasPermission("member:read")
+      if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+      if (item.href === "/subcontractors")      return hasPermission("subcontractor:read")
+      if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
+      if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
+      if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
+      if (item.href === "/roles-permissions")   return hasPermission("iam_pm:read")
       return true
     })
   }, [userRole, hasPermission])
@@ -96,8 +110,9 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`relative flex h-screen flex-col border-r bg-white transition-all duration-300 ${collapsed ? "w-20" : "w-64"
-        }`}
+      className={`relative flex h-screen flex-col border-r bg-white transition-all duration-300 ${
+        collapsed ? "w-20" : "w-64"
+      }`}
     >
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4">
@@ -125,13 +140,14 @@ export function Sidebar() {
             >
               <Button
                 variant={isActive ? "secondary" : "ghost"}
-                className={`w-full justify-start gap-3 ${isActive ? "bg-gray-100" : ""} ${isDisabled ? "opacity-50" : ""
-                  }`}
+                className={`w-full justify-start gap-3 ${isActive ? "bg-gray-100" : ""} ${
+                  isDisabled ? "opacity-50" : ""
+                }`}
                 size={collapsed ? "icon" : "default"}
                 disabled={isDisabled}
               >
                 <Icon className="h-5 w-5" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{t(item.labelKey as any)}</span>}
               </Button>
             </Link>
           )
@@ -145,7 +161,7 @@ export function Sidebar() {
           const isDisabled =
             userRole === "LEAD_TECHNICIAN" &&
             (item.href === "/profile" || item.href === "/settings")
-          const isLogout = item.label === "Log out"
+          const isLogout = item.labelKey === "logout"
 
           return (
             <Link
@@ -161,14 +177,14 @@ export function Sidebar() {
                 disabled={isDisabled}
               >
                 <Icon className="h-5 w-5" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{t(item.labelKey as any)}</span>}
               </Button>
             </Link>
           )
         })}
       </div>
 
-      {/* Toggle Button */}
+      {/* Collapse toggle */}
       <Button
         variant="ghost"
         size="icon"

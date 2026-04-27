@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Bell, ChevronDown, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/apiFetch"
+import { LanguageToggle } from "@/components/atoms/LanguageToggle"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,6 +103,9 @@ export function TopBar() {
             </span>
           )}
         </Button> */}
+
+        {/* Language toggle */}
+        <LanguageToggle />
 
         {/* Divider */}
         <div className="mx-1 h-6 w-px bg-slate-200" />

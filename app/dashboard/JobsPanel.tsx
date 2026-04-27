@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +28,7 @@ import {
 import { MonthlyEvolutionChart } from "./components/charts/MonthlyEvolutionChart"
 import { HorizontalBarChart } from "./components/charts/HorizontalBarChart"
 import { StatusPieChart } from "./components/charts/StatusPieChart"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,8 @@ export default function JobsPanel({
   onDownloadReport,
   isDownloadingReport,
 }: Props) {
+  const t = useTranslations("dashboard")
+
   const [loading, setLoading]           = useState(true)
   const [data, setData]                 = useState<JobsStatusResponse | null>(null)
 
@@ -358,7 +361,7 @@ export default function JobsPanel({
   }
 
   if (!data) {
-    return <EmptyState message="Could not load jobs financial data. Please try again." />
+    return <EmptyState message={t("errorLoadJobsData")} />
   }
 
   const kpi = data.kpi_summary
@@ -368,21 +371,21 @@ export default function JobsPanel({
 
       {/* ── 1. KPI Cards ─────────────────────────────────────────────────── */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-        <KpiCard large title="Total Quoted"    value={fmtK(kpi.total_quoted)}    subtitle="Target sold pricing"      Icon={DollarSign}   accentClass="bg-slate-100 text-slate-700" />
-        <KpiCard large title="Total Formula"   value={fmtK(kpi.total_formula)}   subtitle="Base costing"             Icon={BarChart2}    accentClass="bg-blue-100 text-blue-700" />
-        <KpiCard large title="Total Final Sold" value={fmtK(kpi.total_final_sold)} subtitle="Actual revenue"          Icon={TrendingUp}   accentClass="bg-emerald-100 text-emerald-700" />
-        <KpiCard large title="Total Premium $"  value={fmtK(kpi.total_premium)}   subtitle="Final Sold − Adj Formula" Icon={DollarSign}   accentClass="bg-amber-100 text-amber-700" valueClass="text-amber-700" />
+        <KpiCard large title={t("kpiTotalQuoted")}    value={fmtK(kpi.total_quoted)}    subtitle={t("kpiTotalQuotedSub")}      Icon={DollarSign}   accentClass="bg-slate-100 text-slate-700" />
+        <KpiCard large title={t("kpiTotalFormula")}   value={fmtK(kpi.total_formula)}   subtitle={t("kpiTotalFormulaSub")}     Icon={BarChart2}    accentClass="bg-blue-100 text-blue-700" />
+        <KpiCard large title={t("kpiTotalFinalSold")} value={fmtK(kpi.total_final_sold)} subtitle={t("kpiTotalFinalSoldSub")} Icon={TrendingUp}   accentClass="bg-emerald-100 text-emerald-700" />
+        <KpiCard large title={t("kpiTotalPremium")}   value={fmtK(kpi.total_premium)}   subtitle={t("kpiTotalPremiumSub")}    Icon={DollarSign}   accentClass="bg-amber-100 text-amber-700" valueClass="text-amber-700" />
 
-        <KpiCard title="Avg Final %"      value={fmtPct(kpi.avg_final_pct)}   subtitle="Margin performance"        Icon={Percent}      accentClass="bg-violet-100 text-violet-700" />
-        <KpiCard title="# Jobs PAID"      value={`${kpi.paid_count} / ${kpi.job_count}`} subtitle="of total jobs"  Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-        <KpiCard title="Pipeline"         value={fmtK(data.pipeline ?? 0)}    subtitle="Active / uncollected"      Icon={Target}       accentClass="bg-orange-100 text-orange-700" valueClass="text-orange-700" />
-        <KpiCard title="Avg Target Return" value={fmtPct(kpi.avg_target_ret)} subtitle="Strategic objective"       Icon={AlertCircle}  accentClass="bg-rose-100 text-rose-700" />
+        <KpiCard title={t("kpiAvgFinalPct")}      value={fmtPct(kpi.avg_final_pct)}   subtitle={t("kpiAvgFinalPctSub")}    Icon={Percent}      accentClass="bg-violet-100 text-violet-700" />
+        <KpiCard title={t("kpiJobsPaid")}         value={`${kpi.paid_count} / ${kpi.job_count}`} subtitle={t("kpiJobsPaidSub")} Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+        <KpiCard title={t("kpiPipeline")}         value={fmtK(data.pipeline ?? 0)}    subtitle={t("kpiPipelineSub")}       Icon={Target}       accentClass="bg-orange-100 text-orange-700" valueClass="text-orange-700" />
+        <KpiCard title={t("kpiAvgTargetReturn")}  value={fmtPct(kpi.avg_target_ret)}  subtitle={t("kpiAvgTargetReturnSub")} Icon={AlertCircle}  accentClass="bg-rose-100 text-rose-700" />
       </div>
 
       {/* ── 2. Monthly / Quarterly Evolution ─────────────────────────────── */}
       <SectionCard
-        title="Financial Evolution"
-        subtitle="Monthly and quarterly breakdown of quoted vs final sold"
+        title={t("sectionFinancialEvolution")}
+        subtitle={t("sectionFinancialEvolutionSub")}
         action={
           <div className="inline-flex rounded-lg border bg-gray-50 p-1 text-xs">
             <button
@@ -390,14 +393,14 @@ export default function JobsPanel({
               onClick={() => setTimeView("monthly")}
               className={["rounded px-3 py-1 font-medium transition", timeView === "monthly" ? "bg-white shadow text-gray-900" : "text-muted-foreground"].join(" ")}
             >
-              Monthly
+              {t("timeMonthly")}
             </button>
             <button
               type="button"
               onClick={() => setTimeView("quarterly")}
               className={["rounded px-3 py-1 font-medium transition", timeView === "quarterly" ? "bg-white shadow text-gray-900" : "text-muted-foreground"].join(" ")}
             >
-              Quarterly
+              {t("timeQuarterly")}
             </button>
           </div>
         }
@@ -409,15 +412,15 @@ export default function JobsPanel({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">Month</th>
-                    <th className="px-3 py-2 font-medium text-right">Jobs</th>
-                    <th className="px-3 py-2 font-medium text-right">Paid</th>
-                    <th className="px-3 py-2 font-medium text-right">Quoted</th>
-                    <th className="px-3 py-2 font-medium text-right">Formula</th>
-                    <th className="px-3 py-2 font-medium text-right">Adj Formula</th>
-                    <th className="px-3 py-2 font-medium text-right">Final Sold</th>
-                    <th className="px-3 py-2 font-medium text-right">Premium $</th>
-                    <th className="px-3 py-2 font-medium text-right">Avg Final %</th>
+                    <th className="px-3 py-2 font-medium">{t("colMonth")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colJobs")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPaid")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colQuoted")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFormula")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colAdjFormula")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPremium")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colAvgFinalPct")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -455,7 +458,7 @@ export default function JobsPanel({
                     )
                     return (
                       <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
-                        <td className="px-3 py-2">TOTAL</td>
+                        <td className="px-3 py-2">{t("rowTotal")}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{totals.jobs}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{totals.paid_jobs}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{fmtK(totals.quoted)}</td>
@@ -478,14 +481,14 @@ export default function JobsPanel({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">Quarter</th>
-                    <th className="px-3 py-2 font-medium text-right">Jobs</th>
-                    <th className="px-3 py-2 font-medium text-right">Paid</th>
-                    <th className="px-3 py-2 font-medium text-right">Quoted</th>
-                    <th className="px-3 py-2 font-medium text-right">Formula</th>
-                    <th className="px-3 py-2 font-medium text-right">Final Sold</th>
-                    <th className="px-3 py-2 font-medium text-right">Premium $</th>
-                    <th className="px-3 py-2 font-medium text-right">Avg Final %</th>
+                    <th className="px-3 py-2 font-medium">{t("colQuarter")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colJobs")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPaid")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colQuoted")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFormula")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPremium")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colAvgFinalPct")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -510,29 +513,29 @@ export default function JobsPanel({
 
       {/* ── 3. In Progress Jobs ───────────────────────────────────────────── */}
       <SectionCard
-        title="Jobs In Progress"
-        subtitle={`${data.in_progress_jobs.length} active jobs`}
+        title={t("sectionJobsInProgress")}
+        subtitle={`${data.in_progress_jobs.length} ${t("activeJobs")}`}
         action={
           <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
-            Pipeline: {fmtK(data.pipeline ?? 0)}
+            {t("pipelineBadge")}: {fmtK(data.pipeline ?? 0)}
           </span>
         }
       >
         {data.in_progress_jobs.length === 0 ? (
-          <EmptyState message="No jobs currently in progress." />
+          <EmptyState message={t("errorNoJobsInProgress")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Job ID</th>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Rep</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Service</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium text-right">Quoted</th>
-                  <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  <th className="px-3 py-2 font-medium">{t("colJobId")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colClient")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colRep")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colService")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colDate")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colQuoted")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colAmount")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -556,23 +559,23 @@ export default function JobsPanel({
 
       {/* ── 4. Ready to Invoice ───────────────────────────────────────────── */}
       <SectionCard
-        title="Ready to Invoice"
-        subtitle={`${data.ready_to_invoice.length} jobs completed pending invoicing`}
+        title={t("sectionReadyToInvoice")}
+        subtitle={`${data.ready_to_invoice.length} ${t("sectionReadyToInvoiceSub")}`}
       >
         {data.ready_to_invoice.length === 0 ? (
-          <EmptyState message="No jobs ready to invoice." />
+          <EmptyState message={t("errorNoJobsToInvoice")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Job ID</th>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Rep</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Service</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium text-right">Final Sold</th>
+                  <th className="px-3 py-2 font-medium">{t("colJobId")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colClient")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colRep")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colService")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colDate")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -597,13 +600,13 @@ export default function JobsPanel({
       <div className="grid gap-6 md:grid-cols-2">
 
         {/* Rep Performance */}
-        <SectionCard title="Rep Performance" subtitle="Total Final Sold & Avg Final %">
+        <SectionCard title={t("sectionRepPerformance")} subtitle={t("sectionRepPerformanceSub")}>
           {repChartData.length === 0 ? <EmptyState /> : (
             <>
               <HorizontalBarChart
                 data={repChartData}
-                primaryLabel="Final Sold"
-                secondaryLabel="Premium $"
+                primaryLabel={t("colFinalSold")}
+                secondaryLabel={t("colPremium")}
                 primaryColor="#1e4d2b"
                 secondaryColor="#f59e0b"
               />
@@ -611,12 +614,12 @@ export default function JobsPanel({
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                      <th className="px-3 py-2 font-medium">Rep</th>
-                      <th className="px-3 py-2 font-medium text-right">Jobs</th>
-                      <th className="px-3 py-2 font-medium text-right">Paid</th>
-                      <th className="px-3 py-2 font-medium text-right">Final Sold</th>
-                      <th className="px-3 py-2 font-medium text-right">Avg %</th>
-                      <th className="px-3 py-2 font-medium text-right">Premium $</th>
+                      <th className="px-3 py-2 font-medium">{t("colRep")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colJobs")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colPaid")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colAvgPct")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colPremium")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -641,8 +644,8 @@ export default function JobsPanel({
 
         {/* Status Distribution */}
         <SectionCard
-          title="Job Status Distribution"
-          subtitle={`Pipeline (active): ${fmtK(data.pipeline ?? 0)}`}
+          title={t("sectionJobStatus")}
+          subtitle={`${t("pipelineBadge")} (active): ${fmtK(data.pipeline ?? 0)}`}
         >
           {statusPieData.length === 0 ? <EmptyState /> : (
             <>
@@ -651,11 +654,11 @@ export default function JobsPanel({
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                      <th className="px-3 py-2 font-medium">Status</th>
-                      <th className="px-3 py-2 font-medium text-right">Jobs</th>
+                      <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colJobs")}</th>
                       <th className="px-3 py-2 font-medium text-right">%</th>
-                      <th className="px-3 py-2 font-medium text-right">Quoted</th>
-                      <th className="px-3 py-2 font-medium text-right">Final</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colQuoted")}</th>
+                      <th className="px-3 py-2 font-medium text-right">{t("colFinal")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -682,26 +685,26 @@ export default function JobsPanel({
 
       {/* ── 6. Service Type Profitability ─────────────────────────────────── */}
       <SectionCard
-        title="Profitability by Service Type"
-        subtitle="Final Sold and Premium $ sorted by revenue"
+        title={t("sectionProfitability")}
+        subtitle={t("sectionProfitabilitySub")}
       >
         {serviceChartData.length === 0 ? <EmptyState /> : (
           <div className="grid gap-6 md:grid-cols-2 items-start">
             <HorizontalBarChart
               data={serviceChartData}
-              primaryLabel="Final Sold"
-              secondaryLabel="Premium $"
+              primaryLabel={t("colFinalSold")}
+              secondaryLabel={t("colPremium")}
               primaryColor="#1e4d2b"
               secondaryColor="#f59e0b"
             />
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Service</th>
-                  <th className="px-3 py-2 font-medium text-right">Jobs</th>
-                  <th className="px-3 py-2 font-medium text-right">Avg %</th>
-                  <th className="px-3 py-2 font-medium text-right">Final Sold</th>
-                  <th className="px-3 py-2 font-medium text-right">Premium $</th>
+                  <th className="px-3 py-2 font-medium">{t("colService")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colJobs")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colAvgPct")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colPremium")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -724,13 +727,13 @@ export default function JobsPanel({
 
       {/* ── 7. P/Quote Pipeline per Member ───────────────────────────────── */}
       <SectionCard
-        title="P/Quote Pipeline per Member"
-        subtitle="Members with active pending/quote jobs"
+        title={t("sectionPipelinePerMember")}
+        subtitle={t("sectionPipelinePerMemberSub")}
       >
         {pipelineLoading ? (
           <TableSkeleton rows={5} cols={4} />
         ) : pipeline.length === 0 ? (
-          <EmptyState message="No P/Quote jobs in pipeline." />
+          <EmptyState message={t("errorNoPQuoteJobs")} />
         ) : (
           <div className="space-y-4">
             {pipeline.map((m) => (
@@ -742,7 +745,7 @@ export default function JobsPanel({
                   </div>
                   <div className="flex gap-3 text-xs">
                     <span className="rounded-full bg-amber-100 text-amber-800 px-3 py-1 font-semibold">
-                      {m.job_count} jobs
+                      {m.job_count} {t("colJobs").toLowerCase()}
                     </span>
                     <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 font-semibold">
                       {fmtK(m.total_quoted)}
@@ -753,11 +756,11 @@ export default function JobsPanel({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b text-muted-foreground text-left">
-                        <th className="pb-1 font-medium">Job ID</th>
-                        <th className="pb-1 font-medium">Client</th>
-                        <th className="pb-1 font-medium">Status</th>
-                        <th className="pb-1 font-medium">Date</th>
-                        <th className="pb-1 font-medium text-right">Amount</th>
+                        <th className="pb-1 font-medium">{t("colJobId")}</th>
+                        <th className="pb-1 font-medium">{t("colClient")}</th>
+                        <th className="pb-1 font-medium">{t("colStatus")}</th>
+                        <th className="pb-1 font-medium">{t("colDate")}</th>
+                        <th className="pb-1 font-medium text-right">{t("colAmount")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -781,24 +784,24 @@ export default function JobsPanel({
 
       {/* ── 9. Material Purchase Status ───────────────────────────────────── */}
       <SectionCard
-        title="Material Purchase Status"
-        subtitle="Recent purchase orders linked to jobs"
+        title={t("sectionMaterialPurchase")}
+        subtitle={t("sectionMaterialPurchaseSub")}
       >
         {data.recent_purchases.length === 0 ? (
-          <EmptyState message="No recent purchases found." />
+          <EmptyState message={t("errorNoRecentPurchases")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">PO ID</th>
-                  <th className="px-3 py-2 font-medium">Description</th>
-                  <th className="px-3 py-2 font-medium">Job</th>
-                  <th className="px-3 py-2 font-medium">Client</th>
-                  <th className="px-3 py-2 font-medium">Rep</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  <th className="px-3 py-2 font-medium">{t("colPoId")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colDescription")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colJob")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colClient")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colRep")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colDate")}</th>
+                  <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                  <th className="px-3 py-2 font-medium text-right">{t("colAmount")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -822,8 +825,8 @@ export default function JobsPanel({
 
       {/* ── 10. Full Job Detail Table ─────────────────────────────────────── */}
       <SectionCard
-        title="Full Job Inventory"
-        subtitle="Complete list of jobs for the selected period"
+        title={t("sectionFullInventory")}
+        subtitle={t("sectionFullInventorySub")}
         action={
           <Button
             onClick={onDownloadReport}
@@ -832,32 +835,32 @@ export default function JobsPanel({
             className="bg-gqm-green-dark text-white hover:bg-gqm-green-dark/90"
           >
             <Download className="mr-1.5 h-3.5 w-3.5" />
-            {isDownloadingReport ? "Generating..." : "PDF Report"}
+            {isDownloadingReport ? t("generating") : t("pdfReport")}
           </Button>
         }
       >
         {detailLoading ? (
           <TableSkeleton rows={10} cols={8} />
         ) : detailJobs.length === 0 ? (
-          <EmptyState message="No jobs found for the selected filters." />
+          <EmptyState message={t("errorNoJobsForFilters")} />
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">Job ID</th>
-                    <th className="px-3 py-2 font-medium">Client</th>
-                    <th className="px-3 py-2 font-medium">Rep</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium">Service</th>
-                    <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium text-right">Formula</th>
-                    <th className="px-3 py-2 font-medium text-right">Adj Formula</th>
-                    <th className="px-3 py-2 font-medium text-right">Target</th>
-                    <th className="px-3 py-2 font-medium text-right">Final</th>
+                    <th className="px-3 py-2 font-medium">{t("colJobId")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colClient")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colRep")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colService")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colDate")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFormula")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colAdjFormula")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colTarget")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFinal")}</th>
                     <th className="px-3 py-2 font-medium text-right">%</th>
-                    <th className="px-3 py-2 font-medium text-right">Premium $</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPremium")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -888,7 +891,7 @@ export default function JobsPanel({
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
               <span>
-                Showing {(detailPage - 1) * PAGE_SIZE + 1}–{Math.min(detailPage * PAGE_SIZE, detailTotal)} of {detailTotal} jobs
+                {t("showingPagination")} {(detailPage - 1) * PAGE_SIZE + 1}–{Math.min(detailPage * PAGE_SIZE, detailTotal)} {t("ofPagination")} {detailTotal} {t("jobsPagination")}
               </span>
               <div className="flex items-center gap-2">
                 <Button
