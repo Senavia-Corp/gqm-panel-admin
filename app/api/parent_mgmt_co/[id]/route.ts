@@ -50,11 +50,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     console.log(`[proxy] PATCH parent_mgmt_co/${id} | sync_podio=%s`, syncPodio)
 
     const authHeader = request.headers.get("Authorization") ?? ""
+    const userId     = request.headers.get("X-User-Id")
     const response = await fetch(pythonUrl.toString(), {
       method: "PATCH",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(userId     ? { "X-User-Id": userId }       : {}),
       },
       body: JSON.stringify(body),
     })
@@ -87,11 +89,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     console.log(`[proxy] DELETE parent_mgmt_co/${id} | sync_podio=%s`, syncPodio)
 
     const authHeader = request.headers.get("Authorization") ?? ""
+    const userId     = request.headers.get("X-User-Id")
     const response = await fetch(pythonUrl.toString(), {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(userId     ? { "X-User-Id": userId }       : {}),
       },
     })
 

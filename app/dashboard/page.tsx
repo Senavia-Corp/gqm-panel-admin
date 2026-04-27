@@ -72,7 +72,7 @@ export default function DashboardPage() {
       const qs = new URLSearchParams({ type: jobTab })
       if (yearTab !== "ALL") qs.set("year", yearTab)
 
-      const res = await apiFetch(`/api/reports/jobs?${qs.toString()}`, {
+      const res = await apiFetch(`/api/financial/reports/pdf?${qs.toString()}`, {
         method:  "GET",
         headers: { Accept: "application/pdf" },
       })

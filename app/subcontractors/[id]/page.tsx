@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TimelineItem } from "@/components/molecules/TimelineItem"
+import { SubcontractorTimelineTab } from "@/components/organisms/subcontractor-detail/tabs/SubcontractorTimelineTab"
 import { TechnicianCard } from "@/components/organisms/TechnicianCard"
 import { DeleteTechnicianDialog } from "@/components/organisms/DeleteTechnicianDialog"
 import { Switch } from "@/components/ui/switch"
@@ -417,7 +417,7 @@ export default function SubcontractorDetailsPage() {
         Coverage_Area: form.Coverage_Area.length ? form.Coverage_Area : null,
       }
       for (const [k, v] of Object.entries(allFields)) {
-        if (!SKIP_ON_PATCH.has(k)) payload[k] = v
+        if (!SKIP_ON_PATCH.has(k) && changedFields.has(k)) payload[k] = v
       }
       const res = await apiFetch(`/api/subcontractors/${id}?sync_podio=${syncPodio}`, {
         method: "PATCH",
@@ -1289,28 +1289,7 @@ export default function SubcontractorDetailsPage() {
 
                   {/* ── TIMELINE tab ─────────────────────────────────────── */}
                   <TabsContent value="timeline">
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100">
-                          <Clock className="h-4 w-4 text-slate-500" />
-                        </div>
-                        <h3 className="text-sm font-semibold text-slate-800">{t("tabTimeline")}</h3>
-                      </div>
-                      <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
-                          <Sparkles className="h-6 w-6 text-slate-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700">{t("comingSoon")}</p>
-                          <p className="mt-1 max-w-xs text-xs text-slate-400">
-                            {t("timelineDesc")}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-600">
-                          {t("inDevelopment")}
-                        </span>
-                      </div>
-                    </div>
+                    <SubcontractorTimelineTab subcId={id} />
                   </TabsContent>
 
                 </Tabs>

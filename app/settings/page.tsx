@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { apiFetch } from "@/lib/apiFetch"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type JobType   = "ALL" | "QID" | "PTL" | "PAR"
 type DocType   = "all" | "invoices" | "bills" | "invoice_payments" | "bill_payments"
 type TLPeriod  = "day" | "week" | "month"
-type ReportCat = "jobs" | "financial" | "timeline"
+type ReportCat = "jobs" | "financial" | "timeline" | "commission"
 
 interface ReportFilters {
   category:  ReportCat
@@ -18,10 +19,14 @@ interface ReportFilters {
   year:      string
   month:     string
   docType:   DocType
+  rep:       string
+  clientId:  string
   // timeline-specific
   tlJobId:   string
   tlPeriod:  TLPeriod
   tlRefDate: string
+  // commission-specific
+  commMembers: string[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -51,7 +56,7 @@ const MONTHS = [
   { value: "11", label: "November"  }, { value: "12", label: "December"  },
 ]
 
-const YEARS = ["ALL", "2025", "2026"]
+const YEARS = ["ALL", "2026", "2025", "2024", "2023"]
 
 const TL_PERIODS: { value: TLPeriod; label: string; desc: string }[] = [
   { value: "day",   label: "Day",   desc: "Activity for a single day"  },
@@ -155,21 +160,76 @@ export default function SettingsPage() {
     year:      "2026",
     month:     "ALL",
     docType:   "all",
+    rep:       "ALL",
+    clientId:  "ALL",
     tlJobId:   "",
     tlPeriod:  "month",
     tlRefDate: today,
+    commMembers: [],
   })
+
+  const [members,      setMembers]      = useState<any[]>([])
+  const [membersTotal, setMembersTotal] = useState(0)
+  const [membersPage,  setMembersPage]  = useState(1)
+  const [membersQ,     setMembersQ]     = useState("")
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+
+  const MEMBERS_LIMIT = 15
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [loading,     setLoading]     = useState(false)
   const [loadingJson, setLoadingJson] = useState(false)
   const [error,       setError]       = useState<string | null>(null)
   const [success,     setSuccess]     = useState(false)
 
+  const loadMembers = useCallback(async (page: number, q: string) => {
+    setMembersLoading(true)
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: String(MEMBERS_LIMIT) })
+      if (q.trim()) params.set("q", q.trim())
+      const res = await apiFetch(`/api/members/table?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setMembers(data.results ?? [])
+        setMembersTotal(data.total ?? 0)
+      }
+    } catch (err) {
+      console.error("Error fetching members:", err)
+    } finally {
+      setMembersLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
     if (!userData) { router.push("/login"); return }
     setUser(JSON.parse(userData))
   }, [router])
+
+  // Initial load — clients only; members load on demand when tab is opened
+  useEffect(() => {
+    async function fetchClients() {
+      try {
+        const cRes = await apiFetch("/api/clients")
+        if (cRes.ok) {
+          const cData = await cRes.json()
+          setClients(Array.isArray(cData) ? cData : cData.results || [])
+        }
+      } catch (err) {
+        console.error("Error fetching clients:", err)
+      }
+    }
+    fetchClients()
+  }, [])
+
+  // Load members whenever commission tab is visible
+  useEffect(() => {
+    if (filters.category === "commission") {
+      loadMembers(membersPage, membersQ)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.category])
 
   if (!user) return null
 
@@ -187,38 +247,65 @@ export default function SettingsPage() {
       p.set("job_id", filters.tlJobId.trim())
       p.set("period", filters.tlPeriod)
       if (filters.tlRefDate) p.set("ref_date", filters.tlRefDate)
+    } else if (filters.category === "commission") {
+      if (filters.year !== "ALL") p.set("year", filters.year)
+      if (filters.month !== "ALL") p.set("month", MONTHS.find(m => m.value === filters.month)?.label || "")
+      filters.commMembers.forEach(mId => p.append("member_id", mId))
     } else {
       p.set("type", filters.jobType)
       if (filters.year  !== "ALL") p.set("year",  filters.year)
       if (filters.month !== "ALL") p.set("month", filters.month)
-      if (filters.category === "financial") p.set("doc_type", filters.docType)
+      if (filters.category === "financial") {
+        if (filters.rep !== "ALL") p.set("rep", filters.rep)
+        if (filters.clientId !== "ALL") p.set("client_id", filters.clientId)
+      }
     }
     return p.toString()
   }
 
-  async function handleDownloadPDF() {
-    if (filters.category === "timeline" && !filters.tlJobId.trim()) {
+  async function handleDownloadReport() {
+    const isTimeline = filters.category === "timeline"
+    const isCommission = filters.category === "commission"
+
+    if (isTimeline && !filters.tlJobId.trim()) {
       setError("Job ID is required for Timeline reports.")
       return
     }
+    if (isCommission && filters.commMembers.length === 0) {
+      setError("Please select at least one member.")
+      return
+    }
+
     setLoading(true); setError(null); setSuccess(false)
     try {
       const endpoint =
-        filters.category === "financial" ? "/api/financial/reports/pdf"  :
-        filters.category === "timeline"  ? "/api/metrics/timeline/reports/pdf" :
-                                           "/api/reports/jobs"
-      const res = await fetch(`${endpoint}?${buildParams()}`)
+        filters.category === "financial"  ? "/api/financial/reports/pdf"  :
+        filters.category === "timeline"   ? "/api/metrics/timeline/reports/pdf" :
+        filters.category === "commission" ? "/api/commission/excel" :
+                                            "/api/reports/jobs"
+      
+      const res = await apiFetch(`${endpoint}?${buildParams()}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body?.error ?? body?.detail ?? `Error ${res.status}`)
+        throw new Error(body?.error || body?.detail || `Error ${res.status}`)
       }
+      
       const blob = await res.blob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement("a")
       a.href     = url
-      a.download = filters.category === "timeline"
-        ? `timeline_${filters.tlJobId}_${filters.tlPeriod}_${filters.tlRefDate}.pdf`
-        : `report_${filters.category}_${filters.jobType}_${filters.year}.pdf`
+      
+      const ext = isCommission ? "xlsx" : "pdf"
+      const dateStr = new Date().toISOString().split("T")[0]
+      
+      if (isTimeline) {
+        a.download = `timeline_${filters.tlJobId}_${filters.tlPeriod}_${filters.tlRefDate}.${ext}`
+      } else if (isCommission) {
+        a.download = `commissions_report_${filters.year}_${filters.month}.${ext}`
+      } else {
+        a.download = `report_${filters.category}_${filters.year}.${ext}`
+      }
+
       a.click()
       URL.revokeObjectURL(url)
       setSuccess(true)
@@ -231,7 +318,7 @@ export default function SettingsPage() {
   }
 
   async function handlePreviewJSON() {
-    if (filters.category === "jobs") return
+    if (filters.category === "jobs" || filters.category === "commission") return
     if (filters.category === "timeline" && !filters.tlJobId.trim()) {
       setError("Job ID is required for Timeline reports.")
       return
@@ -241,7 +328,7 @@ export default function SettingsPage() {
       const endpoint = filters.category === "timeline"
         ? "/api/metrics/timeline/summary"
         : "/api/financial/summary"
-      const res  = await fetch(`${endpoint}?${buildParams()}`)
+      const res  = await apiFetch(`${endpoint}?${buildParams()}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? data?.detail ?? `Error ${res.status}`)
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
@@ -258,8 +345,12 @@ export default function SettingsPage() {
   const yearLabel  = filters.year  === "ALL" ? "All Years"  : filters.year
   const monthLabel = filters.month === "ALL" ? "All Months" : MONTHS.find(m => m.value === filters.month)?.label ?? filters.month
   const docLabel   = DOC_TYPES.find(d => d.value === filters.docType)?.label ?? "All"
-  const isTimeline  = filters.category === "timeline"
-  const isFinancial = filters.category === "financial"
+  const isTimeline   = filters.category === "timeline"
+  const isFinancial  = filters.category === "financial"
+  const isCommission = filters.category === "commission"
+
+  const repLabel    = filters.rep === "ALL" ? "All Reps" : filters.rep
+  const clientLabel = filters.clientId === "ALL" ? "All Clients" : (clients.find(c => c.ID_Client === filters.clientId)?.Client_Community ?? filters.clientId)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -324,9 +415,10 @@ export default function SettingsPage() {
                 </p>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {([
-                    { value: "financial", label: "Financial Documents", icon: "💼", desc: "Invoices, Bills & Payments"   },
+                    { value: "financial", label: "Jobs Financial Report", icon: "💰", desc: "Quoted, Sold, Pct & Profitability" },
                     { value: "jobs",      label: "Jobs Status",         icon: "🏗️",  desc: "Pipeline & Status breakdown" },
                     { value: "timeline",  label: "Job Activity",        icon: "🕐",  desc: "Timeline audit per job"      },
+                    { value: "commission", label: "Member Commissions", icon: "🎟️", desc: "Calculated earnings & history" },
                   ] as const).map(cat => (
                     <button
                       key={cat.value}
@@ -448,6 +540,172 @@ export default function SettingsPage() {
                     </div>
                   </section>
                 </>
+              ) : isCommission ? (
+                <>
+                  {/* ══ COMMISSION FILTERS ═════════════════════════════════ */}
+                  
+                  {/* Step 2: Member selection */}
+                  <section style={{ marginBottom: "28px" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
+                      2 · Select Members
+                    </p>
+
+                    {/* Search bar */}
+                    <div style={{ position: "relative", marginBottom: "10px" }}>
+                      <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", fontSize: "14px", pointerEvents: "none" }}>🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search member..."
+                        value={membersQ}
+                        onChange={e => {
+                          const q = e.target.value
+                          setMembersQ(q)
+                          setMembersPage(1)
+                          if (debounceRef.current) clearTimeout(debounceRef.current)
+                          debounceRef.current = setTimeout(() => loadMembers(1, q), 350)
+                        }}
+                        style={{
+                          width: "100%", boxSizing: "border-box",
+                          border: "1.5px solid #D1D5DB", borderRadius: "8px",
+                          padding: "7px 12px 7px 32px", fontSize: "13px",
+                          color: "#111827", background: "#fff", outline: "none",
+                        }}
+                      />
+                    </div>
+
+                    {/* Checkbox grid */}
+                    <div style={{ 
+                      minHeight: "120px",
+                      border: "1.5px solid #E5E7EB", borderRadius: "10px",
+                      padding: "12px", background: "#FAFAFA",
+                      display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "6px",
+                      position: "relative",
+                    }}>
+                      {membersLoading ? (
+                        Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} style={{
+                            height: "30px", borderRadius: "6px",
+                            background: "linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.2s infinite",
+                          }} />
+                        ))
+                      ) : members.length === 0 ? (
+                        <p style={{ gridColumn: "1/-1", textAlign: "center", color: "#9CA3AF", fontSize: "13px", margin: "16px 0" }}>
+                          No members found.
+                        </p>
+                      ) : (
+                        members.map(m => {
+                          const isSelected = filters.commMembers.includes(m.ID_Member)
+                          return (
+                            <label key={m.ID_Member} style={{ 
+                              display: "flex", alignItems: "center", gap: "8px", 
+                              padding: "5px 10px", borderRadius: "6px",
+                              background: isSelected ? "#fff" : "transparent",
+                              border: `1px solid ${isSelected ? "#0B2E1E" : "transparent"}`,
+                              cursor: "pointer", transition: "all 0.12s ease"
+                            }}>
+                              <input 
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    set("commMembers", filters.commMembers.filter(id => id !== m.ID_Member))
+                                  } else {
+                                    set("commMembers", [...filters.commMembers, m.ID_Member])
+                                  }
+                                }}
+                                style={{ accentColor: "#0B2E1E", flexShrink: 0 }}
+                              />
+                              <span style={{ fontSize: "13px", color: isSelected ? "#0B2E1E" : "#374151", fontWeight: isSelected ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {m.Member_Name}
+                              </span>
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Footer: selection helpers + pagination */}
+                    <div style={{ marginTop: "10px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button 
+                          onClick={() => set("commMembers", [...new Set([...filters.commMembers, ...members.map(m => m.ID_Member)])])}
+                          style={{ fontSize: "11px", color: "#0B2E1E", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                        >
+                          + Add page
+                        </button>
+                        <button 
+                          onClick={() => set("commMembers", [])}
+                          style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                        >
+                          Clear all
+                        </button>
+                        {filters.commMembers.length > 0 && (
+                          <span style={{ fontSize: "11px", color: "#059669", fontWeight: 600 }}>
+                            {filters.commMembers.length} selected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Pagination */}
+                      {membersTotal > MEMBERS_LIMIT && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <button
+                            onClick={() => { const p = membersPage - 1; setMembersPage(p); loadMembers(p, membersQ) }}
+                            disabled={membersPage <= 1 || membersLoading}
+                            style={{
+                              padding: "3px 10px", fontSize: "12px", borderRadius: "6px",
+                              border: "1.5px solid #D1D5DB", background: "#fff",
+                              cursor: membersPage <= 1 ? "not-allowed" : "pointer",
+                              color: membersPage <= 1 ? "#D1D5DB" : "#374151",
+                            }}
+                          >‹</button>
+                          <span style={{ fontSize: "12px", color: "#6B7280" }}>
+                            {membersPage} / {Math.ceil(membersTotal / MEMBERS_LIMIT)}
+                          </span>
+                          <button
+                            onClick={() => { const p = membersPage + 1; setMembersPage(p); loadMembers(p, membersQ) }}
+                            disabled={membersPage >= Math.ceil(membersTotal / MEMBERS_LIMIT) || membersLoading}
+                            style={{
+                              padding: "3px 10px", fontSize: "12px", borderRadius: "6px",
+                              border: "1.5px solid #D1D5DB", background: "#fff",
+                              cursor: membersPage >= Math.ceil(membersTotal / MEMBERS_LIMIT) ? "not-allowed" : "pointer",
+                              color: membersPage >= Math.ceil(membersTotal / MEMBERS_LIMIT) ? "#D1D5DB" : "#374151",
+                            }}
+                          >›</button>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <div style={{ height: "1px", background: "#F3F4F6", marginBottom: "28px" }} />
+
+                  {/* Step 3: Time filters */}
+                  <section style={{ marginBottom: "28px" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>
+                      3 · Time Range
+                    </p>
+                    <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                      <div style={{ minWidth: "150px" }}>
+                        <SelectField
+                          label="Year"
+                          value={filters.year}
+                          onChange={v => set("year", v)}
+                          options={YEARS.map(y => ({ value: y, label: y === "ALL" ? "All Years" : y }))}
+                        />
+                      </div>
+                      <div style={{ minWidth: "180px" }}>
+                        <SelectField
+                          label="Month"
+                          value={filters.month}
+                          onChange={v => set("month", v)}
+                          options={MONTHS}
+                        />
+                      </div>
+                    </div>
+                  </section>
+                </>
               ) : (
                 <>
                   {/* ══ FINANCIAL / JOBS FILTERS (unchanged) ══════════════ */}
@@ -500,28 +758,6 @@ export default function SettingsPage() {
                     </div>
                   </section>
 
-                  {/* Step 4: Document type (financial only) */}
-                  {isFinancial && (
-                    <>
-                      <div style={{ height: "1px", background: "#F3F4F6", marginBottom: "28px" }} />
-                      <section style={{ marginBottom: "28px" }}>
-                        <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                          4 · Document Type
-                        </p>
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                          {DOC_TYPES.map(dt => (
-                            <FilterChip
-                              key={dt.value}
-                              active={filters.docType === dt.value}
-                              onClick={() => set("docType", dt.value)}
-                            >
-                              {dt.icon} {dt.label}
-                            </FilterChip>
-                          ))}
-                        </div>
-                      </section>
-                    </>
-                  )}
                 </>
               )}
 
@@ -547,13 +783,25 @@ export default function SettingsPage() {
                     <PreviewTag label="Date"   value={filters.tlRefDate || today} />
                     <PreviewTag label="Report" value="Activity Timeline" />
                   </>
+                ) : isCommission ? (
+                  <>
+                    <PreviewTag label="Members" value={filters.commMembers.length === 0 ? "None" : filters.commMembers.length === members.length ? "All" : `${filters.commMembers.length} selected`} />
+                    <PreviewTag label="Year"    value={yearLabel} />
+                    <PreviewTag label="Month"   value={monthLabel} />
+                    <PreviewTag label="Report"  value="Commissions (Excel)" />
+                  </>
                 ) : (
                   <>
                     <PreviewTag label="Type"  value={filters.jobType} />
                     <PreviewTag label="Year"  value={yearLabel} />
                     <PreviewTag label="Month" value={monthLabel} />
-                    {isFinancial && <PreviewTag label="Docs" value={docLabel} />}
-                    <PreviewTag label="Report" value={isFinancial ? "Financial" : "Jobs"} />
+                    {isFinancial && (
+                      <>
+                        <PreviewTag label="Rep"    value={repLabel} />
+                        <PreviewTag label="Client" value={clientLabel} />
+                      </>
+                    )}
+                    <PreviewTag label="Report" value={isFinancial ? "Jobs Financial" : "Jobs"} />
                   </>
                 )}
               </div>
@@ -583,15 +831,15 @@ export default function SettingsPage() {
               {/* ── Action buttons ────────────────────────────────────── */}
               <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
 
-                <button
-                  onClick={handleDownloadPDF}
+                 <button
+                  onClick={handleDownloadReport}
                   disabled={loading}
                   style={{
                     display:      "flex",
                     alignItems:   "center",
                     gap:          "8px",
                     padding:      "12px 28px",
-                    background:   loading ? "#6B7280" : "linear-gradient(135deg, #0B2E1E, #1A5C3A)",
+                    background:   loading ? "#6B7280" : isCommission ? "linear-gradient(135deg, #1A5C3A, #059669)" : "linear-gradient(135deg, #0B2E1E, #1A5C3A)",
                     color:        "#fff",
                     border:       "none",
                     borderRadius: "10px",
@@ -599,7 +847,7 @@ export default function SettingsPage() {
                     fontWeight:   600,
                     cursor:       loading ? "not-allowed" : "pointer",
                     transition:   "all 0.15s ease",
-                    boxShadow:    loading ? "none" : "0 2px 8px rgba(11,46,30,0.3)",
+                    boxShadow:    loading ? "none" : isCommission ? "0 2px 8px rgba(5,150,105,0.3)" : "0 2px 8px rgba(11,46,30,0.3)",
                   }}
                 >
                   {loading ? (
@@ -612,10 +860,10 @@ export default function SettingsPage() {
                         display: "inline-block",
                         animation: "spin 0.7s linear infinite",
                       }} />
-                      Generating PDF…
+                      {isCommission ? "Generating Excel…" : "Generating PDF…"}
                     </>
                   ) : (
-                    <> ⬇ Download PDF Report </>
+                    <> {isCommission ? "⬇ Download Excel Report" : "⬇ Download PDF Report"} </>
                   )}
                 </button>
 
@@ -650,7 +898,10 @@ export default function SettingsPage() {
         </main>
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+      `}</style>
     </div>
   )
 }

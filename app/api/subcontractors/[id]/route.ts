@@ -52,6 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params
     const authHeader = req.headers.get("Authorization")
+    const userId     = req.headers.get("X-User-Id")
     const payload = await req.json()
 
     const { searchParams } = new URL(req.url)
@@ -64,9 +65,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     const response = await fetch(url, {
       method: "PATCH",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(userId     ? { "X-User-Id": userId }       : {}),
       },
       body: JSON.stringify(payload),
       cache: "no-store",
@@ -91,6 +93,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params
     const authHeader = req.headers.get("Authorization")
+    const userId     = req.headers.get("X-User-Id")
 
     const { searchParams } = new URL(req.url)
     const syncPodio = (searchParams.get("sync_podio") ?? "false").toLowerCase() === "true"
@@ -102,9 +105,10 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
 
     const response = await fetch(url, {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(userId     ? { "X-User-Id": userId }       : {}),
       },
       cache: "no-store",
     })

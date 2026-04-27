@@ -144,7 +144,11 @@ export async function POST(request: NextRequest) {
   const url = `${SUBCONTRACTORS_BASE}/?sync_podio=${syncPodio ? "true" : "false"}`
   console.log("[subcontractors proxy] POST Body ->", JSON.stringify(body))
 
-  const result = await proxyFetch(url, { method: "POST", body: JSON.stringify(body) }, authHeader)
+  const userId = request.headers.get("X-User-Id")
+  const extraHeaders: Record<string, string> = {}
+  if (userId) extraHeaders["X-User-Id"] = userId
+
+  const result = await proxyFetch(url, { method: "POST", body: JSON.stringify(body), headers: extraHeaders }, authHeader)
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)

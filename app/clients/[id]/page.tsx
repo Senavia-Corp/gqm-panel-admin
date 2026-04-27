@@ -18,6 +18,7 @@ import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
 import { CommunityDetailsCard, type CommunityClient } from "@/components/organisms/CommunityDetailsCard"
+import { ParentCompanyTimelineTab } from "@/components/organisms/parent-company-detail/tabs/ParentCompanyTimelineTab"
 
 // ─── Array field helpers ─────────────────────────────────────────────────────
 
@@ -382,7 +383,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
 
     const patchPayload: Record<string, any> = {}
     for (const [key, value] of Object.entries(formData)) {
-      if (!SKIP_ON_PATCH.includes(key as keyof ParentMgmtCo)) {
+      if (!SKIP_ON_PATCH.includes(key as keyof ParentMgmtCo) && editedFields.has(key)) {
         patchPayload[key] = value
       }
     }
@@ -746,14 +747,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
 
             {/* Sidebar */}
             <div className="space-y-6">
-              <Card className="p-6">
-                <h2 className="mb-4 text-xl font-semibold">Timeline</h2>
-                <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
-                  <span className="text-2xl">🕐</span>
-                  <p className="text-sm font-medium text-slate-600">Timeline coming soon</p>
-                  <p className="text-xs text-slate-400">Activity history for parent management companies will be available in a future update.</p>
-                </div>
-              </Card>
+              <ParentCompanyTimelineTab pmcId={parentMgmtCoId} />
             </div>
           </div>
 

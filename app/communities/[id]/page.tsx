@@ -18,11 +18,12 @@ import {
 import {
   ArrowLeft, Save, X, Mail, Phone, Plus, Briefcase, Users, UserCheck,
   Search, Trash2, ExternalLink, MapPin, Globe, AlertCircle, ChevronRight,
-  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag, Shield
+  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag, Shield, Activity
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { CommunityTimelineTab } from "@/components/organisms/community-detail/tabs/CommunityTimelineTab"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ type Client = {
 
 // ✅ parent_mgmt_co en SKIP para que no se envíe en el PATCH
 const SKIP_ON_PATCH: Array<keyof Client> = ["jobs", "manager", "members", "ID_Client", "parent_mgmt_co"]
-type TabId = "details" | "jobs" | "managers" | "members"
+type TabId = "details" | "jobs" | "managers" | "members" | "timeline"
 type Props = { params: Promise<{ id: string }> }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -286,6 +287,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "jobs",     label: "Jobs",     icon: Briefcase },
   { id: "managers", label: "Managers", icon: UserCheck  },
   { id: "members",  label: "Members",  icon: Users      },
+  { id: "timeline", label: "Timeline", icon: Activity   },
 ]
 
 function TabBar({ active, onChange, counts }: {
@@ -631,6 +633,7 @@ export default function ClientDetailPage({ params }: Props) {
       const payload: Record<string, any> = {}
       for (const [k, v] of Object.entries(formData)) {
         if (SKIP_ON_PATCH.includes(k as keyof Client)) continue
+        if (!editedFields.has(k)) continue
         payload[k] = (k === "Email_Address" || k === "Phone_Number") ? serializeArrayField(parseArrayField(v as any)) : v
       }
       const res = await apiFetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`,
@@ -685,10 +688,11 @@ export default function ClientDetailPage({ params }: Props) {
   const ch = (f: keyof Client) => editedFields.has(f as string) ? "border-yellow-500 ring-2 ring-yellow-200" : ""
 
   const tabCounts: Record<TabId, number | undefined> = {
-    details: undefined,
-    jobs: client?.jobs?.length ?? 0,
+    details:  undefined,
+    jobs:     client?.jobs?.length ?? 0,
     managers: client?.manager?.length ?? 0,
-    members: client?.members?.length ?? 0,
+    members:  client?.members?.length ?? 0,
+    timeline: undefined,
   }
 
   const website = client?.Website?.trim()
@@ -1144,6 +1148,11 @@ export default function ClientDetailPage({ params }: Props) {
                       </div>
                     ))}
                   </div>
+            )}
+
+            {/* TIMELINE */}
+            {activeTab === "timeline" && (
+              <CommunityTimelineTab clientId={clientId} />
             )}
           </div>
 

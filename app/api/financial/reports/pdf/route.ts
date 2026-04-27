@@ -20,10 +20,16 @@ export async function GET(request: NextRequest) {
 
   const base = pythonBaseUrl.replace(/\/$/, "")
   const query = forwardedParams.toString()
-  const targetUrl = `${base}/metrics/financial/reports/pdf${query ? `?${query}` : ""}`
+  const targetUrl = `${base}/metrics/jobs/reports/pdf${query ? `?${query}` : ""}`
 
   try {
-    const response = await fetch(targetUrl, { method: "GET" })
+    const authHeader = request.headers.get("Authorization") ?? ""
+    const response = await fetch(targetUrl, { 
+      method: "GET",
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+    })
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))
