@@ -130,7 +130,66 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="w-full">
+
+      {/* ── Mobile cards (< sm) ──────────────────────────────────────── */}
+      <div className="sm:hidden divide-y divide-slate-100">
+        {subcontractors.map((s) => (
+          <div key={s.ID_Subcontractor} className="flex flex-col gap-3 p-4">
+            {/* Top: avatar + name + status */}
+            <div className="flex items-center gap-3">
+              <SubcAvatar name={s.Name} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-800">
+                  {s.Name ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
+                </p>
+                {s.Specialty ? (
+                  <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                    <Wrench className="h-2.5 w-2.5 text-slate-400" />{s.Specialty}
+                  </span>
+                ) : (
+                  <span className="text-[11px] italic text-slate-300">{t("noSpecialty")}</span>
+                )}
+              </div>
+              <StatusBadge status={s.Status} />
+            </div>
+
+            {/* Meta: ID + org + score */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
+                {s.ID_Subcontractor}
+              </span>
+              {s.Organization && (
+                <span className="flex items-center gap-1 text-xs text-slate-600">
+                  <Building2 className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                  <span className="max-w-[160px] truncate">{s.Organization}</span>
+                </span>
+              )}
+              <ScoreBadge score={s.Score} />
+            </div>
+
+            {/* Email */}
+            <EmailCell raw={s.Email_Address} />
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2">
+              <Link href={`/subcontractors/${s.ID_Subcontractor}`}>
+                <Button variant="ghost" size="sm"
+                  className="h-8 gap-1.5 rounded-lg bg-amber-500 px-3 text-xs text-white shadow-sm hover:bg-amber-600">
+                  <Eye className="h-3.5 w-3.5" /> {t("viewDetails")}
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm"
+                className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
+                onClick={() => onDelete?.(s)}>
+                <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Desktop table (≥ sm) ─────────────────────────────────────── */}
+      <table className="hidden w-full sm:table">
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80">
             {[

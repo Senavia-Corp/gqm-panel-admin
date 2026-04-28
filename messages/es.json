@@ -76,7 +76,10 @@
     "reports": "Reportes",
     "profile": "Perfil",
     "settings": "Configuración",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "menu": "Menú"
   },
   "dashboard": {
     "title": "Panel Principal",

@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { UserAvatar } from "@/components/atoms/UserAvatar"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,7 +25,8 @@ import {
   Wrench, Link2, Unlink, Loader2, MapPin, Map, X, Mail, Phone,
   Building2, Globe, Star, ShieldCheck, FileText, CheckCircle,
   AlertCircle, RefreshCw, Hash, Briefcase, ClipboardList, Calendar,
-  DollarSign, Tag, ExternalLink, Clock, Sparkles,
+  DollarSign, Tag, ExternalLink, Clock, Sparkles, ShoppingBag, Activity,
+  Zap, Edit3, Info,
 } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
 import {
@@ -138,17 +141,17 @@ function SectionCard({ icon: Icon, iconBg, iconColor, title, action, children }:
   title: string; action?: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
-            <Icon className={`h-4 w-4 ${iconColor}`} />
+    <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className={`flex h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 items-center justify-center rounded-lg sm:rounded-xl ${iconBg}`}>
+            <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${iconColor}`} />
           </div>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          <h3 className="truncate text-sm font-semibold text-slate-800 leading-tight">{title}</h3>
         </div>
-        {action}
+        {action && <div className="ml-2 flex-shrink-0">{action}</div>}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-3 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -629,111 +632,107 @@ export default function SubcontractorDetailsPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-6">
 
-          {/* ── Sticky header ── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+          {/* ── Page Header (based on Jobs pattern) ── */}
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              
+              {/* Left: Identity */}
+              <div className="flex items-start gap-3 min-w-0">
                 <button onClick={() => router.push("/subcontractors")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors">
-                  <ArrowLeft className="h-4 w-4" />
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors sm:h-11 sm:w-11">
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
-                <div className="flex items-center gap-3">
-                  {/* Avatar */}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm">
-                    {(subc.Name ?? "??").slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">{subc.Name ?? t("unnamed")}</h1>
-                    <p className="mt-0.5 font-mono text-xs text-slate-400">{subc.ID_Subcontractor}</p>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={displayOrg} role="SUBCONTRACTOR" className="h-9 w-9 rounded-xl sm:h-11 sm:w-11" />
+                    <div className="min-w-0">
+                      <h1 className="truncate text-xl font-bold text-slate-900 sm:text-2xl">{displayOrg}</h1>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-slate-500 sm:text-sm">#{subc.ID_Subcontractor}</span>
+                        {subc.Status && (
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:text-[11px] ${
+                            subc.Status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"
+                          }`}>
+                            {subc.Status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {subc.Specialty && (
-                  <span className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600 md:inline-flex">
-                    <Wrench className="h-3 w-3 text-slate-400" />{subc.Specialty}
-                  </span>
-                )}
-                <StatusBadge status={subc.Status} />
-                <ScoreBadge score={subc.Score} />
               </div>
 
-              <div className="flex items-center gap-2.5">
-                {/* Podio toggle */}
-                {hasPermission("subcontractor:update") && (
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
-                    <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
-                      onClick={() => setSyncPodio((v) => !v)}>
-                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
-                    </div>
-                    {t("syncPodio")}
-                  </label>
-                )}
+              {/* Right: Actions */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 sm:px-3 sm:py-2">
+                  <Zap className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${syncPodio ? "fill-emerald-400 text-emerald-500" : "text-slate-300"}`} />
+                  <span className="hidden text-[11px] font-bold text-slate-600 min-[400px]:inline sm:text-xs">PODIO SYNC</span>
+                  <Switch checked={syncPodio} onCheckedChange={setSyncPodio} className="h-5 w-9 data-[state=checked]:bg-emerald-500" />
+                </div>
 
-                {editing ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}
-                      className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> {t("cancel")}
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving}
-                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? t("saving") : t("saveChanges")}
-                    </Button>
-                  </>
-                ) : (
-                  hasPermission("subcontractor:update") && (
-                    <Button size="sm" variant="outline" onClick={() => setEditing(true)}
-                      className="gap-1.5 text-xs border-slate-200">
-                      ✎ {t("edit")}
-                    </Button>
-                  )
+                {hasPermission("subcontractor:update") && (
+                  <button
+                    onClick={() => setEditing(!editing)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-all sm:px-4 sm:py-2 sm:text-sm shadow-sm",
+                      editing 
+                        ? "bg-slate-800 text-white hover:bg-slate-900" 
+                        : "bg-white border border-slate-200 text-slate-700 hover:border-emerald-200"
+                    )}
+                  >
+                    <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span>{editing ? t("cancel") : t("edit")}</span>
+                  </button>
                 )}
               </div>
             </div>
-
+            
             {syncPodio && (
-              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2 sm:mt-4">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-xs font-medium text-emerald-700">{t("podioSyncNotice")}</p>
+                <p className="text-[10px] font-medium text-emerald-700 sm:text-xs">{t("podioSyncNotice")}</p>
               </div>
             )}
           </div>
 
-          <div className="mx-auto max-w-7xl p-6">
+          <div className="mx-auto max-w-7xl">
+            <Tabs value={activeTab} onValueChange={(v) => router.push(`/subcontractors/${id}?tab=${v}`)}>
+              {/* Tab bar (based on Jobs pattern) */}
+            <div className="mb-4 sm:mb-6">
+              <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 scrollbar-hide shadow-sm">
+                <TabsList className="inline-flex h-auto w-max min-w-full flex-nowrap justify-start gap-1 p-0 sm:gap-2">
+                  {[
+                    { value: "details", label: t("tabDetails"), icon: FileText },
+                    { value: "orders", label: t("tabOrders"), icon: ShoppingBag, count: subc.orders?.length ?? 0 },
+                    { value: "jobs", label: t("tabJobs"), icon: Briefcase, count: subc.jobs?.length ?? 0 },
+                    { value: "skills", label: t("tabSkills"), icon: Wrench, count: subc.skills?.length ?? 0 },
+                    { value: "timeline", label: t("tabTimeline"), icon: Activity, count: subc.tlactivity?.length ?? 0 },
+                  ].map(({ value, label, icon: Icon, count }) => (
+                    <TabsTrigger key={value} value={value}
+                      className="flex h-9 flex-shrink-0 flex-nowrap items-center gap-2 rounded-lg px-3 text-xs font-medium transition-all data-[state=active]:bg-emerald-600 data-[state=active]:text-white sm:h-10 sm:px-4 sm:text-sm">
+                      <Icon className={cn("h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4", activeTab === value ? "text-white" : "text-slate-400")} />
+                      <span>{label}</span>
+                      {count !== undefined && count !== null && (
+                        <span className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none sm:text-[11px]",
+                          activeTab === value ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                        )}>
+                          {count}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </div>
+
             <div className="grid gap-6 lg:grid-cols-3">
-
               {/* ── LEFT: tabs (2/3) ─────────────────────────────────────── */}
-              <div className="lg:col-span-2">
-                <Tabs value={activeTab} onValueChange={(v) => router.push(`/subcontractors/${id}?tab=${v}`)}>
-
-                  {/* Tab bar */}
-                  <div className="mb-5 overflow-x-auto">
-                    <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-                      {[
-                        { value: "details", label: t("tabDetails"), count: null },
-                        /* { value: "technicians", label: t("tabTechnicians"), count: technicians.length }, */
-                        { value: "orders", label: t("tabOrders"), count: subc.orders?.length ?? 0 },
-                        { value: "jobs", label: t("tabJobs"), count: subc.jobs?.length ?? 0 },
-                        { value: "skills", label: t("tabSkills"), count: subc.skills?.length ?? 0 },
-                        { value: "timeline", label: t("tabTimeline"), count: subc.tlactivity?.length ?? 0 },
-                      ].map(({ value, label, count }) => (
-                        <TabsTrigger key={value} value={value}
-                          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm">
-                          {label}
-                          {count !== null && (
-                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${activeTab === value ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
-                              {count}
-                            </span>
-                          )}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </div>
-
-                  {/* ── DETAILS tab ─────────────────────────────────────── */}
-                  <TabsContent value="details" className="space-y-4">
+              <div className="min-w-0 space-y-6 lg:col-span-2">
+                <TabsContent value="details" className="mt-0 w-full space-y-6">
 
                     {/* Organization */}
                     <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("orgInfo")}>
@@ -1041,7 +1040,7 @@ export default function SubcontractorDetailsPage() {
                   {/* ── JOBS tab ─────────────────────────────────────────── */}
                   <TabsContent value="jobs">
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
                             <Briefcase className="h-4 w-4 text-blue-600" />
@@ -1052,7 +1051,7 @@ export default function SubcontractorDetailsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="p-6">
+                      <div className="p-4 sm:p-6">
                         {(subc.jobs ?? []).length === 0 ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-12">
                             <Briefcase className="h-8 w-8 text-slate-300" />
@@ -1182,7 +1181,7 @@ export default function SubcontractorDetailsPage() {
                   {/* ── ORDERS tab ────────────────────────────────────────── */}
                   <TabsContent value="orders">
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
                             <ClipboardList className="h-4 w-4 text-amber-600" />
@@ -1193,7 +1192,7 @@ export default function SubcontractorDetailsPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="p-6">
+                      <div className="p-4 sm:p-6">
                         {(subc.orders ?? []).length === 0 ? (
                           <div className="flex flex-col items-center justify-center gap-2 py-12">
                             <ClipboardList className="h-8 w-8 text-slate-300" />
@@ -1292,7 +1291,6 @@ export default function SubcontractorDetailsPage() {
                     <SubcontractorTimelineTab subcId={id} />
                   </TabsContent>
 
-                </Tabs>
               </div>
 
               {/* ── RIGHT: sidebar (1/3) ────────────────────────────────── */}
@@ -1300,10 +1298,10 @@ export default function SubcontractorDetailsPage() {
 
                 {/* Leader card */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("teamLeader")}</p>
                   </div>
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     {leaderTechnician ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
@@ -1337,10 +1335,10 @@ export default function SubcontractorDetailsPage() {
 
                 {/* Quick Summary */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                  <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("quickSummary")}</p>
                   </div>
-                  <div className="divide-y divide-slate-50 px-5">
+                  <div className="divide-y divide-slate-50 px-4 sm:px-5">
                     {[
                       { label: "ID", value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
                       { label: t("status"), value: <StatusBadge status={subc.Status} /> },
@@ -1372,10 +1370,10 @@ export default function SubcontractorDetailsPage() {
                 {/* Coverage area summary */}
                 {(subc.Coverage_Area ?? []).length > 0 && (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                    <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("coverageAreas")}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 p-5">
+                    <div className="flex flex-wrap gap-2 p-4 sm:p-5">
                       {(subc.Coverage_Area ?? []).map((area) => (
                         <span key={area} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
                           <MapPin className="h-2.5 w-2.5 text-slate-400" />{area}
@@ -1386,8 +1384,9 @@ export default function SubcontractorDetailsPage() {
                 )}
               </div>
             </div>
-          </div>
-        </main>
+          </Tabs>
+        </div>
+      </main>
       </div>
 
       {/* ── Skills modal ───────────────────────────────────────────────────── */}

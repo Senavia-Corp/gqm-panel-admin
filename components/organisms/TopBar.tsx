@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, ChevronDown, Loader2 } from "lucide-react"
+import { Bell, ChevronDown, Loader2, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/apiFetch"
 import { LanguageToggle } from "@/components/atoms/LanguageToggle"
+import { Logo } from "@/components/atoms/Logo"
+import { useSidebar } from "@/components/providers/SidebarContext"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,7 @@ export function TopBar() {
   const [loadingMember, setLoadingMember] = useState(true)
   const [notifCount] = useState(3) // placeholder — wire up to real notif system when ready
   const router = useRouter()
+  const { setIsOpen } = useSidebar()
 
   useEffect(() => {
     const memberId =
@@ -77,18 +80,37 @@ export function TopBar() {
   const displayRole = member?.Company_Role ?? "Member"
 
   return (
-    <header className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] md:h-16 md:px-6">
 
-      {/* ── Left: branding accent line ── */}
-      <div className="flex items-center gap-3">
-        <div className="h-6 w-0.5 rounded-full bg-emerald-500" />
-        <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          GQM Dashboard
-        </span>
+      {/* ── Left: hamburger (mobile) + branding ── */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Hamburger — mobile only */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        {/* Logo — mobile only (replaces branding text) */}
+        <div className="lg:hidden">
+          <Logo showText={false} />
+        </div>
+
+        {/* Branding accent — desktop only */}
+        <div className="hidden items-center gap-3 lg:flex">
+          <div className="h-6 w-0.5 rounded-full bg-emerald-500" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+            GQM Dashboard
+          </span>
+        </div>
       </div>
 
       {/* ── Right: actions + user ── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 md:gap-2">
 
         {/* Notifications */}
         {/* <Button
@@ -108,28 +130,28 @@ export function TopBar() {
         <LanguageToggle />
 
         {/* Divider */}
-        <div className="mx-1 h-6 w-px bg-slate-200" />
+        <div className="mx-0.5 h-6 w-px bg-slate-200 md:mx-1" />
 
         {/* User pill */}
         <button
           onClick={() => router.push("/profile")}
-          className="group flex items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 transition-all hover:border-slate-200 hover:bg-slate-50">
+          className="group flex items-center gap-2 rounded-xl border border-transparent px-1.5 py-1.5 transition-all hover:border-slate-200 hover:bg-slate-50 md:gap-3 md:px-2">
           {/* Avatar */}
           {loadingMember ? (
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 md:h-9 md:w-9">
               <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
             </div>
           ) : (
             <div
-              className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-black tracking-tight shadow-sm
+              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-xs font-black tracking-tight shadow-sm md:h-9 md:w-9 md:text-sm
                 ${avatarCols.bg} ${avatarCols.text}`}
             >
               {initials}
             </div>
           )}
 
-          {/* Name + role */}
-          <div className="flex flex-col items-start leading-none">
+          {/* Name + role — hidden on mobile */}
+          <div className="hidden flex-col items-start leading-none md:flex">
             {loadingMember ? (
               <div className="space-y-1.5">
                 <div className="h-3 w-24 animate-pulse rounded bg-slate-200" />
@@ -143,7 +165,7 @@ export function TopBar() {
             )}
           </div>
 
-          <ChevronDown className="ml-1 h-3.5 w-3.5 text-slate-300 transition-transform group-hover:text-slate-500" />
+          <ChevronDown className="ml-0.5 hidden h-3.5 w-3.5 text-slate-300 transition-transform group-hover:text-slate-500 md:block md:ml-1" />
         </button>
       </div>
     </header>

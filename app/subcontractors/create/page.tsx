@@ -64,13 +64,13 @@ function SectionCard({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -256,70 +256,86 @@ export default function CreateSubcontractorPage() {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
 
           {/* ── Sticky header ─────────────────────────────────────────────── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
+              {/* Left: back + title */}
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => router.push("/subcontractors")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">{t("newSub")}</h1>
-                    <p className="mt-0.5 text-xs text-slate-400">{t("requiredFields")}</p>
-                  </div>
+                <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500 sm:flex">
+                  <User className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{t("newSub")}</h1>
+                  <p className="mt-0.5 hidden text-xs text-slate-400 sm:block">{t("requiredFields")}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                {/* Podio toggle */}
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+              {/* Right: Podio toggle + actions */}
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {/* Podio toggle — icon+track only on mobile, full label on sm+ */}
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors sm:px-3">
                   <div
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                    className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                     onClick={() => setSyncPodio((v) => !v)}
                   >
                     <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                   </div>
-                  {t("syncPodio")}
+                  <span className="hidden sm:inline">{t("syncPodio")}</span>
                 </label>
 
+                {/* Cancel — text on sm+, icon-only on mobile */}
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  type="button" variant="outline" size="sm"
                   onClick={() => router.push("/subcontractors")}
                   disabled={submitting}
-                  className="gap-1.5 text-xs border-slate-200"
+                  className="hidden gap-1.5 text-xs border-slate-200 sm:flex"
                 >
                   <X className="h-3.5 w-3.5" /> {t("cancel")}
                 </Button>
-
                 <Button
-                  type="submit"
-                  form="create-subc-form"
-                  size="sm"
+                  type="button" variant="outline" size="icon"
+                  onClick={() => router.push("/subcontractors")}
+                  disabled={submitting}
+                  className="h-8 w-8 border-slate-200 sm:hidden"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+
+                {/* Save — text on sm+, icon-only on mobile */}
+                <Button
+                  type="submit" form="create-subc-form" size="sm"
                   disabled={!canSubmit}
-                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
+                  className="hidden gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex"
                 >
                   {submitting
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
                     : <><Save className="h-3.5 w-3.5" /> {t("create")}</>
                   }
                 </Button>
+                <Button
+                  type="submit" form="create-subc-form" size="icon"
+                  disabled={!canSubmit}
+                  className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 sm:hidden"
+                >
+                  {submitting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Save className="h-4 w-4" />
+                  }
+                </Button>
               </div>
             </div>
 
             {syncPodio && (
-              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
+              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-4 py-2 sm:px-6">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-xs font-medium text-emerald-700">{t("podioEnabled")}</p>
               </div>
@@ -328,7 +344,7 @@ export default function CreateSubcontractorPage() {
 
           {/* ── Form body ─────────────────────────────────────────────────── */}
           <form id="create-subc-form" onSubmit={handleSubmit}>
-            <div className="mx-auto max-w-4xl space-y-5 p-6 pb-12">
+            <div className="mx-auto max-w-4xl space-y-5 p-4 pb-12 sm:p-6">
 
               {/* Basic Information */}
               <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("basicInfo")}>
@@ -559,14 +575,14 @@ export default function CreateSubcontractorPage() {
               </SectionCard>
 
               {/* Bottom action bar */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <p className="text-xs text-slate-400">
                   {canSubmit
                     ? t("readyToCreate")
                     : <span className="text-amber-600">{t("requiredWarning")}</span>
                   }
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <Button
                     type="button" variant="outline" size="sm"
                     onClick={() => router.push("/subcontractors")}

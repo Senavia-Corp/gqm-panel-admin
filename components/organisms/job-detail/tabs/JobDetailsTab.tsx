@@ -85,13 +85,13 @@ function SectionCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
           <Icon className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="space-y-4 p-4 sm:p-5">{children}</div>
     </div>
   )
 }
@@ -106,7 +106,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function ReadonlyField({ value }: { value: string }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 min-h-[38px]">
+    <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 min-h-[38px] break-words">
       {value || <span className="text-slate-300">—</span>}
     </div>
   )

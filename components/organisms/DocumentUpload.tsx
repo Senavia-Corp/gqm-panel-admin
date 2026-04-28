@@ -184,7 +184,7 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
       {/* ── Drop zone ─────────────────────────────────────────────────────── */}
       <div
         className={cn(
-          "flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors",
+          "flex min-h-[140px] sm:min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors",
           isDragging ? "border-gqm-green bg-gqm-green/5" : "border-gray-300 bg-white hover:border-gqm-green/50",
           isUploading && "cursor-not-allowed opacity-50",
         )}
@@ -201,13 +201,13 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
           onChange={handleFileInput}
           disabled={isUploading}
         />
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gqm-green">
+        <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-gqm-green">
           {isUploading
-            ? <Loader2 className="h-10 w-10 animate-spin text-white" />
-            : <Upload  className="h-10 w-10 text-white" />
+            ? <Loader2 className="h-7 w-7 sm:h-10 sm:w-10 animate-spin text-white" />
+            : <Upload  className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
           }
         </div>
-        <p className="mt-4 text-lg font-medium">
+        <p className="mt-3 sm:mt-4 text-base sm:text-lg font-medium">
           {isUploading ? "Uploading…" : "Drag and drop files here"}
         </p>
         <p className="text-sm text-muted-foreground">

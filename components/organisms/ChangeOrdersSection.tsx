@@ -423,13 +423,13 @@ export function ChangeOrdersSection({
       {/* ── Main Card ─────────────────────────────────────────────────────── */}
       <Card className="mt-4">
         <CardHeader>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Job Change Orders (General)</CardTitle>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
+            <div className="flex items-center gap-3 min-w-0">
+              <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <CardTitle className="truncate">Job Change Orders (General)</CardTitle>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Total:{" "}
                 <span className="font-semibold text-foreground">{fmtMoney(total)}</span>
               </span>
@@ -524,7 +524,7 @@ export function ChangeOrdersSection({
 
       {/* ── CREATE DIALOG ─────────────────────────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Change Order</DialogTitle>
           </DialogHeader>
@@ -555,7 +555,7 @@ export function ChangeOrdersSection({
 
       {/* ── EDIT DIALOG ───────────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Change Order</DialogTitle>
           </DialogHeader>
@@ -672,7 +672,8 @@ function ChangeOrderForm({
         <Textarea
           id="co-desc"
           placeholder="Describe the change order…"
-          rows={3}
+          rows={2}
+          className="sm:rows-3"
           value={form.Description}
           onChange={(e) => setField("Description", e.target.value)}
         />

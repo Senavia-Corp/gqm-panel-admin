@@ -76,7 +76,10 @@
     "reports": "Reports",
     "profile": "Profile",
     "settings": "Settings",
-    "logout": "Log out"
+    "logout": "Log out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "menu": "Menu"
   },
   "dashboard": {
     "title": "Dashboard",

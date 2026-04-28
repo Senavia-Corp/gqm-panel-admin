@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useSidebar } from "@/components/providers/SidebarContext"
 import { usePermissions } from "@/hooks/usePermissions"
 import {
   LayoutDashboard,
@@ -26,6 +27,12 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/atoms/Logo"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import type { ElementType } from "react"
 import type { UserRole } from "@/lib/types"
 
@@ -66,37 +73,24 @@ const bottomItems: NavItem[] = [
   { icon: LogOut,     labelKey: "logout",   href: "/login" },
 ]
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Shared nav content ───────────────────────────────────────────────────────
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
-  const [userRole, setUserRole] = useState<UserRole | null>(null)
-  const pathname = usePathname()
+interface SidebarContentProps {
+  collapsed: boolean
+  menuItems: NavItem[]
+  userRole: UserRole | null
+  pathname: string
+  onNavigate?: () => void
+}
+
+function SidebarContent({
+  collapsed,
+  menuItems,
+  userRole,
+  pathname,
+  onNavigate,
+}: SidebarContentProps) {
   const t = useTranslations("navigation")
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user_data")
-    if (userData) {
-      const user = JSON.parse(userData)
-      setUserRole(user.role)
-    }
-  }, [])
-
-  const { hasPermission } = usePermissions()
-
-  const menuItems = useMemo(() => {
-    const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
-    return base.filter((item) => {
-      if (item.href === "/members")              return hasPermission("member:read")
-      if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
-      if (item.href === "/subcontractors")      return hasPermission("subcontractor:read")
-      if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
-      if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
-      if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
-      if (item.href === "/roles-permissions")   return hasPermission("iam_pm:read")
-      return true
-    })
-  }, [userRole, hasPermission])
 
   const handleLogout = () => {
     localStorage.removeItem("access_token")
@@ -109,11 +103,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside
-      className={`relative flex h-screen flex-col border-r bg-white transition-all duration-300 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
-    >
+    <>
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4">
         {!collapsed && <Logo />}
@@ -124,7 +114,7 @@ export function Sidebar() {
       <div className="border-b px-4 py-3" />
 
       {/* Main Navigation */}
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -137,6 +127,7 @@ export function Sidebar() {
               key={item.href}
               href={isDisabled ? "#" : item.href}
               className={isDisabled ? "pointer-events-none" : ""}
+              onClick={!isDisabled ? onNavigate : undefined}
             >
               <Button
                 variant={isActive ? "secondary" : "ghost"}
@@ -168,7 +159,10 @@ export function Sidebar() {
               key={item.href}
               href={isDisabled ? "#" : item.href}
               className={isDisabled ? "pointer-events-none" : ""}
-              onClick={isLogout ? handleLogout : undefined}
+              onClick={(e) => {
+                if (isLogout) handleLogout()
+                if (!isDisabled) onNavigate?.()
+              }}
             >
               <Button
                 variant="ghost"
@@ -183,20 +177,95 @@ export function Sidebar() {
           )
         })}
       </div>
+    </>
+  )
+}
 
-      {/* Collapse toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full border bg-white shadow-md"
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const pathname = usePathname()
+  const { isOpen, setIsOpen } = useSidebar()
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user_data")
+    if (userData) {
+      const user = JSON.parse(userData)
+      setUserRole(user.role)
+    }
+  }, [])
+
+  // Auto-close mobile drawer on navigation
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname, setIsOpen])
+
+  const { hasPermission } = usePermissions()
+
+  const menuItems = useMemo(() => {
+    const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+    return base.filter((item) => {
+      if (item.href === "/members")              return hasPermission("member:read")
+      if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
+      if (item.href === "/subcontractors")      return hasPermission("subcontractor:read")
+      if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
+      if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
+      if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
+      if (item.href === "/roles-permissions")   return hasPermission("iam_pm:read")
+      return true
+    })
+  }, [userRole, hasPermission])
+
+  return (
+    <>
+      {/* ── Desktop sidebar ────────────────────────────────────────────────── */}
+      <aside
+        className={`relative hidden h-screen flex-col border-r bg-white transition-all duration-300 lg:flex ${
+          collapsed ? "w-20" : "w-64"
+        }`}
       >
-        {collapsed ? (
-          <ChevronRight className="h-4 w-4" />
-        ) : (
-          <ChevronLeft className="h-4 w-4" />
-        )}
-      </Button>
-    </aside>
+        <SidebarContent
+          collapsed={collapsed}
+          menuItems={menuItems}
+          userRole={userRole}
+          pathname={pathname}
+        />
+
+        {/* Collapse toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full border bg-white shadow-md"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
+      </aside>
+
+      {/* ── Mobile drawer ──────────────────────────────────────────────────── */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent
+          side="left"
+          className="w-72 p-0 [&>button[data-slot='sheet-close']]:top-5 [&>button[data-slot='sheet-close']]:right-3"
+        >
+          <VisuallyHidden>
+            <SheetTitle>Navigation</SheetTitle>
+          </VisuallyHidden>
+          <SidebarContent
+            collapsed={false}
+            menuItems={menuItems}
+            userRole={userRole}
+            pathname={pathname}
+            onNavigate={() => setIsOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }

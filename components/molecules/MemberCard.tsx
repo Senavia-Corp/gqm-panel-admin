@@ -36,7 +36,7 @@ export function MemberCard({ member, onRemove, showRemoveButton = true }: Member
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 top-2 h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="absolute right-2 top-2 h-8 w-8 rounded-lg border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600"
             onClick={() => onRemove(member.id)}
           >
             <Trash2 className="h-4 w-4" />

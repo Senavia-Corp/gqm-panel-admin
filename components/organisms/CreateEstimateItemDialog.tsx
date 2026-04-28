@@ -258,7 +258,7 @@ export function CreateEstimateItemDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-5 pb-4 flex-shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 pt-4 pb-3 flex-shrink-0 sm:px-6 sm:pt-5 sm:pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
               <FilePlus2 className="h-5 w-5 text-emerald-600" />
@@ -278,7 +278,7 @@ export function CreateEstimateItemDialog({
         </div>
 
         {/* Section tabs */}
-        <div className="flex gap-1 border-b border-slate-100 px-6 pt-3 flex-shrink-0">
+        <div className="flex gap-1 border-b border-slate-100 px-4 pt-3 flex-shrink-0 sm:px-6">
           {(["basic", "costs"] as const).map((s) => (
             <button key={s} type="button" onClick={() => setSection(s)}
               className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-4 py-2 text-xs font-semibold transition-colors ${
@@ -295,7 +295,7 @@ export function CreateEstimateItemDialog({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
 
           {/* BASIC INFO */}
           {section === "basic" && (
@@ -511,7 +511,7 @@ export function CreateEstimateItemDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3.5 flex-shrink-0 sm:px-6 sm:py-4">
           <div className="flex items-center gap-2">
             {(["basic", "costs"] as const).map((s) => (
               <button key={s} type="button" onClick={() => setSection(s)}

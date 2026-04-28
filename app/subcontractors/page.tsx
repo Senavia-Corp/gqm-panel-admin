@@ -190,26 +190,26 @@ export default function SubcontractorsPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
-                <Wrench className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm sm:h-10 sm:w-10">
+                <Wrench className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900">{t("title")}</h1>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{t("title")}</h1>
                 <p className="text-xs text-slate-500">{t("subtitle")}</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 p-4 sm:p-6">
 
             {/* ── Toolbar ── */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-base font-bold text-slate-800">{t("toolbarTitle")}</h2>
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
@@ -224,16 +224,16 @@ export default function SubcontractorsPage() {
                 {hasPermission("subcontractor:create") && (
                   <Button
                     onClick={() => router.push("/subcontractors/create")}
-                    className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto"
                   >
                     <Plus className="h-4 w-4" /> {t("addSub")}
                   </Button>
                 )}
               </div>
 
-              <div className="flex items-center gap-3 px-5 py-4">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
                 {/* Global search */}
-                <div className="relative flex-1">
+                <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
@@ -251,7 +251,7 @@ export default function SubcontractorsPage() {
 
                 {/* Status filter */}
                 <Select value={status} onValueChange={(v) => setStatus(v)}>
-                  <SelectTrigger className="w-40 border-slate-200 text-sm focus:border-emerald-400">
+                  <SelectTrigger className="w-full border-slate-200 text-sm focus:border-emerald-400 sm:w-40">
                     <SelectValue placeholder={t("allStatuses")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -289,7 +289,7 @@ export default function SubcontractorsPage() {
 
             {/* ── Pagination ── */}
             {!loading && !error && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
                 <p className="text-sm text-slate-500">
                   {t.rich("showingRange", {
                     from: showFrom,

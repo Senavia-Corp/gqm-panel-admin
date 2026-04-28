@@ -153,25 +153,26 @@ export function AdvancedJobFilters({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all duration-300">
-      <div className="p-5 space-y-5">
-        {/* ── Fila superior: título + año + insignias ─────────────── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
+        {/* ── Fila superior: título + controles ───────────────────── */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gqm-green-dark/10 text-gqm-green-dark">
-              <Layers className="h-6 w-6" />
+              <Layers className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="flex flex-col">
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h2>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight sm:text-2xl">{title}</h2>
               <p className="text-xs text-slate-500 font-medium font-mono uppercase tracking-wider">
                 {t("filtersSystemRegistry")} {count.toLocaleString()}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Controls row — wraps on mobile so Create is never clipped */}
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
-               <Select value={year} onValueChange={onYearChange}>
-                <SelectTrigger className="h-10 w-[140px] border-none bg-transparent focus:ring-0 shadow-none font-semibold text-slate-700">
+              <Select value={year} onValueChange={onYearChange}>
+                <SelectTrigger className="h-9 w-[120px] border-none bg-transparent focus:ring-0 shadow-none font-semibold text-slate-700 sm:h-10 sm:w-[140px]">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-slate-400" />
                     <SelectValue placeholder={t("allYears")} />
@@ -190,7 +191,7 @@ export function AdvancedJobFilters({
               size="sm"
               onClick={() => setExpanded((e) => !e)}
               className={cn(
-                "h-10 rounded-xl flex items-center gap-2 px-4 transition-all",
+                "h-9 rounded-xl flex items-center gap-2 px-3 transition-all sm:h-10 sm:px-4",
                 expanded ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-100 text-slate-600 hover:bg-slate-200 shadow-none border-none"
               )}
             >
@@ -205,10 +206,10 @@ export function AdvancedJobFilters({
             </Button>
 
             {onExportClick && (
-              <Button 
-                onClick={onExportClick} 
+              <Button
+                onClick={onExportClick}
                 variant="outline"
-                className="h-10 border-slate-200 text-slate-600 hover:text-primary hover:border-primary/20 hover:bg-primary/5 rounded-xl gap-2 font-semibold transition-all px-4"
+                className="h-9 border-slate-200 text-slate-600 hover:text-primary hover:border-primary/20 hover:bg-primary/5 rounded-xl gap-2 font-semibold transition-all px-3 sm:h-10 sm:px-4"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 <span className="hidden sm:inline">{tCommon("export")}</span>
@@ -216,32 +217,35 @@ export function AdvancedJobFilters({
             )}
 
             {onAddNew && (
-              <Button onClick={onAddNew} className="h-10 bg-gqm-green-dark hover:bg-gqm-green text-white rounded-xl shadow-sm border-none gap-2 font-semibold">
-                <PlusCircle className="h-4 w-4" /> {t("filtersAddNew")}
+              <Button onClick={onAddNew} className="h-9 bg-gqm-green-dark hover:bg-gqm-green text-white rounded-xl shadow-sm border-none gap-2 font-semibold sm:h-10">
+                <PlusCircle className="h-4 w-4" />
+                <span>{t("filtersAddNew")}</span>
               </Button>
             )}
           </div>
         </div>
 
         {/* ── Fila de búsqueda principal ─────────────────── */}
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-gqm-green-dark transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-gqm-green-dark transition-colors sm:left-4 sm:h-5 sm:w-5" />
             <Input
               type="text"
               placeholder={t("filtersSearch")}
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={onSearchKeyDown}
-              className="h-12 pl-12 pr-4 rounded-xl border-slate-200 bg-slate-50/50 focus-visible:ring-gqm-green-dark focus-visible:bg-white transition-all text-base placeholder:text-slate-400 shadow-none"
+              className="h-11 pl-10 pr-3 rounded-xl border-slate-200 bg-slate-50/50 focus-visible:ring-gqm-green-dark focus-visible:bg-white transition-all text-sm placeholder:text-slate-400 shadow-none sm:h-12 sm:pl-12 sm:pr-4 sm:text-base"
             />
           </div>
-          <Button onClick={onSearchSubmit} size="lg" className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md gap-2 font-bold shrink-0">
-            <Search className="h-5 w-5" /> {t("filtersAnalyze")}
+          <Button onClick={onSearchSubmit} size="lg" className="h-11 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md gap-2 font-bold shrink-0 sm:h-12 sm:px-8">
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">{t("filtersAnalyze")}</span>
           </Button>
           {activeFilterCount > 0 && (
-            <Button variant="outline" onClick={onResetFilters} size="lg" className="h-12 px-6 rounded-xl border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all font-bold shrink-0 gap-2">
-              <RefreshCcw className="h-4 w-4" /> {t("filtersReset")}
+            <Button variant="outline" onClick={onResetFilters} size="lg" className="h-11 px-3 rounded-xl border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all font-bold shrink-0 gap-1.5 sm:h-12 sm:px-6 sm:gap-2">
+              <RefreshCcw className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("filtersReset")}</span>
             </Button>
           )}
         </div>

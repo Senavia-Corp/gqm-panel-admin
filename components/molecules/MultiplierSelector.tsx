@@ -238,7 +238,7 @@ export function MultiplierSelector({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-end gap-2">
         <div className="flex-1">
           <Label htmlFor="multiplier" className="mb-2 block">
             Select Multiplier Range
@@ -269,7 +269,7 @@ export function MultiplierSelector({
             </Select>
           )}
         </div>
-        <Button type="button" variant="outline" disabled={!selectedMultiplierId} onClick={handleSelectMultiplier}>
+        <Button type="button" variant="outline" disabled={!selectedMultiplierId} onClick={handleSelectMultiplier} className="w-full sm:w-auto">
           Link Multiplier
         </Button>
       </div>

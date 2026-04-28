@@ -125,7 +125,7 @@ export default function JobsPage() {
 
         // Fetch enough to filter client-side for technicians as requested
         const { jobs: allJobs } = await fetchJobs(1, 1000, currentFilters)
-        const sorted = sortArchivedLast(allJobs.filter((j) => assignedIds.includes(j.ID_Jobs)))
+        const sorted = sortArchivedLast(allJobs.filter((j) => j.ID_Jobs != null && assignedIds.includes(j.ID_Jobs)))
 
         setTechnicianAllJobs(sorted)
         setTechnicianFilteredJobs(sorted)
@@ -220,27 +220,28 @@ export default function JobsPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
 
-        <main className="flex-1 overflow-y-auto p-6">
-          {/* Tabs */}
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+          {/* Header + Tabs */}
+          <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-xl font-bold sm:text-3xl">{t("title")}</h1>
 
-            <div className="flex flex-1 justify-center">
+            <div className="flex justify-start sm:flex-1 sm:justify-center">
               <Tabs value={filters.tab} onValueChange={(v) => handlers.setTab(v as any)}>
-                <TabsList className="h-10 rounded-xl border bg-white p-1 shadow-sm">
+                <TabsList className="h-9 rounded-xl border bg-white p-1 shadow-sm sm:h-10">
                   {(["ALL", "QID", "PTL", "PAR"] as JobsTab[]).map((tab) => {
                     const Icon = { ALL: Layers, QID: ClipboardList, PTL: Wrench, PAR: Briefcase }[tab]
                     return (
                       <TabsTrigger
                         key={tab}
                         value={tab}
-                        className="h-8 min-w-[90px] rounded-lg px-6 text-sm font-semibold data-[state=active]:bg-gqm-green-dark data-[state=active]:text-white"
+                        className="h-7 rounded-lg px-2.5 text-xs font-semibold data-[state=active]:bg-gqm-green-dark data-[state=active]:text-white sm:h-8 sm:px-6 sm:text-sm"
                       >
-                        <span className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" />
-                          {tab === "ALL" ? t("tabAll") : tab}
+                        <span className="flex items-center gap-1.5">
+                          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">{tab === "ALL" ? t("tabAll") : tab}</span>
+                          <span className="sm:hidden text-[11px] font-bold">{tab === "ALL" ? t("tabAll") : tab}</span>
                         </span>
                       </TabsTrigger>
                     )
@@ -249,7 +250,7 @@ export default function JobsPage() {
               </Tabs>
             </div>
 
-            <div className="w-[140px]" />
+            <div className="hidden sm:block sm:w-[140px]" />
           </div>
 
           {isLoading ? (
@@ -340,18 +341,25 @@ export default function JobsPage() {
                     userRole={user?.role}
                   />
 
-                  <div className="flex items-center justify-between rounded-lg border bg-white p-4">
-                    <div className="text-sm text-gray-600">
-                      {t("paginationShowing")} {(filters.page - 1) * itemsPerPage + 1} {t("paginationTo")}{" "}
-                      {Math.min(filters.page * itemsPerPage, totalJobs)} {t("paginationOf")} {totalJobs} {t("paginationJobs")}
+                  <div className="flex flex-col gap-2 rounded-lg border bg-white p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                    <div className="text-center text-xs text-gray-500 sm:text-left sm:text-sm sm:text-gray-600">
+                      <span className="sm:hidden">
+                        {(filters.page - 1) * itemsPerPage + 1}–{Math.min(filters.page * itemsPerPage, totalJobs)} {t("paginationOf")} {totalJobs}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {t("paginationShowing")} {(filters.page - 1) * itemsPerPage + 1} {t("paginationTo")}{" "}
+                        {Math.min(filters.page * itemsPerPage, totalJobs)} {t("paginationOf")} {totalJobs} {t("paginationJobs")}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2 sm:justify-end">
                       <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={filters.page === 1}>
-                        <ChevronLeft className="h-4 w-4" /> {tCommon("previous")}
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">{tCommon("previous")}</span>
                       </Button>
-                      <span>{t("paginationPage")} {filters.page} {t("paginationOf")} {totalPages}</span>
+                      <span className="text-sm">{t("paginationPage")} {filters.page} {t("paginationOf")} {totalPages}</span>
                       <Button variant="outline" size="sm" onClick={handleNextPage} disabled={filters.page === totalPages}>
-                        {tCommon("next")} <ChevronRight className="h-4 w-4" />
+                        <span className="hidden sm:inline">{tCommon("next")}</span>
+                        <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

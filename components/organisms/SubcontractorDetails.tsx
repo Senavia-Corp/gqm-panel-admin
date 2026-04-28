@@ -58,7 +58,7 @@ function SectionCard({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 bg-slate-50/30">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50/30">
         <div className="flex items-center gap-2.5">
           <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
             <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
@@ -67,7 +67,7 @@ function SectionCard({
         </div>
         {action}
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="p-4 sm:p-5 space-y-4">{children}</div>
     </div>
   )
 }
@@ -356,15 +356,15 @@ export function SubcontractorDetails({
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <FieldLabel>{t("gqmCompliance")}</FieldLabel>
-                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_compliance === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
-                  <CheckCircle className={`h-4 w-4 ${subcontractor.Gqm_compliance === "Active" ? "text-emerald-500" : "text-slate-300"}`} />
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_compliance === "Yes" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
+                  <CheckCircle className={`h-4 w-4 ${subcontractor.Gqm_compliance === "Yes" ? "text-emerald-500" : "text-slate-300"}`} />
                   {subcontractor.Gqm_compliance || "—"}
                 </div>
               </div>
               <div>
                 <FieldLabel>{t("gqmTraining")}</FieldLabel>
-                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_best_service_training === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
-                  <Layers className={`h-4 w-4 ${subcontractor.Gqm_best_service_training === "Active" ? "text-emerald-500" : "text-slate-300"}`} />
+                <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${subcontractor.Gqm_best_service_training === "Yes" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-100"}`}>
+                  <Layers className={`h-4 w-4 ${subcontractor.Gqm_best_service_training === "Yes" ? "text-emerald-500" : "text-slate-300"}`} />
                   {subcontractor.Gqm_best_service_training || "—"}
                 </div>
               </div>
