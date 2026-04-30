@@ -1391,19 +1391,27 @@ export default function SubcontractorDetailsPage() {
 
       {/* ── Skills modal ───────────────────────────────────────────────────── */}
       <Dialog open={skillsModalOpen} onOpenChange={setSkillsModalOpen}>
-        <DialogContent className="flex h-[90dvh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogContent className="flex h-[90dvh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0">
 
-          {/* ── Header fijo ─────────────────────────────────────────────────── */}
-          <div className="flex-shrink-0 border-b border-slate-100 px-6 py-5">
-            <DialogTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
-              <Link2 className="h-4 w-4 text-emerald-600" /> {t("linkSkillTitle")}
-            </DialogTitle>
-            <DialogDescription className="mt-0.5 text-xs text-slate-500">
-              {t("linkSkillDesc")}
-            </DialogDescription>
+          {/* ── Header ──────────────────────────────────────────────────────── */}
+          <div className="flex-shrink-0 border-b border-slate-100 px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 sm:h-10 sm:w-10">
+                  <Link2 className="h-4 w-4 text-emerald-600 sm:h-5 sm:w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-semibold text-slate-900 sm:text-lg">
+                    {t("linkSkillTitle")}
+                  </DialogTitle>
+                  <DialogDescription className="mt-0.5 text-xs text-slate-500">
+                    {t("linkSkillDesc")}
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
 
-            {/* Search + refresh — parte del header para que nunca se oculten */}
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-3 flex items-center gap-2 sm:mt-4 sm:gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -1422,7 +1430,7 @@ export default function SubcontractorDetailsPage() {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <RefreshCw className="h-3.5 w-3.5" />
                 }
-                {t("refresh")}
+                <span className="hidden sm:inline">{t("refresh")}</span>
               </Button>
             </div>
 
@@ -1433,64 +1441,71 @@ export default function SubcontractorDetailsPage() {
             )}
           </div>
 
-          {/* ── Tabla scrolleable ───────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-slate-50">
-                <TableRow>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32">ID</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Skill Name</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-44">Division / Trade</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-24 text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {skillsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-sm italic text-slate-400">
-                      Loading skills…
-                    </TableCell>
-                  </TableRow>
-                ) : paginatedSkillsDb.length ? (
-                  paginatedSkillsDb.map((s) => {
-                    const already = linkedSkillIds.has(s.ID_Skill)
-                    const busy = linkingSkillId === s.ID_Skill
-                    return (
-                      <TableRow key={s.ID_Skill} className="hover:bg-slate-50">
-                        <TableCell className="font-mono text-xs text-slate-500">{s.ID_Skill}</TableCell>
-                        <TableCell className="text-sm font-medium text-slate-800">{asStr(s.Skill_name) || "—"}</TableCell>
-                        <TableCell className="text-sm text-slate-600">{asStr(s.Division_trade) || "—"}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => linkSkill(s.ID_Skill)}
-                            disabled={already || busy}
-                            variant={already ? "outline" : "default"}
-                            className={`gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
-                          >
-                            {busy
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Link2 className="h-3.5 w-3.5" />
-                            }
-                            {already ? "Linked" : "Link"}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-sm italic text-slate-400">
-                      No skills found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          {/* ── Card grid scrolleable ────────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+            {skillsLoading ? (
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" />
+                    </div>
+                    <div className="h-7 w-16 animate-pulse rounded-lg bg-slate-200" />
+                  </div>
+                ))}
+              </div>
+            ) : paginatedSkillsDb.length ? (
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {paginatedSkillsDb.map((s) => {
+                  const already = linkedSkillIds.has(s.ID_Skill)
+                  const busy = linkingSkillId === s.ID_Skill
+                  const label = asStr(s.Division_trade) || asStr(s.Skill_name) || "—"
+                  return (
+                    <div
+                      key={s.ID_Skill}
+                      className={`flex items-center gap-3 rounded-xl border p-3.5 transition-colors ${
+                        already
+                          ? "border-emerald-200 bg-emerald-50/40"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800" title={label}>
+                          {label}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-slate-400">{s.ID_Skill}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => linkSkill(s.ID_Skill)}
+                        disabled={already || busy}
+                        variant={already ? "outline" : "default"}
+                        className={`flex-shrink-0 gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-emerald-300 text-emerald-700"}`}
+                      >
+                        {busy
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Link2 className="h-3.5 w-3.5" />
+                        }
+                        {already ? t("linked") : t("link")}
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                  <Search className="h-5 w-5 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-500">No skills found</p>
+                <p className="text-xs text-slate-400">Try adjusting your search</p>
+              </div>
+            )}
           </div>
 
-          {/* ── Footer fijo: paginación + Close ─────────────────────────────── */}
-          <div className="flex-shrink-0 flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4">
+          {/* ── Footer: paginación + Close ───────────────────────────────────── */}
+          <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
             <p className="text-xs text-slate-500">
               {filteredSkillsDb.length
                 ? `${skillsStart + 1}–${Math.min(skillsStart + SKILLS_PAGE_SIZE, filteredSkillsDb.length)} of ${filteredSkillsDb.length} skills`
@@ -1523,7 +1538,7 @@ export default function SubcontractorDetailsPage() {
                 onClick={() => setSkillsModalOpen(false)}
                 className="text-xs border-slate-200"
               >
-                Close
+                {t("close")}
               </Button>
             </div>
           </div>

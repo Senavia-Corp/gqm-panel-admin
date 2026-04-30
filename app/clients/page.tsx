@@ -213,7 +213,7 @@ function Pagination({ page, total, limit, onChange }: {
   const start = total === 0 ? 0 : (page - 1) * limit + 1
   const end = Math.min(page * limit, total)
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
       <p className="text-sm text-slate-500">
         Showing <span className="font-semibold text-slate-800">{start}–{end}</span> of{" "}
         <span className="font-semibold text-slate-800">{total}</span> records
@@ -221,7 +221,7 @@ function Pagination({ page, total, limit, onChange }: {
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
           disabled={page === 1} onClick={() => onChange(page - 1)}>
-          <ChevronLeft className="h-3.5 w-3.5" /> Previous
+          <ChevronLeft className="h-3.5 w-3.5" /> Prev
         </Button>
         <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
           {page} / {totalPages}
@@ -486,7 +486,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
@@ -501,7 +501,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
         {hasPermission("parent_mgmt_co:create") && (
           <Button onClick={() => router.push("/clients/create")}
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
+            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto sm:flex-shrink-0">
             <Plus className="h-4 w-4" /> Add Company
           </Button>
         )}
@@ -509,7 +509,87 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full">
+
+        {/* Mobile cards (< sm) */}
+        <div className="sm:hidden divide-y divide-slate-100">
+          {paginated.map((row) => {
+            const emails = parseArrayField(row.Main_office_email)
+            const phones = parseArrayField(row.Main_office_number)
+            return (
+              <div key={row.ID_Community_Tracking} className="flex flex-col gap-3 p-4">
+                {/* Top: avatar + name + abbrev + state */}
+                <div className="flex items-center gap-3">
+                  <CompanyAvatar name={row.Property_mgmt_co} abbrev={row.Company_abbrev} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-800">
+                      {row.Property_mgmt_co ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <AbbrevBadge abbrev={row.Company_abbrev} />
+                      {row.State && <StateBadge state={row.State} />}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ID + Podio */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
+                    {row.ID_Community_Tracking}
+                  </span>
+                  {row.podio_item_id && (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-violet-700">
+                      <ExternalLink className="h-2.5 w-2.5" />{row.podio_item_id}
+                    </span>
+                  )}
+                </div>
+
+                {/* HQ address */}
+                {row.Main_office_hq && (
+                  <span className="flex items-start gap-1 text-xs text-slate-600">
+                    <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
+                    <span>{row.Main_office_hq}</span>
+                  </span>
+                )}
+
+                {/* Email + Phone */}
+                <div className="flex flex-col gap-1">
+                  <MultiValueCell values={emails} icon={Mail} fallback="No email" linkPrefix="mailto:" />
+                  <MultiValueCell values={phones} icon={Phone} fallback="No phone" linkPrefix="tel:" />
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-2">
+                  <Button variant="ghost" size="sm"
+                    className="h-8 gap-1.5 rounded-lg bg-amber-500 px-3 text-xs text-white shadow-sm hover:bg-amber-600"
+                    onClick={() => router.push(`/clients/${row.ID_Community_Tracking}`)}>
+                    <Eye className="h-3.5 w-3.5" /> View
+                  </Button>
+                  {hasPermission("parent_mgmt_co:delete") && (
+                    <Button variant="ghost" size="sm"
+                      className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
+                      onClick={() => setDeleteTarget(row)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {paginated.length === 0 && (
+            <div className="py-16 text-center">
+              <Building2 className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+              <p className="text-sm font-medium text-slate-500">
+                {search ? `No results for "${search}"` : "No companies yet"}
+              </p>
+              {search && (
+                <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">Clear search</button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table (≥ sm) */}
+        <table className="hidden w-full sm:table">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/80">
               {[
@@ -665,11 +745,11 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Global search: name, ID, address, status, compliance…"
+            placeholder="Search by name, ID, address, status…"
             className="pl-9 text-sm border-slate-200 focus:border-emerald-400" />
           {search && (
             <button onClick={() => setSearch("")}
@@ -680,7 +760,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
         {hasPermission("client:create") && (
           <Button onClick={() => router.push("/communities/create")}
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex-shrink-0">
+            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto sm:flex-shrink-0">
             <Plus className="h-4 w-4" /> New Community
           </Button>
         )}
@@ -697,7 +777,90 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full">
+
+          {/* Mobile cards (< sm) */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {rows.map((row) => {
+              const emails = parseArrayField(row.Email_Address)
+              const phones = parseArrayField(row.Phone_Number)
+              return (
+                <div key={row.ID_Client} className="flex flex-col gap-3 p-4">
+                  {/* Top: name + status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-800">
+                      {row.Client_Community ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                    </p>
+                    <StatusBadge status={row.Client_Status} />
+                  </div>
+
+                  {/* ID + Parent Co */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
+                      {row.ID_Client}
+                    </span>
+                    {row.ID_Community_Tracking && (
+                      <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <Building2 className="h-3 w-3 text-slate-400" />
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono">{row.ID_Community_Tracking}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  {row.Address && (
+                    <span className="flex items-start gap-1 text-xs text-slate-600">
+                      <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
+                      <span>{row.Address}</span>
+                    </span>
+                  )}
+
+                  {/* Compliance */}
+                  {row.Compliance_Partner && (
+                    <span className="flex items-center gap-1 text-xs text-slate-600">
+                      <Tag className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                      {row.Compliance_Partner}
+                    </span>
+                  )}
+
+                  {/* Email + Phone */}
+                  <div className="flex flex-col gap-1">
+                    <MultiValueCell values={emails} icon={Mail} fallback="No email" linkPrefix="mailto:" />
+                    <MultiValueCell values={phones} icon={Phone} fallback="No phone" linkPrefix="tel:" />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm"
+                      className="h-8 gap-1.5 rounded-lg bg-amber-500 px-3 text-xs text-white shadow-sm hover:bg-amber-600"
+                      onClick={() => router.push(`/communities/${row.ID_Client}`)}>
+                      <Eye className="h-3.5 w-3.5" /> View
+                    </Button>
+                    <Button variant="ghost" size="sm"
+                      className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
+                      onClick={() => setDeleteTarget(row)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+            {rows.length === 0 && (
+              <div className="py-16 text-center">
+                <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+                <p className="text-sm font-medium text-slate-500">
+                  {dSearch ? `No results for "${dSearch}"` : "No communities yet"}
+                </p>
+                {dSearch && (
+                  <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">
+                    Clear search
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop table (≥ sm) */}
+          <table className="hidden w-full sm:table">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
                 {[
@@ -839,22 +1002,22 @@ export default function ClientsPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header + tabs ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3 px-6 pt-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
-                <Building2 className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 px-4 pt-4 sm:px-6 sm:pt-5">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm sm:h-10 sm:w-10">
+                <Building2 className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <h1 className="text-2xl font-black text-slate-900">Client Management</h1>
-                <p className="text-xs text-slate-500">Parent management companies & communities</p>
+              <div className="min-w-0">
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Client Management</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">Parent management companies & communities</p>
               </div>
             </div>
 
             {/* Tab bar */}
-            <div className="mt-3 flex px-6">
+            <div className="mt-3 flex px-4 sm:px-6">
               {(
                 [
                   { id: "companies"   as MainTab, icon: Building2, label: "Parent Companies", visible: canSeeCompanies },
@@ -864,12 +1027,12 @@ export default function ClientsPage() {
                 const on = activeTab === id
                 return (
                   <button key={id} onClick={() => setActiveTab(id)}
-                    className={`relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors
+                    className={`relative flex items-center gap-1.5 px-3 py-3 text-xs font-medium transition-colors sm:gap-2 sm:px-5 sm:text-sm
                       ${on
                         ? "text-emerald-700 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-emerald-600"
                         : "text-slate-500 hover:text-slate-700"
                       }`}>
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     {label}
                   </button>
                 )
@@ -878,7 +1041,7 @@ export default function ClientsPage() {
           </div>
 
           {/* ── Tab content ── */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {!canSeeCompanies && !canSeeCommunities ? (
               <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white">
                 <Shield className="h-10 w-10 text-slate-200" />

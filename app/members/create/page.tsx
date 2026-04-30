@@ -24,13 +24,13 @@ function SectionCard({ icon: Icon, iconBg, iconColor, title, children }: {
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -183,55 +183,68 @@ export default function CreateMemberPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ──────────────────────────────────────────────── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                 <button
                   onClick={() => router.push("/members")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                   {/* Live avatar preview */}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm sm:h-10 sm:w-10">
                     {initials}
                   </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">
-                      {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal text-base">New Member</span>}
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">
+                      {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal">New Member</span>}
                     </h1>
-                    <p className="mt-0.5 text-xs text-slate-400">Creating new GQM member</p>
+                    <p className="mt-0.5 hidden text-xs text-slate-400 sm:block">Creating new GQM member</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving} className="gap-1.5 text-xs border-slate-200">
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {/* Cancel — text on desktop, icon-only on mobile */}
+                <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving}
+                  className="hidden gap-1.5 text-xs border-slate-200 sm:flex">
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleSubmit} disabled={saving} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                <Button variant="outline" onClick={() => router.push("/members")} disabled={saving}
+                  size="icon" className="h-8 w-8 border-slate-200 sm:hidden">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+
+                {/* Save — text on desktop, icon-only on mobile */}
+                <Button size="sm" onClick={handleSubmit} disabled={saving}
+                  className="hidden gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   {saving ? "Creating…" : "Create Member"}
+                </Button>
+                <Button onClick={handleSubmit} disabled={saving} size="icon"
+                  className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 sm:hidden">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
           </div>
 
           {/* ── Form content ───────────────────────────────────────────────── */}
-          <div className="p-6">
-            <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-3">
+          <div className="p-4 sm:p-6">
+            <div className="grid gap-5 sm:gap-6 xl:grid-cols-4 lg:grid-cols-3">
 
               {/* ── LEFT: form fields ─────────────────────────────────────── */}
-              <div className="space-y-5 xl:col-span-3 lg:col-span-2">
+              <div className="min-w-0 space-y-4 sm:space-y-5 xl:col-span-3 lg:col-span-2">
 
                 {/* Member Information */}
                 <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Member Information">
                   <div className="grid gap-5 md:grid-cols-2">
-                    <div className="md:col-span-2">
+                    <div className="min-w-0 md:col-span-2">
                       <FieldLabel required>Full Name</FieldLabel>
                       <Input
                         value={form.Member_Name}
@@ -268,7 +281,7 @@ export default function CreateMemberPage() {
                         placeholder="(555) 000-0000"
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="min-w-0 md:col-span-2">
                       <FieldLabel>Address</FieldLabel>
                       <Textarea
                         value={form.Address}
@@ -312,7 +325,7 @@ export default function CreateMemberPage() {
               </div>
 
               {/* ── RIGHT: summary card ───────────────────────────────────── */}
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Preview</p>
@@ -389,16 +402,18 @@ export default function CreateMemberPage() {
           </div>
 
           {/* ── Bottom action bar ──────────────────────────────────────────── */}
-          <div className="sticky bottom-0 border-t border-slate-200 bg-white px-6 py-3.5">
-            <div className="flex items-center justify-between">
+          <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3.5 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-400">
                 Fields marked with <span className="text-red-400">*</span> are required
               </p>
               <div className="flex items-center gap-2.5">
-                <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving} className="gap-1.5 text-xs border-slate-200">
+                <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving}
+                  className="flex-1 gap-1.5 text-xs border-slate-200 sm:flex-none">
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleSubmit} disabled={saving} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                <Button size="sm" onClick={handleSubmit} disabled={saving}
+                  className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex-none">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   {saving ? "Creating…" : "Create Member"}
                 </Button>
