@@ -90,6 +90,7 @@
     "viewMembers": "Miembros",
     "viewSubcontractors": "Subcontratistas",
     "viewWeeklyTasks": "Tareas Semanales",
+    "viewOpportunities": "Oportunidades",
     "downloadReport": "Descargar Reporte",
     "downloading": "Descargando...",
 
@@ -798,5 +799,27 @@
     "exportSecPurchasesDesc": "Registros detallados de compras",
     "exportSecEstimateLabel": "Desglose de Costos Estimados",
     "exportSecEstimateDesc": "Cantidades, costos unitarios, costos de construcción"
+  },
+  "opportunities": {
+    "boardTitle": "Tablero de Oportunidades",
+    "boardSubtitle": "Explora y postula a las ofertas de trabajo activas",
+    "active": "Activas",
+    "searchPlaceholder": "Buscar por proyecto, descripción o habilidades...",
+    "priority": "Prioridad",
+    "allPriorities": "Todas las Prioridades",
+    "low": "Baja",
+    "medium": "Media",
+    "high": "Alta",
+    "critical": "Crítica",
+    "skills": "Habilidades",
+    "allSkills": "Todas las Habilidades",
+    "clearFilters": "Limpiar Filtros",
+    "applicants": "postulantes",
+    "apply": "Postular",
+    "link": "Vincular",
+    "applied": "Postulado",
+    "unnamedProject": "Proyecto sin nombre",
+    "noDescription": "Sin descripción proporcionada.",
+    "more": "más"
   }
 }

@@ -251,7 +251,7 @@ export default function CreateRolePage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
           {/* Breadcrumb */}
           <button
             onClick={() => router.push("/roles-permissions")}
@@ -262,21 +262,21 @@ export default function CreateRolePage() {
 
           {/* Page header */}
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
-              <Users className="h-5 w-5 text-violet-600" />
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-50">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Create Role</h1>
-              <p className="text-sm text-slate-500">A role must include at least one permission.</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Create Role</h1>
+              <p className="hidden sm:block text-sm text-slate-500">A role must include at least one permission.</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* ── Role info card ───────────────────────────────────────── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-4">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Role Information</h2>
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Name <span className="text-red-400">*</span>
@@ -296,7 +296,7 @@ export default function CreateRolePage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 lg:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
                   <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description…" className="border-slate-200 bg-slate-50 focus:bg-white" />
                 </div>
@@ -304,7 +304,7 @@ export default function CreateRolePage() {
             </div>
 
             {/* ── Permissions selector card ────────────────────────────── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
@@ -337,7 +337,7 @@ export default function CreateRolePage() {
                   </div>
 
                   <div className="grid gap-3">
-                    <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-2">
                        <div className="space-y-1.5">
                           <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</label>
                           <Input value={qName} onChange={(e) => setQName(e.target.value)} placeholder="e.g. View Jobs" className="h-8 text-xs border-slate-200 bg-white" />
@@ -450,7 +450,7 @@ export default function CreateRolePage() {
 
               {/* Search */}
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 min-w-[180px] max-w-sm">
+                <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   <Input
                     placeholder="Search permissions…"
@@ -483,8 +483,41 @@ export default function CreateRolePage() {
                 </div>
               ) : (
                 <>
-                  <div className="overflow-hidden rounded-xl border border-slate-200">
-                    <table className="w-full">
+                  {/* Mobile list */}
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 sm:hidden">
+                    {filteredPermissions.map((p) => {
+                      const checked = selectedIds.has(p.ID_Permission)
+                      return (
+                        <div
+                          key={p.ID_Permission}
+                          onClick={() => togglePermission(p.ID_Permission)}
+                          className={`flex cursor-pointer items-start gap-3 p-4 transition-colors ${checked ? "bg-emerald-50/60" : "hover:bg-slate-50/60"}`}
+                        >
+                          <div className={`mt-0.5 h-4 w-4 flex-shrink-0 rounded border-2 flex items-center justify-center transition-all ${checked ? "bg-emerald-600 border-emerald-600" : "border-slate-300"}`}>
+                            {checked && <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-slate-700">{asString(p.Name) || p.ID_Permission}</div>
+                            {p.Description && <div className="mt-0.5 truncate text-[11px] text-slate-400">{asString(p.Description)}</div>}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                              <PolicySummary document={p.Document} />
+                              {p.Active ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">Inactive</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full min-w-[480px]">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="w-10 px-4 py-2.5" />
@@ -574,9 +607,10 @@ export default function CreateRolePage() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" onClick={() => router.push("/roles-permissions")} disabled={submitting}>
-                Cancel
+                <span className="hidden sm:inline">Cancel</span>
+                <span className="sm:hidden">Cancel</span>
               </Button>
               <Button
                 onClick={createRoleAndLink}
@@ -584,7 +618,7 @@ export default function CreateRolePage() {
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Users className="h-4 w-4" />
-                {submitting ? "Creating…" : "Create Role"}
+                {submitting ? "Creating…" : <><span className="sm:hidden">Create</span><span className="hidden sm:inline">Create Role</span></>}
               </Button>
             </div>
           </div>

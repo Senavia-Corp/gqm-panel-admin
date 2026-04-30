@@ -148,30 +148,32 @@ export default function CommissionsPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-5">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
 
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
-                  <BadgeDollarSign className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 leading-none">Commissions</h1>
-                  <p className="mt-1 text-sm text-slate-500">View and manage member commission records</p>
-                </div>
+            {/* ── Header ──────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
+                <BadgeDollarSign className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold leading-none text-slate-900 sm:text-2xl">Commissions</h1>
+                <p className="mt-1 hidden text-sm text-slate-500 sm:block">View and manage member commission records</p>
               </div>
             </div>
 
+            {/* ── Card ─────────────────────────────────────────────────────── */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+
+              {/* Toolbar */}
+              <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <div className="flex items-center gap-3">
                   <h2 className="text-base font-semibold text-slate-800">All Commissions</h2>
                   {total > 0 && (
                     <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-bold text-white">{total}</span>
                   )}
                 </div>
-                <div className="relative w-72">
+                <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   <Input placeholder="Search by ID, month, year…" value={search} onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors" />
@@ -183,8 +185,9 @@ export default function CommissionsPage() {
                 </div>
               </div>
 
+              {/* Error */}
               {error && (
-                <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-5 py-3">
+                <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-2 text-sm text-red-700"><AlertCircle className="h-4 w-4 flex-shrink-0" />{error}</div>
                   <Button variant="outline" size="sm" onClick={() => fetchData(page, debouncedSearch)} className="gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-100">
                     <RefreshCw className="h-3.5 w-3.5" /> Retry
@@ -192,58 +195,110 @@ export default function CommissionsPage() {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80">
-                      {["Commission ID", "Member", "Month", "Year", "Total", "Actions"].map((label, i) => (
-                        <th key={i} className={`px-5 py-3 text-left ${i === 5 ? "text-right" : ""}`}>
-                          {label && <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</span>}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? <SkeletonRows /> : rows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <BadgeDollarSign className="h-8 w-8 text-slate-300" />
-                            <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
-                            {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">Clear search</button>}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : rows.map((row) => (
-                      <tr key={row.ID_Commission} className="border-b border-slate-100 transition-colors hover:bg-slate-50/60">
-                        <td className="px-5 py-3.5">
+              {/* Mobile cards */}
+              <div className="divide-y divide-slate-100 sm:hidden">
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="space-y-2 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="h-5 w-24 animate-pulse rounded bg-slate-100" />
+                        <div className="h-5 w-16 animate-pulse rounded-full bg-slate-100" />
+                      </div>
+                      <div className="h-3.5 w-32 animate-pulse rounded bg-slate-100" />
+                    </div>
+                  ))
+                ) : rows.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 px-6 py-16">
+                    <BadgeDollarSign className="h-8 w-8 text-slate-300" />
+                    <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
+                    {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">Clear search</button>}
+                  </div>
+                ) : rows.map((row) => (
+                  <div key={row.ID_Commission} className="p-4 transition-colors hover:bg-slate-50/60">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">{row.ID_Commission}</span>
-                        </td>
-                        <td className="px-5 py-3.5 flex items-center gap-3"><RepAvatar />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">{row.member.Member_Name ?? "-"}</span>
-                            <span className="text-xs text-muted-foreground">{row.member.ID_Member ?? "-"}</span>
+                          <MonthBadge month={row.Month} />
+                          {row.Year && <span className="text-xs font-medium text-slate-500">{row.Year}</span>}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <RepAvatar />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-800">{row.member.Member_Name ?? "—"}</p>
+                            <p className="truncate text-[11px] text-slate-400">{row.member.ID_Member}</p>
                           </div>
-                        </td>
-                        <td className="px-5 py-3.5"><MonthBadge month={row.Month} /></td>
-                        <td className="px-5 py-3.5"><span className="text-sm font-medium text-slate-700">{row.Year ?? "—"}</span></td>
-                        <td className="px-5 py-3.5"><TotalBadge total={row.Total_commission} /></td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button onClick={() => router.push(`/commissions/${row.ID_Commission}`)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600" title="View">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                      <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                        <TotalBadge total={row.Total_commission} />
+                        <button onClick={() => router.push(`/commissions/${row.ID_Commission}`)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
+              {/* Desktop table */}
+              <div className="hidden sm:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/80">
+                        {["Commission ID", "Member", "Month", "Year", "Total", "Actions"].map((label, i) => (
+                          <th key={i} className={`px-5 py-3 text-left ${i === 5 ? "text-right" : ""}`}>
+                            {label && <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</span>}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? <SkeletonRows /> : rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-16 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <BadgeDollarSign className="h-8 w-8 text-slate-300" />
+                              <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
+                              {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">Clear search</button>}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : rows.map((row) => (
+                        <tr key={row.ID_Commission} className="border-b border-slate-100 transition-colors hover:bg-slate-50/60">
+                          <td className="px-5 py-3.5">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">{row.ID_Commission}</span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <RepAvatar />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-gray-900">{row.member.Member_Name ?? "-"}</span>
+                                <span className="text-xs text-muted-foreground">{row.member.ID_Member ?? "-"}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5"><MonthBadge month={row.Month} /></td>
+                          <td className="px-5 py-3.5"><span className="text-sm font-medium text-slate-700">{row.Year ?? "—"}</span></td>
+                          <td className="px-5 py-3.5"><TotalBadge total={row.Total_commission} /></td>
+                          <td className="px-5 py-3.5 text-right">
+                            <button onClick={() => router.push(`/commissions/${row.ID_Commission}`)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600 ml-auto" title="View">
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Pagination */}
               {!loading && !error && total > 0 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
                   <p className="text-xs text-slate-500">
                     {rangeStart}–{rangeEnd} of <span className="font-semibold text-slate-700">{total.toLocaleString()}</span> commissions
                   </p>

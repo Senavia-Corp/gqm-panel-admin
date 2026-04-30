@@ -156,7 +156,7 @@ export default function PermissionsTable() {
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {/* Search */}
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
+          <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="Search permissions…"
@@ -243,9 +243,74 @@ export default function PermissionsTable() {
         </div>
       ) : (
         <>
-          {/* ── Table ─────────────────────────────────────────────────── */}
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full">
+          {/* ── Mobile cards ──────────────────────────────────────────────── */}
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 sm:hidden">
+            {filtered.map((p) => {
+              const rolesCount = Array.isArray(p.roles) ? p.roles.length : 0
+              return (
+                <div key={p.ID_Permission} className="p-4 transition-colors hover:bg-slate-50/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-600">{p.ID_Permission}</span>
+                        <ActivePill active={p.Active} />
+                      </div>
+                      <p className="truncate text-sm font-semibold text-slate-800">{asString(p.Name) || "—"}</p>
+                      {p.Description && (
+                        <p className="mt-0.5 truncate text-xs text-slate-400">{asString(p.Description)}</p>
+                      )}
+                      <div className="mt-2">
+                        <PolicySummary document={p.Document} />
+                      </div>
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-400">Linked roles:</span>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{rolesCount}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-shrink-0 gap-1">
+                      <button
+                        onClick={() => router.push(`/roles-permissions/permissions/${p.ID_Permission}`)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400 text-amber-900 hover:bg-amber-500 transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <AlertDialog
+                        open={deleteOpen && permissionToDelete?.ID_Permission === p.ID_Permission}
+                        onOpenChange={(open) => { setDeleteOpen(open); if (!open) setPermissionToDelete(null) }}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <button
+                            onClick={() => { setPermissionToDelete(p); setDeleteOpen(true) }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete permission?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will unlink the permission from all roles first, then permanently delete it. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={(e) => { e.preventDefault(); deletePermission() }} disabled={deleting} className="bg-red-600 hover:bg-red-700">
+                              {deleting ? "Deleting…" : "Delete"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table ─────────────────────────────────────────────── */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
@@ -286,7 +351,6 @@ export default function PermissionsTable() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
-
                           <AlertDialog
                             open={deleteOpen && permissionToDelete?.ID_Permission === p.ID_Permission}
                             onOpenChange={(open) => { setDeleteOpen(open); if (!open) setPermissionToDelete(null) }}
@@ -329,17 +393,17 @@ export default function PermissionsTable() {
           </div>
 
           {/* ── Pagination ──────────────────────────────────────────────── */}
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
               Page <span className="font-semibold text-slate-600">{page}</span> of{" "}
               <span className="font-semibold text-slate-600">{totalPages}</span>
             </p>
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" onClick={() => fetchPermissions(Math.max(1, page - 1))} disabled={page === 1} className="h-8 text-xs">
-                <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Prev
+                <ChevronLeft className="mr-1 h-3.5 w-3.5" /><span className="hidden sm:inline">Prev</span>
               </Button>
               <Button variant="outline" size="sm" onClick={() => fetchPermissions(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="h-8 text-xs">
-                Next <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Next</span><ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </div>
           </div>

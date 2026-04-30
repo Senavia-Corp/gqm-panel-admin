@@ -45,7 +45,7 @@ export function KpiCard({
       </div>
 
       <div className="mt-2">
-        <p className={["font-bold tabular-nums leading-none", large ? "text-3xl" : "text-2xl", valueClass].join(" ")}>
+        <p className={["font-bold tabular-nums leading-none", large ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl", valueClass].join(" ")}>
           {value}
         </p>
         {subtitle && (

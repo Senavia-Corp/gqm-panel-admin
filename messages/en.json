@@ -90,6 +90,7 @@
     "viewMembers": "Members",
     "viewSubcontractors": "Subcontractors",
     "viewWeeklyTasks": "Weekly Tasks",
+    "viewOpportunities": "Opportunities",
     "downloadReport": "Download Report",
     "downloading": "Downloading...",
 
@@ -798,5 +799,27 @@
     "exportSecPurchasesDesc": "Detailed purchasing records",
     "exportSecEstimateLabel": "Estimate Cost Breakdown",
     "exportSecEstimateDesc": "Quantities, unit costs, builder costs"
+  },
+  "opportunities": {
+    "boardTitle": "Job Opportunities Board",
+    "boardSubtitle": "Explore and apply for active work postings",
+    "active": "Active",
+    "searchPlaceholder": "Search by project name, description or skills...",
+    "priority": "Priority",
+    "allPriorities": "All Priorities",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "skills": "Skills",
+    "allSkills": "All Skills",
+    "clearFilters": "Clear Filters",
+    "applicants": "applicants",
+    "apply": "Apply",
+    "link": "Link",
+    "applied": "Applied",
+    "unnamedProject": "Unnamed Project",
+    "noDescription": "No description provided.",
+    "more": "more"
   }
 }

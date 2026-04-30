@@ -69,104 +69,143 @@ function SuppliersTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] border-collapse">
-          <thead className="border-b border-slate-100 bg-slate-50/80">
-            <tr>
-              {[
-                { label: "ID", w: "w-[100px]" },
-                { label: "Company", w: "w-[200px]" },
-                { label: "Specialty", w: "" },
-                { label: "Coverage Area", w: "" },
-                { label: "Status", w: "w-[110px]" },
-                { label: "Email", w: "" },
-                { label: "Phone", w: "w-[140px]" },
-                { label: "Actions", w: "w-[80px] text-right" },
-              ].map(({ label, w }) => (
-                <th
-                  key={label}
-                  className={`px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${w}`}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {rows.map((row) => (
-              <tr key={row.ID_Supplier} className="group transition-colors hover:bg-slate-50/70">
 
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  <span className="font-mono text-xs text-slate-400">{row.ID_Supplier}</span>
-                </td>
-
-                <td className="px-5 py-3.5">
-                  <p className="max-w-[200px] truncate text-sm font-semibold text-slate-800">
-                    {row.Company_Name || <span className="text-slate-300">—</span>}
-                  </p>
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  {row.Speciality
-                    ? <span className="inline-flex items-center rounded-lg bg-violet-50 border border-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">{row.Speciality}</span>
-                    : <span className="text-slate-300 text-xs">—</span>
-                  }
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  {row.Coverage_Area
-                    ? <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">{row.Coverage_Area}</span>
-                    : <span className="text-slate-300 text-xs">—</span>
-                  }
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
+      {/* ── Mobile cards ── */}
+      <div className="divide-y divide-slate-100 sm:hidden">
+        {rows.map((row) => (
+          <div key={row.ID_Supplier} className="p-4 transition-colors hover:bg-slate-50/60">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[11px] text-slate-400">{row.ID_Supplier}</span>
                   {row.Acc_Status === "Active" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                       <CheckCircle2 className="h-3 w-3" /> Active
                     </span>
                   ) : row.Acc_Status === "Inactive" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                       <XCircle className="h-3 w-3" /> Inactive
                     </span>
-                  ) : (
-                    <span className="text-slate-300 text-xs">—</span>
+                  ) : null}
+                </div>
+                <p className="truncate text-sm font-semibold text-slate-800">
+                  {row.Company_Name || <span className="text-slate-300">—</span>}
+                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {row.Speciality && (
+                    <span className="inline-flex items-center rounded-lg border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">{row.Speciality}</span>
                   )}
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  <span className="text-xs text-slate-500">{row.Email_Address || <span className="text-slate-300">—</span>}</span>
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap">
-                  <span className="text-xs text-slate-500">{row.Phone_Number || <span className="text-slate-300">—</span>}</span>
-                </td>
-
-                <td className="px-5 py-3.5 whitespace-nowrap text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Link href={`/suppliers/${row.ID_Supplier}`}>
-                      <button
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-blue-300 hover:text-blue-600"
-                        title="View"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </Link>
-                    <button
-                      onClick={() => onDelete(row)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:text-red-600"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </td>
-
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {row.Coverage_Area && (
+                    <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{row.Coverage_Area}</span>
+                  )}
+                </div>
+                <div className="mt-1.5 flex flex-col gap-0.5">
+                  {row.Email_Address && (
+                    <span className="truncate text-xs text-slate-500">{row.Email_Address}</span>
+                  )}
+                  {row.Phone_Number && (
+                    <span className="text-xs text-slate-500">{row.Phone_Number}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-shrink-0 gap-1">
+                <Link href={`/suppliers/${row.ID_Supplier}`}>
+                  <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-blue-300 hover:text-blue-600" title="View">
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
+                </Link>
+                <button onClick={() => onDelete(row)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:text-red-600" title="Delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] border-collapse">
+            <thead className="border-b border-slate-100 bg-slate-50/80">
+              <tr>
+                {[
+                  { label: "ID", w: "w-[100px]" },
+                  { label: "Company", w: "w-[200px]" },
+                  { label: "Specialty", w: "" },
+                  { label: "Coverage Area", w: "" },
+                  { label: "Status", w: "w-[110px]" },
+                  { label: "Email", w: "" },
+                  { label: "Phone", w: "w-[140px]" },
+                  { label: "Actions", w: "w-[80px] text-right" },
+                ].map(({ label, w }) => (
+                  <th key={label} className={`px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${w}`}>
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {rows.map((row) => (
+                <tr key={row.ID_Supplier} className="transition-colors hover:bg-slate-50/70">
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <span className="font-mono text-xs text-slate-400">{row.ID_Supplier}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <p className="max-w-[200px] truncate text-sm font-semibold text-slate-800">
+                      {row.Company_Name || <span className="text-slate-300">—</span>}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {row.Speciality
+                      ? <span className="inline-flex items-center rounded-lg border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">{row.Speciality}</span>
+                      : <span className="text-xs text-slate-300">—</span>}
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {row.Coverage_Area
+                      ? <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{row.Coverage_Area}</span>
+                      : <span className="text-xs text-slate-300">—</span>}
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {row.Acc_Status === "Active" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" /> Active
+                      </span>
+                    ) : row.Acc_Status === "Inactive" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                        <XCircle className="h-3 w-3" /> Inactive
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <span className="text-xs text-slate-500">{row.Email_Address || <span className="text-slate-300">—</span>}</span>
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <span className="text-xs text-slate-500">{row.Phone_Number || <span className="text-slate-300">—</span>}</span>
+                  </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`/suppliers/${row.ID_Supplier}`}>
+                        <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-blue-300 hover:text-blue-600" title="View">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </Link>
+                      <button onClick={() => onDelete(row)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:text-red-600" title="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -256,48 +295,50 @@ export default function SuppliersPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
-                <Store className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
+                <Store className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900">Suppliers</h1>
-                <p className="text-xs text-slate-500">Material and construction supply companies</p>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900">Suppliers</h1>
+                <p className="hidden sm:block text-xs text-slate-500">Material and construction supply companies</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 p-4 sm:p-6">
 
             {/* ── Toolbar card ── */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {/* Card header */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-base font-bold text-slate-800">All Suppliers</h2>
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {hasFilters && (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    <span className="hidden sm:flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                       <Filter className="h-2.5 w-2.5" /> 1 filter
                     </span>
                   )}
                 </div>
                 <Link href="/suppliers/create">
                   <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm">
-                    <Plus className="h-4 w-4" /> New Supplier
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">New</span>
+                    <span className="hidden sm:inline">New Supplier</span>
                   </Button>
                 </Link>
               </div>
 
               {/* Search bar */}
-              <div className="flex items-center gap-3 px-5 py-4">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="relative w-full sm:flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
@@ -349,7 +390,7 @@ export default function SuppliersPage() {
 
             {/* ── Pagination ── */}
             {!loading && !error && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:px-5 shadow-sm">
                 <p className="text-sm text-slate-500">
                   Showing{" "}
                   <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
@@ -363,7 +404,8 @@ export default function SuppliersPage() {
                     disabled={page === 1 || loading}
                     onClick={() => setPage((p) => p - 1)}
                   >
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Previous</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
@@ -375,7 +417,8 @@ export default function SuppliersPage() {
                     disabled={page >= totalPages || loading}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next <ChevronRight className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
