@@ -183,7 +183,7 @@ export default function RoleDetailPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto p-6 space-y-5">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* ── Breadcrumb back ──────────────────────────────────────────── */}
           <button
             onClick={() => router.push("/roles-permissions")}
@@ -194,25 +194,25 @@ export default function RoleDetailPage() {
           </button>
 
           {/* ── Page header ──────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
-                <Users className="h-5 w-5 text-violet-600" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-50">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Role Detail</h1>
-                <p className="text-sm text-slate-500">Edit role fields and manage linked permissions.</p>
+              <div className="min-w-0">
+                <h1 className="truncate text-xl sm:text-2xl font-bold text-slate-900">Role Detail</h1>
+                <p className="hidden sm:block text-sm text-slate-500">Edit role fields and manage linked permissions.</p>
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-shrink-0 gap-2">
               <Button
                 onClick={handleSave}
                 disabled={saving || loading || !role}
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Save className="h-4 w-4" />
-                {saving ? "Saving…" : "Save Changes"}
+                {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Changes</span></>}
               </Button>
               <Button
                 variant="destructive"
@@ -221,7 +221,7 @@ export default function RoleDetailPage() {
                 className="gap-2"
               >
                 <Trash2 className="h-4 w-4" />
-                {deleting ? "Deleting…" : "Delete"}
+                <span className="hidden sm:inline">{deleting ? "Deleting…" : "Delete"}</span>
               </Button>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function RoleDetailPage() {
           ) : (
             <>
               {/* ── Role info card ─────────────────────────────────────── */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-5">
                 {/* ID + status row */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
@@ -258,7 +258,7 @@ export default function RoleDetailPage() {
                 <div className="h-px bg-slate-100" />
 
                 {/* Name + description */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Name</label>
                     <Input
@@ -281,11 +281,11 @@ export default function RoleDetailPage() {
               </div>
 
               {/* ── Permissions management card ────────────────────────── */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-5">
                 {/* Header + quick link selector */}
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50">
                       <Shield className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div>
@@ -294,9 +294,9 @@ export default function RoleDetailPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Select value={selectedPermissionId} onValueChange={(v) => setSelectedPermissionId(v)}>
-                      <SelectTrigger className="w-64 text-sm border-slate-200 bg-slate-50">
+                      <SelectTrigger className="flex-1 sm:w-64 text-sm border-slate-200 bg-slate-50">
                         <SelectValue placeholder="Select a permission to link…" />
                       </SelectTrigger>
                       <SelectContent>
@@ -318,14 +318,15 @@ export default function RoleDetailPage() {
                     <Button
                       onClick={async () => { await linkPermission(selectedPermissionId); setSelectedPermissionId("") }}
                       disabled={!selectedPermissionId || linkedPermissionIds.has(selectedPermissionId)}
-                      className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 h-9"
+                      className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 h-9 flex-shrink-0"
                     >
-                      <Link2 className="h-3.5 w-3.5" /> Link
+                      <Link2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Link</span>
                     </Button>
                   </div>
                 </div>
 
                 {/* Permissions table */}
+                {/* Shared pagination header */}
                 <div className="overflow-hidden rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5">
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
@@ -349,62 +350,108 @@ export default function RoleDetailPage() {
                     </div>
                   </div>
 
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
-                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
-                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Linked</th>
-                        <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {allPermissions.map((p) => {
-                        const linked = linkedPermissionIds.has(p.ID_Permission)
-                        return (
-                          <tr key={p.ID_Permission} className={`transition-colors ${linked ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50/80"}`}>
-                            <td className="px-4 py-2.5">
-                              <span className="font-mono text-xs text-slate-500">{p.ID_Permission}</span>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <div className="text-xs font-semibold text-slate-700">{asString(p.Name) || "—"}</div>
-                              {p.Description && <div className="text-[11px] text-slate-400 line-clamp-1">{asString(p.Description)}</div>}
-                            </td>
-                            <td className="px-4 py-2.5"><PolicySummary document={p.Document} /></td>
-                            <td className="px-4 py-2.5 text-center">
-                              {linked ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Yes
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">
-                                  No
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
+                  {/* Mobile cards */}
+                  <div className="divide-y divide-slate-100 sm:hidden">
+                    {allPermissions.map((p) => {
+                      const linked = linkedPermissionIds.has(p.ID_Permission)
+                      return (
+                        <div key={p.ID_Permission} className={`p-4 transition-colors ${linked ? "bg-emerald-50/40" : ""}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[11px] text-slate-400">{p.ID_Permission}</span>
+                                {linked ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Linked
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">Not linked</span>
+                                )}
+                              </div>
+                              <p className="text-xs font-semibold text-slate-700">{asString(p.Name) || "—"}</p>
+                              {p.Description && <p className="mt-0.5 truncate text-[11px] text-slate-400">{asString(p.Description)}</p>}
+                              <div className="mt-1.5"><PolicySummary document={p.Document} /></div>
+                            </div>
+                            <div className="flex-shrink-0">
                               {linked ? (
                                 <button
                                   onClick={() => unlinkPermission(p.ID_Permission)}
-                                  className="flex items-center gap-1 mx-auto rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                                 >
-                                  <Link2Off className="h-3 w-3" /> Unlink
+                                  <Link2Off className="h-3.5 w-3.5" />
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => linkPermission(p.ID_Permission)}
-                                  className="flex items-center gap-1 mx-auto rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                                  className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
                                 >
-                                  <Link2 className="h-3 w-3" /> Link
+                                  <Link2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full min-w-[520px]">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
+                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Linked</th>
+                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {allPermissions.map((p) => {
+                          const linked = linkedPermissionIds.has(p.ID_Permission)
+                          return (
+                            <tr key={p.ID_Permission} className={`transition-colors ${linked ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50/80"}`}>
+                              <td className="px-4 py-2.5">
+                                <span className="font-mono text-xs text-slate-500">{p.ID_Permission}</span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="text-xs font-semibold text-slate-700">{asString(p.Name) || "—"}</div>
+                                {p.Description && <div className="text-[11px] text-slate-400 line-clamp-1">{asString(p.Description)}</div>}
+                              </td>
+                              <td className="px-4 py-2.5"><PolicySummary document={p.Document} /></td>
+                              <td className="px-4 py-2.5 text-center">
+                                {linked ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Yes
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">No</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                {linked ? (
+                                  <button
+                                    onClick={() => unlinkPermission(p.ID_Permission)}
+                                    className="flex items-center gap-1 mx-auto rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                                  >
+                                    <Link2Off className="h-3 w-3" /> Unlink
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => linkPermission(p.ID_Permission)}
+                                    className="flex items-center gap-1 mx-auto rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+                                  >
+                                    <Link2 className="h-3 w-3" /> Link
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Currently linked permissions */}

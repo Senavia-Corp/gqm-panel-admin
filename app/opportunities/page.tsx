@@ -98,49 +98,23 @@ function OpportunitiesTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[780px] border-collapse">
-          <thead className="border-b border-slate-100 bg-slate-50/80">
-            <tr>
-              {["ID", "Project", "Job", "Priority", "State", "Start Date", "Skills", "Applicants", ""].map((h) => (
-                <th key={h} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {rows.map((row) => (
-              <tr key={row.ID_Opportunities} className="hover:bg-slate-50/70 transition-colors group">
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="font-mono text-xs text-slate-400">{row.ID_Opportunities}</span>
-                </td>
 
-                <td className="px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-800 truncate max-w-[180px]">
-                    {row.Project_name || "—"}
-                  </p>
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
-                  {row.job?.ID_Jobs ? (
-                    <Link
-                      href={`/jobs/${row.job.ID_Jobs}`}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-mono"
-                    >
-                      {row.job.ID_Jobs}
-                      <ExternalLink className="h-2.5 w-2.5" />
-                    </Link>
-                  ) : (
-                    <span className="text-slate-300 text-xs">—</span>
-                  )}
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
+      {/* ── Mobile cards ── */}
+      <div className="divide-y divide-slate-100 sm:hidden">
+        {rows.map((row) => (
+          <div key={row.ID_Opportunities} className="p-4 transition-colors hover:bg-slate-50/60">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="font-mono text-[11px] text-slate-400">{row.ID_Opportunities}</span>
+                <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">{row.Project_name || "—"}</p>
+                {row.job?.ID_Jobs && (
+                  <Link href={`/jobs/${row.job.ID_Jobs}`}
+                    className="mt-0.5 inline-flex items-center gap-1 font-mono text-xs text-blue-600 hover:underline">
+                    {row.job.ID_Jobs}<ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <PriorityBadge priority={row.Priority} />
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
                   {row.State === true ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                       <CheckCircle2 className="h-3 w-3" /> Active
@@ -149,54 +123,120 @@ function OpportunitiesTable({
                     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                       <XCircle className="h-3 w-3" /> Inactive
                     </span>
-                  ) : (
-                    <span className="text-slate-300 text-xs">—</span>
-                  )}
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="flex items-center gap-1 text-xs text-slate-500">
-                    <Calendar className="h-3 w-3 text-slate-300" />
-                    {formatDate(row.Start_Date)}
+                  ) : null}
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3 text-slate-300" />{formatDate(row.Start_Date)}
                   </span>
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-100 px-1.5 text-[11px] font-bold text-violet-700">
-                    {row.skills?.length ?? 0}
+                  <span className="flex items-center gap-1">
+                    <span className="rounded-full bg-violet-100 px-1.5 text-[11px] font-bold text-violet-700">{row.skills?.length ?? 0}</span>
+                    skills
                   </span>
-                </td>
-
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
-                    {row.subcontractors?.length ?? 0}
+                  <span className="flex items-center gap-1">
+                    <span className="rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">{row.subcontractors?.length ?? 0}</span>
+                    applicants
                   </span>
-                </td>
-
-                <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <div className="flex items-center justify-end gap-1">
-                    <Link href={`/opportunities/${row.ID_Opportunities}`}>
-                      <button
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors"
-                        title="View"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </Link>
-                    <button
-                      onClick={() => onDelete(row)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+              <div className="flex flex-shrink-0 gap-1">
+                <Link href={`/opportunities/${row.ID_Opportunities}`}>
+                  <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title="View">
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
+                </Link>
+                <button onClick={() => onDelete(row)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[780px] border-collapse">
+            <thead className="border-b border-slate-100 bg-slate-50/80">
+              <tr>
+                {["ID", "Project", "Job", "Priority", "State", "Start Date", "Skills", "Applicants", ""].map((h) => (
+                  <th key={h} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {rows.map((row) => (
+                <tr key={row.ID_Opportunities} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="font-mono text-xs text-slate-400">{row.ID_Opportunities}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="max-w-[180px] truncate text-sm font-semibold text-slate-800">{row.Project_name || "—"}</p>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {row.job?.ID_Jobs ? (
+                      <Link href={`/jobs/${row.job.ID_Jobs}`} className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 hover:underline">
+                        {row.job.ID_Jobs}<ExternalLink className="h-2.5 w-2.5" />
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <PriorityBadge priority={row.Priority} />
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {row.State === true ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" /> Active
+                      </span>
+                    ) : row.State === false ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                        <XCircle className="h-3 w-3" /> Inactive
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Calendar className="h-3 w-3 text-slate-300" />{formatDate(row.Start_Date)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-100 px-1.5 text-[11px] font-bold text-violet-700">
+                      {row.skills?.length ?? 0}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
+                      {row.subcontractors?.length ?? 0}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`/opportunities/${row.ID_Opportunities}`}>
+                        <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title="View">
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </Link>
+                      <button onClick={() => onDelete(row)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -301,47 +341,49 @@ export default function OpportunitiesPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* Sticky header */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
-                <Megaphone className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm sm:h-10 sm:w-10">
+                <Megaphone className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900">Opportunities</h1>
-                <p className="text-xs text-slate-500">Job postings for subcontractors to apply</p>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Opportunities</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">Job postings for subcontractors to apply</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 p-4 sm:p-6">
 
             {/* Toolbar */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-base font-bold text-slate-800">All Opportunities</h2>
-                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <h2 className="truncate text-base font-bold text-slate-800">All Opportunities</h2>
+                  <span className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {activeFilters > 0 && (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 sm:flex">
                       <Filter className="h-2.5 w-2.5" /> {activeFilters} filter
                     </span>
                   )}
                 </div>
                 <Button
                   onClick={() => router.push("/opportunities/create")}
-                  className="gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm"
+                  className="ml-3 flex-shrink-0 gap-1.5 bg-violet-600 hover:bg-violet-700 text-sm text-white"
                 >
-                  <Plus className="h-4 w-4" /> New Opportunity
+                  <Plus className="h-4 w-4" />
+                  <span className="sm:hidden">New</span>
+                  <span className="hidden sm:inline">New Opportunity</span>
                 </Button>
               </div>
 
-              <div className="flex items-center gap-3 px-5 py-4">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="relative w-full sm:flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
@@ -380,8 +422,8 @@ export default function OpportunitiesPage() {
 
             {/* Pagination */}
             {!loading && !error && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-                <p className="text-sm text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+                <p className="text-xs text-slate-500 sm:text-sm">
                   Showing{" "}
                   <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
                   of <span className="font-semibold text-slate-800">{total}</span> opportunities
@@ -389,14 +431,14 @@ export default function OpportunitiesPage() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">Previous</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
                   </span>
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-                    Next <ChevronRight className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Next</span><ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

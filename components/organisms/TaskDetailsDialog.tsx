@@ -393,15 +393,10 @@ const memberId = toForm(task.ID_Member)
           <VisuallyHidden><DialogTitle>{task.Name}</DialogTitle></VisuallyHidden>
 
           {/* ── Header ──────────────────────────────────────────────────── */}
-          <div style={{
-            background: "linear-gradient(135deg, #0B2E1E 0%, #1A5C3A 100%)",
-            padding: "20px 28px",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "14px",
-            flexShrink: 0,
-          }}>
+          <div
+            className="flex shrink-0 items-start justify-between gap-3.5 px-4 py-4 sm:px-7 sm:py-5"
+            style={{ background: "linear-gradient(135deg, #0B2E1E 0%, #1A5C3A 100%)" }}
+          >
             <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", flex: 1, minWidth: 0 }}>
               <div style={{
                 width: "44px", height: "44px",
@@ -462,7 +457,7 @@ const memberId = toForm(task.ID_Member)
           </div>
 
           {/* ── Body ────────────────────────────────────────────────────── */}
-          <div style={{ padding: "24px 28px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
 
             {/* Error banner */}
             {saveError && (
@@ -478,7 +473,7 @@ const memberId = toForm(task.ID_Member)
             {/* ── Section 1: Classification ──────────────────────────── */}
             <SectionHeader icon={<Flag size={13} />} label="Classification" />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Status card */}
               <div style={{
                 padding: "14px 16px",
@@ -618,7 +613,7 @@ const memberId = toForm(task.ID_Member)
             {/* ── Section 3: Timeline ───────────────────────────────── */}
             <SectionHeader icon={<Calendar size={13} />} label="Timeline" />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div>
                 <FieldLabel>Start Date</FieldLabel>
                 {isEditMode ? (
@@ -876,15 +871,10 @@ const memberId = toForm(task.ID_Member)
           </div>
 
           {/* ── Footer ──────────────────────────────────────────────────── */}
-          <div style={{
-            padding: "14px 28px",
-            borderTop: "1px solid #F3F4F6",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: "#FAFAFA",
-            flexShrink: 0,
-          }}>
+          <div
+            className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-7"
+            style={{ borderTop: "1px solid #F3F4F6", background: "#FAFAFA" }}
+          >
             {/* Delete button */}
             <button
               onClick={() => setShowDeleteConfirm(true)}
@@ -900,7 +890,7 @@ const memberId = toForm(task.ID_Member)
             </button>
 
             {/* Edit / Save-Cancel */}
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div className="flex flex-wrap gap-2">
               {isEditMode ? (
                 <>
                   <button

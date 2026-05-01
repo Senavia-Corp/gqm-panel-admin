@@ -22,6 +22,7 @@ import {
   ChevronLeft, ChevronRight, CheckCircle2, XCircle,
   ExternalLink, Star, Mail, Phone, ChevronDown,
 } from "lucide-react"
+import { LinkSubcontractorModal } from "@/components/organisms/LinkSubcontractorModal"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,16 +150,16 @@ function SectionCard({ icon: Icon, title, children, action }: {
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
             <Icon className="h-3.5 w-3.5 text-slate-500" />
           </div>
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
         </div>
         {action}
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="space-y-4 p-4 sm:p-5">{children}</div>
     </div>
   )
 }
@@ -221,7 +222,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
         style={{ maxHeight: "calc(100vh - 48px)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
               <Briefcase className="h-5 w-5 text-slate-500" />
@@ -236,7 +237,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           </button>
         </div>
 
-        <div className="flex-shrink-0 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -282,7 +283,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           )}
         </div>
 
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
           <p className="text-xs text-slate-400">
             Showing <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
             <span className="font-semibold text-slate-600">{total}</span>
@@ -303,157 +304,6 @@ function JobPickerModal({ open, onClose, onSelect }: {
   )
 }
 
-// ─── Link Applicant Modal ─────────────────────────────────────────────────────
-
-function LinkApplicantModal({ open, onClose, onLink, excludeIds }: {
-  open: boolean
-  onClose: () => void
-  onLink: (subId: string) => Promise<void>
-  excludeIds: string[]
-}) {
-  const LIMIT = 10
-  const [query, setQuery] = useState("")
-  const dQ = useDebounce(query, 300)
-  const [page, setPage] = useState(1)
-  const [rows, setRows] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [linking, setLinking] = useState<string | null>(null)
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
-
-  useEffect(() => { if (open) { setQuery(""); setPage(1) } }, [open])
-  useEffect(() => { setPage(1) }, [dQ])
-
-  useEffect(() => {
-    if (!open) return
-    const ctrl = new AbortController()
-    setLoading(true)
-    const params = new URLSearchParams({ mode: "table", page: String(page), limit: String(LIMIT) })
-    if (dQ) params.set("q", dQ)
-    apiFetch(`/api/subcontractors?${params}`, { cache: "no-store", signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((d) => { setRows(d.results ?? []); setTotal(Number(d.total ?? 0)) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-    return () => ctrl.abort()
-  }, [open, dQ, page])
-
-  if (!open) return null
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="flex flex-col w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
-        style={{ maxHeight: "calc(100vh - 48px)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-              <Users className="h-5 w-5 text-slate-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Add Applicant</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Link a subcontractor to this opportunity{total > 0 && ` · ${total} total`}
-              </p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-shrink-0 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, org, email…"
-              className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-auto min-h-0">
-          {loading ? (
-            <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-300" /></div>
-          ) : rows.length === 0 ? (
-            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">No subcontractors found</p></div>
-          ) : (
-            <ul className="divide-y divide-slate-50">
-              {rows.map((sub) => {
-                const alreadyLinked = excludeIds.includes(sub.ID_Subcontractor)
-                const isLinking = linking === sub.ID_Subcontractor
-                const org = normalizeOrg(sub.Organization)
-                const display = org || sub.Email_Address || sub.ID_Subcontractor
-                return (
-                  <li key={sub.ID_Subcontractor} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 text-sm font-bold">
-                      {String(sub.Name ?? "?")[0]?.toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{sub.Name || "—"}</p>
-                      <p className="text-xs text-slate-400 truncate">{display}</p>
-                    </div>
-                    <span className="flex-shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500">
-                      {sub.ID_Subcontractor}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={alreadyLinked || linking !== null}
-                      onClick={async () => {
-                        setLinking(sub.ID_Subcontractor)
-                        await onLink(sub.ID_Subcontractor)
-                        setLinking(null)
-                      }}
-                      className={`flex-shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                        alreadyLinked
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          : isLinking
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          : "bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
-                      }`}
-                    >
-                      {isLinking
-                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Linking…</>
-                        : alreadyLinked
-                        ? "Linked"
-                        : <><Plus className="h-3.5 w-3.5" /> Add</>}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-          <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{total}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-xs font-semibold text-slate-600">{page} / {totalPages}</span>
-            <button type="button" onClick={() => setPage((p) => clamp(p + 1, 1, totalPages))} disabled={page >= totalPages || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    typeof document !== "undefined" ? document.body : (null as any),
-  )
-}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -652,41 +502,42 @@ export default function OpportunityDetailPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* Header */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.push("/opportunities")} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700 flex-shrink-0">
+            <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.push("/opportunities")} className="h-8 w-8 flex-shrink-0 rounded-xl text-slate-400 hover:text-slate-700">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm flex-shrink-0">
+                <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm sm:flex">
                   <Megaphone className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-xl font-black text-slate-900 truncate">{opp.Project_name || opp.ID_Opportunities}</h1>
-                  <p className="text-xs text-slate-500 font-mono">{opp.ID_Opportunities}</p>
+                  <h1 className="truncate text-base font-black text-slate-900 sm:text-xl">{opp.Project_name || opp.ID_Opportunities}</h1>
+                  <p className="hidden font-mono text-xs text-slate-500 sm:block">{opp.ID_Opportunities}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="ml-2 flex flex-shrink-0 items-center gap-2">
                 {editing ? (
                   <>
                     <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Saving…" : "Save Changes"}
+                      <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
+                      <span className="sm:hidden">Save</span>
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
-                      <Pencil className="h-3.5 w-3.5" /> Edit
+                      <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5 text-xs border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-600">
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
                     </Button>
                   </>
                 )}
@@ -694,7 +545,7 @@ export default function OpportunityDetailPage() {
             </div>
           </div>
 
-          <div className="max-w-3xl mx-auto p-6 space-y-5">
+          <div className="mx-auto max-w-3xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* Basic Info */}
             <SectionCard icon={Info} title="Basic Info">
@@ -716,7 +567,7 @@ export default function OpportunityDetailPage() {
 
             {/* Settings */}
             <SectionCard icon={Settings} title="Settings">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Priority</FieldLabel>
                   {editing ? (
@@ -754,7 +605,7 @@ export default function OpportunityDetailPage() {
               <div>
                 <FieldLabel>Start Date</FieldLabel>
                 {editing
-                  ? <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border-slate-200 max-w-[220px]" />
+                  ? <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border-slate-200 sm:max-w-[220px]" />
                   : <ReadonlyField value={formatDate(opp.Start_Date)} />
                 }
               </div>
@@ -880,31 +731,31 @@ export default function OpportunityDetailPage() {
                   <p className="text-sm text-slate-400">No applicants yet</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-50 -mx-5 -mb-5">
+                <div className="-mx-4 -mb-4 divide-y divide-slate-50 sm:-mx-5 sm:-mb-5">
                   {applicants.map((applicant) => (
-                    <div key={applicant.ID_Subcontractor} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 text-sm font-bold">
+                    <div key={applicant.ID_Subcontractor} className="flex items-center gap-2.5 px-4 py-3 transition-colors hover:bg-slate-50 sm:gap-3 sm:px-5 sm:py-3.5">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-500 sm:h-9 sm:w-9">
                         {String(applicant.Name ?? "?")[0]?.toUpperCase()}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-800 truncate">{applicant.Name || "—"}</p>
+                          <p className="truncate text-sm font-semibold text-slate-800">{applicant.Name || "—"}</p>
                           {applicant.Score !== null && applicant.Score !== undefined && (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0">
+                            <span className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
                               <Star className="h-2.5 w-2.5" />{applicant.Score}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5">
+                        <div className="mt-0.5 flex items-center gap-2">
                           {applicant.Email_Address && (
                             <a href={`mailto:${String(applicant.Email_Address).split(",")[0].trim()}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors">
                               <Mail className="h-2.5 w-2.5 flex-shrink-0" />
-                              <span className="truncate max-w-[160px]">{String(applicant.Email_Address).split(",")[0].trim()}</span>
+                              <span className="max-w-[80px] truncate sm:max-w-[160px]">{String(applicant.Email_Address).split(",")[0].trim()}</span>
                             </a>
                           )}
                           {applicant.Phone_Number && (
-                            <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                            <span className="hidden items-center gap-1 text-[11px] text-slate-400 sm:flex">
                               <Phone className="h-2.5 w-2.5 flex-shrink-0" />
                               {String(applicant.Phone_Number).split(",")[0].trim()}
                             </span>
@@ -939,15 +790,16 @@ export default function OpportunityDetailPage() {
         </main>
       </div>
 
+      {/* Modals */}
       <DeleteOpportunityDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        opportunityId={opp.ID_Opportunities}
+        opportunityId={id}
         projectName={opp.Project_name ?? ""}
         onConfirm={confirmDelete}
       />
 
-      <LinkApplicantModal
+      <LinkSubcontractorModal
         open={applicantModalOpen}
         onClose={() => setApplicantModalOpen(false)}
         onLink={handleLinkApplicant}
@@ -957,7 +809,7 @@ export default function OpportunityDetailPage() {
       <JobPickerModal
         open={jobPickerOpen}
         onClose={() => setJobPickerOpen(false)}
-        onSelect={(job) => setEditLinkedJob(job)}
+        onSelect={(j) => setEditLinkedJob(j)}
       />
     </div>
   )

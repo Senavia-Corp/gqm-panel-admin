@@ -91,13 +91,13 @@ function Section({ icon: Icon, title, iconBg, iconColor, children }: {
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
         <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -405,58 +405,62 @@ export default function CreateCommunityPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky page header ── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                 <button
                   onClick={() => router.back()}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
+                <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm sm:h-9 sm:w-9">
                     <Users className="h-4 w-4 text-white" />
                   </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">New Community</h1>
-                    <p className="mt-0.5 text-xs text-slate-500">Fill in the details to create a new community</p>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">New Community</h1>
+                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Fill in the details to create a new community</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 {/* Podio toggle */}
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-emerald-200 hover:text-emerald-700">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-emerald-200 hover:text-emerald-700 sm:gap-2.5 sm:px-3">
                   <div
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                    className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                     onClick={() => setSyncPodio((v) => !v)}
                   >
                     <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                   </div>
-                  Sync Podio
+                  <span className="hidden sm:inline">Sync Podio</span>
                 </label>
 
-                <Button
-                  variant="outline"
-                  onClick={() => router.back()}
-                  disabled={saving}
-                  className="h-9 gap-2 text-sm"
-                >
+                {/* Cancel — text on desktop, icon-only on mobile */}
+                <Button variant="outline" onClick={() => router.back()} disabled={saving}
+                  className="hidden h-9 gap-2 text-sm sm:flex">
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={saving}
-                  className="h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700"
-                >
+                <Button variant="outline" onClick={() => router.back()} disabled={saving}
+                  size="icon" className="h-8 w-8 border-slate-200 sm:hidden">
+                  <X className="h-4 w-4" />
+                </Button>
+
+                {/* Save — text on desktop, icon-only on mobile */}
+                <Button onClick={handleSubmit} disabled={saving}
+                  className="hidden h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex">
                   {saving
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
                     : <><Save className="h-3.5 w-3.5" /> Create Community</>
                   }
+                </Button>
+                <Button onClick={handleSubmit} disabled={saving} size="icon"
+                  className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 sm:hidden">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -464,16 +468,16 @@ export default function CreateCommunityPage() {
             {/* Podio indicator bar */}
             {syncPodio && (
               <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-xs font-medium text-emerald-700">
-                  Podio sync is enabled — this community will also be created in Podio
+                  Podio sync enabled — this community will also be created in Podio
                 </p>
               </div>
             )}
           </div>
 
           {/* ── Form body ── */}
-          <div className="mx-auto max-w-4xl space-y-5 p-6">
+          <div className="mx-auto max-w-4xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* ── 1. Community Information ── */}
             <Section icon={Users} title="Community Information" iconBg="bg-emerald-50" iconColor="text-emerald-600">
@@ -692,18 +696,18 @@ export default function CreateCommunityPage() {
             </Section>
 
             {/* ── Bottom action bar ── */}
-            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p className="text-sm text-slate-500">
                 Fields marked with <span className="text-red-500">*</span> are required
               </p>
               <div className="flex items-center gap-2.5">
-                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 text-sm">
+                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 flex-1 text-sm sm:flex-none">
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700"
+                  className="h-9 flex-1 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex-none"
                 >
                   {saving
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>

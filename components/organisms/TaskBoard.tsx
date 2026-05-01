@@ -61,17 +61,12 @@ function Column({
   return (
     <div
       ref={setNodeRef}
+      className="flex w-full flex-col overflow-hidden rounded-[14px] sm:w-80 sm:shrink-0"
       style={{
-        display:       "flex",
-        flexDirection: "column",
-        width:         "320px",
-        flexShrink:    0,
-        borderRadius:  "14px",
-        overflow:      "hidden",
-        border:        `1.5px solid ${isOver ? col.accent : "#E5E7EB"}`,
-        boxShadow:     isOver ? `0 0 0 3px ${col.accent}22` : "0 1px 6px rgba(0,0,0,0.05)",
-        background:    isOver ? `${col.accent}08` : col.bg,
-        transition:    "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
+        border:     `1.5px solid ${isOver ? col.accent : "#E5E7EB"}`,
+        boxShadow:  isOver ? `0 0 0 3px ${col.accent}22` : "0 1px 6px rgba(0,0,0,0.05)",
+        background: isOver ? `${col.accent}08` : col.bg,
+        transition: "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
       }}
     >
       {/* Column header */}
@@ -105,7 +100,7 @@ function Column({
       </div>
 
       {/* Cards */}
-      <ScrollArea style={{ height: "calc(100vh - 300px)", minHeight: "260px" }}>
+      <ScrollArea className="max-h-[40vh] sm:max-h-none sm:min-h-[260px] sm:h-[calc(100vh-300px)]">
         <div style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "8px", minHeight: "80px" }}>
           <SortableContext items={tasks.map(t => t.ID_Tasks)} strategy={verticalListSortingStrategy}>
             {tasks.map(task => (
@@ -208,7 +203,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "12px" }}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:overflow-x-auto sm:pb-3">
         {STATUS_COLUMNS.map(col => (
           <Column
             key={col.id}

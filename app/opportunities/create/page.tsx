@@ -39,13 +39,13 @@ function SectionCard({ icon: Icon, title, children }: {
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
           <Icon className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="space-y-4 p-4 sm:p-5">{children}</div>
     </div>
   )
 }
@@ -97,8 +97,8 @@ function JobPickerModal({ open, onClose, onSelect }: {
       style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="flex flex-col w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden" style={{ maxHeight: "calc(100vh - 48px)" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+      <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" style={{ maxHeight: "calc(100vh - 48px)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
               <Briefcase className="h-5 w-5 text-slate-500" />
@@ -113,7 +113,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           </button>
         </div>
 
-        <div className="flex-shrink-0 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex-shrink-0 border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -155,7 +155,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           )}
         </div>
 
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
           <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">{rows.length}</span> of <span className="font-semibold text-slate-600">{total}</span></p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">
@@ -283,35 +283,36 @@ function CreateOpportunityContent() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* Header */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.back()} className="h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700">
+            <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => returnTo ? router.push(returnTo) : router.back()} className="h-8 w-8 flex-shrink-0 rounded-xl text-slate-400 hover:text-slate-700">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
+                <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm sm:flex">
                   <Megaphone className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900">New Opportunity</h1>
-                  <p className="text-xs text-slate-500">Create a job posting for subcontractors</p>
+                <div className="min-w-0">
+                  <h1 className="truncate text-xl font-black text-slate-900 sm:text-2xl">New Opportunity</h1>
+                  <p className="hidden text-xs text-slate-500 sm:block">Create a job posting for subcontractors</p>
                 </div>
               </div>
               <Button
                 onClick={handleSubmit}
                 disabled={saving}
-                className="gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                className="ml-2 flex-shrink-0 gap-2 bg-violet-600 hover:bg-violet-700 text-white"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? "Creating…" : "Create Opportunity"}
+                <span className="hidden sm:inline">{saving ? "Creating…" : "Create Opportunity"}</span>
+                <span className="sm:hidden">Create</span>
               </Button>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="mx-auto max-w-3xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* Basic Info */}
             <SectionCard icon={Info} title="Basic Info">
@@ -338,7 +339,7 @@ function CreateOpportunityContent() {
 
             {/* Settings */}
             <SectionCard icon={Settings} title="Settings">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <FieldLabel>Priority</FieldLabel>
                   <div className="flex flex-wrap gap-2">
@@ -380,7 +381,7 @@ function CreateOpportunityContent() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="border-slate-200 max-w-[220px]"
+                  className="w-full border-slate-200 sm:max-w-[220px]"
                 />
               </div>
             </SectionCard>

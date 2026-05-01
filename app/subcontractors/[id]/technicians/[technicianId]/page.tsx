@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "@/components/ui/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { TimelineItem } from "@/components/molecules/TimelineItem"
 import { ArrowLeft, Save, Eye, EyeOff, ShieldCheck, Loader2, RefreshCw, AlertCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,6 +20,7 @@ import type { Technician } from "@/lib/types"
 import { TechnicianJobsSection } from "@/components/organisms/TechnicianJobsSection"
 
 export default function TechnicianDetailsPage({ params }: { params: { id: string; technicianId: string } }) {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
@@ -48,7 +50,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
       setTechnician(data)
       setFormData(data)
     } catch (e: any) {
-      setLoadError(e.message || "Failed to load technician")
+      setLoadError(e.message || t("failedToLoadTech"))
     } finally {
       setLoading(false)
     }
@@ -73,13 +75,13 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
   const validatePassword = (password: string): string[] => {
     const errors: string[] = []
     if (password.length < 8) {
-      errors.push("Password must be at least 8 characters long")
+      errors.push(t("pwdLength"))
     }
     if (!/\d/.test(password)) {
-      errors.push("Password must contain at least one number")
+      errors.push(t("pwdNumber"))
     }
     if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one capital letter")
+      errors.push(t("pwdCapital"))
     }
     return errors
   }
@@ -88,14 +90,14 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
     const errors: string[] = []
 
     if (passwordForm.oldPassword !== technician?.Password) {
-      errors.push("Current password is incorrect")
+      errors.push(t("currentPwdIncorrect"))
     }
 
     const validationErrors = validatePassword(passwordForm.newPassword)
     errors.push(...validationErrors)
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      errors.push("New passwords do not match")
+      errors.push(t("newPwdMatch"))
     }
 
     if (errors.length > 0) {
@@ -122,7 +124,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
       setTechnician(updated)
       setIsEditing(false)
       setEditedFields(new Set())
-      toast({ title: "Saved", description: "Technician updated successfully." })
+      toast({ title: t("saved"), description: t("techUpdated") })
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
     } finally {
@@ -142,13 +144,13 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 transition-transform hover:scale-110">
               <ShieldCheck className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("accessDenied")}</h1>
             <p className="text-slate-500 max-w-md mb-8">
-              You do not have permission (`subcontractor:read`) to view this technician.
+              {t("accessDeniedTechViewDesc")}
             </p>
             <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
-              Return to Technicians
+              {t("returnTechs")}
             </Button>
           </main>
         </div>
@@ -164,7 +166,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
           <TopBar />
           <main className="flex-1 flex flex-col items-center justify-center">
             <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
-            <p className="mt-4 text-sm font-medium text-slate-500 font-mono italic">Loading technician details...</p>
+            <p className="mt-4 text-sm font-medium text-slate-500 font-mono italic">{t("loadingTechDetails")}</p>
           </main>
         </div>
       </div>
@@ -179,16 +181,16 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
           <TopBar />
           <main className="flex-1 overflow-y-auto p-6">
             <Button variant="ghost" onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)} className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Technicians
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t("backTechs")}
             </Button>
             <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
               <div className="flex items-center gap-3 font-mono">
                 <AlertCircle className="h-5 w-5 text-red-500" />
-                <h2 className="font-semibold text-red-800">Technician not found</h2>
+                <h2 className="font-semibold text-red-800">{t("techNotFound")}</h2>
               </div>
-              <p className="mt-2 text-sm text-red-600 italic font-mono">{loadError || "The technician might have been deleted or moved."}</p>
+              <p className="mt-2 text-sm text-red-600 italic font-mono">{loadError || t("techMightHaveBeenDeleted")}</p>
               <Button onClick={fetchTechnician} className="mt-4 gap-2" variant="outline">
-                <RefreshCw className="h-4 w-4" /> Retry
+                <RefreshCw className="h-4 w-4" /> {t("retry")}
               </Button>
             </div>
           </main>
@@ -209,7 +211,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Technicians
+            {t("backTechs")}
           </Button>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -219,30 +221,30 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                   <Avatar className="h-20 w-20">
                     <AvatarImage src={technician.Avatar || "/placeholder.svg"} alt={technician.Name} />
                     <AvatarFallback className="bg-gqm-yellow text-gqm-green-dark text-2xl font-semibold">
-                      {(technician.Name || "??").split(" ")
+                      {(technician.Name || t("unnamed")).split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h1 className="text-3xl font-bold">{technician.Name || "Unnamed"}</h1>
+                    <h1 className="text-3xl font-bold">{technician.Name || t("unnamed")}</h1>
                     <p className="text-muted-foreground font-mono">{technician.ID_Technician}</p>
                   </div>
                 </div>
                 {isEditing && hasPermission("subcontractor:update") && (
                   <Button onClick={handleSaveChanges} disabled={saving} className="gap-2">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {saving ? "Saving..." : "Save Changes"}
+                    {saving ? t("saving") : t("saveChanges")}
                   </Button>
                 )}
               </div>
 
               <div className="space-y-6">
                 <Card className="p-6">
-                  <h2 className="mb-6 text-xl font-semibold">Personal Information</h2>
+                  <h2 className="mb-6 text-xl font-semibold">{t("personalInfo")}</h2>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                      <Label className="mb-2 block font-semibold">Name</Label>
+                      <Label className="mb-2 block font-semibold">{t("name")}</Label>
                       <Input
                         value={formData.Name || ""}
                         onChange={(e) => handleFieldChange("Name", e.target.value)}
@@ -250,7 +252,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                       />
                     </div>
                     <div>
-                      <Label className="mb-2 block font-semibold">Technician Type</Label>
+                      <Label className="mb-2 block font-semibold">{t("techType")}</Label>
                       <Select value={formData.Type_of_technician || ""} onValueChange={(value) => handleFieldChange("Type_of_technician", value)}>
                         <SelectTrigger
                           className={editedFields.has("Type_of_technician") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
@@ -258,13 +260,13 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Leader">Leader</SelectItem>
-                          <SelectItem value="Worker">Worker</SelectItem>
+                          <SelectItem value="Leader">{t("leader")}</SelectItem>
+                          <SelectItem value="Worker">{t("worker")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="md:col-span-2">
-                      <Label className="mb-2 block font-semibold">Location</Label>
+                      <Label className="mb-2 block font-semibold">{t("location")}</Label>
                       <Input
                         value={formData.Location || ""}
                         onChange={(e) => handleFieldChange("Location", e.target.value)}
@@ -275,10 +277,10 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                 </Card>
 
                 <Card className="p-6">
-                  <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
+                  <h2 className="mb-6 text-xl font-semibold">{t("contactInfo")}</h2>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                      <Label className="mb-2 block font-semibold">Email (Username)</Label>
+                      <Label className="mb-2 block font-semibold">{t("emailUsername")}</Label>
                       <Input
                         type="email"
                         value={formData.Email_Address || ""}
@@ -287,7 +289,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                       />
                     </div>
                     <div>
-                      <Label className="mb-2 block font-semibold">Phone Number</Label>
+                      <Label className="mb-2 block font-semibold">{t("phoneNumber")}</Label>
                       <Input
                         value={formData.Phone_Number || ""}
                         onChange={(e) => handleFieldChange("Phone_Number", e.target.value)}
@@ -298,11 +300,11 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                 </Card>
 
                 <Card className="p-6">
-                  <h2 className="mb-6 text-xl font-semibold">Authentication</h2>
+                  <h2 className="mb-6 text-xl font-semibold">{t("authentication")}</h2>
                   {!isChangingPassword ? (
                     <div className="space-y-4">
                       <div>
-                        <Label className="mb-2 block font-semibold">Password</Label>
+                        <Label className="mb-2 block font-semibold">{t("password")}</Label>
                         <div className="flex gap-2">
                           <Input
                             type={showPassword ? "text" : "password"}
@@ -321,13 +323,13 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                         </div>
                       </div>
                       <Button onClick={() => setIsChangingPassword(true)} variant="outline">
-                        Change Password
+                        {t("changePassword")}
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <div>
-                        <Label className="mb-2 block font-semibold">Current Password</Label>
+                        <Label className="mb-2 block font-semibold">{t("currentPassword")}</Label>
                         <Input
                           type="password"
                           value={passwordForm.oldPassword}
@@ -335,18 +337,18 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                         />
                       </div>
                       <div>
-                        <Label className="mb-2 block font-semibold">New Password</Label>
+                        <Label className="mb-2 block font-semibold">{t("newPassword")}</Label>
                         <Input
                           type="password"
                           value={passwordForm.newPassword}
                           onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Must be at least 8 characters with 1 number and 1 capital letter
+                          {t("passwordHelp")}
                         </p>
                       </div>
                       <div>
-                        <Label className="mb-2 block font-semibold">Confirm New Password</Label>
+                        <Label className="mb-2 block font-semibold">{t("confirmNewPassword")}</Label>
                         <Input
                           type="password"
                           value={passwordForm.confirmPassword}
@@ -363,7 +365,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <Button onClick={handlePasswordChange}>Save Password</Button>
+                        <Button onClick={handlePasswordChange}>{t("savePassword")}</Button>
                         <Button
                           variant="outline"
                           onClick={() => {
@@ -372,7 +374,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                             setPasswordErrors([])
                           }}
                         >
-                          Cancel
+                          {t("cancel")}
                         </Button>
                       </div>
                     </div>
@@ -386,38 +388,38 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
             <div className="space-y-6">
               {/* Technician Info Sidebar */}
               <Card className="p-6">
-                <h2 className="mb-4 text-xl font-semibold">Information</h2>
+                <h2 className="mb-4 text-xl font-semibold">{t("orgInfo")}</h2>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-16 w-16">
                       <AvatarFallback className="bg-emerald-600 text-white text-lg font-bold">
-                        {(technician.Name || "??").split(" ").map((n: any) => n[0]).join("")}
+                        {(technician.Name || t("unnamed")).split(" ").map((n: any) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-slate-900">{technician.Name || "Unnamed"}</h3>
+                      <h3 className="truncate font-semibold text-slate-900">{technician.Name || t("unnamed")}</h3>
                       <p className="text-xs text-slate-400 font-mono">{technician.ID_Technician}</p>
                     </div>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Phone:</span>
+                      <span className="text-slate-500">{t("phoneNumber")}:</span>
                       <span className="font-medium text-slate-900">{technician.Phone_Number || "—"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Location:</span>
+                      <span className="text-slate-500">{t("location")}:</span>
                       <span className="font-medium text-slate-900">{technician.Location || "—"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Email:</span>
+                      <span className="text-slate-500">{t("email")}:</span>
                       <span className="font-medium text-slate-900 truncate max-w-[150px]" title={technician.Email_Address || ""}>
                         {technician.Email_Address || "—"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Type:</span>
+                      <span className="text-slate-500">{t("type")}:</span>
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 border border-blue-100">
-                        {technician.Type_of_technician || "Worker"}
+                        {t(technician.Type_of_technician?.toLowerCase() || "worker")}
                       </span>
                     </div>
                   </div>
@@ -426,14 +428,14 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
 
               {technician.tasks && technician.tasks.length > 0 && (
                 <Card className="p-6">
-                  <h2 className="mb-4 text-xl font-semibold">Recent Tasks</h2>
+                  <h2 className="mb-4 text-xl font-semibold">{t("recentTasks")}</h2>
                   <div className="space-y-3">
                     {technician.tasks.slice(0, 5).map((t: any) => (
                       <TimelineItem 
                         key={t.ID_Tasks || t.ID_Task} 
                         entry={{
                           ID_TLActivity: t.ID_Tasks || t.ID_Task,
-                          Action: "Task Assigned",
+                          Action: t("taskAssigned"),
                           Action_datetime: t.Designation_date || null,
                           Description: t.Name || "",
                           ID_Jobs: null,

@@ -61,11 +61,11 @@ function Section({ icon: Icon, title, accent, children }: {
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className={`flex items-center gap-3 border-b border-slate-100 px-6 py-4 ${accent}`}>
+      <div className={`flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 ${accent}`}>
         <Icon className="h-4 w-4" />
         <h2 className="text-sm font-semibold">{title}</h2>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -259,49 +259,60 @@ export default function CreateParentCoPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                 <button onClick={() => router.back()}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700">
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 shadow-sm shadow-emerald-200">
-                    <Building2 className="h-4.5 w-4.5 text-white" />
+                <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm shadow-emerald-200 sm:h-9 sm:w-9">
+                    <Building2 className="h-4 w-4 text-white" />
                   </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">Nueva Compañía Padre</h1>
-                    <p className="mt-0.5 text-xs text-slate-500">Completa los datos para registrar la compañía</p>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">Nueva Compañía Padre</h1>
+                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Completa los datos para registrar la compañía</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 {syncPodio && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                  <span className="hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 sm:flex">
                     <Zap className="h-3 w-3" /> Podio activo
                   </span>
                 )}
-                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 text-sm rounded-xl">
+                {/* Cancel — text on desktop, icon-only on mobile */}
+                <Button variant="outline" onClick={() => router.back()} disabled={saving}
+                  className="hidden h-9 gap-1.5 rounded-xl text-sm sm:flex">
                   Cancelar
                 </Button>
+                <Button variant="outline" onClick={() => router.back()} disabled={saving}
+                  size="icon" className="h-8 w-8 rounded-xl border-slate-200 sm:hidden">
+                  <X className="h-4 w-4" />
+                </Button>
+                {/* Save — full text on desktop, icon-only on mobile */}
                 <Button onClick={handleSubmit} disabled={saving}
-                  className="h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 shadow-sm shadow-emerald-200">
+                  className="hidden h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 shadow-sm shadow-emerald-200 sm:flex">
                   {saving
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…</>
                     : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>
                   }
+                </Button>
+                <Button onClick={handleSubmit} disabled={saving} size="icon"
+                  className="h-8 w-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-200 sm:hidden">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
           </div>
 
           {/* ── Form body ── */}
-          <div className="mx-auto max-w-4xl space-y-5 p-6">
+          <div className="mx-auto max-w-4xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* ── Podio Sync ── */}
             <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} />
@@ -383,16 +394,17 @@ export default function CreateParentCoPage() {
             </Section>
 
             {/* ── Bottom bar ── */}
-            <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p className="text-sm text-slate-400">
                 Los campos con <span className="text-red-400">*</span> son obligatorios
               </p>
               <div className="flex items-center gap-2.5">
-                <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 rounded-xl text-sm">
+                <Button variant="outline" onClick={() => router.back()} disabled={saving}
+                  className="flex-1 h-9 rounded-xl text-sm sm:flex-none">
                   Cancelar
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving}
-                  className="h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700">
+                  className="flex-1 h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex-none">
                   {saving
                     ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creando…</>
                     : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>

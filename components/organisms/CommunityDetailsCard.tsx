@@ -81,17 +81,17 @@ function ContactChips({
   }
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex min-w-0 flex-wrap gap-1">
       {values.map((v, i) => (
         <a
           key={i}
           href={`${linkPrefix}${v}`}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 hover:border-slate-300 hover:bg-white transition-colors"
+          className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 hover:border-slate-300 hover:bg-white transition-colors"
           title={v}
           onClick={(e) => e.stopPropagation()}
         >
           <Icon className="h-2.5 w-2.5 flex-shrink-0 text-slate-400" />
-          <span className="truncate max-w-[180px]">{v}</span>
+          <span className="truncate max-w-[120px] sm:max-w-[160px]">{v}</span>
         </a>
       ))}
     </div>
@@ -106,9 +106,9 @@ export function CommunityDetailsCard({ client, onViewDetails }: Props) {
   const phones  = parseArrayField(client.Phone_Number)
 
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       {/* ── Top row: name + badges + actions ── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-sm font-bold text-slate-800">
@@ -124,12 +124,12 @@ export function CommunityDetailsCard({ client, onViewDetails }: Props) {
           </div>
 
           {/* ID row */}
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-slate-400">
             <span className="font-mono font-semibold text-slate-500 bg-slate-100 rounded px-1 py-0.5">
               {client.ID_Client}
             </span>
             {client.ID_Community_Tracking && (
-              <span className="ml-2 text-slate-400">
+              <span className="text-slate-400">
                 · Parent:{" "}
                 <span className="font-mono text-slate-500">{client.ID_Community_Tracking}</span>
               </span>
@@ -144,28 +144,28 @@ export function CommunityDetailsCard({ client, onViewDetails }: Props) {
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        {/* Action buttons — icon-only on mobile, with text on sm+ */}
+        <div className="flex flex-shrink-0 items-center gap-1.5">
           {website ? (
             <a href={website} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
                 <ExternalLink className="h-3.5 w-3.5" />
-                Website
+                <span className="hidden sm:inline">Website</span>
               </Button>
             </a>
           ) : (
-            <Button variant="outline" size="sm" disabled className="gap-1.5 text-xs h-8 opacity-40">
+            <Button variant="outline" size="sm" disabled className="h-8 gap-1.5 text-xs opacity-40">
               <ExternalLink className="h-3.5 w-3.5" />
-              Website
+              <span className="hidden sm:inline">Website</span>
             </Button>
           )}
           <Button
             size="sm"
-            className="gap-1.5 bg-gqm-green hover:bg-gqm-green/90 text-xs h-8"
+            className="h-8 gap-1.5 bg-gqm-green hover:bg-gqm-green/90 text-xs"
             onClick={() => onViewDetails?.(client.ID_Client)}
           >
             <Eye className="h-3.5 w-3.5" />
-            View
+            <span className="hidden sm:inline">View</span>
           </Button>
         </div>
       </div>

@@ -31,35 +31,35 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
         ].join(" ")}
       >
         {/* Header fijo */}
-        <div className="border-b bg-white px-8 py-6">
+        <div className="border-b bg-white px-4 py-4 sm:px-8 sm:py-6">
           <DialogHeader className="space-y-1">
             <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Order Details</DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4">
-            <h3 className="text-3xl font-black text-slate-800 tracking-tight">{order.Title || "Standard Order"}</h3>
+          <div className="mt-3 sm:mt-4">
+            <h3 className="text-xl font-black text-slate-800 tracking-tight sm:text-3xl">{order.Title || "Standard Order"}</h3>
           </div>
         </div>
 
         {/* Body scrolleable (importante: min-h-0 en flex layouts) */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
           <div className="space-y-6">
             {/* Order Summary */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="p-6 rounded-2xl bg-violet-50/50 border border-violet-100 relative overflow-hidden group">
+            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+              <div className="p-4 sm:p-6 rounded-2xl bg-violet-50/50 border border-violet-100 relative overflow-hidden group">
                 <div className="relative z-10">
                   <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-violet-400">Formula</Label>
-                  <div className="text-3xl font-black text-violet-700 tabular-nums">
+                  <div className="text-2xl font-black text-violet-700 tabular-nums sm:text-3xl">
                     ${Number(order.Formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-violet-400 font-medium mt-1">Sum of builder costs</p>
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden group">
+              <div className="p-4 sm:p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden group">
                 <div className="relative z-10">
                   <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-emerald-400">Adj. Formula</Label>
-                  <div className="text-3xl font-black text-emerald-700 tabular-nums">
+                  <div className="text-2xl font-black text-emerald-700 tabular-nums sm:text-3xl">
                     ${Number(order.Adj_formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-emerald-400 font-medium mt-1">Adjusted formula (COs included)</p>

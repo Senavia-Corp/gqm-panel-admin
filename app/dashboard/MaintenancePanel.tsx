@@ -2,8 +2,10 @@
 
 import React from "react"
 import { Construction, Clock, Rocket } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export default function MaintenancePanel() {
+  const t = useTranslations("dashboard")
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] w-full rounded-2xl bg-white dark:bg-slate-900 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-12 text-center transition-all">
       <div className="relative mb-8">
@@ -17,18 +19,18 @@ export default function MaintenancePanel() {
       </div>
       
       <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">
-        UNDER MAINTENANCE
+        {t("maintenanceTitle")}
       </h2>
       
       <div className="max-w-md space-y-4">
         <p className="text-lg text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-          Dashboard is under maintenance and will be available with a new version soon.
+          {t("maintenanceSubtitle")}
         </p>
         
         <div className="pt-6 flex items-center justify-center gap-4">
           <div className="h-2 w-2 rounded-full bg-gqm-green animate-ping" />
           <span className="text-sm font-bold uppercase tracking-widest text-gqm-green-dark flex items-center gap-2">
-            <Rocket className="h-4 w-4" /> Improving Metrics
+            <Rocket className="h-4 w-4" /> {t("maintenanceImproving")}
           </span>
           <div className="h-2 w-2 rounded-full bg-gqm-green animate-ping" />
         </div>

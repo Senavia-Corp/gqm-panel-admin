@@ -310,7 +310,7 @@ export function AttachmentCard({
       >
         <DialogContent className="!max-w-[420px] gap-0 overflow-hidden p-0">
           {/* Red header */}
-          <div className="border-b border-red-100 bg-red-50 px-6 py-5">
+          <div className="border-b border-red-100 bg-red-50 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
                 <Trash2 className="h-5 w-5 text-red-500" />
@@ -324,7 +324,7 @@ export function AttachmentCard({
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
             {/* File preview chip */}
             <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${meta.accent}`}>
@@ -391,14 +391,14 @@ export function AttachmentCard({
       {/* ── Edit description dialog ──────────────────────────────────────── */}
       <Dialog open={showEditDialog} onOpenChange={(v) => !isUpdating && setShowEditDialog(v)}>
         <DialogContent className="!max-w-[460px] gap-0 overflow-hidden p-0">
-          <div className="border-b border-slate-100 px-6 py-5">
+          <div className="border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5">
             <DialogTitle className="text-base font-semibold">Edit Description</DialogTitle>
             <DialogDescription className="mt-0.5 text-xs text-slate-500">
               {attachment.Document_name}
             </DialogDescription>
           </div>
 
-          <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
             {/* Description input */}
             <div className="space-y-1.5">
               <Label htmlFor="edit-desc" className="text-sm font-medium text-slate-700">

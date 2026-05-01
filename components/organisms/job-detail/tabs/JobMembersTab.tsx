@@ -122,7 +122,7 @@ function MemberCard({
           {role === "GQM_MEMBER" && (
             <button
               onClick={onUnlink}
-              className="shrink-0 rounded-lg p-1.5 text-slate-300 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
+              className="shrink-0 rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-400 transition-all hover:bg-red-100 hover:text-red-600"
               title={`Remove ${name}`}
             >
               <Trash2 className="h-4 w-4" />

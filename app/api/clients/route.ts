@@ -69,11 +69,13 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Proxy: Creating client — sync_podio:", syncPodio)
 
     const authHeader = request.headers.get("Authorization") ?? ""
+    const userId     = request.headers.get("X-User-Id")
     const response = await fetch(upstream.toString(), {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(userId     ? { "X-User-Id": userId }       : {}),
       },
       body: JSON.stringify(body),
     })

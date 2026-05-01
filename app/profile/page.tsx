@@ -136,10 +136,10 @@ function AvatarInitials({ name }: { name: string | null }) {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("")
   return (
-    <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-xl shadow-emerald-200 text-3xl font-black text-white select-none">
-      {initials || <User className="h-10 w-10" />}
-      <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-emerald-500 shadow">
-        <span className="h-2 w-2 rounded-full bg-white" />
+    <div className="relative flex h-16 w-16 sm:h-24 sm:w-24 items-center justify-center rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-xl shadow-emerald-200 text-xl sm:text-3xl font-black text-white select-none">
+      {initials || <User className="h-7 w-7 sm:h-10 sm:w-10" />}
+      <span className="absolute -bottom-1 -right-1 flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full border-2 border-white bg-emerald-500 shadow">
+        <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white" />
       </span>
     </div>
   )
@@ -299,31 +299,31 @@ export default function ProfilePage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Hero banner ─────────────────────────────────────────────── */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 px-8 pb-10 pt-10">
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 px-4 pb-8 pt-8 sm:px-8 sm:pb-10 sm:pt-10">
             {/* Decorative circles */}
             <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-emerald-500/10" />
             <div className="pointer-events-none absolute -bottom-8 left-1/3 h-40 w-40 rounded-full bg-teal-400/10" />
 
             {isLoading ? (
-              <div className="flex items-center gap-5">
-                <div className="h-24 w-24 animate-pulse rounded-3xl bg-slate-700" />
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 sm:h-24 sm:w-24 animate-pulse rounded-2xl sm:rounded-3xl bg-slate-700" />
                 <div className="space-y-3">
-                  <div className="h-7 w-48 animate-pulse rounded-lg bg-slate-700" />
-                  <div className="h-4 w-32 animate-pulse rounded-lg bg-slate-700" />
+                  <div className="h-6 w-36 sm:h-7 sm:w-48 animate-pulse rounded-lg bg-slate-700" />
+                  <div className="h-4 w-28 sm:w-32 animate-pulse rounded-lg bg-slate-700" />
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex items-center gap-5">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex items-center gap-4 sm:gap-5">
                   <AvatarInitials name={profile?.Member_Name ?? null} />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
                       Member Profile
                     </p>
-                    <h1 className="text-2xl font-black text-white leading-tight">
+                    <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
                       {profile?.Member_Name ?? "—"}
                     </h1>
                     <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1.5">
@@ -351,7 +351,7 @@ export default function ProfilePage() {
           </div>
 
           {/* ── Content ─────────────────────────────────────────────────── */}
-          <div className="mx-auto max-w-4xl space-y-6 p-8">
+          <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
 
             {isLoading ? (
               <div className="space-y-4">
@@ -361,19 +361,28 @@ export default function ProfilePage() {
               </div>
             ) : profile && (
               <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-6 grid w-full grid-cols-2 lg:grid-cols-5 h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm">
-                  <TabsTrigger value="personal" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Personal Info</TabsTrigger>
-                  <TabsTrigger value="jobs" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Pipeline Jobs</TabsTrigger>
-                  <TabsTrigger value="tasks" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Weekly Tasks</TabsTrigger>
-                  <TabsTrigger value="communities" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
-                  <TabsTrigger value="commissions" className="py-2.5 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
+                <TabsList className="mb-6 grid w-full grid-cols-3 sm:grid-cols-5 h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm">
+                  <TabsTrigger value="personal" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                    <span className="sm:hidden">Personal</span>
+                    <span className="hidden sm:inline">Personal Info</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="jobs" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                    <span className="sm:hidden">Jobs</span>
+                    <span className="hidden sm:inline">Pipeline Jobs</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="tasks" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                    <span className="sm:hidden">Tasks</span>
+                    <span className="hidden sm:inline">Weekly Tasks</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
+                  <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-6 mt-0">
                   {/* ── Personal Information Card ─────────────────────────── */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                   {/* Header */}
-                  <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
                         <User className="h-4 w-4 text-emerald-600" />
@@ -417,7 +426,7 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Fields */}
-                  <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 sm:grid-cols-2">
                     <EditableField label="Full Name" value={profile?.Member_Name} fieldKey="Member_Name" icon={User} editing={editingInfo} editValues={editValues} onChange={handleChange} />
                     <EditableField label="Company Role" value={profile?.Company_Role} fieldKey="Company_Role" icon={Briefcase} editing={editingInfo} editValues={editValues} onChange={handleChange} />
                     <EditableField label="Email Address" value={profile?.Email_Address} fieldKey="Email_Address" icon={Mail} type="email" editing={editingInfo} editValues={editValues} onChange={handleChange} />
@@ -430,7 +439,7 @@ export default function ProfilePage() {
 
                 {/* ── Password Card ─────────────────────────────────────── */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
                         <KeyRound className="h-4 w-4 text-amber-600" />
@@ -474,7 +483,7 @@ export default function ProfilePage() {
                   </div>
 
                   {!editingPassword ? (
-                    <div className="flex items-center gap-4 px-6 py-5">
+                    <div className="flex items-center gap-4 px-4 py-4 sm:px-6 sm:py-5">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
                         <Lock className="h-5 w-5 text-slate-400" />
                       </div>
@@ -487,7 +496,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3">
                       <PasswordField label="New Password" fieldKey="newPassword" icon={Lock} editValues={editValues} onChange={handleChange} />
                       <PasswordField label="Confirm Password" fieldKey="confirmPassword" icon={Shield} editValues={editValues} onChange={handleChange} />
                       {/* Strength hint */}
@@ -517,7 +526,7 @@ export default function ProfilePage() {
 
                 {/* ── System Info Card ──────────────────────────────────── */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 px-6 py-4">
+                  <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
                       <IdCard className="h-4 w-4 text-slate-500" />
                     </div>
@@ -531,7 +540,7 @@ export default function ProfilePage() {
                       { label: "Member ID", value: profile?.ID_Member, icon: IdCard },
                       { label: "Podio Profile ID", value: profile?.podio_profile_id, icon: Building2 },
                     ].map(({ label, value, icon: Icon }) => (
-                      <div key={label} className="flex items-center gap-3 px-6 py-4">
+                      <div key={label} className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
                         <Icon className="h-4 w-4 flex-shrink-0 text-slate-400" />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</p>
