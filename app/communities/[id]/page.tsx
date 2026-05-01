@@ -18,11 +18,12 @@ import {
 import {
   ArrowLeft, Save, X, Mail, Phone, Plus, Briefcase, Users, UserCheck,
   Search, Trash2, ExternalLink, MapPin, Globe, AlertCircle, ChevronRight,
-  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag, Shield
+  Loader2, RefreshCw, Building2, Wrench, Calendar, DollarSign, Tag, Shield, Activity
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { CommunityTimelineTab } from "@/components/organisms/community-detail/tabs/CommunityTimelineTab"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ type Client = {
 
 // ✅ parent_mgmt_co en SKIP para que no se envíe en el PATCH
 const SKIP_ON_PATCH: Array<keyof Client> = ["jobs", "manager", "members", "ID_Client", "parent_mgmt_co"]
-type TabId = "details" | "jobs" | "managers" | "members"
+type TabId = "details" | "jobs" | "managers" | "members" | "timeline"
 type Props = { params: Promise<{ id: string }> }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -247,37 +248,62 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
   const typeCls = job.Job_type ? (typeColors[job.Job_type.toLowerCase()] ?? "bg-slate-100 text-slate-600") : null
   return (
     <button onClick={onClick} className="group w-full rounded-xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all hover:border-violet-200 hover:shadow-md">
-      <div className="mb-2.5 flex items-start justify-between gap-2">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-violet-700">{name}</p>
-          <p className="font-mono text-[11px] text-slate-400">{job.ID_Jobs}</p>
+          <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-violet-700 sm:text-base">{name}</p>
+          <p className="font-mono text-[10px] text-slate-400 sm:text-[11px]">{job.ID_Jobs}</p>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-1.5">
-          {typeCls && <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${typeCls}`}>{job.Job_type}</span>}
-          {statusCls && <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusCls}`}>{status}</span>}
+        <div className="flex flex-wrap items-center gap-1.5 sm:flex-shrink-0">
+          {typeCls && <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold sm:text-[11px] ${typeCls}`}>{job.Job_type}</span>}
+          {statusCls && <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium sm:text-[11px] ${statusCls}`}>{status}</span>}
         </div>
       </div>
+
       {job.Project_location && (
-        <div className="mb-2 flex items-start gap-1.5">
+        <div className="mb-3 flex items-start gap-1.5">
           <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
-          <p className="line-clamp-1 text-xs text-slate-500">{job.Project_location}</p>
+          <p className="line-clamp-2 text-xs text-slate-500 sm:line-clamp-1">{job.Project_location}</p>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-        {job.Service_type && <span className="flex items-center gap-1"><Wrench className="h-3 w-3 text-slate-400" />{job.Service_type}</span>}
-        {assignedDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-slate-400" />{assignedDate}</span>}
-        {price && <span className="flex items-center gap-1 font-semibold text-emerald-700"><DollarSign className="h-3 w-3" />{price}</span>}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-500 sm:text-xs">
+        {job.Service_type && (
+          <span className="flex items-center gap-1">
+            <Wrench className="h-3 w-3 text-slate-400" />
+            <span className="truncate max-w-[120px]">{job.Service_type}</span>
+          </span>
+        )}
+        {assignedDate && (
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-slate-400" />
+            {assignedDate}
+          </span>
+        )}
+        {price && (
+          <span className="flex items-center gap-1 font-semibold text-emerald-700">
+            <DollarSign className="h-3 w-3" />
+            {price}
+          </span>
+        )}
         {(job.Gqm_total_change_orders ?? 0) > 0 && (
-          <span className="flex items-center gap-1 text-orange-600"><Tag className="h-3 w-3" />{job.Gqm_total_change_orders} CO{job.Gqm_total_change_orders !== 1 ? "s" : ""}</span>
+          <span className="flex items-center gap-1 text-orange-600">
+            <Tag className="h-3 w-3" />
+            {job.Gqm_total_change_orders} CO{job.Gqm_total_change_orders !== 1 ? "s" : ""}
+          </span>
         )}
         {job.Permit && job.Permit !== "No" && (
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Permit: {job.Permit}</span>
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+            Permit: {job.Permit}
+          </span>
         )}
-        <ExternalLink className="ml-auto h-3.5 w-3.5 text-slate-300 group-hover:text-violet-400" />
+        <div className="ml-auto flex items-center">
+          <ExternalLink className="h-3.5 w-3.5 text-slate-300 group-hover:text-violet-400" />
+        </div>
       </div>
     </button>
   )
 }
+
 
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
 
@@ -286,6 +312,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "jobs",     label: "Jobs",     icon: Briefcase },
   { id: "managers", label: "Managers", icon: UserCheck  },
   { id: "members",  label: "Members",  icon: Users      },
+  { id: "timeline", label: "Timeline", icon: Activity   },
 ]
 
 function TabBar({ active, onChange, counts }: {
@@ -298,10 +325,10 @@ function TabBar({ active, onChange, counts }: {
         const count = counts[id]
         return (
           <button key={id} onClick={() => onChange(id)}
-            className={`relative flex items-center gap-2 whitespace-nowrap px-5 py-3 text-sm font-medium transition-colors
+            className={`relative flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition-colors sm:gap-2 sm:px-5 sm:py-3 sm:text-sm
               ${on ? "text-emerald-700 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-emerald-600" : "text-slate-500 hover:text-slate-700"}`}>
             <Icon className="h-4 w-4" />
-            {label}
+            <span className="hidden sm:inline">{label}</span>
             {count !== undefined && (
               <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${on ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                 {count}
@@ -631,6 +658,7 @@ export default function ClientDetailPage({ params }: Props) {
       const payload: Record<string, any> = {}
       for (const [k, v] of Object.entries(formData)) {
         if (SKIP_ON_PATCH.includes(k as keyof Client)) continue
+        if (!editedFields.has(k)) continue
         payload[k] = (k === "Email_Address" || k === "Phone_Number") ? serializeArrayField(parseArrayField(v as any)) : v
       }
       const res = await apiFetch(`/api/clients/${clientId}?sync_podio=${syncPodio}`,
@@ -685,10 +713,11 @@ export default function ClientDetailPage({ params }: Props) {
   const ch = (f: keyof Client) => editedFields.has(f as string) ? "border-yellow-500 ring-2 ring-yellow-200" : ""
 
   const tabCounts: Record<TabId, number | undefined> = {
-    details: undefined,
-    jobs: client?.jobs?.length ?? 0,
+    details:  undefined,
+    jobs:     client?.jobs?.length ?? 0,
     managers: client?.manager?.length ?? 0,
-    members: client?.members?.length ?? 0,
+    members:  client?.members?.length ?? 0,
+    timeline: undefined,
   }
 
   const website = client?.Website?.trim()
@@ -698,7 +727,7 @@ export default function ClientDetailPage({ params }: Props) {
   if (loading) return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar />
-        <main className="flex-1 overflow-y-auto"><div className="flex h-full items-center justify-center p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto"><div className="flex h-full items-center justify-center p-6">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
             <p className="mt-4 text-sm text-muted-foreground">Loading community…</p>
@@ -712,7 +741,7 @@ export default function ClientDetailPage({ params }: Props) {
   if (!client) return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar /><div className="flex flex-1 flex-col overflow-hidden"><TopBar />
-        <main className="flex-1 overflow-y-auto"><div className="mx-auto max-w-xl p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto"><div className="mx-auto max-w-xl p-6">
           <Card className="p-6">
             <div className="mb-3 flex items-center gap-2 text-red-500"><AlertCircle className="h-5 w-5" /><h1 className="text-lg font-semibold">Community could not be loaded</h1></div>
             <p className="text-sm text-muted-foreground">{loadError ?? "Unknown error"}</p>
@@ -758,21 +787,21 @@ export default function ClientDetailPage({ params }: Props) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="px-6 pt-4 pb-0">
-              <div className="mb-2 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="px-4 pt-3 pb-0 sm:px-6 sm:pt-4">
+              <div className="mb-2 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex">
                 <button onClick={() => router.back()} className="flex items-center gap-1 hover:text-slate-700">
                   <ArrowLeft className="h-3.5 w-3.5" />Back
                 </button>
                 <ChevronRight className="h-3.5 w-3.5" /><span>Community Detail</span>
               </div>
 
-              <div className="flex flex-wrap items-start justify-between gap-3 pb-3">
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900">{client.Client_Community ?? "Unnamed Community"}</h1>
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 pb-3">
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-lg font-bold text-slate-900 sm:text-xl">{client.Client_Community ?? "Unnamed Community"}</h1>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs text-slate-400">{client.ID_Client}</span>
                     <StatusBadge status={client.Client_Status} />
@@ -783,32 +812,37 @@ export default function ClientDetailPage({ params }: Props) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:border-slate-300">
-                    <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:border-slate-300 sm:px-3">
+                    <div className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                       onClick={() => setSyncPodio((v) => !v)}>
                       <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </div>
-                    Sync Podio
+                    <span className="hidden sm:inline">Sync Podio</span>
                   </label>
 
                   {website && (
                     <a href={website} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"><Globe className="h-3.5 w-3.5" />Website</Button>
+                      <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                        <Globe className="h-3.5 w-3.5" /><span className="hidden sm:inline">Website</span>
+                      </Button>
                     </a>
                   )}
 
                   {activeTab === "details" && canUpdate && (
                     !isEditing
                       ? <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}
-                          className="h-8 gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700">✎ Edit</Button>
+                          className="h-8 gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700">
+                          ✎<span className="hidden sm:inline"> Edit</span>
+                        </Button>
                       : <>
                           <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs"
                             onClick={() => { setIsEditing(false); setEditedFields(new Set()); setFormData(client) }}>
-                            <X className="h-3.5 w-3.5" />Cancel
+                            <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
                           </Button>
                           {editedFields.size > 0 && (
                             <Button size="sm" disabled={saving} onClick={handleSave} className="h-8 bg-gqm-green hover:bg-gqm-green/90 gap-1.5 text-xs">
-                              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Save
+                              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                              <span className="hidden sm:inline">Save</span>
                             </Button>
                           )}
                         </>
@@ -816,13 +850,13 @@ export default function ClientDetailPage({ params }: Props) {
                   {activeTab === "managers" && canUpdate && (
                     <Button size="sm" variant="outline" onClick={() => setManagerModalOpen(true)}
                       className="h-8 gap-1.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                      <Plus className="h-3.5 w-3.5" />Link Manager
+                      <Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Link Manager</span>
                     </Button>
                   )}
                   {activeTab === "members" && canUpdate && (
                     <Button size="sm" variant="outline" onClick={() => setMemberModalOpen(true)}
                       className="h-8 gap-1.5 text-xs border-blue-200 text-blue-700 hover:bg-blue-50">
-                      <Plus className="h-3.5 w-3.5" />Link Member
+                      <Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Link Member</span>
                     </Button>
                   )}
                 </div>
@@ -834,23 +868,23 @@ export default function ClientDetailPage({ params }: Props) {
           </div>
 
           {/* ── Tab panels ── */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
 
             {/* DETAILS */}
             {activeTab === "details" && (
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="space-y-6 lg:col-span-2">
-                  <Card className="p-6">
+              <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+                <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-2">
+                  <Card className="overflow-hidden p-4 sm:p-6">
                     <h2 className="mb-5 text-xs font-semibold uppercase tracking-wider text-slate-500">Community Information</h2>
-                    <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid min-w-0 gap-5 md:grid-cols-2">
 
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Community Name</Label>
                         <Input disabled={!isEditing} value={formData.Client_Community ?? ""}
                           onChange={(e) => set_("Client_Community", e.target.value)} className={ch("Client_Community")} />
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Address</Label>
                         {isEditing
                           ? <Textarea value={formData.Address ?? ""} onChange={(e) => set_("Address", e.target.value)} className={ch("Address")} rows={2} />
@@ -862,7 +896,7 @@ export default function ClientDetailPage({ params }: Props) {
                       </div>
 
                       {/* ✅ Status — Select con las 3 opciones */}
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Status</Label>
                         {isEditing ? (
                           <Select value={formData.Client_Status ?? ""} onValueChange={(v) => set_("Client_Status", v)}>
@@ -879,7 +913,7 @@ export default function ClientDetailPage({ params }: Props) {
                       </div>
 
                       {/* ✅ Compliance Partner — Select */}
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Compliance Partner</Label>
                         {isEditing ? (
                           <Select value={formData.Compliance_Partner || "none"} onValueChange={(v) => set_("Compliance_Partner", v === "none" ? "" : v)}>
@@ -896,7 +930,7 @@ export default function ClientDetailPage({ params }: Props) {
                       </div>
 
                       {/* ✅ Risk Value — Select */}
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Risk Value</Label>
                         {isEditing ? (
                           <Select value={formData.Risk_Value || ""} onValueChange={(v) => set_("Risk_Value", v)}>
@@ -912,40 +946,40 @@ export default function ClientDetailPage({ params }: Props) {
                         )}
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Website</Label>
                         <Input disabled={!isEditing} value={formData.Website ?? ""}
                           onChange={(e) => set_("Website", e.target.value)} className={ch("Website")} placeholder="https://…" />
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Email Address</Label>
                         {isEditing
                           ? <ArrayEdit values={eEmails} icon={Mail} placeholder="email@example.com" changed={editedFields.has("Email_Address")} onChange={(v) => set_("Email_Address", v)} />
                           : <Chips values={dEmails} icon={Mail} linkPrefix="mailto:" empty="No email" />}
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Phone Number</Label>
                         {isEditing
                           ? <ArrayEdit values={ePhones} icon={Phone} placeholder="(555) 000-0000" changed={editedFields.has("Phone_Number")} onChange={(v) => set_("Phone_Number", v)} />
                           : <Chips values={dPhones} icon={Phone} linkPrefix="tel:" empty="No phone" />}
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Maintenance Sup</Label>
                         <Input disabled={!isEditing} value={formData.Maintenance_Sup ?? ""}
                           onChange={(e) => set_("Maintenance_Sup", e.target.value)} className={ch("Maintenance_Sup")} />
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <Label className="mb-1.5 block text-sm font-medium">Payment Collection</Label>
                         <Input disabled={!isEditing} value={formData.Payment_Collection ?? ""}
                           onChange={(e) => set_("Payment_Collection", e.target.value)} className={ch("Payment_Collection")} />
                       </div>
 
                       {/* ✅ Services Interested In — Select */}
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Services Interested In</Label>
                         {isEditing ? (
                           <Select value={formData.Services_interested_in || ""} onValueChange={(v) => set_("Services_interested_in", v)}>
@@ -961,26 +995,26 @@ export default function ClientDetailPage({ params }: Props) {
                         )}
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Invoice Collection</Label>
                         <Textarea disabled={!isEditing} value={formData.Invoice_Collection ?? ""}
                           onChange={(e) => set_("Invoice_Collection", e.target.value)} className={ch("Invoice_Collection")} rows={2} />
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Collection Process</Label>
                         <Textarea disabled={!isEditing} value={formData.Collection_Process ?? ""}
                           onChange={(e) => set_("Collection_Process", e.target.value)} className={ch("Collection_Process")} rows={2} />
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Notes</Label>
                         <Textarea disabled={!isEditing} value={formData.Text ?? ""}
                           onChange={(e) => set_("Text", e.target.value)} className={ch("Text")} rows={3} />
                       </div>
 
                       {/* ✅ Parent Company — modal en edición, card en vista */}
-                      <div className="md:col-span-2">
+                      <div className="min-w-0 md:col-span-2">
                         <Label className="mb-1.5 block text-sm font-medium">Parent Company</Label>
                         {isEditing ? (
                           displayParent ? (
@@ -1026,8 +1060,8 @@ export default function ClientDetailPage({ params }: Props) {
                 </div>
 
                 {/* Sidebar */}
-                <div className="space-y-4">
-                  <Card className="p-5">
+                <div className="min-w-0 space-y-4">
+                  <Card className="p-4 sm:p-5">
                     <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Quick Info</h3>
                     <dl className="space-y-3">
                       {[
@@ -1043,7 +1077,7 @@ export default function ClientDetailPage({ params }: Props) {
                       ))}
                     </dl>
                   </Card>
-                  <Card className="p-5">
+                  <Card className="p-4 sm:p-5">
                     <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">Summary</h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[
@@ -1075,7 +1109,7 @@ export default function ClientDetailPage({ params }: Props) {
                     <Briefcase className="h-10 w-10 text-slate-300" />
                     <p className="text-sm font-medium text-slate-500">No jobs associated yet</p>
                   </div>
-                : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {client.jobs!.map((job) => (
                       <JobCard key={job.ID_Jobs} job={job} onClick={() => router.push(`/jobs/${job.ID_Jobs}`)} />
                     ))}
@@ -1090,18 +1124,31 @@ export default function ClientDetailPage({ params }: Props) {
                     <p className="text-sm font-medium text-slate-500">No managers linked yet</p>
                     <button onClick={() => setManagerModalOpen(true)} className="text-xs text-emerald-600 hover:underline">Link a manager</button>
                   </div>
-                : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {client.manager!.map((mgr) => (
-                      <div key={mgr.ID_Manager} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                      <div key={mgr.ID_Manager} className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-emerald-200">
                         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
                           {(mgr.Manager_name ?? "?").slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-800">{mgr.Manager_name ?? "—"}</p>
-                          {mgr.Manager_email && <a href={`mailto:${mgr.Manager_email}`} className="block truncate text-xs text-slate-500 hover:text-emerald-600">{mgr.Manager_email}</a>}
-                          {mgr.Manager_location && <p className="flex items-center gap-1 truncate text-xs text-slate-400 mt-0.5"><MapPin className="h-3 w-3" />{mgr.Manager_location}</p>}
-                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">{mgr.ID_Manager}</p>
-                          {mgr.rol && <span className="mt-1.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{mgr.rol}</span>}
+                          <p className="truncate text-sm font-semibold text-slate-800" title={mgr.Manager_name ?? ""}>{mgr.Manager_name ?? "—"}</p>
+                          {mgr.Manager_email && (
+                            <a href={`mailto:${mgr.Manager_email}`} className="block truncate text-xs text-slate-500 hover:text-emerald-600" title={mgr.Manager_email}>
+                              {mgr.Manager_email}
+                            </a>
+                          )}
+                          {mgr.Manager_location && (
+                            <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-400">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{mgr.Manager_location}</span>
+                            </p>
+                          )}
+                          <p className="mt-0.5 font-mono text-[10px] text-slate-400">{mgr.ID_Manager}</p>
+                          {mgr.rol && (
+                            <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              {mgr.rol}
+                            </span>
+                          )}
                         </div>
                         {canUpdate && (
                           <button onClick={() => unlinkMgr(mgr.ID_Manager)} disabled={unlinkingManager === mgr.ID_Manager}
@@ -1122,18 +1169,26 @@ export default function ClientDetailPage({ params }: Props) {
                     <p className="text-sm font-medium text-slate-500">No members linked yet</p>
                     <button onClick={() => setMemberModalOpen(true)} className="text-xs text-blue-600 hover:underline">Link a member</button>
                   </div>
-                : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {client.members!.map((mem) => (
-                      <div key={mem.ID_Member} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                      <div key={mem.ID_Member} className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-blue-200">
                         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
                           {(mem.Member_Name ?? "?").slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-800">{mem.Member_Name ?? "—"}</p>
-                          <p className="truncate text-xs text-slate-500">{mem.Company_Role ?? "—"}</p>
-                          {mem.Email_Address && <a href={`mailto:${mem.Email_Address}`} className="block truncate text-xs text-slate-400 hover:text-blue-600 mt-0.5">{mem.Email_Address}</a>}
-                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">{mem.ID_Member}</p>
-                          {mem.rol && <span className="mt-1.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">{mem.rol}</span>}
+                          <p className="truncate text-sm font-semibold text-slate-800" title={mem.Member_Name ?? ""}>{mem.Member_Name ?? "—"}</p>
+                          <p className="truncate text-xs text-slate-500" title={mem.Company_Role ?? ""}>{mem.Company_Role ?? "—"}</p>
+                          {mem.Email_Address && (
+                            <a href={`mailto:${mem.Email_Address}`} className="mt-0.5 block truncate text-[11px] text-slate-400 hover:text-blue-600" title={mem.Email_Address as string}>
+                              {mem.Email_Address}
+                            </a>
+                          )}
+                          <p className="mt-0.5 font-mono text-[10px] text-slate-400">{mem.ID_Member}</p>
+                          {mem.rol && (
+                            <span className="mt-2 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                              {mem.rol}
+                            </span>
+                          )}
                         </div>
                         {canUpdate && (
                           <button onClick={() => unlinkMem(mem.ID_Member)} disabled={unlinkingMember === mem.ID_Member}
@@ -1144,6 +1199,11 @@ export default function ClientDetailPage({ params }: Props) {
                       </div>
                     ))}
                   </div>
+            )}
+
+            {/* TIMELINE */}
+            {activeTab === "timeline" && (
+              <CommunityTimelineTab clientId={clientId} />
             )}
           </div>
 

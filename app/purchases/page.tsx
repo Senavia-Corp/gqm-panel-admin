@@ -130,7 +130,7 @@ function DeletePurchaseDialog({
 
   return (
     <Dialog open={!!purchase} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="w-[90vw] !max-w-[500px]">
+      <DialogContent className="max-w-[95vw] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <Trash2 className="h-5 w-5" /> Delete Purchase
@@ -252,35 +252,44 @@ export default function PurchasesPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Header ──────────────────────────────────────────────────────── */}
-          <div className="border-b border-slate-200 bg-white px-6 py-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
+          <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50">
                   <ShoppingCart className="h-5 w-5 text-emerald-600" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900">Purchases</h1>
-                  <p className="mt-0.5 text-sm text-slate-500">Track purchase orders and spending across projects</p>
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Purchases</h1>
+                  <p className="mt-0.5 hidden text-sm text-slate-500 sm:block">Track purchase orders and spending across projects</p>
                 </div>
               </div>
-              <Button
-                onClick={() => router.push("/purchases/create")}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-sm text-white shadow-sm"
-              >
-                <Plus className="h-4 w-4" /> New Purchase
-              </Button>
+              <div className="flex flex-shrink-0 items-center gap-2">
+                <Button
+                  onClick={() => router.push("/purchases/create")}
+                  className="hidden gap-2 bg-emerald-600 hover:bg-emerald-700 text-sm text-white shadow-sm sm:flex"
+                >
+                  <Plus className="h-4 w-4" /> New Purchase
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={() => router.push("/purchases/create")}
+                  className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm sm:hidden"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* ── Filters ─────────────────────────────────────────────────────── */}
-          <div className="border-b border-slate-200 bg-white px-6 py-3">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 
               {/* Search */}
-              <div className="relative w-72">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
                   placeholder="Search ID, rep, description…"
@@ -295,184 +304,281 @@ export default function PurchasesPage() {
                 )}
               </div>
 
-              {/* Status pills */}
-              <div className="flex items-center gap-1.5">
-                {STATUS_OPTIONS.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
-                      statusFilter === s
-                        ? "border-emerald-500 bg-emerald-600 text-white"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+              {/* Status pills — horizontally scrollable on mobile */}
+              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+                <div className="flex items-center gap-1.5 pb-0.5 sm:flex-wrap sm:pb-0">
+                  {STATUS_OPTIONS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setStatusFilter(s)}
+                      className={`flex-shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                        statusFilter === s
+                          ? "border-emerald-500 bg-emerald-600 text-white"
+                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Total */}
-              <div className="ml-auto text-xs text-slate-500">
+              <div className="hidden text-xs text-slate-500 sm:ml-auto sm:block">
                 <span className="font-semibold text-slate-800">{total}</span> purchase{total !== 1 ? "s" : ""}
               </div>
             </div>
           </div>
 
           {/* ── Table ───────────────────────────────────────────────────────── */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px] table-fixed">
-                  <colgroup>
-                    <col className="w-36" />
-                    <col className="w-44" />
-                    <col />
-                    <col className="w-36" />
-                    <col className="w-36" />
-                    <col className="w-28" />
-                    <col className="w-36" />
-                    <col className="w-24" />
-                  </colgroup>
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80">
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Purchase ID</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Selling Rep</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Orders / Items</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Spent</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Return</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {loading ? (
-                      Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-                    ) : error ? (
-                      <tr>
-                        <td colSpan={8} className="px-6 py-12 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <AlertCircle className="h-8 w-8 text-red-400" />
-                            <p className="text-sm text-slate-600">{error}</p>
-                            <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
-                              <RefreshCw className="h-3.5 w-3.5" /> Retry
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : rows.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="px-6 py-16 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <ShoppingCart className="h-10 w-10 text-slate-300" />
-                            <p className="text-sm text-slate-500">
-                              {search || statusFilter !== "All" ? "No purchases match your filters" : "No purchases yet"}
-                            </p>
-                            {(search || statusFilter !== "All") && (
-                              <Button size="sm" variant="outline" onClick={() => { setSearch(""); setStatusFilter("All") }} className="gap-1.5 text-xs">
-                                <X className="h-3.5 w-3.5" /> Clear filters
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : rows.map(p => (
-                      <tr key={p.ID_Purchase} className="group hover:bg-slate-50/60 transition-colors">
 
-                        {/* ID */}
-                        <td className="px-4 py-3.5 align-middle">
+              {/* Mobile cards */}
+              <div className="divide-y divide-slate-100 sm:hidden">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="space-y-3 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="space-y-1.5">
+                          <div className="h-3.5 w-32 animate-pulse rounded-full bg-slate-100" />
+                          <div className="h-3 w-20 animate-pulse rounded-full bg-slate-100" />
+                        </div>
+                        <div className="h-5 w-16 animate-pulse rounded-full bg-slate-100" />
+                      </div>
+                      <div className="h-3 w-48 animate-pulse rounded-full bg-slate-100" />
+                    </div>
+                  ))
+                ) : error ? (
+                  <div className="flex flex-col items-center gap-3 px-6 py-12">
+                    <AlertCircle className="h-8 w-8 text-red-400" />
+                    <p className="text-sm text-slate-600">{error}</p>
+                    <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
+                      <RefreshCw className="h-3.5 w-3.5" /> Retry
+                    </Button>
+                  </div>
+                ) : rows.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 px-6 py-16">
+                    <ShoppingCart className="h-10 w-10 text-slate-300" />
+                    <p className="text-sm text-slate-500">
+                      {search || statusFilter !== "All" ? "No purchases match your filters" : "No purchases yet"}
+                    </p>
+                    {(search || statusFilter !== "All") && (
+                      <Button size="sm" variant="outline" onClick={() => { setSearch(""); setStatusFilter("All") }} className="gap-1.5 text-xs">
+                        <X className="h-3.5 w-3.5" /> Clear filters
+                      </Button>
+                    )}
+                  </div>
+                ) : rows.map(p => (
+                  <div key={p.ID_Purchase} className="p-4 transition-colors hover:bg-slate-50/60">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs font-semibold text-slate-700">{p.ID_Purchase}</span>
-                          {p.ID_Jobs && (
-                            <p className="mt-0.5 font-mono text-[10px] text-slate-400">{p.ID_Jobs}</p>
-                          )}
-                        </td>
-
-                        {/* Selling rep */}
-                        <td className="px-4 py-3.5 align-middle">
-                          {p.Selling_rep ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">
-                                {p.Selling_rep.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase()}
-                              </div>
-                              <span className="truncate text-xs font-medium text-slate-700">{p.Selling_rep}</span>
-                            </div>
-                          ) : <span className="text-xs italic text-slate-400">—</span>}
-                        </td>
-
-                        {/* Description */}
-                        <td className="px-4 py-3.5 align-middle">
-                          <p className="truncate text-xs text-slate-600">{p.Description || <span className="italic text-slate-400">No description</span>}</p>
-                          {p.Delivery_location && (
-                            <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-400">
-                              <MapPin className="h-2.5 w-2.5 flex-shrink-0" />{p.Delivery_location}
-                            </p>
-                          )}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-3.5 align-middle">
                           <StatusBadge status={p.Status} />
-                        </td>
-
-                        {/* Orders / Items */}
-                        <td className="px-4 py-3.5 text-center align-middle">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                              <Package className="h-3 w-3 text-slate-400" />{p.order_count}
+                        </div>
+                        {p.ID_Jobs && <p className="mt-0.5 font-mono text-[10px] text-slate-400">{p.ID_Jobs}</p>}
+                        {p.Selling_rep && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[9px] font-bold text-emerald-700">
+                              {p.Selling_rep.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase()}
                             </div>
-                            <span className="text-slate-300">/</span>
-                            <div className="text-xs font-semibold text-slate-700">
-                              {p.item_count} items
-                            </div>
+                            <span className="truncate text-xs text-slate-600">{p.Selling_rep}</span>
                           </div>
-                        </td>
+                        )}
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-1.5">
+                        <button
+                          onClick={() => router.push(`/purchases/${p.ID_Purchase}`)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setToDelete(p)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {p.Description && (
+                      <p className="mt-2 line-clamp-2 text-xs text-slate-500">{p.Description}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <Package className="h-3 w-3 text-slate-400" />
+                        {p.order_count} orders · {p.item_count} items
+                      </span>
+                      {p.Total_spending != null && (
+                        <span className="text-xs font-bold text-emerald-700">{fmtMoney(p.Total_spending)}</span>
+                      )}
+                      {p.Delivery_location && (
+                        <span className="flex min-w-0 items-center gap-1 text-[11px] text-slate-400">
+                          <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                          <span className="truncate">{p.Delivery_location}</span>
+                        </span>
+                      )}
+                      {p.Return_status && <ReturnBadge status={p.Return_status} />}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                        {/* Total spent */}
-                        <td className="px-4 py-3.5 text-right align-middle">
-                          <span className={`text-xs font-bold ${p.Total_spending != null ? "text-emerald-700" : "italic text-slate-400"}`}>
-                            {fmtMoney(p.Total_spending)}
-                          </span>
-                        </td>
-
-                        {/* Return */}
-                        <td className="px-4 py-3.5 align-middle">
-                          {p.Return_request ? (
-                            <div className="flex flex-col gap-1">
-                              <span className="truncate text-[11px] font-medium text-slate-600">{p.Return_request}</span>
-                              <ReturnBadge status={p.Return_status} />
-                            </div>
-                          ) : <span className="text-xs italic text-slate-400">—</span>}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-3.5 text-center align-middle">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => router.push(`/purchases/${p.ID_Purchase}`)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600"
-                              title="View details"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setToDelete(p)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-red-600"
-                              title="Delete purchase"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+              {/* Desktop table */}
+              <div className="hidden sm:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[960px] table-fixed">
+                    <colgroup>
+                      <col className="w-36" />
+                      <col className="w-44" />
+                      <col />
+                      <col className="w-36" />
+                      <col className="w-36" />
+                      <col className="w-28" />
+                      <col className="w-36" />
+                      <col className="w-24" />
+                    </colgroup>
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/80">
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Purchase ID</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Selling Rep</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
+                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Orders / Items</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Spent</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Return</th>
+                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {loading ? (
+                        Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+                      ) : error ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <AlertCircle className="h-8 w-8 text-red-400" />
+                              <p className="text-sm text-slate-600">{error}</p>
+                              <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
+                                <RefreshCw className="h-3.5 w-3.5" /> Retry
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-16 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <ShoppingCart className="h-10 w-10 text-slate-300" />
+                              <p className="text-sm text-slate-500">
+                                {search || statusFilter !== "All" ? "No purchases match your filters" : "No purchases yet"}
+                              </p>
+                              {(search || statusFilter !== "All") && (
+                                <Button size="sm" variant="outline" onClick={() => { setSearch(""); setStatusFilter("All") }} className="gap-1.5 text-xs">
+                                  <X className="h-3.5 w-3.5" /> Clear filters
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : rows.map(p => (
+                        <tr key={p.ID_Purchase} className="group transition-colors hover:bg-slate-50/60">
+
+                          {/* ID */}
+                          <td className="px-4 py-3.5 align-middle">
+                            <span className="font-mono text-xs font-semibold text-slate-700">{p.ID_Purchase}</span>
+                            {p.ID_Jobs && (
+                              <p className="mt-0.5 font-mono text-[10px] text-slate-400">{p.ID_Jobs}</p>
+                            )}
+                          </td>
+
+                          {/* Selling rep */}
+                          <td className="px-4 py-3.5 align-middle">
+                            {p.Selling_rep ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700">
+                                  {p.Selling_rep.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase()}
+                                </div>
+                                <span className="truncate text-xs font-medium text-slate-700">{p.Selling_rep}</span>
+                              </div>
+                            ) : <span className="text-xs italic text-slate-400">—</span>}
+                          </td>
+
+                          {/* Description */}
+                          <td className="px-4 py-3.5 align-middle">
+                            <p className="truncate text-xs text-slate-600">{p.Description || <span className="italic text-slate-400">No description</span>}</p>
+                            {p.Delivery_location && (
+                              <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-400">
+                                <MapPin className="h-2.5 w-2.5 flex-shrink-0" />{p.Delivery_location}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3.5 align-middle">
+                            <StatusBadge status={p.Status} />
+                          </td>
+
+                          {/* Orders / Items */}
+                          <td className="px-4 py-3.5 text-center align-middle">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                                <Package className="h-3 w-3 text-slate-400" />{p.order_count}
+                              </div>
+                              <span className="text-slate-300">/</span>
+                              <div className="text-xs font-semibold text-slate-700">
+                                {p.item_count} items
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Total spent */}
+                          <td className="px-4 py-3.5 text-right align-middle">
+                            <span className={`text-xs font-bold ${p.Total_spending != null ? "text-emerald-700" : "italic text-slate-400"}`}>
+                              {fmtMoney(p.Total_spending)}
+                            </span>
+                          </td>
+
+                          {/* Return */}
+                          <td className="px-4 py-3.5 align-middle">
+                            {p.Return_request ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="truncate text-[11px] font-medium text-slate-600">{p.Return_request}</span>
+                                <ReturnBadge status={p.Return_status} />
+                              </div>
+                            ) : <span className="text-xs italic text-slate-400">—</span>}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-3.5 text-center align-middle">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => router.push(`/purchases/${p.ID_Purchase}`)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600"
+                                title="View details"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setToDelete(p)}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-red-600"
+                                title="Delete purchase"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* ── Pagination ─────────────────────────────────────────────── */}
               {!loading && !error && rows.length > 0 && (
-                <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-6 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5 sm:py-3.5">
                   <p className="text-xs text-slate-500">
                     Showing <span className="font-semibold text-slate-800">{(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)}</span> of{" "}
                     <span className="font-semibold text-slate-800">{total}</span> purchases

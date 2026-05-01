@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
@@ -63,13 +64,13 @@ function SectionCard({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -90,6 +91,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
   values: string[]; icon: React.ElementType; placeholder: string
   onChange: (v: string[]) => void
 }) {
+  const t = useTranslations("subcontractors")
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
@@ -118,7 +120,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
         onClick={() => onChange([...items, ""])}
         className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
       >
-        <Plus className="h-3 w-3" /> Add another
+        <Plus className="h-3 w-3" /> {t("addAnother")}
       </button>
     </div>
   )
@@ -127,6 +129,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CreateSubcontractorPage() {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser]           = useState<any>(null)
@@ -211,10 +214,10 @@ export default function CreateSubcontractorPage() {
       const created = await res.json()
       const newId   = created?.ID_Subcontractor
 
-      toast({ title: "Created", description: "Subcontractor created successfully." })
+      toast({ title: t("toastCreated"), description: t("toastCreatedDesc") })
       router.push(newId ? `/subcontractors/${newId}` : "/subcontractors")
     } catch (err: any) {
-      toast({ title: "Error", description: err?.message ?? "Failed to create subcontractor.", variant: "destructive" })
+      toast({ title: t("toastError"), description: err?.message ?? t("toastErrorDesc"), variant: "destructive" })
     } finally {
       setSubmitting(false)
     }
@@ -232,16 +235,15 @@ export default function CreateSubcontractorPage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 group-hover:scale-110 transition-transform duration-500">
               <ShieldCheck className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("accessDeniedTitle")}</h1>
             <p className="text-slate-500 max-w-md mb-8">
-              You do not have the required permissions (`subcontractor:create`) to create new subcontractors.
-              Please contact your administrator if you believe this is an error.
+              {t("accessDeniedDesc")}
             </p>
             <Button 
               onClick={() => router.push("/subcontractors")}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
             >
-              Return to Subcontractors
+              {t("backToSubs")}
             </Button>
           </main>
         </div>
@@ -254,85 +256,101 @@ export default function CreateSubcontractorPage() {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
 
           {/* ── Sticky header ─────────────────────────────────────────────── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
+              {/* Left: back + title */}
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => router.push("/subcontractors")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">New Subcontractor</h1>
-                    <p className="mt-0.5 text-xs text-slate-400">Fields marked * are required</p>
-                  </div>
+                <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500 sm:flex">
+                  <User className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{t("newSub")}</h1>
+                  <p className="mt-0.5 hidden text-xs text-slate-400 sm:block">{t("requiredFields")}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                {/* Podio toggle */}
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors">
+              {/* Right: Podio toggle + actions */}
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {/* Podio toggle — icon+track only on mobile, full label on sm+ */}
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 hover:border-emerald-200 transition-colors sm:px-3">
                   <div
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                    className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                     onClick={() => setSyncPodio((v) => !v)}
                   >
                     <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                   </div>
-                  Sync Podio
+                  <span className="hidden sm:inline">{t("syncPodio")}</span>
                 </label>
 
+                {/* Cancel — text on sm+, icon-only on mobile */}
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  type="button" variant="outline" size="sm"
                   onClick={() => router.push("/subcontractors")}
                   disabled={submitting}
-                  className="gap-1.5 text-xs border-slate-200"
+                  className="hidden gap-1.5 text-xs border-slate-200 sm:flex"
                 >
-                  <X className="h-3.5 w-3.5" /> Cancel
+                  <X className="h-3.5 w-3.5" /> {t("cancel")}
+                </Button>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  onClick={() => router.push("/subcontractors")}
+                  disabled={submitting}
+                  className="h-8 w-8 border-slate-200 sm:hidden"
+                >
+                  <X className="h-4 w-4" />
                 </Button>
 
+                {/* Save — text on sm+, icon-only on mobile */}
                 <Button
-                  type="submit"
-                  form="create-subc-form"
-                  size="sm"
+                  type="submit" form="create-subc-form" size="sm"
                   disabled={!canSubmit}
-                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
+                  className="hidden gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex"
                 >
                   {submitting
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
-                    : <><Save className="h-3.5 w-3.5" /> Create Subcontractor</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("create")}</>
+                  }
+                </Button>
+                <Button
+                  type="submit" form="create-subc-form" size="icon"
+                  disabled={!canSubmit}
+                  className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 sm:hidden"
+                >
+                  {submitting
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Save className="h-4 w-4" />
                   }
                 </Button>
               </div>
             </div>
 
             {syncPodio && (
-              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-6 py-2">
+              <div className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-4 py-2 sm:px-6">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-xs font-medium text-emerald-700">Podio sync enabled — a new item will be created in Podio on submit</p>
+                <p className="text-xs font-medium text-emerald-700">{t("podioEnabled")}</p>
               </div>
             )}
           </div>
 
           {/* ── Form body ─────────────────────────────────────────────────── */}
           <form id="create-subc-form" onSubmit={handleSubmit}>
-            <div className="mx-auto max-w-4xl space-y-5 p-6 pb-12">
+            <div className="mx-auto max-w-4xl space-y-5 p-4 pb-12 sm:p-6">
 
               {/* Basic Information */}
-              <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Basic Information">
+              <SectionCard icon={Building2} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("basicInfo")}>
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
-                    <FieldLabel htmlFor="Name" required>Name</FieldLabel>
+                    <FieldLabel htmlFor="Name" required>{t("name")}</FieldLabel>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -346,7 +364,7 @@ export default function CreateSubcontractorPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="Organization" required>Organization</FieldLabel>
+                    <FieldLabel htmlFor="Organization" required>{t("organization")}</FieldLabel>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -360,7 +378,7 @@ export default function CreateSubcontractorPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="Specialty">Specialty</FieldLabel>
+                    <FieldLabel htmlFor="Specialty">{t("specialty")}</FieldLabel>
                     <div className="relative">
                       <Wrench className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -374,18 +392,18 @@ export default function CreateSubcontractorPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="Status">Status</FieldLabel>
+                    <FieldLabel htmlFor="Status">{t("status")}</FieldLabel>
                     <Select value={form.Status} onValueChange={(v) => setField("Status", v)} disabled={submitting}>
                       <SelectTrigger id="Status" className={inputCls}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {["Active","Inactive","Pending","Banned"].map(s =>
-                          <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          <SelectItem key={s} value={s}>{t(s.toLowerCase() as any)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="md:col-span-2">
-                    <FieldLabel htmlFor="Address">Address</FieldLabel>
+                    <FieldLabel htmlFor="Address">{t("address")}</FieldLabel>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
                       <Textarea
@@ -402,10 +420,10 @@ export default function CreateSubcontractorPage() {
               </SectionCard>
 
               {/* Contact Information */}
-              <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title="Contact Information">
+              <SectionCard icon={Mail} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("contactInfo")}>
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
-                    <FieldLabel>Email Address</FieldLabel>
+                    <FieldLabel>{t("email")}</FieldLabel>
                     <ArrayEditField
                       values={form.Email_Address}
                       icon={Mail}
@@ -414,7 +432,7 @@ export default function CreateSubcontractorPage() {
                     />
                   </div>
                   <div>
-                    <FieldLabel>Phone Number</FieldLabel>
+                    <FieldLabel>{t("phone")}</FieldLabel>
                     <ArrayEditField
                       values={form.Phone_Number}
                       icon={Phone}
@@ -423,7 +441,7 @@ export default function CreateSubcontractorPage() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <FieldLabel htmlFor="Organization_Website">Website</FieldLabel>
+                    <FieldLabel htmlFor="Organization_Website">{t("website")}</FieldLabel>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -439,7 +457,7 @@ export default function CreateSubcontractorPage() {
               </SectionCard>
 
               {/* Coverage Area */}
-              <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title="Coverage Area">
+              <SectionCard icon={Map} iconBg="bg-orange-50" iconColor="text-orange-600" title={t("coverageArea")}>
                 <div className="space-y-3">
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -449,7 +467,7 @@ export default function CreateSubcontractorPage() {
                       disabled={submitting}
                     >
                       <SelectTrigger className={`pl-9 ${inputCls}`}>
-                        <SelectValue placeholder="Select a county…" />
+                        <SelectValue placeholder={t("selectCounty")} />
                       </SelectTrigger>
                       <SelectContent>
                         {COVERAGE_AREA_OPTIONS.map((opt) => (
@@ -484,16 +502,16 @@ export default function CreateSubcontractorPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs italic text-slate-400">No coverage areas added yet</p>
+                    <p className="text-xs italic text-slate-400">{t("noCoverageAreas")}</p>
                   )}
                 </div>
               </SectionCard>
 
               {/* GQM Information */}
-              <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title="GQM Information">
+              <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title={t("gqmInfo")}>
                 <div className="grid gap-5 md:grid-cols-3">
                   <div>
-                    <FieldLabel htmlFor="Score">Score</FieldLabel>
+                    <FieldLabel htmlFor="Score">{t("score")}</FieldLabel>
                     <div className="relative">
                       <Star className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
@@ -501,7 +519,7 @@ export default function CreateSubcontractorPage() {
                         type="number" min={0} max={300}
                         value={form.Score}
                         onChange={(e) => setField("Score", e.target.value)}
-                        placeholder="0–300"
+                        placeholder={t("scorePlaceholder")}
                         className={`pl-9 ${inputCls}`}
                         disabled={submitting}
                       />
@@ -509,7 +527,7 @@ export default function CreateSubcontractorPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="Gqm_compliance">GQM Compliance</FieldLabel>
+                    <FieldLabel htmlFor="Gqm_compliance">{t("gqmCompliance")}</FieldLabel>
                     <div className="relative">
                       <ShieldCheck className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <Select
@@ -526,7 +544,7 @@ export default function CreateSubcontractorPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="Gqm_best_service_training">Best Service Training</FieldLabel>
+                    <FieldLabel htmlFor="Gqm_best_service_training">{t("gqmTraining")}</FieldLabel>
                     <div className="relative">
                       <GraduationCap className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <Select
@@ -545,11 +563,11 @@ export default function CreateSubcontractorPage() {
               </SectionCard>
 
               {/* Notes */}
-              <SectionCard icon={ClipboardList} iconBg="bg-slate-100" iconColor="text-slate-500" title="Notes">
+              <SectionCard icon={ClipboardList} iconBg="bg-slate-100" iconColor="text-slate-500" title={t("notes")}>
                 <Textarea
                   value={form.Notes}
                   onChange={(e) => setField("Notes", e.target.value)}
-                  placeholder="Additional notes about this subcontractor…"
+                  placeholder={t("notesPlaceholder")}
                   rows={4}
                   className={`resize-none ${inputCls}`}
                   disabled={submitting}
@@ -557,21 +575,21 @@ export default function CreateSubcontractorPage() {
               </SectionCard>
 
               {/* Bottom action bar */}
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <p className="text-xs text-slate-400">
                   {canSubmit
-                    ? "Ready to create — review fields above before submitting"
-                    : <span className="text-amber-600">Name and Organization are required</span>
+                    ? t("readyToCreate")
+                    : <span className="text-amber-600">{t("requiredWarning")}</span>
                   }
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <Button
                     type="button" variant="outline" size="sm"
                     onClick={() => router.push("/subcontractors")}
                     disabled={submitting}
                     className="text-xs border-slate-200"
                   >
-                    Cancel
+                    {t("cancel")}
                   </Button>
                   <Button
                     type="submit" size="sm"
@@ -579,8 +597,8 @@ export default function CreateSubcontractorPage() {
                     className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
                   >
                     {submitting
-                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
-                      : <><Save className="h-3.5 w-3.5" /> Create Subcontractor</>
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
+                      : <><Save className="h-3.5 w-3.5" /> {t("create")}</>
                     }
                   </Button>
                 </div>

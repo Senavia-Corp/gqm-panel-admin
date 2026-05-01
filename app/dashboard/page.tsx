@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Building2,
   HardHat,
+  Megaphone,
 } from "lucide-react"
 import type { User } from "@/lib/types"
 import { LeadTechnicianDashboard } from "@/components/organisms/LeadTechnicianDashboard"
@@ -23,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { logout } from "@/lib/auth-utils"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 import JobsPanel from "./JobsPanel"
 import ClientsPanel from "./ClientsPanel"
@@ -30,13 +32,15 @@ import ParentCompaniesPanel from "./ParentCompaniesPanel"
 import MembersPanel from "./MembersPanel"
 import SubcontractorsPanel from "./SubcontractorsPanel"
 import WeeklyTasksPanel from "./WeeklyTasksPanel"
+import OpportunitiesPanel from "./OpportunitiesPanel"
 
-type DashboardView = "jobs" | "parent-companies" | "clients" | "members" | "subcontractors" | "tasks"
+type DashboardView = "jobs" | "parent-companies" | "clients" | "members" | "subcontractors" | "tasks" | "opportunities"
 type JobTab  = "ALL" | "QID" | "PTL" | "PAR"
 type YearTab = "ALL" | "2026" | "2025" | "2024" | "2023"
 
 export default function DashboardPage() {
   const router = useRouter()
+  const t = useTranslations("dashboard")
   const [view,    setView]    = useState<DashboardView>("jobs")
   const [jobTab,  setJobTab]  = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
@@ -49,7 +53,6 @@ export default function DashboardPage() {
   const canReadClients = hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
   const canReadMembers = hasPermission("member:read")
 
-  // Default view when user lacks job:read
   useEffect(() => {
     if (!canReadJobs) {
       if (canReadClients) setView("clients")
@@ -58,7 +61,6 @@ export default function DashboardPage() {
     }
   }, [canReadJobs, canReadClients, canReadMembers])
 
-  // Auth check
   useEffect(() => {
     const accessToken = localStorage.getItem("access_token")
     const userData    = localStorage.getItem("user_data")
@@ -72,7 +74,7 @@ export default function DashboardPage() {
       const qs = new URLSearchParams({ type: jobTab })
       if (yearTab !== "ALL") qs.set("year", yearTab)
 
-      const res = await apiFetch(`/api/reports/jobs?${qs.toString()}`, {
+      const res = await apiFetch(`/api/financial/reports/pdf?${qs.toString()}`, {
         method:  "GET",
         headers: { Accept: "application/pdf" },
       })
@@ -101,7 +103,7 @@ export default function DashboardPage() {
       window.URL.revokeObjectURL(url)
     } catch (err) {
       console.error("[dashboard] download report error:", err)
-      alert(err instanceof Error ? err.message : "Failed to download report")
+      alert(err instanceof Error ? err.message : t("errorLoadJobsData"))
     } finally {
       setIsDownloadingReport(false)
     }
@@ -109,14 +111,13 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // ── Lead Technician view ──────────────────────────────────────────────────
   if (user.role === "LEAD_TECHNICIAN") {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
             <LeadTechnicianDashboard />
           </main>
         </div>
@@ -124,7 +125,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Year + JobType filters shown on job-based views only
   const showFilters = view === "jobs" || view === "parent-companies" || view === "clients" || view === "members"
 
   const navBtn = (v: DashboardView, label: string, Icon: React.ElementType) => (
@@ -140,7 +140,6 @@ export default function DashboardPage() {
     </Button>
   )
 
-  // ── GQM Member Dashboard ──────────────────────────────────────────────────
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -148,73 +147,78 @@ export default function DashboardPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6">
-            <h1 className="mb-4 text-3xl font-bold">Dashboard</h1>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
+          <div className="mb-5 sm:mb-6">
+            <h1 className="mb-3 sm:mb-4 text-xl sm:text-3xl font-bold">{t("title")}</h1>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
               {/* ── View selector ── */}
-              <div className="inline-flex flex-wrap rounded-lg border bg-white p-1 gap-0.5">
-                {canReadJobs    && navBtn("jobs",             "Jobs",             File)}
-                {canReadClients && navBtn("parent-companies", "Parent Companies", Building2)}
-                {canReadClients && navBtn("clients",          "Clients",          ConstructionIcon)}
-                {canReadMembers && navBtn("members",          "Members",          Users)}
-                {canReadJobs    && navBtn("subcontractors",   "Subcontractors",   HardHat)}
-                {navBtn("tasks", "Weekly Tasks", CalendarDays)}
+              <div className="overflow-x-auto pb-1 sm:pb-0">
+                <div className="inline-flex min-w-max rounded-lg border bg-white p-1 gap-0.5">
+                  {canReadJobs    && navBtn("jobs",             t("viewJobs"),             File)}
+                  {canReadClients && navBtn("parent-companies", t("viewParentCompanies"),  Building2)}
+                  {canReadClients && navBtn("clients",          t("viewClients"),          ConstructionIcon)}
+                  {canReadMembers && navBtn("members",          t("viewMembers"),          Users)}
+                  {canReadJobs    && navBtn("subcontractors",   t("viewSubcontractors"),   HardHat)}
+                  {navBtn("tasks", t("viewWeeklyTasks"), CalendarDays)}
+                  {navBtn("opportunities", t("viewOpportunities"), Megaphone)}
+                </div>
               </div>
 
-              {/* ── Filters (hidden on tasks and subcontractors views) ── */}
+              {/* ── Filters ── */}
               {showFilters && (
-                <div className="flex items-center gap-3">
-                  {/* PDF download — only on jobs */}
-                  {view === "jobs" && (
-                    <Button
-                      onClick={handleDownloadJobsReport}
-                      disabled={isDownloadingReport}
-                      className="h-10 rounded-xl bg-gqm-green-dark text-white hover:bg-gqm-green-dark/90"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Download className="h-4 w-4" />
-                        {isDownloadingReport ? "Downloading..." : "Download Report"}
-                      </span>
-                    </Button>
-                  )}
+                <div className="overflow-x-auto pb-1 sm:pb-0">
+                  <div className="inline-flex min-w-max items-center gap-2 sm:gap-3">
+                    {view === "jobs" && (
+                      <Button
+                        onClick={handleDownloadJobsReport}
+                        disabled={isDownloadingReport}
+                        className="h-10 rounded-xl bg-gqm-green-dark text-white hover:bg-gqm-green-dark/90"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">{isDownloadingReport ? t("downloading") : t("downloadReport")}</span>
+                          <span className="sm:hidden">{isDownloadingReport ? "…" : "PDF"}</span>
+                        </span>
+                      </Button>
+                    )}
 
-                  {/* Year selector */}
-                  <Select value={yearTab} onValueChange={(v) => setYearTab(v as YearTab)}>
-                    <SelectTrigger className="h-10 w-[140px] rounded-xl border bg-white px-3">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All</SelectItem>
-                      <SelectItem value="2026">2026</SelectItem>
-                      <SelectItem value="2025">2025</SelectItem>
-                      <SelectItem value="2024">2024</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    {/* Year selector */}
+                    <Select value={yearTab} onValueChange={(v) => setYearTab(v as YearTab)}>
+                      <SelectTrigger className="h-10 w-[110px] sm:w-[140px] rounded-xl border bg-white px-3">
+                        <SelectValue placeholder={t("colYear") || "Year"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">{t("all_m")}</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2024">2024</SelectItem>
+                        <SelectItem value="2023">2023</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-                  {/* Job Type Tabs */}
-                  <Tabs value={jobTab} onValueChange={(v) => setJobTab(v as JobTab)}>
-                    <TabsList className="h-10 rounded-xl border bg-white p-1">
-                      {([
-                        { v: "ALL", Icon: Briefcase,       label: "All"  },
-                        { v: "QID", Icon: File,            label: "QID"  },
-                        { v: "PTL", Icon: ConstructionIcon, label: "PTL" },
-                        { v: "PAR", Icon: WalletIcon,      label: "PAR"  },
-                      ] as const).map(({ v, Icon, label }) => (
-                        <TabsTrigger
-                          key={v}
-                          value={v}
-                          className="h-8 min-w-[80px] rounded-lg px-4 text-sm font-semibold data-[state=active]:bg-gqm-green-dark data-[state=active]:text-white"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Icon className="h-4 w-4" />{label}
-                          </span>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
+                    {/* Job Type Tabs */}
+                    <Tabs value={jobTab} onValueChange={(v) => setJobTab(v as JobTab)}>
+                      <TabsList className="h-10 rounded-xl border bg-white p-1">
+                        {([
+                          { v: "ALL", Icon: Briefcase,        label: t("all_m")  },
+                          { v: "QID", Icon: File,             label: "QID"  },
+                          { v: "PTL", Icon: ConstructionIcon, label: "PTL"  },
+                          { v: "PAR", Icon: WalletIcon,       label: "PAR"  },
+                        ] as const).map(({ v, Icon, label }) => (
+                          <TabsTrigger
+                            key={v}
+                            value={v}
+                            className="h-8 min-w-[60px] sm:min-w-[80px] rounded-lg px-2 sm:px-4 text-xs sm:text-sm font-semibold data-[state=active]:bg-gqm-green-dark data-[state=active]:text-white"
+                          >
+                            <span className="flex items-center gap-1 sm:gap-1.5">
+                              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{label}
+                            </span>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  </div>
                 </div>
               )}
             </div>
@@ -236,6 +240,8 @@ export default function DashboardPage() {
             <MembersPanel jobTab={jobTab} yearTab={yearTab} />
           ) : view === "subcontractors" ? (
             <SubcontractorsPanel />
+          ) : view === "opportunities" ? (
+            <OpportunitiesPanel />
           ) : (
             <WeeklyTasksPanel />
           )}

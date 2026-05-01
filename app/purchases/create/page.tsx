@@ -489,17 +489,17 @@ function StepIndicator({ step, done }: { step: Step; done: Partial<Record<Step, 
         const Icon = s.icon
         return (
           <div key={s.n} className="flex items-center gap-1">
-            <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all
+            <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-all sm:px-3
               ${isActive ? "bg-emerald-600 text-white shadow-sm" :
                 isDone ? "bg-emerald-50 text-emerald-700" :
                   "bg-slate-100 text-slate-400"}`}>
               {isDone && !isActive
                 ? <CheckCircle2 className="h-3 w-3" />
                 : <Icon className="h-3 w-3" />}
-              <span>{s.label}</span>
+              <span className="hidden sm:inline">{s.label}</span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`h-px w-4 rounded-full transition-colors ${isDone ? "bg-emerald-300" : "bg-slate-200"}`} />
+              <div className={`h-px w-3 rounded-full transition-colors sm:w-4 ${isDone ? "bg-emerald-300" : "bg-slate-200"}`} />
             )}
           </div>
         )
@@ -531,15 +531,15 @@ function SectionCard({
     amber: "bg-amber-50 text-amber-600 border-amber-100",
   }
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className={`flex items-center gap-3 border-b px-6 py-4 ${colors[accent]}`}>
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className={`flex items-center gap-3 border-b px-4 py-3 sm:px-6 sm:py-4 ${colors[accent]}`}>
         <Icon className="h-4 w-4 flex-shrink-0" />
         <div>
           <p className="text-sm font-semibold">{title}</p>
           {subtitle && <p className="text-[11px] opacity-70 mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      <div className="px-6 py-5">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -820,26 +820,26 @@ export default function CreatePurchasePage() {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
             {/* ── Page header ─────────────────────────────────────────────── */}
-            <div className="border-b border-slate-200 bg-white px-6 py-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
+            <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
                   <button
                     onClick={() => router.push(backUrl)}
-                    className="mt-0.5 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                    className="mt-0.5 flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </button>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
-                        <ShoppingCart className="h-4.5 w-4.5 text-emerald-600" />
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50 sm:h-9 sm:w-9">
+                        <ShoppingCart className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <h1 className="text-lg font-bold text-slate-900">New Purchase</h1>
+                      <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">New Purchase</h1>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 hidden text-xs text-slate-500 sm:block">
                       Guided quote step by step · Purchase → Order → Items → Job
                     </p>
                   </div>
@@ -847,16 +847,16 @@ export default function CreatePurchasePage() {
 
                 {/* Totals */}
                 {created.ID_Purchase && (
-                  <div className="flex flex-wrap items-center gap-2 self-center">
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                  <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:px-3">
                       {totals.ordersCount} order{totals.ordersCount !== 1 ? "s" : ""}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:px-3">
                       {totals.itemsCount} item{totals.itemsCount !== 1 ? "s" : ""}
                     </span>
                     {totals.totalQuoted > 0 && (
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                        {money(totals.totalQuoted)} quoted
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:px-3">
+                        {money(totals.totalQuoted)}
                       </span>
                     )}
                   </div>
@@ -865,10 +865,10 @@ export default function CreatePurchasePage() {
             </div>
 
             {/* ── Content ──────────────────────────────────────────────────── */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
 
               {/* Step indicator */}
-              <div className="mb-6 flex flex-wrap items-center gap-2">
+              <div className="mb-5 sm:mb-6">
                 <StepIndicator step={step} done={done} />
               </div>
 
@@ -883,9 +883,9 @@ export default function CreatePurchasePage() {
                 </div>
               )}
 
-              <div className="grid gap-6 xl:grid-cols-3 lg:grid-cols-[1fr_320px]">
+              <div className="grid gap-5 sm:gap-6 lg:grid-cols-[1fr_320px] xl:grid-cols-3">
                 {/* ── Main column ─────────────────────────────────────────── */}
-                <div className="xl:col-span-2 space-y-5">
+                <div className="min-w-0 space-y-4 sm:space-y-5 xl:col-span-2">
 
                   {/* ── STEP 1 ── */}
                   {step === 1 && (
@@ -998,7 +998,7 @@ export default function CreatePurchasePage() {
                           <Input value={itemName} onChange={e => setItemName(e.target.value)}
                             placeholder="e.g. 1/4 Tile" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
                             <FieldLabel required>Shop (Quote)</FieldLabel>
                             <Input value={quoteShop} onChange={e => setQuoteShop(e.target.value)}
@@ -1084,13 +1084,13 @@ export default function CreatePurchasePage() {
                         <Button variant="outline"
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => { setError(null); setOrderTitle(""); setStep(2) }}
-                          className="text-xs gap-1.5">
+                          className="gap-1.5 text-xs">
                           <Plus className="h-3.5 w-3.5" /> Another order
                         </Button>
                         <Button
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => setStep(4)}
-                          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs ml-auto"
+                          className="ml-auto gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
                         >
                           Continue <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
@@ -1182,7 +1182,7 @@ export default function CreatePurchasePage() {
                 </div>
 
                 {/* ── Sidebar ─────────────────────────────────────────────── */}
-                <div className="space-y-4">
+                <div className="min-w-0 space-y-4">
 
                   {/* Progress summary */}
                   <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

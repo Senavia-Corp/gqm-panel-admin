@@ -9,6 +9,7 @@ import { TopBar } from "@/components/organisms/TopBar"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "@/components/ui/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -19,6 +20,7 @@ import { ArrowLeft } from "lucide-react"
 import type { TechnicianType } from "@/lib/types"
 
 export default function CreateTechnicianPage({ params }: { params: { id: string } }) {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
@@ -46,13 +48,13 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
   const validatePassword = (password: string): string[] => {
     const errors: string[] = []
     if (password.length < 8) {
-      errors.push("Password must be at least 8 characters long")
+      errors.push(t("pwdLength"))
     }
     if (!/\d/.test(password)) {
-      errors.push("Password must contain at least one number")
+      errors.push(t("pwdNumber"))
     }
     if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one capital letter")
+      errors.push(t("pwdCapital"))
     }
     return errors
   }
@@ -62,11 +64,11 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
     const validationErrors: string[] = []
 
     // Validate required fields
-    if (!formData.name) validationErrors.push("Name is required")
-    if (!formData.email) validationErrors.push("Email is required")
-    if (!formData.location) validationErrors.push("Location is required")
-    if (!formData.phoneNumber) validationErrors.push("Phone number is required")
-    if (!formData.password) validationErrors.push("Password is required")
+    if (!formData.name) validationErrors.push(t("nameRequired"))
+    if (!formData.email) validationErrors.push(t("emailRequired"))
+    if (!formData.location) validationErrors.push(t("locationRequired"))
+    if (!formData.phoneNumber) validationErrors.push(t("phoneRequired"))
+    if (!formData.password) validationErrors.push(t("pwdRequired"))
 
     // Validate password
     const passwordErrors = validatePassword(formData.password)
@@ -74,7 +76,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
 
     // Validate password confirmation
     if (formData.password !== formData.confirmPassword) {
-      validationErrors.push("Passwords do not match")
+      validationErrors.push(t("pwdMatch"))
     }
 
     if (validationErrors.length > 0) {
@@ -98,12 +100,12 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
           const err = await res.json().catch(() => ({}))
           throw new Error(err.message || err.detail || `Error ${res.status}`)
         }
-        toast({ title: "Success", description: "Technician created successfully." })
+        toast({ title: t("success"), description: t("techCreated") })
         router.push(`/subcontractors/${params.id}?tab=technicians`)
       })
       .catch((err) => {
-        setErrors([err.message || "Failed to create technician"])
-        toast({ title: "Error", description: err.message, variant: "destructive" })
+        setErrors([err.message || t("failedToCreateTech")])
+        toast({ title: t("error"), description: err.message, variant: "destructive" })
       })
       .finally(() => setLoading(false))
   }
@@ -120,13 +122,13 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6 transition-transform hover:scale-110">
               <ShieldCheck className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("accessDenied")}</h1>
             <p className="text-slate-500 max-w-md mb-8">
-              You do not have permission (`subcontractor:update`) to create technicians for this subcontractor.
+              {t("accessDeniedTechDesc")}
             </p>
             <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
-              Return to Technicians
+              {t("returnTechs")}
             </Button>
           </main>
         </div>
@@ -146,26 +148,26 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Technicians
+            {t("backTechs")}
           </Button>
 
           <div className="mx-auto max-w-3xl">
-            <h1 className="mb-6 text-3xl font-bold">Create New Technician</h1>
+            <h1 className="mb-6 text-3xl font-bold">{t("createTechTitle")}</h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <Card className="p-6">
-                <h2 className="mb-6 text-xl font-semibold">Personal Information</h2>
+                <h2 className="mb-6 text-xl font-semibold">{t("personalInfo")}</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <Label className="mb-2 block font-semibold">Name *</Label>
+                    <Label className="mb-2 block font-semibold">{t("name")} *</Label>
                     <Input
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Full name"
+                      placeholder={t("fullNamePlaceholder")}
                     />
                   </div>
                   <div>
-                    <Label className="mb-2 block font-semibold">Technician Type *</Label>
+                    <Label className="mb-2 block font-semibold">{t("techType")} *</Label>
                     <Select
                       value={formData.type}
                       onValueChange={(value: TechnicianType) => setFormData({ ...formData, type: value })}
@@ -174,27 +176,27 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Leader">Leader</SelectItem>
-                        <SelectItem value="Worker">Worker</SelectItem>
+                        <SelectItem value="Leader">{t("leader")}</SelectItem>
+                        <SelectItem value="Worker">{t("worker")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="md:col-span-2">
-                    <Label className="mb-2 block font-semibold">Location *</Label>
+                    <Label className="mb-2 block font-semibold">{t("location")} *</Label>
                     <Input
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      placeholder="City, State"
+                      placeholder={t("locationPlaceholder")}
                     />
                   </div>
                 </div>
               </Card>
 
               <Card className="p-6">
-                <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
+                <h2 className="mb-6 text-xl font-semibold">{t("contactInfo")}</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <Label className="mb-2 block font-semibold">Email (Username) *</Label>
+                    <Label className="mb-2 block font-semibold">{t("emailUsername")} *</Label>
                     <Input
                       type="email"
                       value={formData.email}
@@ -203,7 +205,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
                     />
                   </div>
                   <div>
-                    <Label className="mb-2 block font-semibold">Phone Number *</Label>
+                    <Label className="mb-2 block font-semibold">{t("phoneNumber")} *</Label>
                     <Input
                       value={formData.phoneNumber}
                       onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
@@ -214,27 +216,27 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
               </Card>
 
               <Card className="p-6">
-                <h2 className="mb-6 text-xl font-semibold">Authentication</h2>
+                <h2 className="mb-6 text-xl font-semibold">{t("authentication")}</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <Label className="mb-2 block font-semibold">Password *</Label>
+                    <Label className="mb-2 block font-semibold">{t("password")} *</Label>
                     <Input
                       type="password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Enter password"
+                      placeholder={t("enterPassword")}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Must be at least 8 characters with 1 number and 1 capital letter
+                      {t("passwordHelp")}
                     </p>
                   </div>
                   <div>
-                    <Label className="mb-2 block font-semibold">Confirm Password *</Label>
+                    <Label className="mb-2 block font-semibold">{t("confirmPassword")} *</Label>
                     <Input
                       type="password"
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      placeholder="Confirm password"
+                      placeholder={t("confirmPassword")}
                     />
                   </div>
                 </div>
@@ -242,7 +244,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
 
               {errors.length > 0 && (
                 <div className="rounded-md bg-red-50 p-4">
-                  <h3 className="mb-2 font-semibold text-red-800">Please fix the following errors:</h3>
+                  <h3 className="mb-2 font-semibold text-red-800">{t("fixErrors")}</h3>
                   <ul className="list-inside list-disc text-sm text-red-600">
                     {errors.map((error, idx) => (
                       <li key={idx}>{error}</li>
@@ -254,7 +256,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
               <div className="flex gap-4">
                 <Button type="submit" className="flex-1" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {loading ? "Creating..." : "Create Technician"}
+                  {loading ? t("creating") : t("createTechTitle")}
                 </Button>
                 <Button
                   type="button"
@@ -262,7 +264,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
                   className="flex-1 bg-transparent"
                   onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
                 >
-                  Cancel
+                  {t("cancel")}
                 </Button>
               </div>
             </form>

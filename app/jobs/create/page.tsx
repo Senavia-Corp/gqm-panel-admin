@@ -3,6 +3,7 @@
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -75,6 +76,8 @@ const SERVICE_TYPE_OPTIONS = [
 export default function CreateJobPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
 
   const [mounted, setMounted]           = useState(false)
   const [user, setUser]                 = useState<any>(null)
@@ -146,7 +149,7 @@ export default function CreateJobPage() {
         setLoadingClients(false)
         toast({
           title: "Warning",
-          description: "Could not load clients. You can still create a job without a client.",
+          description: t("noClientsWarning"),
           variant: "destructive",
         })
       })
@@ -156,32 +159,32 @@ export default function CreateJobPage() {
     e.preventDefault()
 
     if (!formData.jobType || !formData.status) {
-      toast({ title: "Error", description: "Job Type and Status are required.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationJobTypeStatus"), variant: "destructive" })
       return
     }
 
     if (isDateAssignedRequired && !formData.dateAssigned) {
-      toast({ title: "Error", description: "Date Assigned is required for QID and PAR.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationDateAssigned"), variant: "destructive" })
       return
     }
 
     if (isDateAssignedRequired && !formData.dateAssignedEnd) {
-      toast({ title: "Error", description: "Date Assigned End is required for QID and PAR.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationDateAssignedEnd"), variant: "destructive" })
       return
     }
 
     if (isEstimatedStartRequired && !formData.estimatedStartDate) {
-      toast({ title: "Error", description: "Estimated Start Date is required for PTL.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationEstimatedStart"), variant: "destructive" })
       return
     }
 
     if (isEstimatedStartRequired && !formData.estimatedStartDateEnd) {
-      toast({ title: "Error", description: "Estimated Start Date End is required for PTL.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationEstimatedStartEnd"), variant: "destructive" })
       return
     }
 
     if (syncPodio && !yearSync) {
-      toast({ title: "Error", description: "Year is required when Podio Sync is enabled.", variant: "destructive" })
+      toast({ title: "Error", description: t("validationPodioYear"), variant: "destructive" })
       return
     }
 
@@ -209,7 +212,7 @@ export default function CreateJobPage() {
         year: syncPodio && yearSync ? parseInt(yearSync, 10) : undefined,
       })
 
-      toast({ title: "Success", description: `Job created successfully (${createdJob?.ID_Jobs ?? "OK"})` })
+      toast({ title: "Success", description: `${t("jobCreatedSuccess")} (${createdJob?.ID_Jobs ?? "OK"})` })
       if (formData.jobType === "QID" && createdJob?.ID_Jobs) {
         router.push(`/jobs/${createdJob.ID_Jobs}?autoCreateTask=true`)
       } else {
@@ -217,7 +220,7 @@ export default function CreateJobPage() {
       }
     } catch (error) {
       console.error("Error creating job:", error)
-      toast({ title: "Error", description: "Failed to create job. Please try again.", variant: "destructive" })
+      toast({ title: "Error", description: t("createError"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -230,7 +233,7 @@ export default function CreateJobPage() {
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-gqm-green-dark" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{t("loadingPage")}</p>
         </div>
       </div>
     )
@@ -251,8 +254,8 @@ export default function CreateJobPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Create New Job</h1>
-              <p className="text-muted-foreground">Fill in the details to create a new job</p>
+              <h1 className="text-3xl font-bold">{t("createTitle")}</h1>
+              <p className="text-muted-foreground">{t("createSubtitle")}</p>
             </div>
           </div>
 
@@ -263,20 +266,20 @@ export default function CreateJobPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Link2 className="h-5 w-5 text-muted-foreground" />
-                  Podio Sync
+                  {t("sectionPodioSync")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-medium">Sync this Job to Podio</p>
+                    <p className="font-medium">{t("syncThisJob")}</p>
                     <p className="text-sm text-muted-foreground">
-                      If enabled, the backend will create the item in Podio and use Podio formatted ID for ID_Jobs.
+                      {t("syncDesc")}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Label htmlFor="syncPodio" className="text-sm">
-                      {syncPodio ? "ON" : "OFF"}
+                      {syncPodio ? t("syncOn") : t("syncOff")}
                     </Label>
                     <Switch
                       id="syncPodio"
@@ -292,15 +295,15 @@ export default function CreateJobPage() {
                 {syncPodio && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                     <Label htmlFor="yearSync" className="mb-2 block text-sm font-medium">
-                      Podio Year{" "}
+                      {t("podioYear")}{" "}
                       <span className="text-red-500">*</span>
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        Required to route the item to the correct Podio workspace
+                        {t("podioYearHint")}
                       </span>
                     </Label>
                     <Select value={yearSync} onValueChange={setYearSync}>
                       <SelectTrigger id="yearSync" className="w-[180px] bg-white">
-                        <SelectValue placeholder="Select year" />
+                        <SelectValue placeholder={t("selectYear")} />
                       </SelectTrigger>
                       <SelectContent>
                         {PODIO_YEAR_OPTIONS.map((y) => (
@@ -318,14 +321,14 @@ export default function CreateJobPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  Job Characteristics
+                  {t("sectionCharacteristics")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="jobType" className="mb-2 block">
-                      Job Type <span className="text-red-500">*</span>
+                      {t("jobType")} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       required
@@ -335,7 +338,7 @@ export default function CreateJobPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select job type" />
+                        <SelectValue placeholder={t("selectJobType")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="QID">QID</SelectItem>
@@ -347,7 +350,7 @@ export default function CreateJobPage() {
 
                   <div>
                     <Label htmlFor="status" className="mb-2 block">
-                      Status <span className="text-red-500">*</span>
+                      {tCommon("status")} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       required
@@ -356,7 +359,7 @@ export default function CreateJobPage() {
                       disabled={!formData.jobType}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={formData.jobType ? "Select status" : "Select job type first"} />
+                        <SelectValue placeholder={formData.jobType ? t("selectStatus") : t("selectJobTypeFirst")} />
                       </SelectTrigger>
                       <SelectContent>
                         {formData.jobType
@@ -370,13 +373,13 @@ export default function CreateJobPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="serviceType" className="mb-2 block">Service Type</Label>
+                  <Label htmlFor="serviceType" className="mb-2 block">{t("serviceType")}</Label>
                   <Select
                     value={formData.serviceType}
                     onValueChange={(value) => setFormData((prev) => ({ ...prev, serviceType: value }))}
                   >
                     <SelectTrigger id="serviceType">
-                      <SelectValue placeholder="Select service type" />
+                      <SelectValue placeholder={t("selectServiceType")} />
                     </SelectTrigger>
                     <SelectContent>
                       {SERVICE_TYPE_OPTIONS.map((s) => (
@@ -393,25 +396,25 @@ export default function CreateJobPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Info className="h-5 w-5 text-muted-foreground" />
-                  General Information
+                  {t("sectionGeneralInfo")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="projectName" className="mb-2 block">Project Name</Label>
+                  <Label htmlFor="projectName" className="mb-2 block">{t("projectName")}</Label>
                   <Input
                     id="projectName"
-                    placeholder="Enter project name"
+                    placeholder={t("projectNamePlaceholder")}
                     value={formData.projectName}
                     onChange={(e) => setFormData((prev) => ({ ...prev, projectName: e.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="projectLocation" className="mb-2 block">Project Location</Label>
+                  <Label htmlFor="projectLocation" className="mb-2 block">{t("projectLocation")}</Label>
                   <Textarea
                     id="projectLocation"
-                    placeholder="Enter full address"
+                    placeholder={t("projectLocationPlaceholder")}
                     rows={2}
                     value={formData.projectLocation}
                     onChange={(e) => setFormData((prev) => ({ ...prev, projectLocation: e.target.value }))}
@@ -419,10 +422,10 @@ export default function CreateJobPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="additionalDetail" className="mb-2 block">Additional Detail</Label>
+                  <Label htmlFor="additionalDetail" className="mb-2 block">{t("additionalDetail")}</Label>
                   <Textarea
                     id="additionalDetail"
-                    placeholder="Any extra notes..."
+                    placeholder={t("additionalDetailPlaceholder")}
                     rows={3}
                     value={formData.additionalDetail}
                     onChange={(e) => setFormData((prev) => ({ ...prev, additionalDetail: e.target.value }))}
@@ -436,7 +439,7 @@ export default function CreateJobPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                  Project Timeline
+                  {t("sectionTimeline")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -445,11 +448,11 @@ export default function CreateJobPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="dateAssigned" className="mb-2 block">
-                      Date Assigned{" "}
+                      {t("dateAssigned")}{" "}
                       {isDateAssignedRequired ? <span className="text-red-500">*</span> : null}
                       {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {isDateAssignedRequired ? "(required for QID/PAR)" : "(optional)"}
+                          {isDateAssignedRequired ? t("requiredForQidPar") : t("optionalDate")}
                         </span>
                       )}
                     </Label>
@@ -464,11 +467,11 @@ export default function CreateJobPage() {
 
                   <div>
                     <Label htmlFor="dateAssignedEnd" className="mb-2 block">
-                      Date Assigned End{" "}
+                      {t("dateAssignedEnd")}{" "}
                       {isDateAssignedRequired ? <span className="text-red-500">*</span> : null}
                       {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {isDateAssignedRequired ? "(required for QID/PAR)" : "(optional)"}
+                          {isDateAssignedRequired ? t("requiredForQidPar") : t("optionalDate")}
                         </span>
                       )}
                     </Label>
@@ -486,11 +489,11 @@ export default function CreateJobPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="estimatedStart" className="mb-2 block">
-                      Estimated Start Date{" "}
+                      {t("estimatedStartDate")}{" "}
                       {isEstimatedStartRequired ? <span className="text-red-500">*</span> : null}
                       {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {isEstimatedStartRequired ? "(required for PTL)" : "(optional)"}
+                          {isEstimatedStartRequired ? t("requiredForPtl") : t("optionalDate")}
                         </span>
                       )}
                     </Label>
@@ -505,11 +508,11 @@ export default function CreateJobPage() {
 
                   <div>
                     <Label htmlFor="estimatedStartEnd" className="mb-2 block">
-                      Estimated Start Date End{" "}
+                      {t("estimatedStartDateEnd")}{" "}
                       {isEstimatedStartRequired ? <span className="text-red-500">*</span> : null}
                       {formData.jobType && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {isEstimatedStartRequired ? "(required for PTL)" : "(optional)"}
+                          {isEstimatedStartRequired ? t("requiredForPtl") : t("optionalDate")}
                         </span>
                       )}
                     </Label>
@@ -527,18 +530,18 @@ export default function CreateJobPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label htmlFor="estimatedDuration" className="mb-2 block">
-                      Estimated Project Duration
+                      {t("estimatedDuration")}
                     </Label>
                     <Input
                       id="estimatedDuration"
-                      placeholder="e.g., 3 months"
+                      placeholder={t("estimatedDurationPlaceholder")}
                       value={formData.estimatedDuration}
                       onChange={(e) => setFormData((prev) => ({ ...prev, estimatedDuration: e.target.value }))}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="dateReceived" className="mb-2 block">Date Received</Label>
+                    <Label htmlFor="dateReceived" className="mb-2 block">{t("dateReceived")}</Label>
                     <Input
                       id="dateReceived"
                       type="date"
@@ -556,16 +559,16 @@ export default function CreateJobPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users2 className="h-5 w-5 text-muted-foreground" />
-                  Client Assignment
+                  {t("sectionClient")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="client" className="mb-2 block">Client</Label>
+                  <Label htmlFor="client" className="mb-2 block">{t("client")}</Label>
                   {loadingClients ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading clients...
+                      {t("loadingClients")}
                     </div>
                   ) : (
                     <ClientSelect
@@ -590,17 +593,17 @@ export default function CreateJobPage() {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {t("creating")}
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Create Job
+                    {t("createJob")}
                   </>
                 )}
               </Button>
               <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
             </div>
 

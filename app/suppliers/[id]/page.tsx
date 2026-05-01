@@ -103,13 +103,13 @@ function SectionCard({ icon: Icon, title, children }: {
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
           <Icon className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="p-4 sm:p-5 space-y-4">{children}</div>
     </div>
   )
 }
@@ -138,7 +138,8 @@ function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${value ? "bg-blue-500" : "bg-slate-400"}`} />
-      Sync Podio: {value ? "ON" : "OFF"}
+      <span className="sm:hidden">Podio: {value ? "ON" : "OFF"}</span>
+      <span className="hidden sm:inline">Sync Podio: {value ? "ON" : "OFF"}</span>
     </button>
   )
 }
@@ -376,46 +377,46 @@ export default function SupplierDetailPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <Link href="/suppliers">
-                  <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600">
+                  <button className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                 </Link>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="hidden sm:flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-sm">
                     <Store className="h-5 w-5 text-white" />
                   </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-slate-900">
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base sm:text-xl font-bold text-slate-900">
                       {editing ? companyName || "Supplier" : (supplier.Company_Name ?? "Supplier")}
                     </h1>
-                    <p className="font-mono text-xs text-slate-400">{supplier.ID_Supplier}</p>
+                    <p className="hidden sm:block font-mono text-xs text-slate-400">{supplier.ID_Supplier}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 {editing ? (
                   <>
                     <PodioToggle value={syncPodio} onChange={setSyncPodio} />
                     <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Saving…" : "Save Changes"}
+                      {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Changes</span></>}
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button variant="outline" size="sm" onClick={handleEdit} className="gap-1.5 text-xs border-slate-200">
-                      <Pencil className="h-3.5 w-3.5" /> Edit
+                      <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -423,7 +424,7 @@ export default function SupplierDetailPage() {
                       onClick={() => setDeleteOpen(true)}
                       className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
                     </Button>
                   </>
                 )}
@@ -465,7 +466,7 @@ export default function SupplierDetailPage() {
 
             {/* Account */}
             <SectionCard icon={Zap} title="Account">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>Account Status</FieldLabel>
                   {editing ? (
@@ -555,7 +556,7 @@ export default function SupplierDetailPage() {
 
             {/* Contact */}
             <SectionCard icon={Phone} title="Contact">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>Email Address</FieldLabel>
                   {editing

@@ -23,11 +23,12 @@ import { SectionCard } from "./components/SectionCard"
 import { StatusBadge } from "./components/StatusBadge"
 import { EmptyState } from "./components/EmptyState"
 import { CardCarouselSkeleton, TableSkeleton } from "./components/LoadingSkeleton"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SubItem {
-  rank:             number
+  rank:              number
   subcontractor: {
     id:            string
     name:          string
@@ -37,14 +38,14 @@ interface SubItem {
     status:        string | null
     coverage_area: string[] | null
   }
-  active_tasks_count:number
-  has_overlap:       boolean
-  skills_count:      number
-  total_paid_usd:    number
+  active_tasks_count: number
+  has_overlap:        boolean
+  skills_count:       number
+  total_paid_usd:     number
 }
 
 interface SubListResponse {
-  pagination:   { page: number; limit: number; total_pages: number }
+  pagination:     { page: number; limit: number; total_pages: number }
   subcontractors: SubItem[]
 }
 
@@ -70,14 +71,14 @@ interface BillingPeriod {
 }
 
 interface PendingBill {
-  bill_id:          string
-  vendor_customer:  string
-  total_amount:     number
-  balance_amount:   number
-  percentage_paid:  number | null
-  due_date:         string | null
-  notes:            string | null
-  order:            { order_id: string; title: string } | null
+  bill_id:         string
+  vendor_customer: string
+  total_amount:    number
+  balance_amount:  number
+  percentage_paid: number | null
+  due_date:        string | null
+  notes:           string | null
+  order:           { order_id: string; title: string } | null
 }
 
 interface SubDetail {
@@ -149,33 +150,34 @@ type SubTab = "list" | "trade"
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SubcontractorsPanel() {
-  const [tab,          setTab]         = useState<SubTab>("list")
+  const t = useTranslations("dashboard")
+  const tCommon = useTranslations("common")
+  const [tab, setTab] = useState<SubTab>("list")
 
   // List state
-  const [isLoading,       setIsLoading]      = useState(true)
-  const [page,            setPage]           = useState(1)
+  const [isLoading,       setIsLoading]       = useState(true)
+  const [page,            setPage]            = useState(1)
   const limit = 25
-  const [items,           setItems]          = useState<SubItem[]>([])
-  const [totalPages,      setTotalPages]     = useState(1)
-  const [search,          setSearch]         = useState("")
+  const [items,           setItems]           = useState<SubItem[]>([])
+  const [totalPages,      setTotalPages]      = useState(1)
+  const [search,          setSearch]          = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
   // Detail state
-  const [selectedId,   setSelectedId]  = useState<string | null>(null)
-  const [detail,       setDetail]      = useState<SubDetail | null>(null)
+  const [selectedId,    setSelectedId]    = useState<string | null>(null)
+  const [detail,        setDetail]        = useState<SubDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
 
   // By-trade state
-  const [tradeGroups,  setTradeGroups] = useState<TradeGroup[]>([])
+  const [tradeGroups,  setTradeGroups]  = useState<TradeGroup[]>([])
   const [tradeLoading, setTradeLoading] = useState(false)
 
-  // ── Debounce search → reset page to 1 on new query ───────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setPage(1)
       setDebouncedSearch(search.trim())
     }, 400)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [search])
 
   // ── List fetch ────────────────────────────────────────────────────────────
@@ -223,7 +225,7 @@ export default function SubcontractorsPanel() {
   // ── By-trade fetch ────────────────────────────────────────────────────────
   useEffect(() => {
     if (tab !== "trade") return
-    if (tradeGroups.length > 0) return  // already loaded
+    if (tradeGroups.length > 0) return
     const run = async () => {
       try {
         setTradeLoading(true)
@@ -241,23 +243,23 @@ export default function SubcontractorsPanel() {
     run()
   }, [tab, tradeGroups.length])
 
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+
       {/* Tab selector */}
       <div className="inline-flex rounded-lg border bg-white p-1">
-        {(["list", "trade"] as SubTab[]).map((t) => (
+        {(["list", "trade"] as SubTab[]).map((tabKey) => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
-            onClick={() => { setTab(t); setSelectedId(null) }}
+            onClick={() => { setTab(tabKey); setSelectedId(null) }}
             className={[
-              "rounded-md px-5 py-2 text-sm font-medium transition",
-              tab === t ? "bg-gqm-green-dark text-white shadow" : "text-muted-foreground hover:text-gray-900",
+              "rounded-md px-4 sm:px-5 py-2 text-sm font-medium transition",
+              tab === tabKey ? "bg-gqm-green-dark text-white shadow" : "text-muted-foreground hover:text-gray-900",
             ].join(" ")}
           >
-            {t === "list" ? "Subcontractors" : "Tech per Trade"}
+            {tabKey === "list" ? t("tabSubcontractors") : t("tabTechPerTrade")}
           </button>
         ))}
       </div>
@@ -265,7 +267,9 @@ export default function SubcontractorsPanel() {
       {tab === "list" ? (
         <>
           {/* ===== Carousel ================================================= */}
-          <div className="rounded-lg border-4 border-black bg-gqm-green-dark p-6 relative">
+          <div className="rounded-lg border-4 border-black bg-gqm-green-dark p-3 sm:p-6 relative">
+
+            {/* Arrows: desktop only */}
             {(["left", "right"] as const).map((dir) => (
               <button
                 key={dir}
@@ -273,10 +277,10 @@ export default function SubcontractorsPanel() {
                 aria-label={`Scroll ${dir}`}
                 onClick={() => {
                   const el = document.getElementById("subs-scroller")
-                  if (el) el.scrollBy({ left: dir === "left" ? -340 : 340, behavior: "smooth" })
+                  if (el) el.scrollBy({ left: dir === "left" ? -296 : 296, behavior: "smooth" })
                 }}
                 className={[
-                  "absolute top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow hover:bg-white",
+                  "hidden sm:flex absolute top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow hover:bg-white",
                   dir === "left" ? "left-2" : "right-2",
                 ].join(" ")}
               >
@@ -286,7 +290,7 @@ export default function SubcontractorsPanel() {
 
             <div
               id="subs-scroller"
-              className="flex gap-4 overflow-x-auto pb-2 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0"
+              className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0 [scroll-snap-type:x_mandatory] scroll-smooth"
             >
               {isLoading ? (
                 <CardCarouselSkeleton count={5} />
@@ -297,7 +301,7 @@ export default function SubcontractorsPanel() {
                   return (
                     <div
                       key={s.id}
-                      className="flex-none w-[280px] rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition flex flex-col"
+                      className="flex-none w-full sm:w-[280px] [scroll-snap-align:start] rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition flex flex-col"
                     >
                       <div className="p-5 flex-1">
                         <div className="flex items-start gap-3 mb-4">
@@ -313,36 +317,36 @@ export default function SubcontractorsPanel() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                          <div className="text-muted-foreground">Status</div>
+                          <div className="text-muted-foreground">{t("colStatus")}</div>
                           <div className="text-right">
-                            {s.status ? <StatusBadge status={s.status} /> : <span className="italic opacity-50">No Status</span>}
+                            {s.status ? <StatusBadge status={s.status} /> : <span className="italic opacity-50">{t("noStatus")}</span>}
                           </div>
 
-                          <div className="text-muted-foreground">Active Tasks</div>
+                          <div className="text-muted-foreground">{t("kpiActiveTasks")}</div>
                           <div className="text-right font-semibold tabular-nums">{sub.active_tasks_count}</div>
 
                           <div className="text-muted-foreground">Skills</div>
                           <div className="text-right font-semibold tabular-nums">{sub.skills_count}</div>
 
-                          <div className="text-muted-foreground">Score</div>
+                          <div className="text-muted-foreground">{t("score")}</div>
                           <div className="text-right font-semibold tabular-nums">
-                            {s.score != null ? `${s.score}/10` : <span className="italic opacity-50">No Score</span>}
+                            {s.score != null ? `${s.score}/10` : <span className="italic opacity-50">{t("noScore")}</span>}
                           </div>
 
-                          <div className="text-muted-foreground">Total Paid</div>
+                          <div className="text-muted-foreground">{t("colTotalPaid")}</div>
                           <div className="text-right font-semibold tabular-nums text-emerald-700">{fmtK(sub.total_paid_usd)}</div>
                         </div>
 
                         {sub.has_overlap && (
                           <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-700 font-medium">
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                            Schedule overlap detected
+                            {t("scheduleOverlap")}
                           </div>
                         )}
                       </div>
 
                       <div className="px-5 py-2.5 mt-auto text-sm font-semibold text-black" style={{ backgroundColor: "#37D260" }}>
-                        {fmtK(sub.total_paid_usd)} Total Paid
+                        {fmtK(sub.total_paid_usd)} {t("colTotalPaid")}
                       </div>
                     </div>
                   )
@@ -352,29 +356,35 @@ export default function SubcontractorsPanel() {
 
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-              <span className="text-white text-sm">Page {page} / {Math.max(1, totalPages)}</span>
-              <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+              <Button variant="outline" size="sm" className="bg-white h-8 px-2 sm:px-3" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="h-4 w-4 sm:hidden" />
+                <span className="hidden sm:inline">{t("prevPage")}</span>
+              </Button>
+              <span className="text-white text-sm tabular-nums">{page} / {Math.max(1, totalPages)}</span>
+              <Button variant="outline" size="sm" className="bg-white h-8 px-2 sm:px-3" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                <ChevronRight className="h-4 w-4 sm:hidden" />
+                <span className="hidden sm:inline">{t("nextPage")}</span>
+              </Button>
             </div>
           </div>
 
           {/* ===== Bottom: Picker + Detail ================================== */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
             {/* Picker */}
-            <SectionCard title="All Subcontractors" subtitle="Click to see active tasks and billing">
+            <SectionCard title={t("allSubcontractors")} subtitle={t("allSubcontractorsSubtitle")}>
               <div className="relative mb-4">
                 <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or specialty..." className="pl-9" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchByNameOrSpecialty")} className="pl-9" />
               </div>
               {isLoading ? (
                 <TableSkeleton rows={6} cols={3} />
               ) : (
                 <div className="space-y-2">
                   {items.map((sub) => {
-                    const s      = sub.subcontractor
+                    const s     = sub.subcontractor
                     const accent = getAccent(s.id)
-                    const isSel  = selectedId === s.id
+                    const isSel = selectedId === s.id
                     return (
                       <button
                         key={s.id}
@@ -392,48 +402,48 @@ export default function SubcontractorsPanel() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm truncate">{s.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {s.specialty ?? <span className="italic opacity-50">No Specialty</span>}
+                              {s.specialty ?? <span className="italic opacity-50">{t("noSpecialty")}</span>}
                             </div>
                           </div>
                           <div className="text-right text-xs shrink-0">
                             <div className="font-semibold text-emerald-700">{fmtK(sub.total_paid_usd)}</div>
-                            <div className="text-muted-foreground">{sub.active_tasks_count} active</div>
+                            <div className="text-muted-foreground">{sub.active_tasks_count} {tCommon("active")}</div>
                           </div>
                         </div>
                       </button>
                     )
                   })}
-                  {items.length === 0 && <EmptyState message="No subcontractors found." />}
+                  {items.length === 0 && <EmptyState message={t("noSubcontractorsFound")} />}
                 </div>
               )}
             </SectionCard>
 
             {/* Detail */}
             <SectionCard
-              title={detail?.subcontractor.name ?? "Individual Statistics"}
-              subtitle={detail?.subcontractor.specialty ?? "Select a subcontractor on the left"}
-              action={selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>Clear</Button> : undefined}
+              title={detail?.subcontractor.name ?? t("individualStats")}
+              subtitle={detail?.subcontractor.specialty ?? t("selectSubcontractorLeft")}
+              action={selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t("clear")}</Button> : undefined}
             >
               {!selectedId ? (
-                <EmptyState message="Select a subcontractor to see details." />
+                <EmptyState message={t("selectSubcontractorDetail")} />
               ) : detailLoading ? (
                 <TableSkeleton rows={5} cols={2} />
               ) : !detail ? (
-                <EmptyState message="Could not load details." />
+                <EmptyState message={t("errorLoadSubDetails")} />
               ) : (
                 <div className="space-y-5">
                   {/* KPI chips */}
                   <div className="grid grid-cols-2 gap-3">
-                    <KpiCard title="Active Tasks"  value={String(detail.active_tasks.count)}           Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                    <KpiCard title="Total Paid"    value={fmtK(detail.billing.totals.total_paid)}      Icon={DollarSign}   accentClass="bg-emerald-100 text-emerald-700" />
-                    <KpiCard title="Bills"         value={String(detail.billing.totals.bill_count)}    Icon={FileText}     accentClass="bg-violet-100 text-violet-700" />
-                    <KpiCard title="Pending Bills" value={String(detail.pending_bills.count)}          Icon={CheckCircle2} accentClass="bg-amber-100 text-amber-700" />
+                    <KpiCard title={t("kpiActiveTasks")}  value={String(detail.active_tasks.count)}        Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                    <KpiCard title={t("colTotalPaid")}    value={fmtK(detail.billing.totals.total_paid)}   Icon={DollarSign}   accentClass="bg-emerald-100 text-emerald-700" />
+                    <KpiCard title={t("kpiBills")}        value={String(detail.billing.totals.bill_count)} Icon={FileText}     accentClass="bg-violet-100 text-violet-700" />
+                    <KpiCard title={t("kpiPendingBills")} value={String(detail.pending_bills.count)}       Icon={CheckCircle2} accentClass="bg-amber-100 text-amber-700" />
                   </div>
 
                   {detail.subcontractor.score != null && (
                     <div className="flex items-center gap-2 rounded-xl border bg-gray-50 px-4 py-3">
                       <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm text-muted-foreground">Score</span>
+                      <span className="text-sm text-muted-foreground">{t("score")}</span>
                       <span className="ml-auto text-xl font-bold tabular-nums">{detail.subcontractor.score}/10</span>
                     </div>
                   )}
@@ -443,33 +453,57 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-sky-600" />
-                        In Progress Jobs
+                        {t("inProgressJobs")}
                         {detail.active_tasks.has_overlap && (
                           <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 font-normal">
-                            <AlertTriangle className="h-3 w-3" /> Overlap
+                            <AlertTriangle className="h-3 w-3" /> {t("overlap")}
                           </span>
                         )}
                       </h3>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Task</th>
-                            <th className="px-2 py-1.5 font-medium">Job</th>
-                            <th className="px-2 py-1.5 font-medium">Status</th>
-                            <th className="px-2 py-1.5 font-medium">Due</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detail.active_tasks.tasks.map((t) => (
-                            <tr key={t.task_id} className="border-b hover:bg-gray-50 transition">
-                              <td className="px-2 py-1.5 font-medium max-w-[120px] truncate">{t.task_name}</td>
-                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{t.job?.job_id ?? "—"}</td>
-                              <td className="px-2 py-1.5"><StatusBadge status={t.status} /></td>
-                              <td className="px-2 py-1.5 tabular-nums">{t.delivery_date ?? "—"}</td>
+
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {detail.active_tasks.tasks.map((task) => (
+                          <div key={task.task_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium truncate">{task.task_name}</span>
+                              <StatusBadge status={task.status} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">{t("colJob")}</span>
+                              <span className="font-mono font-semibold text-gqm-green-dark">{task.job?.job_id ?? "—"}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">{t("colDue")}</span>
+                              <span className="tabular-nums">{task.delivery_date ?? "—"}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop table */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+                              <th className="px-2 py-1.5 font-medium">{t("colTask")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colJob")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colStatus")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colDue")}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {detail.active_tasks.tasks.map((task) => (
+                              <tr key={task.task_id} className="border-b hover:bg-gray-50 transition">
+                                <td className="px-2 py-1.5 font-medium max-w-[120px] truncate">{task.task_name}</td>
+                                <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{task.job?.job_id ?? "—"}</td>
+                                <td className="px-2 py-1.5"><StatusBadge status={task.status} /></td>
+                                <td className="px-2 py-1.5 tabular-nums">{task.delivery_date ?? "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
@@ -478,26 +512,46 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-emerald-600" />
-                        Paid per Period
+                        {t("paidPerPeriod")}
                       </h3>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Period</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Invoices</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Total Paid</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detail.billing.by_period.map((b) => (
-                            <tr key={b.month_key} className="border-b hover:bg-gray-50 transition">
-                              <td className="px-2 py-1.5 font-medium">{b.label}</td>
-                              <td className="px-2 py-1.5 text-right tabular-nums">{b.payments_count}</td>
-                              <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(b.paid_usd)}</td>
+
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {detail.billing.by_period.map((b) => (
+                          <div key={b.month_key} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{b.label}</span>
+                              <span className="font-semibold text-emerald-700">{fmtK(b.paid_usd)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">{t("colInvoices")}</span>
+                              <span className="tabular-nums">{b.payments_count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop table */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+                              <th className="px-2 py-1.5 font-medium">{t("colPeriod")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colInvoices")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colTotalPaid")}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {detail.billing.by_period.map((b) => (
+                              <tr key={b.month_key} className="border-b hover:bg-gray-50 transition">
+                                <td className="px-2 py-1.5 font-medium">{b.label}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums">{b.payments_count}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(b.paid_usd)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
@@ -506,31 +560,54 @@ export default function SubcontractorsPanel() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                         <FileText className="h-4 w-4 text-violet-600" />
-                        POs Released
+                        {t("posReleased")}
                         <span className="rounded-full bg-violet-100 text-violet-800 px-2 py-0.5 text-xs">{detail.pending_bills.count}</span>
                       </h3>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                            <th className="px-2 py-1.5 font-medium">Bill ID</th>
-                            <th className="px-2 py-1.5 font-medium">Order</th>
-                            <th className="px-2 py-1.5 font-medium">Due Date</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Balance</th>
-                            <th className="px-2 py-1.5 font-medium text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detail.pending_bills.bills.map((b) => (
-                            <tr key={b.bill_id} className="border-b hover:bg-gray-50 transition">
-                              <td className="px-2 py-1.5 font-mono text-xs">{b.bill_id}</td>
-                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{b.order?.title ?? "—"}</td>
-                              <td className="px-2 py-1.5 tabular-nums">{b.due_date ?? "—"}</td>
-                              <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-amber-700">{fmtK(b.balance_amount)}</td>
-                              <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtK(b.total_amount)}</td>
+
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {detail.pending_bills.bills.map((b) => (
+                          <div key={b.bill_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono">{b.bill_id}</span>
+                              <span className="tabular-nums text-muted-foreground">{b.due_date ?? "—"}</span>
+                            </div>
+                            <p className="font-mono font-semibold text-gqm-green-dark truncate">{b.order?.title ?? "—"}</p>
+                            <div className="flex items-center justify-between border-t pt-1.5">
+                              <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground">{t("colBalance")}: <span className="font-semibold text-amber-700">{fmtK(b.balance_amount)}</span></span>
+                              </div>
+                              <span className="font-semibold">{fmtK(b.total_amount)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop table */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+                              <th className="px-2 py-1.5 font-medium">{t("colBillId")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colOrder")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colDueDate")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colBalance")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colTotal")}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {detail.pending_bills.bills.map((b) => (
+                              <tr key={b.bill_id} className="border-b hover:bg-gray-50 transition">
+                                <td className="px-2 py-1.5 font-mono text-xs">{b.bill_id}</td>
+                                <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{b.order?.title ?? "—"}</td>
+                                <td className="px-2 py-1.5 tabular-nums">{b.due_date ?? "—"}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-amber-700">{fmtK(b.balance_amount)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtK(b.total_amount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -540,29 +617,29 @@ export default function SubcontractorsPanel() {
         </>
       ) : (
         /* ===== Tech per Trade ============================================== */
-        <SectionCard title="Technicians per Trade" subtitle="Subcontractors grouped by skill / service type">
+        <SectionCard title={t("techsPerTrade")} subtitle={t("techsPerTradeSubtitle")}>
           {tradeLoading ? (
             <TableSkeleton rows={8} cols={4} />
           ) : tradeGroups.length === 0 ? (
-            <EmptyState message="No trade data available." />
+            <EmptyState message={t("noTradeData")} />
           ) : (
             <div className="space-y-4">
               {tradeGroups.map((group, gi) => (
                 <div key={gi} className="rounded-xl border bg-gray-50 p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Wrench className="h-4 w-4 text-violet-600 shrink-0" />
-                      <span className="font-semibold text-sm">
-                        {group.division_trade || (group.skill_name !== "—" ? group.skill_name : null) || "Unknown"}
+                      <span className="font-semibold text-sm truncate">
+                        {group.division_trade || (group.skill_name !== "—" ? group.skill_name : null) || t("unknown")}
                       </span>
                       {group.skill_name && group.skill_name !== "—" && group.division_trade && group.skill_name !== group.division_trade && (
-                        <span className="rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-xs">
+                        <span className="rounded-full bg-violet-100 text-violet-700 px-2 py-0.5 text-xs shrink-0">
                           {group.skill_name}
                         </span>
                       )}
                     </div>
-                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium">
-                      {group.total_subs} subs
+                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium shrink-0 ml-2">
+                      {group.total_subs} {t("subs")}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">

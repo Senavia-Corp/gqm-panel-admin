@@ -200,7 +200,7 @@ export function EditOrderDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 pt-5 pb-4 flex-shrink-0 bg-slate-50/50">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 flex-shrink-0 bg-slate-50/50">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100">
               <PackageOpen className="h-5 w-5 text-orange-600" />
@@ -223,7 +223,7 @@ export function EditOrderDialog({
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
           
           {/* Left panel */}
-          <div className="lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-100 bg-white px-6 py-5 flex flex-col gap-6 overflow-y-auto">
+          <div className="lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5 flex flex-col gap-4 sm:gap-6 overflow-y-auto shrink-0 max-h-[42%] lg:max-h-none lg:shrink">
             <FG>
               <FL required>Order Name</FL>
               <div className="relative">
@@ -309,7 +309,7 @@ export function EditOrderDialog({
           </div>
 
           {/* Right panel (Items Selection) */}
-          <div className="flex-1 flex flex-col bg-slate-50/30 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col bg-slate-50/30 overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <div>
                 <h3 className="text-sm font-bold text-slate-800">Assign Estimate Costs</h3>
@@ -417,7 +417,7 @@ export function EditOrderDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6 sm:py-4 flex-shrink-0">
           <button 
             type="button" 
             onClick={() => !isSubmitting && onOpenChange(false)} 

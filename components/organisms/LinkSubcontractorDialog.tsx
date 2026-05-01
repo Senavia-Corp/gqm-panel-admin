@@ -322,13 +322,13 @@ export function LinkSubcontractorDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b border-slate-100">
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-slate-100 sm:px-5 sm:pt-5 sm:pb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 flex-shrink-0">
-              <Users className="h-5 w-5 text-slate-500" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 flex-shrink-0 sm:h-10 sm:w-10">
+              <Users className="h-4 w-4 text-slate-500 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">Link Subcontractor</h2>
+              <h2 className="text-base font-bold text-slate-900 leading-tight sm:text-lg">Link Subcontractor</h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Select a subcontractor to link to this job
                 {total > 0 && <span className="ml-1.5 font-semibold text-slate-500">· {total} total</span>}
@@ -336,12 +336,12 @@ export function LinkSubcontractorDialog({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 sm:gap-3">
             {/* Podio sync toggle */}
             <button
               type="button"
               onClick={() => setSyncPodio((v) => !v)}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${
+              className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-sm transition-all sm:px-3 sm:py-2 sm:gap-2 ${
                 syncPodio
                   ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
@@ -374,7 +374,7 @@ export function LinkSubcontractorDialog({
         </div>
 
         {/* ── Controls ────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50 sm:px-5">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -399,8 +399,8 @@ export function LinkSubcontractorDialog({
                       : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
                   }`}
                 >
-                  <Star className={`h-4 w-4 ${selectedSkillIds.length > 0 ? "fill-violet-400" : ""}`} />
-                  {selectedSkillIds.length > 0 ? `${selectedSkillIds.length} Skills` : "Filter by Skill"}
+                  <Star className={`h-4 w-4 flex-shrink-0 ${selectedSkillIds.length > 0 ? "fill-violet-400" : ""}`} />
+                  <span className="whitespace-nowrap">{selectedSkillIds.length > 0 ? `${selectedSkillIds.length} Skills` : "Filter by Skill"}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent 
@@ -471,8 +471,8 @@ export function LinkSubcontractorDialog({
                   : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
               }`}
             >
-              {statusFilter === "Active" && <CheckCircle2 className="h-3.5 w-3.5" />}
-              Active only
+              {statusFilter === "Active" && <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />}
+              <span className="whitespace-nowrap">Active only</span>
             </button>
 
             {/* Pagination */}
@@ -620,7 +620,7 @@ export function LinkSubcontractorDialog({
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 py-3 border-t border-slate-100 bg-slate-50/50 sm:px-5">
           <p className="text-xs text-slate-400">
             Showing <span className="font-semibold text-slate-600">{displayRows.length}</span> of <span className="font-semibold text-slate-600">{total}</span> subcontractors
           </p>

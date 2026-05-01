@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,9 @@ export function DeleteJobDialog({
   defaultSyncPodio = false,
   suggestedYear = null,
 }: DeleteJobDialogProps) {
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
+
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -81,18 +85,18 @@ export function DeleteJobDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <AlertTriangle className="h-5 w-5" />
-            Permanently Delete Job
+            {t("deleteDialogTitle")}
           </DialogTitle>
           <DialogDescription>
-            This action cannot be undone. Job <span className="font-semibold">{jobId}</span> will be permanently deleted.
+            {t("deleteDialogDesc")} <span className="font-semibold">{jobId}</span> {t("deleteDialogDescSuffix")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="rounded-lg bg-red-50 p-4">
-            <p className="text-sm font-medium text-red-800">⚠️ Warning: This is a permanent action</p>
+            <p className="text-sm font-medium text-red-800">⚠️ {t("deleteWarningTitle")}</p>
             <p className="mt-2 text-sm text-red-700">
-              All data associated with this job will be permanently removed and cannot be recovered.
+              {t("deleteWarningDesc")}
             </p>
           </div>
 
@@ -100,9 +104,9 @@ export function DeleteJobDialog({
           <div className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <Label className="text-sm font-semibold">Sync deletion with Podio</Label>
+                <Label className="text-sm font-semibold">{t("deleteSyncPodio")}</Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  If enabled, we will also delete/update the corresponding Podio item.
+                  {t("deleteSyncPodioDesc")}
                 </p>
               </div>
               <Switch checked={syncPodio} onCheckedChange={setSyncPodio} />
@@ -110,7 +114,7 @@ export function DeleteJobDialog({
 
             {syncPodio && (
               <div className="space-y-2">
-                <Label htmlFor="podio-year">Podio App Year</Label>
+                <Label htmlFor="podio-year">{t("deletePodioAppYear")}</Label>
                 <Input
                   id="podio-year"
                   value={year}
@@ -119,11 +123,11 @@ export function DeleteJobDialog({
                   inputMode="numeric"
                 />
                 {!yearIsValid && (
-                  <p className="text-xs text-red-600">Year is required (2000–2100) when Podio sync is enabled.</p>
+                  <p className="text-xs text-red-600">{t("deletePodioYearError")}</p>
                 )}
                 {suggestedYear && (
                   <p className="text-xs text-muted-foreground">
-                    Suggested year was detected from the job date: <span className="font-medium">{suggestedYear}</span>
+                    {t("deleteSuggestedYear")} <span className="font-medium">{suggestedYear}</span>
                   </p>
                 )}
               </div>
@@ -133,13 +137,13 @@ export function DeleteJobDialog({
           {/* ✅ confirm word */}
           <div className="space-y-2">
             <Label htmlFor="confirm-delete">
-              Type <span className="font-mono font-semibold">delete</span> to confirm
+              {t("deleteConfirmLabel")} <span className="font-mono font-semibold">{t("deleteConfirmLabelWord")}</span> {t("deleteConfirmLabelSuffix")}
             </Label>
             <Input
               id="confirm-delete"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type 'delete' here"
+              placeholder={t("deleteConfirmPlaceholder")}
               disabled={isDeleting}
             />
           </div>
@@ -147,11 +151,11 @@ export function DeleteJobDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDeleting}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button onClick={handleConfirm} disabled={!canDelete} className="bg-red-600 hover:bg-red-700">
             <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? "Deleting..." : "Delete Permanently"}
+            {isDeleting ? t("deletingButton") : t("deletePermButton")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -269,14 +269,10 @@ export function CreateTaskDialog({
         >
           <VisuallyHidden><DialogTitle>Create New Task</DialogTitle></VisuallyHidden>
           {/* ── Header ────────────────────────────────────────────────────────── */}
-          <div style={{
-            background: "linear-gradient(135deg, #0B2E1E 0%, #1A5C3A 100%)",
-            padding: "20px 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}>
+          <div
+            className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-7 sm:py-5"
+            style={{ background: "linear-gradient(135deg, #0B2E1E 0%, #1A5C3A 100%)" }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               <div style={{
                 width: "44px", height: "44px",
@@ -315,15 +311,10 @@ export function CreateTaskDialog({
 
           {/* ── Recommended banner ────────────────────────────────────────────── */}
           {isRecommended && (
-            <div style={{
-              background: "#FFFBEB",
-              borderBottom: "1px solid #FDE68A",
-              padding: "10px 28px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              flexShrink: 0,
-            }}>
+            <div
+              className="flex shrink-0 items-center gap-2 px-4 py-2.5 sm:px-7"
+              style={{ background: "#FFFBEB", borderBottom: "1px solid #FDE68A" }}
+            >
               <AlertTriangle size={14} color="#D97706" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: "12px", color: "#92400E", fontWeight: 500 }}>
                 It is recommended to create this task at this point in the workflow.
@@ -332,12 +323,7 @@ export function CreateTaskDialog({
           )}
 
           {/* ── Body ──────────────────────────────────────────────────────────── */}
-          <div style={{
-            padding: "24px 28px",
-            overflowY: "auto",
-            flex: 1,
-            minHeight: 0,
-          }}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
 
             {/* Section 1 — Task Details */}
             <SectionHeader icon={<ClipboardList size={13} />} label="Task Details" />
@@ -383,7 +369,7 @@ export function CreateTaskDialog({
             {/* Section 2 — Classification */}
             <SectionHeader icon={<Flag size={13} />} label="Classification" />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {/* Status */}
               <div>
                 <FieldLabel>Status</FieldLabel>
@@ -475,7 +461,7 @@ export function CreateTaskDialog({
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div>
                 <FieldLabel>Start Date</FieldLabel>
                 <input
@@ -716,15 +702,10 @@ export function CreateTaskDialog({
           </div>
 
           {/* ── Footer ────────────────────────────────────────────────────────── */}
-          <div style={{
-            padding: "14px 28px",
-            borderTop: "1px solid #F3F4F6",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "10px",
-            background: "#FAFAFA",
-            flexShrink: 0,
-          }}>
+          <div
+            className="flex shrink-0 flex-wrap justify-end gap-2.5 px-4 py-3 sm:px-7"
+            style={{ borderTop: "1px solid #F3F4F6", background: "#FAFAFA" }}
+          >
             <button
               onClick={handleAttemptClose}
               disabled={loading}

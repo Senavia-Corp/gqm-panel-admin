@@ -169,33 +169,33 @@ export default function BuildingDepartmentsPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3 px-6 pt-5 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
-                <Landmark className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pb-4 sm:pt-5">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm sm:h-10 sm:w-10">
+                <Landmark className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900">Building Departments</h1>
-                <p className="text-xs text-slate-500">Permitting offices and regulatory entities across the US</p>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Building Departments</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">Permitting offices and regulatory entities across the US</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 p-4 sm:p-6">
 
             {/* ── Toolbar ── */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-base font-bold text-slate-800">All Building Departments</h2>
-                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <h2 className="truncate text-base font-bold text-slate-800">All Building Departments</h2>
+                  <span className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {activeFilters > 0 && (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                    <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 sm:flex">
                       <Filter className="h-2.5 w-2.5" /> {activeFilters} filter
                     </span>
                   )}
@@ -203,15 +203,17 @@ export default function BuildingDepartmentsPage() {
                 {hasPermission("bldg_dept:create") && (
                   <Button
                     onClick={() => router.push("/building-departments/create")}
-                    className="gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                    className="ml-3 flex-shrink-0 gap-1.5 bg-blue-600 hover:bg-blue-700 text-sm text-white"
                   >
-                    <Plus className="h-4 w-4" /> Add Department
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">Add</span>
+                    <span className="hidden sm:inline">Add Department</span>
                   </Button>
                 )}
               </div>
 
-              <div className="flex items-center gap-3 px-5 py-4">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="relative w-full sm:flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
@@ -257,8 +259,8 @@ export default function BuildingDepartmentsPage() {
 
             {/* ── Pagination ── */}
             {!loading && !error && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-                <p className="text-sm text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+                <p className="text-xs text-slate-500 sm:text-sm">
                   Showing{" "}
                   <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
                   of <span className="font-semibold text-slate-800">{total}</span> departments
@@ -266,14 +268,14 @@ export default function BuildingDepartmentsPage() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">Previous</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
                   </span>
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-                    Next <ChevronRight className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Next</span><ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

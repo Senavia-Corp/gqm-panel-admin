@@ -115,17 +115,17 @@ function SectionCard({ icon: Icon, iconBg, iconColor, title, action, children }:
   title: string; action?: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-3">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
+          <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
             <Icon className={`h-4 w-4 ${iconColor}`} />
           </div>
           <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         </div>
         {action}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -492,23 +492,23 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar user={user} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ─────────────────────────────────────────────── */}
-          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+          <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                 <button onClick={() => router.push("/members")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm">
+                <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-black text-white shadow-sm sm:h-10 sm:w-10">
                     {initials}
                   </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">{member.Member_Name ?? "Unnamed"}</h1>
-                    <p className="mt-0.5 font-mono text-xs text-slate-400">{member.ID_Member}</p>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{member.Member_Name ?? "Unnamed"}</h1>
+                    <p className="mt-0.5 hidden font-mono text-xs text-slate-400 sm:block">{member.ID_Member}</p>
                   </div>
                 </div>
                 {member.Company_Role && (
@@ -518,20 +518,20 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                 )}
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 {canUpdate && editing ? (
                   <>
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Saving…" : "Save Changes"}
+                      <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
                     </Button>
                   </>
                 ) : canUpdate ? (
                   <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
-                    ✎ Edit
+                    ✎<span className="hidden sm:inline"> Edit</span>
                   </Button>
                 ) : null}
               </div>
@@ -539,25 +539,26 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* ── Content ───────────────────────────────────────────────────── */}
-          <div className="p-6">
-            <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-3">
+          <div className="p-4 sm:p-6">
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-4 lg:grid-cols-3">
 
               {/* ── LEFT: tabs ────────────────────────────────────────────── */}
-              <div className="xl:col-span-3 lg:col-span-2">
+              <div className="min-w-0 xl:col-span-3 lg:col-span-2">
                 <Tabs value={activeTab} onValueChange={v => router.push(`/members/${id}?tab=${v}`)}>
 
                   {/* Tab bar */}
-                  <div className="mb-5 overflow-x-auto">
+                  <div className="mb-4 overflow-x-auto sm:mb-5">
                     <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {[
-                        { value: "details",     label: "Details",              count: null },
-                        { value: "jobs",        label: "Jobs",                 count: member.jobs?.length ?? 0 },
-                        { value: "roles",       label: "Roles & Permissions",  count: (member.permissions?.length ?? 0) + (member.role ? 1 : 0) },
-                        { value: "activity",    label: "Activity",             count: member.tlactivity?.length ?? 0 },
-                      ].map(({ value, label, count }) => (
+                        { value: "details",  labelFull: "Details",             labelShort: "Details",  count: null },
+                        { value: "jobs",     labelFull: "Jobs",                labelShort: "Jobs",     count: member.jobs?.length ?? 0 },
+                        { value: "roles",    labelFull: "Roles & Permissions", labelShort: "Roles",    count: (member.permissions?.length ?? 0) + (member.role ? 1 : 0) },
+                        { value: "activity", labelFull: "Activity",            labelShort: "Activity", count: member.tlactivity?.length ?? 0 },
+                      ].map(({ value, labelFull, labelShort, count }) => (
                         <TabsTrigger key={value} value={value}
-                          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm">
-                          {label}
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:px-4">
+                          <span className="sm:hidden">{labelShort}</span>
+                          <span className="hidden sm:inline">{labelFull}</span>
                           {count !== null && (
                             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${activeTab === value ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
                               {count}
@@ -572,40 +573,40 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                   <TabsContent value="details" className="space-y-4">
 
                     <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Member Information">
-                      <div className="grid gap-5 md:grid-cols-2">
-                        <div className="md:col-span-2">
+                      <div className="grid min-w-0 gap-5 md:grid-cols-2">
+                        <div className="min-w-0 md:col-span-2">
                           <FieldLabel>Full Name</FieldLabel>
                           {editing
                             ? <Input value={form.Member_Name} onChange={e => setField("Member_Name", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Member_Name"))}`} placeholder="Full name" />
                             : <p className="text-sm text-slate-800">{member.Member_Name || <span className="italic text-slate-400">—</span>}</p>
                           }
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <FieldLabel>Company Role</FieldLabel>
                           {editing
                             ? <Input value={form.Company_Role} onChange={e => setField("Company_Role", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Company_Role"))}`} placeholder="e.g. Account Representative" />
                             : <p className="text-sm text-slate-800">{member.Company_Role || <span className="italic text-slate-400">—</span>}</p>
                           }
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <FieldLabel>Email Address</FieldLabel>
                           {editing
                             ? <Input type="email" value={form.Email_Address} onChange={e => setField("Email_Address", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Email_Address"))}`} placeholder="email@example.com" />
                             : member.Email_Address
-                              ? <a href={`mailto:${member.Email_Address}`} className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline"><Mail className="h-3.5 w-3.5" />{member.Email_Address}</a>
+                              ? <a href={`mailto:${member.Email_Address}`} className="flex min-w-0 items-center gap-1.5 text-sm text-emerald-700 hover:underline"><Mail className="h-3.5 w-3.5 flex-shrink-0" /><span className="truncate">{member.Email_Address}</span></a>
                               : <span className="text-sm italic text-slate-400">—</span>
                           }
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <FieldLabel>Phone Number</FieldLabel>
                           {editing
                             ? <Input value={form.Phone_Number} onChange={e => setField("Phone_Number", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Phone_Number"))}`} placeholder="(555) 000-0000" />
                             : member.Phone_Number
-                              ? <a href={`tel:${member.Phone_Number}`} className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline"><Phone className="h-3.5 w-3.5" />{member.Phone_Number}</a>
+                              ? <a href={`tel:${member.Phone_Number}`} className="flex items-center gap-1.5 text-sm text-emerald-700 hover:underline"><Phone className="h-3.5 w-3.5 flex-shrink-0" />{member.Phone_Number}</a>
                               : <span className="text-sm italic text-slate-400">—</span>
                           }
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="min-w-0 md:col-span-2">
                           <FieldLabel>Address</FieldLabel>
                           {editing
                             ? <Textarea value={form.Address} onChange={e => setField("Address", e.target.value)} className={`${inputCls} resize-none ${changedCls(changedFields.has("Address"))}`} rows={2} placeholder="Full address" />
@@ -649,21 +650,21 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                   {/* ── JOBS tab ──────────────────────────────────────────── */}
                   <TabsContent value="jobs">
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50">
                             <Briefcase className="h-4 w-4 text-blue-600" />
                           </div>
                           <h3 className="text-sm font-semibold text-slate-800">Jobs</h3>
                           <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{member.jobs?.length ?? 0}</span>
                         </div>
-                        <div className="relative w-56">
+                        <div className="relative w-full sm:w-56">
                           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                           <Input placeholder="Search jobs…" value={jobSearch} onChange={e => setJobSearch(e.target.value)} className={`pl-9 text-xs ${inputCls}`} />
                           {jobSearch && <button onClick={() => setJobSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>}
                         </div>
                       </div>
-                      <div className="p-6">
+                      <div className="p-4 sm:p-6">
                         {filteredJobs.length === 0 ? (
                           <div className="flex flex-col items-center gap-2 py-12">
                             <Briefcase className="h-8 w-8 text-slate-300" />
@@ -741,13 +742,14 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                     <SectionCard icon={ShieldCheck} iconBg="bg-violet-50" iconColor="text-violet-600" title="Role"
                       action={
                         <Button size="sm" onClick={() => openModal("role")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                          <Plus className="h-3.5 w-3.5" /> {member.role ? "Change Role" : "Assign Role"}
+                          <Plus className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">{member.role ? "Change Role" : "Assign Role"}</span>
                         </Button>
                       }>
                       {member.role ? (
-                        <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                          <div>
-                            <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="text-sm font-semibold text-slate-800">{member.role.Name ?? "Unnamed Role"}</span>
                               {member.role.Active && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">Active</span>}
                             </div>
@@ -755,8 +757,9 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                             <p className="mt-0.5 font-mono text-[11px] text-slate-400">{member.role.ID_Role}</p>
                           </div>
                           <Button variant="outline" size="sm" onClick={unlinkRole} disabled={unlinkingId === "role"}
-                            className="gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50">
-                            {unlinkingId === "role" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />} Remove
+                            className="flex-shrink-0 gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50">
+                            {unlinkingId === "role" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline">Remove</span>
                           </Button>
                         </div>
                       ) : (
@@ -768,7 +771,8 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                     <SectionCard icon={CheckCircle} iconBg="bg-blue-50" iconColor="text-blue-600" title="Permissions"
                       action={
                         <Button size="sm" onClick={() => openModal("permission")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                          <Plus className="h-3.5 w-3.5" /> Link Permission
+                          <Plus className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Link Permission</span>
                         </Button>
                       }>
                       {(member.permissions ?? []).length > 0 ? (
@@ -776,19 +780,20 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                           {[...(member.permissions ?? [])].sort((a, b) => asStr(a.Name).localeCompare(asStr(b.Name))).map(perm => {
                             const busy = unlinkingId === perm.ID_Permission
                             return (
-                              <div key={perm.ID_Permission} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
+                              <div key={perm.ID_Permission} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-medium text-slate-800">{perm.Name ?? "Unnamed"}</span>
                                     <PermActionBadge action={perm.Action} />
                                     <ServiceBadge service={perm.Service_Associated} />
                                   </div>
-                                  {perm.Description && <p className="mt-0.5 text-xs text-slate-500 truncate max-w-xs">{perm.Description}</p>}
+                                  {perm.Description && <p className="mt-0.5 truncate text-xs text-slate-500">{perm.Description}</p>}
                                   <p className="mt-0.5 font-mono text-[11px] text-slate-400">{perm.ID_Permission}</p>
                                 </div>
                                 <Button variant="outline" size="sm" onClick={() => unlinkPermission(perm.ID_Permission)} disabled={busy}
                                   className="flex-shrink-0 gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50">
-                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />} Unlink
+                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                                  <span className="hidden sm:inline">Unlink</span>
                                 </Button>
                               </div>
                             )
@@ -809,7 +814,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                   {/* ── ACTIVITY tab ──────────────────────────────────────── */}
                   <TabsContent value="activity">
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+                      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
                         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100">
                           <Activity className="h-4 w-4 text-slate-500" />
                         </div>
@@ -826,7 +831,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
                           [...(member.tlactivity ?? [])].sort((a, b) =>
                             new Date(b.Action_datetime ?? 0).getTime() - new Date(a.Action_datetime ?? 0).getTime()
                           ).map(ev => (
-                            <div key={ev.ID_TLActivity} className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors">
+                            <div key={ev.ID_TLActivity} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60 transition-colors sm:gap-4 sm:px-6 sm:py-4">
                               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white">
                                 <Activity className="h-3.5 w-3.5 text-slate-400" />
                               </div>
@@ -854,7 +859,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
               </div>
 
               {/* ── RIGHT sidebar ─────────────────────────────────────────── */}
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
 
                 {/* Quick summary */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -907,7 +912,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
 
       {/* ── Role Modal ─────────────────────────────────────────────────────── */}
       <Dialog open={modalMode === "role"} onOpenChange={o => !o && setModalMode(null)}>
-        <DialogContent className="w-[90vw] max-w-4xl !max-w-[900px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-violet-600" /> Assign Role</DialogTitle>
             <DialogDescription>Select a role to assign. The member can only have one role at a time.</DialogDescription>
@@ -918,7 +923,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
               <Input value={rpSearch} onChange={e => setRpSearch(e.target.value)} placeholder="Search roles…" className={`pl-9 ${inputCls}`} />
             </div>
             <div className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="max-h-[55vh] overflow-y-auto">
+              <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
@@ -965,7 +970,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
 
       {/* ── Permission Modal ──────────────────────────────────────────────── */}
       <Dialog open={modalMode === "permission"} onOpenChange={o => !o && setModalMode(null)}>
-        <DialogContent className="w-[90vw] max-w-5xl !max-w-[1100px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-blue-600" /> Link Permission</DialogTitle>
             <DialogDescription>Search and link permissions. Already linked ones are disabled.</DialogDescription>
@@ -975,7 +980,43 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <Input value={rpSearch} onChange={e => setRpSearch(e.target.value)} placeholder="Search by name, action, service…" className={`pl-9 ${inputCls}`} />
             </div>
-            <div className="overflow-hidden rounded-xl border border-slate-200">
+
+            {/* Mobile cards */}
+            <div className="max-h-[55vh] overflow-y-auto sm:hidden">
+              {rpLoading ? (
+                <p className="py-10 text-center text-sm italic text-slate-400">Loading permissions…</p>
+              ) : filteredPerms.length === 0 ? (
+                <p className="py-10 text-center text-sm italic text-slate-400">No permissions found</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredPerms.map(perm => {
+                    const already = linkedPermIds.has(perm.ID_Permission)
+                    const busy    = linkingId === perm.ID_Permission
+                    return (
+                      <div key={perm.ID_Permission} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-slate-800">{perm.Name ?? "—"}</span>
+                            <PermActionBadge action={perm.Action} />
+                            <ServiceBadge service={perm.Service_Associated} />
+                          </div>
+                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">{perm.ID_Permission}</p>
+                        </div>
+                        <Button size="sm" onClick={() => linkPermission(perm.ID_Permission)} disabled={already || busy}
+                          variant={already ? "outline" : "default"}
+                          className={`flex-shrink-0 gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+                          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                          {already ? "Linked" : "Link"}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-hidden rounded-xl border border-slate-200 sm:block">
               <div className="max-h-[55vh] overflow-y-auto">
               <Table>
                 <TableHeader>

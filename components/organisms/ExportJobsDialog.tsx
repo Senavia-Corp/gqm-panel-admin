@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,9 @@ const BASIC_COLUMN_LABELS: Record<JobBasicColumn, string> = {
 }
 
 export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDialogProps) {
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
+
   const [loading, setLoading] = useState(false)
   const [basicFields, setBasicFields] = useState<JobBasicColumn[]>(Object.values(JobBasicColumn))
   const [extraSections, setExtraSections] = useState({
@@ -170,15 +174,15 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
       document.body.removeChild(a)
 
       toast({
-        title: "Export Success",
-        description: "Your Excel file has been generated and downloaded.",
+        title: t("exportSuccess"),
+        description: t("exportSuccessDesc"),
       })
       onOpenChange(false)
     } catch (error) {
       console.error("Export error:", error)
       toast({
-        title: "Export Failed",
-        description: "There was an error generating your Excel file.",
+        title: t("exportFailed"),
+        description: t("exportFailedDesc"),
         variant: "destructive",
       })
     } finally {
@@ -196,9 +200,9 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
               <FileSpreadsheet className="h-7 w-7" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold tracking-tight">Export Jobs to Excel</DialogTitle>
+              <DialogTitle className="text-2xl font-bold tracking-tight">{t("exportTitle")}</DialogTitle>
               <DialogDescription className="text-slate-500 mt-1">
-                Customize the columns you want to include in your report.
+                {t("exportDesc")}
               </DialogDescription>
             </div>
           </div>
@@ -212,7 +216,7 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
               <section className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <LayoutGrid className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Essential Job Data</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t("exportEssentialData")}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
                   {Object.entries(BASIC_COLUMN_LABELS).map(([key, label]) => {
@@ -249,16 +253,16 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
               <section className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <ListChecks className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Related Collections</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t("exportRelatedCollections")}</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {[
-                    { key: "include_client", label: "Client & Community Info", icon: Building2, desc: "Owner and property tracking details" },
-                    { key: "include_members", label: "Assigned Team Members", icon: Users, desc: "Account reps, mgmt members, etc" },
-                    { key: "include_subcontractors", label: "Subcontractors & Orders", icon: HardHat, desc: "Vitals, Title, Formula, COs" },
-                    { key: "include_commissions", label: "Financial Commissions", icon: CircleDollarSign, desc: "Selling and Mgmt commission values" },
-                    { key: "include_purchases", label: "Purchases & Spending", icon: ShoppingCart, desc: "Detailed purchasing records" },
-                    { key: "include_estimate_costs", label: "Estimate Cost Breakdown", icon: LayoutGrid, desc: "Quantities, unit costs, builder costs" },
+                    { key: "include_client",         labelKey: "exportSecClientLabel",      icon: Building2,       descKey: "exportSecClientDesc" },
+                    { key: "include_members",         labelKey: "exportSecMembersLabel",     icon: Users,           descKey: "exportSecMembersDesc" },
+                    { key: "include_subcontractors",  labelKey: "exportSecSubsLabel",        icon: HardHat,         descKey: "exportSecSubsDesc" },
+                    { key: "include_commissions",     labelKey: "exportSecCommissionsLabel", icon: CircleDollarSign, descKey: "exportSecCommissionsDesc" },
+                    { key: "include_purchases",       labelKey: "exportSecPurchasesLabel",   icon: ShoppingCart,    descKey: "exportSecPurchasesDesc" },
+                    { key: "include_estimate_costs",  labelKey: "exportSecEstimateLabel",    icon: LayoutGrid,      descKey: "exportSecEstimateDesc" },
                   ].map((sec) => {
                     const isSelected = extraSections[sec.key as keyof typeof extraSections];
                     return (
@@ -285,16 +289,16 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
                             <div className={`p-1.5 rounded-lg transition-colors ${isSelected ? "bg-primary/10 text-primary" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200"}`}>
                               <sec.icon className="h-4 w-4" />
                             </div>
-                            <Label 
-                              htmlFor={`sec-${sec.key}`} 
+                            <Label
+                              htmlFor={`sec-${sec.key}`}
                               className={`text-sm font-bold cursor-pointer transition-colors ${isSelected ? "text-primary" : "text-slate-600 dark:text-slate-400"}`}
                               onClick={(e) => e.preventDefault()}
                             >
-                              {sec.label}
+                              {t(sec.labelKey as any)}
                             </Label>
                           </div>
                           <p className={`text-xs leading-relaxed transition-colors ${isSelected ? "text-slate-500" : "text-slate-400"}`}>
-                            {sec.desc}
+                            {t(sec.descKey as any)}
                           </p>
                         </div>
                       </div>
@@ -310,27 +314,27 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
             <div>
               <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                Selection Summary
+                {t("exportSelectionSummary")}
               </h4>
               <div className="space-y-4">
                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <div className="text-2xl font-bold text-primary">{basicFields.length}</div>
-                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Basic Fields Selected</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">{t("exportBasicFields")}</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
                   <div className="text-2xl font-bold text-primary">
                     {Object.values(extraSections).filter(Boolean).length}
                   </div>
-                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Full Sections Active</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">{t("exportFullSections")}</div>
                 </div>
               </div>
               
               <div className="mt-8 space-y-2">
                 <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-8 text-primary hover:bg-primary/5" onClick={selectAll}>
-                  Select all available
+                  {t("exportSelectAll")}
                 </Button>
                 <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-8 text-slate-500 hover:bg-slate-100" onClick={clearAll}>
-                  Reset to minimum
+                  {t("exportResetMin")}
                 </Button>
               </div>
             </div>
@@ -338,7 +342,7 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
             <div className="pt-8 mt-8 border-t">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-4">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                Preferences are auto-saved
+                {t("exportAutoSaved")}
               </div>
             </div>
           </div>
@@ -347,26 +351,26 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
         <DialogFooter className="p-6 bg-white dark:bg-slate-900 border-t shrink-0 sm:justify-between items-center gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <LayoutGrid className="h-3 w-3" />
-            {basicFields.length + Object.values(extraSections).filter(Boolean).length * 10} columns will be generated
+            {basicFields.length + Object.values(extraSections).filter(Boolean).length * 10} {t("exportColumnsGenerated")}
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="px-6">
-              Cancel
+              {tCommon("cancel")}
             </Button>
-            <Button 
-                onClick={handleExport} 
-                disabled={loading || basicFields.length === 0} 
+            <Button
+                onClick={handleExport}
+                disabled={loading || basicFields.length === 0}
                 className="px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 min-w-[180px]"
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
+                  {t("exportGenerating")}
                 </>
               ) : (
                 <>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Download Excel
+                  {t("exportDownload")}
                 </>
               )}
             </Button>

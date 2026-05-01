@@ -91,13 +91,13 @@ function SectionCard({ icon: Icon, title, children }: {
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100">
           <Icon className="h-3.5 w-3.5 text-slate-500" />
         </div>
         <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
       </div>
-      <div className="p-5 space-y-4">{children}</div>
+      <div className="p-4 sm:p-5 space-y-4">{children}</div>
     </div>
   )
 }
@@ -124,7 +124,8 @@ function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${value ? "bg-blue-500" : "bg-slate-400"}`} />
-      Sync Podio: {value ? "ON" : "OFF"}
+      <span className="sm:hidden">Podio: {value ? "ON" : "OFF"}</span>
+      <span className="hidden sm:inline">Sync Podio: {value ? "ON" : "OFF"}</span>
     </button>
   )
 }
@@ -201,29 +202,29 @@ export default function CreateSupplierPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-6 py-8">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
             <form onSubmit={handleSubmit} className="space-y-6">
 
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <Link href="/suppliers">
-                    <button type="button" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600">
+                    <button type="button" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600">
                       <ArrowLeft className="h-4 w-4" />
                     </button>
                   </Link>
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="hidden sm:flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-violet-600">
                       <Store className="h-4.5 w-4.5 text-white" />
                     </div>
-                    <div>
-                      <h1 className="text-lg font-bold text-slate-900">New Supplier</h1>
-                      <p className="text-xs text-slate-500">Fill in the details below</p>
+                    <div className="min-w-0">
+                      <h1 className="truncate text-base sm:text-lg font-bold text-slate-900">New Supplier</h1>
+                      <p className="hidden sm:block text-xs text-slate-500">Fill in the details below</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <PodioToggle value={syncPodio} onChange={setSyncPodio} />
                   <Button
                     type="submit"
@@ -232,7 +233,7 @@ export default function CreateSupplierPage() {
                     className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {saving ? "Saving…" : "Save Supplier"}
+                    {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Supplier</span></>}
                   </Button>
                 </div>
               </div>
@@ -274,7 +275,7 @@ export default function CreateSupplierPage() {
 
               {/* Account */}
               <SectionCard icon={Zap} title="Account">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel>Account Status</FieldLabel>
                     <div className="flex gap-2">
@@ -342,7 +343,7 @@ export default function CreateSupplierPage() {
 
               {/* Contact */}
               <SectionCard icon={Phone} title="Contact">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel>Email Address</FieldLabel>
                     <Input

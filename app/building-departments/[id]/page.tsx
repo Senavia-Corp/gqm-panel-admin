@@ -47,16 +47,16 @@ function SectionCard({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-3">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
+          <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
             <Icon className={`h-4 w-4 ${iconColor}`} />
           </div>
           <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         </div>
         {action}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   )
 }
@@ -291,48 +291,48 @@ export default function BuildingDeptDetailPage() {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
 
           {/* ── Sticky header ── */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   onClick={() => router.push("/building-departments")}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 sm:flex">
                     <Landmark className="h-5 w-5 text-white" />
                   </div>
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900 leading-none">
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">
                       {dept.City_BldgDept ?? dept.ID_BldgDept}
                     </h1>
-                    <div className="mt-0.5 flex items-center gap-2">
+                    <div className="mt-0.5 hidden items-center gap-2 sm:flex">
                       <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
                         {dept.ID_BldgDept}
                       </span>
                       {dept.Location && (
-                        <span className="text-xs text-slate-400">{dept.Location}</span>
+                        <span className="truncate text-xs text-slate-400">{dept.Location}</span>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="ml-3 flex flex-shrink-0 items-center gap-2">
                 {editing && (
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-blue-200 transition-colors">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-600 hover:border-blue-200 transition-colors sm:px-3">
                     <div
-                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${syncPodio ? "bg-blue-500" : "bg-slate-200"}`}
+                      className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-blue-500" : "bg-slate-200"}`}
                       onClick={() => setSyncPodio((v) => !v)}
                     >
                       <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </div>
-                    Sync Podio
+                    <span className="hidden sm:inline">Sync Podio</span>
                   </label>
                 )}
 
@@ -342,7 +342,7 @@ export default function BuildingDeptDetailPage() {
                     onClick={() => setDeleteOpen(true)}
                     className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                    <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
                   </Button>
                 )}
 
@@ -352,21 +352,22 @@ export default function BuildingDeptDetailPage() {
                       onClick={() => { setEditing(false); fetchDept() }}
                       disabled={saving}
                       className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving}
                       className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-xs">
-                      {saving
-                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-                        : <><Save className="h-3.5 w-3.5" /> Save Changes</>
-                      }
+                      {saving ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /><span className="hidden sm:inline">Saving…</span></>
+                      ) : (
+                        <><Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Save Changes</span><span className="sm:hidden">Save</span></>
+                      )}
                     </Button>
                   </>
                 ) : (
                   hasPermission("bldg_dept:update") && (
                     <Button size="sm" onClick={() => setEditing(true)}
                       className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-xs">
-                      <Edit2 className="h-3.5 w-3.5" /> Edit
+                      <Edit2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
                     </Button>
                   )
                 )}
@@ -374,19 +375,19 @@ export default function BuildingDeptDetailPage() {
             </div>
 
             {editing && (
-              <div className="flex items-center gap-2 border-t border-blue-100 bg-blue-50 px-6 py-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <div className="flex items-center gap-2 border-t border-blue-100 bg-blue-50 px-4 py-2 sm:px-6">
+                <div className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500 animate-pulse" />
                 <p className="text-xs font-medium text-blue-700">Editing mode — changes won't be saved until you click Save Changes</p>
               </div>
             )}
           </div>
 
           {/* ── Content ── */}
-          <div className="mx-auto max-w-5xl space-y-5 p-6 pb-12">
+          <div className="mx-auto max-w-5xl space-y-4 p-4 pb-10 sm:space-y-5 sm:p-6 sm:pb-12">
 
             {/* Location */}
             <SectionCard icon={Landmark} iconBg="bg-blue-50" iconColor="text-blue-600" title="Location Information">
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                 <div>
                   <FieldLabel htmlFor="City_BldgDept">City</FieldLabel>
                   <div className="relative">
@@ -418,7 +419,7 @@ export default function BuildingDeptDetailPage() {
 
             {/* Contact */}
             <SectionCard icon={Mail} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Contact Information">
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                 <div>
                   <FieldLabel>Office Email</FieldLabel>
                   {editing ? (
@@ -483,8 +484,8 @@ export default function BuildingDeptDetailPage() {
                 ) : undefined
               }
             >
-              <div className="grid gap-5 md:grid-cols-3">
-                <div className="md:col-span-3">
+              <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 md:grid-cols-3">
+                <div className="sm:col-span-2 md:col-span-3">
                   <FieldLabel htmlFor="Link">Portal URL</FieldLabel>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -581,7 +582,7 @@ export default function BuildingDeptDetailPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-200">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
@@ -630,7 +631,7 @@ export default function BuildingDeptDetailPage() {
                           <TableCell className="text-right">
                             <a
                               href={`/jobs/${job.ID_Jobs}`}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                               title="Open job"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />

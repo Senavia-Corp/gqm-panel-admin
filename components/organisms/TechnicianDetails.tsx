@@ -8,6 +8,7 @@ import type { Technician, Subcontractor, Client, TimelineEvent } from "@/lib/typ
 import { ArrowLeft, ExternalLink } from "lucide-react"
 import { ClientCard } from "./ClientCard"
 import { TimelineItem } from "../molecules/TimelineItem"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface TechnicianDetailsProps {
   technician: Technician
@@ -24,6 +25,7 @@ export function TechnicianDetails({
   client,
   timelineEvents,
 }: TechnicianDetailsProps) {
+  const t = useTranslations("subcontractors")
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Main Content */}
@@ -31,11 +33,11 @@ export function TechnicianDetails({
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Subcontractor
+            {t("backToSub")}
           </Button>
           <Button className="bg-black hover:bg-black/90 text-white" disabled>
             <ExternalLink className="mr-2 h-4 w-4" />
-            Go to Technician Page
+            {t("goToTechPage")}
           </Button>
         </div>
 
@@ -54,7 +56,7 @@ export function TechnicianDetails({
                           : "bg-blue-500 hover:bg-blue-600"
                       } text-base px-3 py-1`}
                     >
-                      {technician.Type_of_technician || technician.Type}
+                      {t((technician.Type_of_technician || technician.Type || "worker").toLowerCase())}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -68,11 +70,11 @@ export function TechnicianDetails({
           {/* General Information */}
           <Card>
             <CardHeader>
-              <CardTitle>General Information</CardTitle>
+              <CardTitle>{t("generalInfo")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="mb-2 block text-sm font-bold">Location</Label>
+                <Label className="mb-2 block text-sm font-bold">{t("location")}</Label>
                 <p className="text-base">{technician.Location}</p>
               </div>
             </CardContent>
@@ -81,16 +83,16 @@ export function TechnicianDetails({
           {/* Contact Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <CardTitle>{t("contactInfo")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label className="mb-2 block text-sm font-bold">E-mail</Label>
+                  <Label className="mb-2 block text-sm font-bold">{t("email")}</Label>
                   <p className="text-base">{technician.Email_Address || technician.Email}</p>
                 </div>
                 <div>
-                  <Label className="mb-2 block text-sm font-bold">Phone Number</Label>
+                  <Label className="mb-2 block text-sm font-bold">{t("phoneNumber")}</Label>
                   <p className="text-base">{technician.Phone_Number || technician.Phone_number}</p>
                 </div>
               </div>
@@ -105,7 +107,7 @@ export function TechnicianDetails({
 
         <Card>
           <CardHeader>
-            <CardTitle>Timeline</CardTitle>
+            <CardTitle>{t("timeline")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {timelineEvents.map((event) => (

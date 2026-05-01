@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Technician, TechnicianType } from "@/lib/types"
 import { Search } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface TechniciansTableProps {
   technicians: Technician[]
@@ -14,6 +15,7 @@ interface TechniciansTableProps {
 }
 
 export function TechniciansTable({ technicians, onViewDetails }: TechniciansTableProps) {
+  const t = useTranslations("subcontractors")
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<TechnicianType | "all">("all")
 
@@ -32,14 +34,14 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold">Technicians</h3>
+        <h3 className="text-xl font-semibold">{t("tabTechnicians")}</h3>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search technicians..."
+            placeholder={t("searchTechs")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -47,12 +49,12 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
         </div>
         <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as TechnicianType | "all")}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter by type" />
+            <SelectValue placeholder={t("filterByType")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="Leader">Leader</SelectItem>
-            <SelectItem value="Worker">Worker</SelectItem>
+            <SelectItem value="all">{t("allTypes")}</SelectItem>
+            <SelectItem value="Leader">{t("leader")}</SelectItem>
+            <SelectItem value="Worker">{t("worker")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -61,19 +63,19 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="px-6">ID</TableHead>
-              <TableHead className="px-4">Name</TableHead>
-              <TableHead className="px-4">Type</TableHead>
-              <TableHead className="px-4">Email</TableHead>
-              <TableHead className="px-4">Phone Number</TableHead>
-              <TableHead className="px-4">Location</TableHead>
+              <TableHead className="px-6">{t("id")}</TableHead>
+              <TableHead className="px-4">{t("name")}</TableHead>
+              <TableHead className="px-4">{t("type")}</TableHead>
+              <TableHead className="px-4">{t("email")}</TableHead>
+              <TableHead className="px-4">{t("phoneNumber")}</TableHead>
+              <TableHead className="px-4">{t("location")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredTechnicians.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
-                  <p className="text-muted-foreground">No technicians found for this subcontractor</p>
+                  <p className="text-muted-foreground">{t("noTechsFound")}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -93,7 +95,7 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
                           : "bg-blue-500 hover:bg-blue-600"
                       }
                     >
-                      {technician.Type_of_technician || technician.Type}
+                      {t((technician.Type_of_technician || technician.Type || "worker").toLowerCase())}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-4">{technician.Email_Address || technician.Email}</TableCell>

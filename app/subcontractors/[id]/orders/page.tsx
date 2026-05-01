@@ -11,12 +11,14 @@ import { Search, Plus, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-rea
 import { mockOrders } from "@/lib/mock-data/estimates"
 import { DeleteOrderDialog } from "@/components/organisms/DeleteOrderDialog"
 import type { SubcontractorOrder } from "@/lib/types"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export default function SubcontractorOrdersPage({
   params,
 }: {
   params: { id: string }
 }) {
+  const t = useTranslations("subcontractors")
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -54,8 +56,8 @@ export default function SubcontractorOrdersPage({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Orders</h1>
-            <p className="text-muted-foreground mt-1">Manage orders for this subcontractor across all jobs</p>
+            <h1 className="text-3xl font-bold">{t("tabOrders")}</h1>
+            <p className="text-muted-foreground mt-1">{t("ordersDesc")}</p>
           </div>
         </div>
 
@@ -66,7 +68,7 @@ export default function SubcontractorOrdersPage({
                 <div className="relative flex-1 sm:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search orders..."
+                    placeholder={t("searchOrders")}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value)
@@ -83,14 +85,14 @@ export default function SubcontractorOrdersPage({
                   }}
                 >
                   <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t("status")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                    <SelectItem value="Submitted">Submitted</SelectItem>
-                    <SelectItem value="Approved">Approved</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="all">{t("allStatus")}</SelectItem>
+                    <SelectItem value="Draft">{t("draft")}</SelectItem>
+                    <SelectItem value="Submitted">{t("submitted")}</SelectItem>
+                    <SelectItem value="Approved">{t("approved")}</SelectItem>
+                    <SelectItem value="Completed">{t("completed")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -99,7 +101,7 @@ export default function SubcontractorOrdersPage({
                 className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
               >
                 <Plus className="h-4 w-4" />
-                Create New Order
+                {t("createNewOrder")}
               </Button>
             </div>
 
@@ -109,14 +111,14 @@ export default function SubcontractorOrdersPage({
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Order ID</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Order Name</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Job ID</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Items</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Formula</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Adj. Formula</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("orderId")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("orderName")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("jobId")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("status")}</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">{t("items")}</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">{t("formula")}</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">{t("adjFormula")}</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium">{t("actions")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -137,7 +139,7 @@ export default function SubcontractorOrdersPage({
                                       : ""
                               }
                             >
-                              {order.Status}
+                              {t(order.Status.toLowerCase())}
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-sm">{order.Items.length}</td>
@@ -176,8 +178,12 @@ export default function SubcontractorOrdersPage({
                 {/* Pagination */}
                 <div className="mt-6 flex items-center justify-between border-t pt-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length}{" "}
-                    orders
+                    {t.rich("showingRange", {
+                      start: startIndex + 1,
+                      end: Math.min(endIndex, filteredOrders.length),
+                      total: filteredOrders.length,
+                      b: (chunks) => <span className="font-semibold text-slate-900">{chunks}</span>
+                    })}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -187,10 +193,10 @@ export default function SubcontractorOrdersPage({
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      {t("prev")}
                     </Button>
                     <span className="text-sm">
-                      Page {currentPage} of {totalPages}
+                      {t("pageOf", { current: currentPage, total: totalPages })}
                     </span>
                     <Button
                       variant="outline"
@@ -198,7 +204,7 @@ export default function SubcontractorOrdersPage({
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                     >
-                      Next
+                      {t("next")}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -206,7 +212,7 @@ export default function SubcontractorOrdersPage({
               </>
             ) : (
               <div className="py-12 text-center">
-                <p className="text-muted-foreground">No orders found</p>
+                <p className="text-muted-foreground">{t("noOrdersFound")}</p>
               </div>
             )}
           </CardContent>

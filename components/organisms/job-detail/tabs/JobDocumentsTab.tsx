@@ -249,30 +249,32 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           </div>
 
           {/* File-type filter tabs */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1">
-            {FILE_FILTERS.map(({ id, label, icon: Icon }) => {
-              const count  = counts[id as keyof typeof counts]
-              const active = activeFilter === id
-              return (
-                <button
-                  key={id}
-                  onClick={() => setActiveFilter(id)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                    active ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                  {count > 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
-                    }`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+          <div className="w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max min-w-full items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1">
+              {FILE_FILTERS.map(({ id, label, icon: Icon }) => {
+                const count  = counts[id as keyof typeof counts]
+                const active = activeFilter === id
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveFilter(id)}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 text-xs font-medium transition-all whitespace-nowrap ${
+                      active ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{label}</span>
+                    {count > 0 && (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                        active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 

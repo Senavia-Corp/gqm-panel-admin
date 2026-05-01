@@ -4,8 +4,10 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, ChevronRight } from "lucide-react"
+import { Eye, ChevronRight, LayoutDashboard, Megaphone } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Job } from "@/lib/types"
+import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 
 interface Task {
   ID_Tasks: string
@@ -21,9 +23,12 @@ interface Task {
 }
 
 export function LeadTechnicianDashboard() {
+  const t = useTranslations("dashboard")
   const [jobs, setJobs] = useState<Job[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<"dashboard" | "opportunities">("dashboard")
+  const [subcontractorId, setSubcontractorId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchTechnicianData = async () => {
@@ -50,6 +55,7 @@ export function LeadTechnicianDashboard() {
         const technicianJobs = data.subcontractor?.jobs || []
         console.log("[v0] Technician jobs:", technicianJobs)
         setJobs(technicianJobs)
+        setSubcontractorId(data.subcontractor?.ID_Subcontractor || null)
 
         const allTasks = data.tasks || []
         const currentWeekTasks = filterTasksForCurrentWeek(allTasks)
@@ -145,20 +151,47 @@ export function LeadTechnicianDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
 
-      {/* Top Row: Recent Tasks and Assigned Jobs */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Recent Tasks Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Recent Tasks</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <div className="inline-flex rounded-lg border bg-white p-1 gap-1">
+          <Button
+            variant={view === "dashboard" ? "default" : "ghost"}
+            className={view === "dashboard" ? "bg-gqm-green-dark text-white" : "text-slate-500"}
+            onClick={() => setView("dashboard")}
+            size="sm"
+          >
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            My Work
+          </Button>
+          <Button
+            variant={view === "opportunities" ? "default" : "ghost"}
+            className={view === "opportunities" ? "bg-gqm-green-dark text-white" : "text-slate-500"}
+            onClick={() => setView("opportunities")}
+            size="sm"
+          >
+            <Megaphone className="mr-2 h-4 w-4" />
+            Job Board
+          </Button>
+        </div>
+      </div>
+
+      {view === "opportunities" ? (
+        <OpportunitiesPanel subcontractorId={subcontractorId} isTechnician={true} />
+      ) : (
+        <>
+          {/* Top Row: Recent Tasks and Assigned Jobs */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Recent Tasks Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">{t("recentTasks")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading tasks...</p>
+              <p className="text-sm text-muted-foreground">{t("loadingTasks")}</p>
             ) : tasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks for this week.</p>
+              <p className="text-sm text-muted-foreground">{t("noTasksThisWeekLead")}</p>
             ) : (
               tasks.map((task) => (
                 <div
@@ -179,17 +212,17 @@ export function LeadTechnicianDashboard() {
         {/* Assigned Jobs Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Assigned Jobs</CardTitle>
+            <CardTitle className="text-xl">{t("assignedJobs")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading jobs...</p>
+              <p className="text-sm text-muted-foreground">{t("loadingJobs")}</p>
             ) : jobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No jobs assigned yet.</p>
+              <p className="text-sm text-muted-foreground">{t("noJobsAssigned")}</p>
             ) : (
               jobs.map((job: any) => {
                 const jobId = job.ID_Jobs
-                const projectName = job.Project_name || "Untitled Project"
+                const projectName = job.Project_name || t("untitledProject")
                 const jobStatus = job.Job_status || "N/A"
 
                 return (
@@ -220,7 +253,7 @@ export function LeadTechnicianDashboard() {
       {/* Weekly Tasks Calendar */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl">Weekly Tasks</CardTitle>
+          <CardTitle className="text-xl">{t("weeklyTasks")}</CardTitle>
           <span className="text-sm text-muted-foreground">25-29 JAN</span>
         </CardHeader>
         <CardContent>
@@ -284,6 +317,8 @@ export function LeadTechnicianDashboard() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </>
+  )}
+</div>
   )
 }

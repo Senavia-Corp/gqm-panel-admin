@@ -1,0 +1,257 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
+import { apiFetch } from "@/lib/apiFetch"
+import { SubcontractorManagementTable } from "@/components/organisms/SubcontractorManagementTable"
+import { DeleteSubcontractorDialog } from "@/components/organisms/DeleteSubcontractorDialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import {
+  Plus, Search, ChevronLeft, ChevronRight,
+  AlertCircle, RefreshCw, X, Filter,
+} from "lucide-react"
+import type { Subcontractor } from "@/lib/types"
+
+type ListResponse = {
+  page: number
+  limit: number
+  total: number
+  results: Subcontractor[]
+}
+
+function useDebounce<T>(value: T, ms = 350): T {
+  const [deb, setDeb] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDeb(value), ms)
+    return () => clearTimeout(t)
+  }, [value, ms])
+  return deb
+}
+
+function TableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-10 border-b border-slate-100 bg-slate-50/80" />
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b border-slate-50 px-5 py-3.5">
+          <div className="h-4 w-20 animate-pulse rounded bg-slate-100" />
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-4 w-32 animate-pulse rounded bg-slate-100" />
+          </div>
+          <div className="h-4 w-24 animate-pulse rounded bg-slate-100" />
+          <div className="h-5 w-16 animate-pulse rounded-full bg-slate-100" />
+          <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
+          <div className="h-5 w-12 animate-pulse rounded-full bg-slate-100" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const PER_PAGE = 10
+
+export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string) => boolean }) {
+  const t = useTranslations("subcontractors")
+  const router = useRouter()
+
+  const [rows, setRows]         = useState<Subcontractor[]>([])
+  const [total, setTotal]       = useState(0)
+  const [page, setPage]         = useState(1)
+  const [search, setSearch]     = useState("")
+  const [status, setStatus]     = useState("all")
+  const dSearch                 = useDebounce(search, 350)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
+
+  const [deleteOpen, setDeleteOpen]   = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Subcontractor | null>(null)
+
+  const abortRef = useRef<AbortController | null>(null)
+
+  const normalizeOrg = (org?: string | null) => {
+    if (!org) return ""
+    const s = org.trim()
+    if (s.startsWith("{") && s.endsWith("}"))
+      return s.slice(1, -1).replace(/^"+|"+$/g, "").replace(/\\"/g, '"').trim()
+    return s.replace(/\\"/g, '"').trim()
+  }
+
+  const fetchPage = useCallback(async (p: number, q: string, st: string) => {
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+
+    setLoading(true); setError(null)
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
+      if (q)           params.set("q", q)
+      if (st !== "all") params.set("status", st)
+
+      const res = await apiFetch(`/api/subcontractors_table?${params}`, {
+        cache: "no-store",
+        signal: abortRef.current.signal,
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = (await res.json()) as ListResponse
+      setRows((data.results ?? []).map((s) => ({ ...s, Organization: normalizeOrg(s.Organization) })))
+      setTotal(data.total ?? 0)
+    } catch (e: any) {
+      if (e?.name === "AbortError") return
+      setError(e?.message ?? t("errorLoad"))
+    } finally { setLoading(false) }
+  }, [t])
+
+  useEffect(() => {
+    fetchPage(page, dSearch, status)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, dSearch, status])
+
+  useEffect(() => { setPage(1) }, [dSearch, status])
+
+  const handleDelete = (s: Subcontractor) => { setDeleteTarget(s); setDeleteOpen(true) }
+
+  const confirmDelete = async (syncPodio: boolean) => {
+    if (!deleteTarget?.ID_Subcontractor) return
+    try {
+      const res = await apiFetch(
+        `/api/subcontractors/${deleteTarget.ID_Subcontractor}?sync_podio=${syncPodio}`,
+        { method: "DELETE", cache: "no-store" }
+      )
+      if (!res.ok) throw new Error(`Delete failed (${res.status})`)
+      setDeleteOpen(false); setDeleteTarget(null)
+      fetchPage(page, dSearch, status)
+    } catch (e) {
+      console.error("Error deleting subcontractor:", e)
+    }
+  }
+
+  const totalPages  = Math.max(1, Math.ceil(total / PER_PAGE))
+  const showFrom    = total === 0 ? 0 : (page - 1) * PER_PAGE + 1
+  const showTo      = Math.min(page * PER_PAGE, total)
+  const activeFilters = (search ? 1 : 0) + (status !== "all" ? 1 : 0)
+
+  return (
+    <div className="space-y-4">
+      {/* ── Toolbar ── */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-bold text-slate-800">{t("toolbarTitle")}</h2>
+            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+              {total}
+            </span>
+            {activeFilters > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                <Filter className="h-2.5 w-2.5" /> {activeFilters} {activeFilters > 1 ? t("filtersCountSuffix") : t("filterCountSuffix")}
+              </span>
+            )}
+          </div>
+          {hasPermission("subcontractor:create") && (
+            <Button
+              onClick={() => router.push("/subcontractors/create")}
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto"
+            >
+              <Plus className="h-4 w-4" /> {t("addSub")}
+            </Button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5">
+          {/* Global search */}
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="pl-9 text-sm border-slate-200 focus:border-emerald-400"
+            />
+            {search && (
+              <button onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Status filter */}
+          <Select value={status} onValueChange={(v) => setStatus(v)}>
+            <SelectTrigger className="w-full border-slate-200 text-sm focus:border-emerald-400 sm:w-40">
+              <SelectValue placeholder={t("allStatuses")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allStatuses")}</SelectItem>
+              <SelectItem value="Active">{t("active")}</SelectItem>
+              <SelectItem value="Inactive">{t("inactive")}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Reset filters */}
+          {activeFilters > 0 && (
+            <Button variant="outline" size="sm"
+              onClick={() => { setSearch(""); setStatus("all") }}
+              className="gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600">
+              <X className="h-3.5 w-3.5" /> {t("reset")}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      {loading ? (
+        <TableSkeleton />
+      ) : error ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-red-100 bg-red-50">
+          <AlertCircle className="h-8 w-8 text-red-400" />
+          <p className="text-sm font-medium text-red-600">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch, status)} className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
+          </Button>
+        </div>
+      ) : (
+        <SubcontractorManagementTable subcontractors={rows} onDelete={handleDelete} />
+      )}
+
+      {/* ── Pagination ── */}
+      {!loading && !error && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+          <p className="text-sm text-slate-500">
+            {t.rich("showingRange", {
+              from: showFrom,
+              to: showTo,
+              total: total,
+              span: (chunks) => <span className="font-semibold text-slate-800">{chunks}</span>
+            })}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
+              disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-3.5 w-3.5" /> {t("prev")}
+            </Button>
+            <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              {page} / {totalPages}
+            </span>
+            <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
+              disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
+              {t("next")} <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <DeleteSubcontractorDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        subcontractorId={deleteTarget?.ID_Subcontractor ?? ""}
+        subcontractorName={deleteTarget?.Name ?? ""}
+        onConfirm={confirmDelete}
+        defaultSyncWithPodio={true}
+      />
+    </div>
+  )
+}

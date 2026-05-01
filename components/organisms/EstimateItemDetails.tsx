@@ -26,7 +26,7 @@ export function EstimateItemDetails({ item, onBack, onEdit }: EstimateItemDetail
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Estimate Breakdown
@@ -43,12 +43,12 @@ export function EstimateItemDetails({ item, onBack, onEdit }: EstimateItemDetail
         {/* Header */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <CardTitle className="text-2xl">{item.Title}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">{item.ID_EstimateItem}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {item.ID_Order && (
                   <Badge className="bg-gqm-green text-white hover:bg-gqm-green/90 text-base px-3 py-1">
                     Assigned to Order

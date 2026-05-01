@@ -33,16 +33,16 @@ export default function RolesPermissionsPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
           {/* ── Page header ─────────────────────────────────────────────── */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                <Lock className="h-5 w-5 text-emerald-600" />
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">Roles & Permissions</h1>
-                <p className="text-sm text-slate-500">Manage access control for admin panel sections.</p>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Roles & Permissions</h1>
+                <p className="hidden sm:block text-sm text-slate-500">Manage access control for admin panel sections.</p>
               </div>
             </div>
 
@@ -57,7 +57,8 @@ export default function RolesPermissionsPage() {
               className="flex-shrink-0 gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              {tab === "permissions" ? "New Permission" : "New Role"}
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">{tab === "permissions" ? "New Permission" : "New Role"}</span>
             </Button>
           </div>
 
@@ -65,7 +66,7 @@ export default function RolesPermissionsPage() {
           <div className="mb-5 inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
             <button
               onClick={() => setTab("permissions")}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold transition-all ${
                 tab === "permissions"
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -76,7 +77,7 @@ export default function RolesPermissionsPage() {
             </button>
             <button
               onClick={() => setTab("roles")}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold transition-all ${
                 tab === "roles"
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -89,7 +90,7 @@ export default function RolesPermissionsPage() {
 
           {/* ── Table card ──────────────────────────────────────────────── */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {tab === "permissions" ? <PermissionsTable /> : <RolesTable />}
             </div>
           </div>

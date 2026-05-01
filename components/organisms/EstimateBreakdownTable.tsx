@@ -454,7 +454,7 @@ export function EstimateBreakdownTable({
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
               <BarChart3 className="h-4 w-4 text-emerald-600" />
@@ -465,7 +465,7 @@ export function EstimateBreakdownTable({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {hasUnsaved && (
               <div className="flex items-center gap-2">
                 <p className="hidden text-[11px] text-amber-600 sm:block">Unsaved — save before creating orders</p>

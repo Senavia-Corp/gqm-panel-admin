@@ -79,7 +79,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced
 }
 
-// ── Member row ─────────────────────────────────────────────────────────────
+// ── Member table row (desktop) ─────────────────────────────────────────────
 function MemberTableRow({
   member,
   isSelected,
@@ -130,6 +130,52 @@ function MemberTableRow({
         )}
       </td>
     </tr>
+  )
+}
+
+// ── Member list item (mobile) ──────────────────────────────────────────────
+function MemberListItem({
+  member,
+  isSelected,
+  onSelect,
+}: {
+  member: MemberRow
+  isSelected: boolean
+  onSelect: () => void
+}) {
+  const name = member.Member_Name ?? "—"
+  const bg   = avatarBg(String(member.Member_Name ?? member.ID_Member))
+
+  return (
+    <div
+      onClick={onSelect}
+      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+        isSelected ? "bg-emerald-50" : "active:bg-slate-50"
+      }`}
+    >
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white ${bg}`}>
+        {initials(member.Member_Name)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+        <p className="text-[11px] text-slate-500 truncate">
+          {member.Company_Role ?? "—"}
+          {member.Email_Address ? ` · ${member.Email_Address}` : ""}
+        </p>
+      </div>
+      <div className="flex-shrink-0">
+        {isSelected ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+            <CheckCircle2 className="h-3 w-3" />
+            Selected
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">
+            Select
+          </span>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -268,17 +314,17 @@ export function LinkMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="!w-[95vw] !max-w-[1000px] gap-0 overflow-hidden p-0">
+      <DialogContent className="!w-[95vw] !max-w-[1000px] flex flex-col gap-0 overflow-hidden p-0 max-h-[calc(100svh-2rem)]">
 
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-              <Users className="h-5 w-5 text-emerald-600" />
+        {/* ── Header ─ fixed ────────────────────────────────────────────── */}
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-semibold text-slate-900">Link Member to Job</DialogTitle>
-              <p className="mt-0.5 text-xs text-slate-500">
+            <div className="min-w-0">
+              <DialogTitle className="text-sm sm:text-base font-semibold text-slate-900">Link Member to Job</DialogTitle>
+              <p className="mt-0.5 text-xs text-slate-500 hidden sm:block">
                 Select a team member and assign their project role.
               </p>
             </div>
@@ -288,17 +334,20 @@ export function LinkMemberDialog({
           <button
             type="button"
             onClick={() => setSyncPodio((v) => !v)}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${
+            className={`flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm transition-all ${
               syncPodio
                 ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                 : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
             }`}
           >
             {syncPodio
-              ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500" />
-              : <ZapOff className="h-4 w-4" />
+              ? <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-emerald-400 text-emerald-500" />
+              : <ZapOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             }
-            <span className="text-xs font-semibold">Podio {syncPodio ? "ON" : "OFF"}</span>
+            <span className="text-xs font-semibold">
+              <span className="hidden sm:inline">Podio </span>
+              {syncPodio ? "ON" : "OFF"}
+            </span>
             {syncPodio && jobYear && (
               <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
                 {jobYear}
@@ -307,12 +356,13 @@ export function LinkMemberDialog({
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 p-6">
+        {/* ── Body ─ scrollable ─────────────────────────────────────────── */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3 p-4 sm:gap-4 sm:p-6">
 
           {/* ── Controls bar ────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 
-            {/* Search — ahora va al servidor con debounce */}
+            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
@@ -321,16 +371,15 @@ export function LinkMemberDialog({
                 placeholder="Search by name, role, email…"
                 className="pl-9 text-sm"
               />
-              {/* Spinner sutil mientras hace fetch */}
               {loading && (
                 <div className="absolute right-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-500" />
               )}
             </div>
 
             {/* Role + pagination */}
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center gap-2">
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="w-[180px] text-sm">
+                <SelectTrigger className="flex-1 sm:w-[180px] sm:flex-initial text-sm">
                   <UserCheck className="mr-1.5 h-3.5 w-3.5 text-slate-400" />
                   <SelectValue placeholder="Project role" />
                 </SelectTrigger>
@@ -341,7 +390,7 @@ export function LinkMemberDialog({
                 </SelectContent>
               </Select>
 
-              <div className="flex items-center gap-1 text-xs text-slate-500">
+              <div className="flex shrink-0 items-center gap-1 text-xs text-slate-500">
                 <Button
                   variant="outline" size="icon"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -350,7 +399,7 @@ export function LinkMemberDialog({
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="min-w-[70px] text-center">
+                <span className="min-w-[54px] text-center text-xs">
                   {data.page} / {totalPages}
                 </span>
                 <Button
@@ -365,8 +414,43 @@ export function LinkMemberDialog({
             </div>
           </div>
 
-          {/* ── Table ───────────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+          {/* ── Mobile list ─────────────────────────────────────────────── */}
+          <div className="md:hidden rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+            <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100">
+              {loading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-slate-400">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-500" />
+                  <span className="text-sm">Loading members…</span>
+                </div>
+              ) : data.results.length === 0 ? (
+                <p className="py-10 text-center text-sm text-slate-400">
+                  {search ? `No results for "${debouncedSearch}"` : "No members found"}
+                </p>
+              ) : (
+                data.results.map((m) => (
+                  <MemberListItem
+                    key={m.ID_Member}
+                    member={m}
+                    isSelected={selectedMemberId === m.ID_Member}
+                    onSelect={() => handleSelect(m)}
+                  />
+                ))
+              )}
+            </div>
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-3 py-2">
+              <span className="text-xs text-slate-400">
+                {debouncedSearch
+                  ? `${data.total} result${data.total !== 1 ? "s" : ""}`
+                  : `${data.total} members`}
+              </span>
+              {selectedMemberId && !data.results.find((m) => m.ID_Member === selectedMemberId) && (
+                <span className="text-xs text-emerald-600 font-medium">✓ Selected (other page)</span>
+              )}
+            </div>
+          </div>
+
+          {/* ── Desktop table ────────────────────────────────────────────── */}
+          <div className="hidden md:block rounded-xl border border-slate-100 overflow-hidden shadow-sm">
             <div className="max-h-[380px] overflow-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-50">
@@ -407,15 +491,12 @@ export function LinkMemberDialog({
                 </tbody>
               </table>
             </div>
-
-            {/* Footer de la tabla */}
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2">
               <span className="text-xs text-slate-400">
                 {debouncedSearch
                   ? `${data.total} result${data.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
                   : `${data.total} total members`}
               </span>
-              {/* Indicador visual si el miembro seleccionado está en otra página */}
               {selectedMemberId && !data.results.find((m) => m.ID_Member === selectedMemberId) && (
                 <span className="text-xs text-emerald-600 font-medium">
                   ✓ Member selected (on another page)
@@ -426,8 +507,8 @@ export function LinkMemberDialog({
 
           {/* ── Preview del miembro seleccionado ────────────────────────── */}
           {selectedMember && (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${avatarBg(String(selectedMember.Member_Name ?? selectedMember.ID_Member))}`}>
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${avatarBg(String(selectedMember.Member_Name ?? selectedMember.ID_Member))}`}>
                 {initials(selectedMember.Member_Name)}
               </div>
               <div className="min-w-0 flex-1">
@@ -438,33 +519,34 @@ export function LinkMemberDialog({
                   Will be linked as <strong>{selectedRole}</strong>
                 </p>
               </div>
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-emerald-500" />
             </div>
           )}
 
-          {/* ── Footer actions ───────────────────────────────────────────── */}
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose} disabled={linking}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleLink}
-              disabled={!selectedMemberId || !selectedRole || linking}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
-            >
-              {linking ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Linking…
-                </>
-              ) : (
-                <>
-                  <Link2 className="mr-1.5 h-4 w-4" />
-                  Link Member
-                </>
-              )}
-            </Button>
-          </div>
+        </div>
+
+        {/* ── Footer ─ fixed ────────────────────────────────────────────── */}
+        <div className="flex-shrink-0 flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:px-6">
+          <Button variant="outline" onClick={onClose} disabled={linking}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleLink}
+            disabled={!selectedMemberId || !selectedRole || linking}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
+          >
+            {linking ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Linking…
+              </>
+            ) : (
+              <>
+                <Link2 className="mr-1.5 h-4 w-4" />
+                Link Member
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
