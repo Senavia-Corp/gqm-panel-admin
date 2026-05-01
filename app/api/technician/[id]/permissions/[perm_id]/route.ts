@@ -8,7 +8,8 @@ export async function POST(
 ) {
   try {
     const { id, perm_id } = await params
-    const url = `${PYTHON_API_URL}/permissions/technician/${id}/permissions/${perm_id}`
+    // Correct backend endpoint: /permission_tech/permission/<permission_id>/tech/<tech_id>
+    const url = `${PYTHON_API_URL}/permission_tech/permission/${perm_id}/tech/${id}`
 
     const authHeader = request.headers.get("Authorization")
     const response = await fetch(url, {
@@ -42,7 +43,8 @@ export async function DELETE(
 ) {
   try {
     const { id, perm_id } = await params
-    const url = `${PYTHON_API_URL}/permissions/technician/${id}/permissions/${perm_id}`
+    // Correct backend endpoint: /permission_tech/permission/<permission_id>/tech/<tech_id>
+    const url = `${PYTHON_API_URL}/permission_tech/permission/${perm_id}/tech/${id}`
 
     const authHeader = request.headers.get("Authorization")
     const response = await fetch(url, {
