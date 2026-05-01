@@ -327,11 +327,11 @@ function TaskRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-xl p-4 border transition-all duration-200 mb-2 bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-[1.005]"
+      className="w-full text-left rounded-xl p-3 sm:p-4 border transition-all duration-200 mb-2 bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-[1.005]"
     >
       {/* Top row: name + badges */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="font-semibold text-sm truncate max-w-[220px] text-white">
+        <span className="font-semibold text-sm truncate max-w-[150px] sm:max-w-[220px] text-white">
           {task.Name || task.ID_Tasks}
         </span>
 
@@ -1192,7 +1192,7 @@ export default function WeeklyTasksPanel() {
     statusFilter !== "ALL" || !!memberFilter || !!subFilter || !!jobFilter
 
   return (
-    <div className="mb-6 bg-gqm-green-dark rounded-lg p-6 border-4 border-black">
+    <div className="mb-6 bg-gqm-green-dark rounded-lg p-3 sm:p-6 border-4 border-black">
 
       {/* ── Header ── */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
@@ -1227,38 +1227,38 @@ export default function WeeklyTasksPanel() {
       </div>
 
       {/* ── Job type filter ── */}
-      <div className="mb-4">
+      <div className="mb-4 overflow-x-auto pb-1">
         <Tabs value={jobType} onValueChange={(v) => setJobType(v as JobType)}>
           <TabsList className="h-10 rounded-xl border bg-white/10 p-1">
             <TabsTrigger
               value="ALL"
-              className="h-8 min-w-[80px] rounded-lg px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
+              className="h-8 min-w-[60px] sm:min-w-[80px] rounded-lg px-3 sm:px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1 sm:gap-2">
                 <Briefcase className="h-3.5 w-3.5" />{t("all_m")}
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="QID"
-              className="h-8 min-w-[80px] rounded-lg px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
+              className="h-8 min-w-[60px] sm:min-w-[80px] rounded-lg px-3 sm:px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1 sm:gap-2">
                 <File className="h-3.5 w-3.5" />QID
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="PTL"
-              className="h-8 min-w-[80px] rounded-lg px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
+              className="h-8 min-w-[60px] sm:min-w-[80px] rounded-lg px-3 sm:px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1 sm:gap-2">
                 <ConstructionIcon className="h-3.5 w-3.5" />PTL
               </span>
             </TabsTrigger>
             <TabsTrigger
               value="PAR"
-              className="h-8 min-w-[80px] rounded-lg px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
+              className="h-8 min-w-[60px] sm:min-w-[80px] rounded-lg px-3 sm:px-5 text-sm font-semibold text-white data-[state=active]:bg-white data-[state=active]:text-gqm-green-dark"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1 sm:gap-2">
                 <WalletIcon className="h-3.5 w-3.5" />PAR
               </span>
             </TabsTrigger>
@@ -1267,9 +1267,9 @@ export default function WeeklyTasksPanel() {
       </div>
 
       {/* ── Additional filters ── */}
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        {/* Status */}
-        <div className="flex items-center gap-1 bg-white/10 rounded-full p-1">
+      {/* Status row - scrollable on mobile */}
+      <div className="overflow-x-auto pb-1 mb-3">
+        <div className="flex items-center gap-1 bg-white/10 rounded-full p-1 w-max">
           {(
             [
               { value: "ALL", label: t("statusAllStatus") },
@@ -1283,7 +1283,7 @@ export default function WeeklyTasksPanel() {
               type="button"
               onClick={() => setStatusFilter(value)}
               className={[
-                "rounded-full px-3 py-0.5 text-xs font-semibold transition-colors",
+                "rounded-full px-3 py-0.5 text-xs font-semibold transition-colors whitespace-nowrap",
                 statusFilter === value
                   ? "bg-white text-gqm-green-dark"
                   : "text-white/70 hover:text-white",
@@ -1293,7 +1293,9 @@ export default function WeeklyTasksPanel() {
             </button>
           ))}
         </div>
-
+      </div>
+      {/* Filter chips */}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         {/* Member filter */}
         <FilterChip
           label={t("filterMember")}

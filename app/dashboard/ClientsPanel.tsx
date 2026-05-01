@@ -49,7 +49,6 @@ interface Client {
     address: string
   }
   dashboard_stats: DashboardStats
-  // communities / top_communities may or may not come from the backend
   communities_count?: number
   top_communities?:   Array<{ name: string; total_jobs: number; paid_jobs: number; revenue: number }>
 }
@@ -99,20 +98,19 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
   const [items,      setItems]      = useState<Client[]>([])
   const [totalPages, setTotalPages] = useState(1)
 
-  const [selectedId,          setSelectedId]          = useState<string | null>(null)
-  const [search,              setSearch]              = useState("")
-  const [debouncedSearch,     setDebouncedSearch]     = useState("")
-  const [orderBy,             setOrderBy]             = useState<"closed" | "revenue">("closed")
+  const [selectedId,      setSelectedId]      = useState<string | null>(null)
+  const [search,          setSearch]          = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [orderBy,         setOrderBy]         = useState<"closed" | "revenue">("closed")
 
   useEffect(() => { setPage(1); setSelectedId(null) }, [jobTab, yearTab, orderBy])
 
-  // Debounce search → reset to page 1 on new query
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setPage(1)
       setDebouncedSearch(search.trim())
     }, 400)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [search])
 
   useEffect(() => {
@@ -142,7 +140,9 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
   return (
     <>
       {/* ===== Carousel ===================================================== */}
-      <div className="mb-6 rounded-lg border-4 border-black bg-gqm-green-dark p-6 relative">
+      <div className="mb-6 rounded-lg border-4 border-black bg-gqm-green-dark p-3 sm:p-6 relative">
+
+        {/* Arrows: desktop only */}
         {(["left", "right"] as const).map((dir) => (
           <button
             key={dir}
@@ -150,10 +150,10 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
             aria-label={`Scroll ${dir}`}
             onClick={() => {
               const el = document.getElementById("clients-scroller")
-              if (el) el.scrollBy({ left: dir === "left" ? -340 : 340, behavior: "smooth" })
+              if (el) el.scrollBy({ left: dir === "left" ? -316 : 316, behavior: "smooth" })
             }}
             className={[
-              "absolute top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow hover:bg-white",
+              "hidden sm:flex absolute top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 p-1 shadow hover:bg-white",
               dir === "left" ? "left-2" : "right-2",
             ].join(" ")}
           >
@@ -163,7 +163,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
 
         <div
           id="clients-scroller"
-          className="flex gap-4 overflow-x-auto pb-2 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0"
+          className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0 [scroll-snap-type:x_mandatory] scroll-smooth"
         >
           {isLoading ? (
             <CardCarouselSkeleton count={5} />
@@ -174,7 +174,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
               return (
                 <div
                   key={cl.client.id}
-                  className="flex-none w-[300px] rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition flex flex-col"
+                  className="flex-none w-full sm:w-[300px] [scroll-snap-align:start] rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition flex flex-col"
                 >
                   <div className="p-5 flex-1">
                     <div className="flex items-start gap-3 mb-4">
@@ -221,7 +221,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         </div>
 
         {/* Order + Pagination */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <div className="inline-flex rounded-lg border bg-white/10 p-1 text-xs">
             {([
               { v: "closed",  label: t("orderByClosed")  },
@@ -232,7 +232,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                 type="button"
                 onClick={() => setOrderBy(v)}
                 className={[
-                  "rounded px-3 py-1 font-medium transition",
+                  "rounded px-2 sm:px-3 py-1 font-medium transition text-xs",
                   orderBy === v ? "bg-white text-gray-900 shadow" : "text-white/80",
                 ].join(" ")}
               >
@@ -241,15 +241,21 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-white" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>{t("prevPage")}</Button>
-            <span className="text-white text-sm">{page} / {Math.max(1, totalPages)}</span>
-            <Button variant="outline" className="bg-white" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>{t("nextPage")}</Button>
+            <Button variant="outline" size="sm" className="bg-white h-8 px-2 sm:px-3" disabled={page <= 1 || isLoading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <ChevronLeft className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{t("prevPage")}</span>
+            </Button>
+            <span className="text-white text-sm tabular-nums">{page} / {Math.max(1, totalPages)}</span>
+            <Button variant="outline" size="sm" className="bg-white h-8 px-2 sm:px-3" disabled={page >= totalPages || isLoading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              <ChevronRight className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{t("nextPage")}</span>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* ===== Bottom: Picker + Detail ====================================== */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
         {/* Picker */}
         <SectionCard title={t("allClients")} subtitle={t("allClientsSubtitle")}>
@@ -308,41 +314,62 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
             <div className="space-y-5">
               {/* KPI chips */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard title={t("statTotalQuotes")}    value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
-                <KpiCard title={t("statDollarsQuoted")} value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
-                <KpiCard title={t("statDollarsInProgress")} value={fmtK(selected.dashboard_stats.dollars_in_progress)}  Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                <KpiCard title={t("statDollarsPaid")}   value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title={t("statInProgressCount")} value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}  accentClass="bg-amber-100 text-amber-700" />
-                <KpiCard title={t("statAvgTargetPct")}  value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statTotalQuotes")}      value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
+                <KpiCard title={t("statDollarsQuoted")}    value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
+                <KpiCard title={t("statDollarsInProgress")} value={fmtK(selected.dashboard_stats.dollars_in_progress)}    Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                <KpiCard title={t("statDollarsPaid")}      value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statInProgressCount")}  value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statAvgTargetPct")}     value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
               </div>
 
-              {/* Top communities (if backend returns them) */}
+              {/* Top communities */}
               {(selected.top_communities?.length ?? 0) > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
                     {t("topCommunitiesByJobs")}
                   </h3>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                        <th className="px-2 py-1.5 font-medium">{t("colCommunity")}</th>
-                        <th className="px-2 py-1.5 font-medium text-right">{t("colTotalJobs")}</th>
-                        <th className="px-2 py-1.5 font-medium text-right">{t("colPaidJobs")}</th>
-                        <th className="px-2 py-1.5 font-medium text-right">{t("colRevenue")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.top_communities!.map((c, i) => (
-                        <tr key={i} className="border-b hover:bg-gray-50 transition">
-                          <td className="px-2 py-1.5 font-medium">{c.name}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{c.total_jobs}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{c.paid_jobs}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(c.revenue)}</td>
+
+                  {/* Mobile cards */}
+                  <div className="sm:hidden space-y-2">
+                    {selected.top_communities!.map((c, i) => (
+                      <div key={i} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
+                        <p className="font-semibold">{c.name}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{t("colTotalJobs")} / {t("colPaidJobs")}</span>
+                          <span className="tabular-nums">{c.total_jobs} / {c.paid_jobs}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{t("colRevenue")}</span>
+                          <span className="font-semibold text-emerald-700">{fmtK(c.revenue)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+                          <th className="px-2 py-1.5 font-medium">{t("colCommunity")}</th>
+                          <th className="px-2 py-1.5 font-medium text-right">{t("colTotalJobs")}</th>
+                          <th className="px-2 py-1.5 font-medium text-right">{t("colPaidJobs")}</th>
+                          <th className="px-2 py-1.5 font-medium text-right">{t("colRevenue")}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {selected.top_communities!.map((c, i) => (
+                          <tr key={i} className="border-b hover:bg-gray-50 transition">
+                            <td className="px-2 py-1.5 font-medium">{c.name}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{c.total_jobs}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{c.paid_jobs}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(c.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

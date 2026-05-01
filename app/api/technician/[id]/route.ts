@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server"
 const PYTHON_API_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params
-    console.log(`[v0] Fetching technician data for ID: ${id}`)
-
+    const { id } = await params
     const url = `${PYTHON_API_URL}/technician/${id}`
-
-    console.log(`[v0] Fetching from: ${url}`)
 
     const authHeader = request.headers.get("Authorization")
     const response = await fetch(url, {
@@ -20,20 +16,72 @@ export async function GET(request: Request, { params }: { params: { id: string }
     })
 
     if (!response.ok) {
-      console.error(`[v0] Error fetching technician: ${response.status}`)
       const errorText = await response.text()
-      console.error(`[v0] Error response: ${errorText}`)
-      return NextResponse.json({ error: "Failed to fetch technician" }, { status: response.status })
+      return NextResponse.json({ error: "Failed to fetch technician", details: errorText }, { status: response.status })
     }
 
     const data = await response.json()
-    console.log("[v0] Technician data fetched successfully")
-    console.log(`[v0] Technician has ${data.subcontractor?.jobs?.length || 0} jobs`)
-
     return NextResponse.json(data)
   } catch (error) {
-    console.error("[v0] Error in technician API route:", error)
-    console.error("[v0] Error details:", error instanceof Error ? error.message : String(error))
+    console.error("[v0] Error in technician GET API route:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const url = `${PYTHON_API_URL}/technician/${id}`
+
+    const authHeader = request.headers.get("Authorization")
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+
+    const responseText = await response.text()
+
+    if (!response.ok) {
+      return NextResponse.json({ error: "Failed to update technician", details: responseText }, { status: response.status })
+    }
+
+    const data = JSON.parse(responseText)
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("[v0] Error in technician PATCH API route:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const url = `${PYTHON_API_URL}/technician/${id}`
+
+    const authHeader = request.headers.get("Authorization")
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+    })
+
+    const responseText = await response.text()
+
+    if (!response.ok) {
+      return NextResponse.json({ error: "Failed to delete technician", details: responseText }, { status: response.status })
+    }
+
+    const data = JSON.parse(responseText)
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("[v0] Error in technician DELETE API route:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

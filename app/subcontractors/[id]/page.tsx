@@ -26,7 +26,7 @@ import {
   Building2, Globe, Star, ShieldCheck, FileText, CheckCircle,
   AlertCircle, RefreshCw, Hash, Briefcase, ClipboardList, Calendar,
   DollarSign, Tag, ExternalLink, Clock, Sparkles, ShoppingBag, Activity,
-  Zap, Edit3, Info,
+  Zap, Edit3, Info, Users
 } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
 import {
@@ -327,6 +327,21 @@ export default function SubcontractorDetailsPage() {
   const [techPage, setTechPage] = useState(1)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; technician: SubcTechnician | null }>({ open: false, technician: null })
 
+  const confirmDeleteTechnician = async () => {
+    if (!deleteDialog.technician) return
+    const tid = deleteDialog.technician.ID_Technician
+    try {
+      const res = await apiFetch(`/api/technician/${tid}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Failed to delete technician")
+      setTechnicians(prev => prev.filter(t => t.ID_Technician !== tid))
+      toast({ title: "Deleted", description: `Technician ${tid} removed.` })
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" })
+    } finally {
+      setDeleteDialog({ open: false, technician: null })
+    }
+  }
+
   // ── Skills state ───────────────────────────────────────────────────────────
   const [skillsSyncPodio, setSkillsSyncPodio] = useState(true)
   const [skillsModalOpen, setSkillsModalOpen] = useState(false)
@@ -556,12 +571,6 @@ export default function SubcontractorDetailsPage() {
     [technicians]
   )
 
-  const confirmDeleteTechnician = async () => {
-    if (!deleteDialog.technician?.ID_Technician) return
-    await apiFetch(`/api/technicians/${deleteDialog.technician.ID_Technician}`, { method: "DELETE", cache: "no-store" }).catch(() => null)
-    setTechnicians((p) => p.filter((t) => t.ID_Technician !== deleteDialog.technician?.ID_Technician))
-    setDeleteDialog({ open: false, technician: null })
-  }
 
   // ── Guards ─────────────────────────────────────────────────────────────────
   if (!user) return null
@@ -706,6 +715,7 @@ export default function SubcontractorDetailsPage() {
                 <TabsList className="inline-flex h-auto w-max min-w-full flex-nowrap justify-start gap-1 p-0 sm:gap-2">
                   {[
                     { value: "details", label: t("tabDetails"), icon: FileText },
+                    { value: "technicians", label: t("tabTechnicians"), icon: Users, count: technicians.length },
                     { value: "orders", label: t("tabOrders"), icon: ShoppingBag, count: subc.orders?.length ?? 0 },
                     { value: "jobs", label: t("tabJobs"), icon: Briefcase, count: subc.jobs?.length ?? 0 },
                     { value: "skills", label: t("tabSkills"), icon: Wrench, count: subc.skills?.length ?? 0 },
@@ -899,10 +909,10 @@ export default function SubcontractorDetailsPage() {
 
                   {/* ── TECHNICIANS tab ──────────────────────────────────── */}
                   <TabsContent value="technicians">
-                    <SectionCard icon={Wrench} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("tabTechnicians")}
+                    <SectionCard icon={Users} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("tabTechnicians")}
                       action={
                         hasPermission("subcontractor:update") && (
-                          <Button size="sm" onClick={() => router.push(`/subcontractors/${id}/technicians/create`)}
+                          <Button size="sm" onClick={() => router.push(`/technicians/create?subcontractorId=${id}`)}
                             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
                             <Plus className="h-3.5 w-3.5" /> {t("addTechnician")}
                           </Button>
@@ -937,7 +947,7 @@ export default function SubcontractorDetailsPage() {
                                   Type: (t.Type_of_technician as any) ?? "Worker",
                                   ID_Subcontractor: t.ID_Subcontractor ?? subc.ID_Subcontractor,
                                 } as any}
-                                onView={(tid) => router.push(`/subcontractors/${id}/technicians/${tid}`)}
+                                onView={(tid) => router.push(`/technicians/${tid}`)}
                                 onDelete={(tid) => {
                                   if (!hasPermission("subcontractor:update")) {
                                     toast({ title: "Denied", description: "You do not have permission to delete technicians.", variant: "destructive" })

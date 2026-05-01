@@ -713,7 +713,7 @@ export default function JobsPanel({
       </SectionCard>
 
       {/* ── 5. Rep Performance + Status Distribution (2-col) ─────────────── */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* Rep Performance */}
         <SectionCard title={t("sectionRepPerformance")} subtitle={t("sectionRepPerformanceSub")}>
@@ -893,7 +893,7 @@ export default function JobsPanel({
             </div>
 
             {/* Desktop: chart + table side by side */}
-            <div className="hidden sm:grid gap-6 md:grid-cols-2 items-start">
+            <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <HorizontalBarChart
                 data={serviceChartData}
                 primaryLabel={t("colFinalSold")}
