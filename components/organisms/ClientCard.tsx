@@ -1,8 +1,11 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import type { Client } from "@/lib/types"
 import { Mail, Phone, MapPin, BadgeCheck, Building2, User as UserIcon, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ── Components ───────────────────────────────────────────────────────────────
 
@@ -94,21 +97,22 @@ interface ClientCardProps {
   title?: string
 }
 
-export function ClientCard({ client, title = "Client Information" }: ClientCardProps) {
+export function ClientCard({ client, title }: ClientCardProps) {
+  const t = useTranslations("jobs")
   const phones = normalizeArrayField(client.phone)
   const addresses = normalizeArrayField(client.address)
   const emails = normalizeArrayField(client.email)
-  
+
   return (
-    <SectionCard 
-      icon={Building2} 
-      iconBg="bg-gqm-green/10" 
-      iconColor="text-gqm-green-dark" 
-      title={title}
+    <SectionCard
+      icon={Building2}
+      iconBg="bg-gqm-green/10"
+      iconColor="text-gqm-green-dark"
+      title={title ?? t("clientCardTitle")}
       action={
         <Link href={`/communities/${client.id}`}>
           <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider text-gqm-green-dark hover:bg-gqm-green/10 hover:text-gqm-green-dark transition-all rounded-lg gap-1.5">
-            View Section
+            {t("clientCardViewSection")}
             <ExternalLink className="h-3 w-3" />
           </Button>
         </Link>
@@ -122,7 +126,7 @@ export function ClientCard({ client, title = "Client Information" }: ClientCardP
           <h3 className="text-lg font-bold text-slate-800 leading-tight">{client.clientCommunity || client.companyName || "Client"}</h3>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="font-mono text-[11px] font-bold text-slate-400 uppercase tracking-wider">{client.id}</span>
-            <Badge variant="outline" className="text-[10px] font-bold py-0 h-4 rounded-full border-slate-200 text-slate-400 uppercase">Partner</Badge>
+            <Badge variant="outline" className="text-[10px] font-bold py-0 h-4 rounded-full border-slate-200 text-slate-400 uppercase">{t("clientCardPartner")}</Badge>
           </div>
         </div>
       </div>
@@ -130,21 +134,21 @@ export function ClientCard({ client, title = "Client Information" }: ClientCardP
       <div className="space-y-4 pt-2">
         {/* Services */}
         <div>
-          <FieldLabel icon={BadgeCheck}>Services</FieldLabel>
+          <FieldLabel icon={BadgeCheck}>{t("clientCardServices")}</FieldLabel>
           <div className="flex flex-wrap gap-2">
             {client.servicesInterestedIn ? (
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100 transition-colors shadow-none text-[11px] font-bold py-1">
                 {client.servicesInterestedIn}
               </Badge>
             ) : (
-              <span className="text-slate-300 italic text-xs">No services listed</span>
+              <span className="text-slate-300 italic text-xs">{t("clientCardNoServices")}</span>
             )}
           </div>
         </div>
 
         {/* Addresses */}
         <div>
-          <FieldLabel icon={MapPin}>Addresses</FieldLabel>
+          <FieldLabel icon={MapPin}>{t("clientCardAddresses")}</FieldLabel>
           <div className="space-y-1.5">
             {addresses.length > 0 ? (
               addresses.map((addr, i) => (
@@ -162,7 +166,7 @@ export function ClientCard({ client, title = "Client Information" }: ClientCardP
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Phones */}
           <div>
-            <FieldLabel icon={Phone}>Phone Numbers</FieldLabel>
+            <FieldLabel icon={Phone}>{t("clientCardPhones")}</FieldLabel>
             <div className="space-y-1.5">
               {phones.length > 0 ? (
                 phones.map((p, i) => (
@@ -179,12 +183,12 @@ export function ClientCard({ client, title = "Client Information" }: ClientCardP
 
           {/* Status */}
           <div className="flex flex-col">
-            <FieldLabel icon={BadgeCheck}>Status</FieldLabel>
+            <FieldLabel icon={BadgeCheck}>{t("clientCardStatus")}</FieldLabel>
             <div className="flex-1">
-              <Badge 
+              <Badge
                 className={`${
-                  client.status?.toLowerCase() === "active" 
-                    ? "bg-emerald-100 text-emerald-700 border-emerald-200" 
+                  client.status?.toLowerCase() === "active"
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                     : "bg-slate-100 text-slate-600 border-slate-200"
                 } h-10 w-full rounded-xl border px-3 text-sm font-bold uppercase shadow-none flex items-center justify-center`}
               >
@@ -196,7 +200,7 @@ export function ClientCard({ client, title = "Client Information" }: ClientCardP
 
         {/* Emails */}
         <div>
-          <FieldLabel icon={Mail}>Email Addresses</FieldLabel>
+          <FieldLabel icon={Mail}>{t("clientCardEmails")}</FieldLabel>
           <div className="space-y-1.5">
             {emails.length > 0 ? (
               emails.map((e, i) => (

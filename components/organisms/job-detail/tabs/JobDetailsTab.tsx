@@ -12,6 +12,7 @@ import {
   Info, Building2, Tag, AlertCircle, CheckCircle2, Hash,
 } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type Props = {
   role: UserRole
@@ -202,6 +203,7 @@ export function JobDetailsTab({
 
   const { hasPermission } = usePermissions()
   const canReadClients = hasPermission("client:read")
+  const t = useTranslations("jobs")
 
   // Field values
   const idJobs = pick<string>(job, ["ID_Jobs", "idJobs", "jobId"], "")
@@ -238,7 +240,7 @@ export function JobDetailsTab({
 
       {/* ── 1. Client ─────────────────────────────────────────────────── */}
       {role !== "LEAD_TECHNICIAN" && (
-        <SectionCard icon={Building2} title="Client">
+        <SectionCard icon={Building2} title={t("detailSectionClient")}>
           <ClientSelect
             value={currentClientId || ""}
             initialClients={clients}
@@ -269,11 +271,11 @@ export function JobDetailsTab({
       )}
 
       {/* ── 2. Job Characteristics ─────────────────────────────────────── */}
-      <SectionCard icon={Hash} title="Job Characteristics">
+      <SectionCard icon={Hash} title={t("detailSectionCharacteristics")}>
         <div className="grid gap-4 sm:grid-cols-3">
           {/* Job ID */}
           <div>
-            <FieldLabel>Job ID</FieldLabel>
+            <FieldLabel>{t("detailFieldJobId")}</FieldLabel>
             <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
               <span className="font-mono text-sm font-bold text-slate-700">{idJobs || "—"}</span>
               <span className={`ml-auto inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${jobTypeColor}`}>
@@ -284,7 +286,7 @@ export function JobDetailsTab({
 
           {/* Job Type (display only) */}
           <div>
-            <FieldLabel>Job Type</FieldLabel>
+            <FieldLabel>{t("detailFieldJobType")}</FieldLabel>
             <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
               <Briefcase className="h-4 w-4 text-slate-400 flex-shrink-0" />
               <span className="text-sm text-slate-700">{jobType || "—"}</span>
@@ -293,7 +295,7 @@ export function JobDetailsTab({
 
           {/* Status */}
           <div>
-            <FieldLabel>Status</FieldLabel>
+            <FieldLabel>{t("detailFieldStatus")}</FieldLabel>
             {isReadOnly ? (
               <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${statusColor}`}>
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
@@ -305,7 +307,7 @@ export function JobDetailsTab({
                     ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300"
                     : "border-slate-200 bg-slate-50"
                   }`}>
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder={t("detailPlaceholderStatus")} />
                 </SelectTrigger>
                 <SelectContent>
                   {jobType && statusOptionsByJobType[jobType]?.map((s) => (
@@ -320,7 +322,7 @@ export function JobDetailsTab({
         {/* Service Type — QID only */}
         {isQID && (
           <div>
-            <FieldLabel>Service Type</FieldLabel>
+            <FieldLabel>{t("detailFieldServiceType")}</FieldLabel>
             {isReadOnly ? (
               <ReadonlyField value={serviceType} />
             ) : (
@@ -328,7 +330,7 @@ export function JobDetailsTab({
                 value={serviceType}
                 onChange={(v) => onFieldChange("serviceType", v)}
                 changed={isFieldChanged("serviceType")}
-                placeholder="e.g. Plumbing, Electrical…"
+                placeholder={t("detailPlaceholderServiceType")}
               />
             )}
           </div>
@@ -337,11 +339,11 @@ export function JobDetailsTab({
 
       {/* ── 3. Work Information ────────────────────────────────────────── */}
       {(isQID || isPTL || isPAR) && (
-        <SectionCard icon={FileText} title="Work Information">
+        <SectionCard icon={FileText} title={t("detailSectionWorkInfo")}>
           {/* Project Name — QID only */}
           {isQID && (
             <div>
-              <FieldLabel>Project Name</FieldLabel>
+              <FieldLabel>{t("detailFieldProjectName")}</FieldLabel>
               {isReadOnly ? (
                 <ReadonlyField value={projectName} />
               ) : (
@@ -349,7 +351,7 @@ export function JobDetailsTab({
                   value={projectName}
                   onChange={(v) => onFieldChange("projectName", v)}
                   changed={isFieldChanged("projectName")}
-                  placeholder="Project name"
+                  placeholder={t("detailPlaceholderProjectName")}
                 />
               )}
             </div>
@@ -358,7 +360,7 @@ export function JobDetailsTab({
           {/* Project Location — QID + PTL */}
           {(isQID || isPTL) && (
             <div>
-              <FieldLabel>Project Location</FieldLabel>
+              <FieldLabel>{t("detailFieldProjectLocation")}</FieldLabel>
               {isReadOnly ? (
                 <ReadonlyField value={projectLocation} />
               ) : (
@@ -366,7 +368,7 @@ export function JobDetailsTab({
                   value={projectLocation}
                   onChange={(v) => onFieldChange("projectLocation", v)}
                   changed={isFieldChanged("projectLocation")}
-                  placeholder="Full address or location description"
+                  placeholder={t("detailPlaceholderProjectLocation")}
                   rows={2}
                 />
               )}
@@ -376,7 +378,7 @@ export function JobDetailsTab({
           {/* PO/WTN/WO# — QID + PAR */}
           {(isQID || isPAR) && (
             <div>
-              <FieldLabel>PO / WTN / WO #</FieldLabel>
+              <FieldLabel>{t("detailFieldPoWtnWo")}</FieldLabel>
               {isReadOnly ? (
                 <ReadonlyField value={poWtnWo} />
               ) : (
@@ -384,7 +386,7 @@ export function JobDetailsTab({
                   value={poWtnWo}
                   onChange={(v) => onFieldChange("poWtnWo", v)}
                   changed={isFieldChanged("poWtnWo")}
-                  placeholder="e.g. PO-12345"
+                  placeholder={t("detailPlaceholderPoWtnWo")}
                 />
               )}
             </div>
@@ -393,10 +395,10 @@ export function JobDetailsTab({
       )}
 
       {/* ── 4. Timeline ────────────────────────────────────────────────── */}
-      <SectionCard icon={Calendar} title="Timeline">
+      <SectionCard icon={Calendar} title={t("detailSectionTimeline")}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <FieldLabel>Date Assigned</FieldLabel>
+            <FieldLabel>{t("detailFieldDateAssigned")}</FieldLabel>
             {isReadOnly ? (
               <ReadonlyField value={dateAssigned} />
             ) : (
@@ -410,7 +412,7 @@ export function JobDetailsTab({
           </div>
 
           <div>
-            <FieldLabel>Estimated Start Date</FieldLabel>
+            <FieldLabel>{t("detailFieldEstStartDate")}</FieldLabel>
             {isReadOnly ? (
               <ReadonlyField value={estimatedStartDate} />
             ) : (
@@ -425,7 +427,7 @@ export function JobDetailsTab({
         </div>
 
         <div>
-          <FieldLabel>Estimated Duration (months)</FieldLabel>
+          <FieldLabel>{t("detailFieldEstDuration")}</FieldLabel>
           {isReadOnly ? (
             <ReadonlyField value={durationRaw || "—"} />
           ) : (
@@ -434,14 +436,14 @@ export function JobDetailsTab({
               value={durationRaw}
               onChange={(v) => onFieldChange("estimatedDuration", v)}
               changed={isFieldChanged("estimatedDuration")}
-              placeholder="e.g. 3"
+              placeholder={t("detailPlaceholderDuration")}
             />
           )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <FieldLabel>Date Received</FieldLabel>
+            <FieldLabel>{t("detailFieldDateReceived")}</FieldLabel>
             {isReadOnly ? (
               <ReadonlyField value={dateReceived} />
             ) : (
@@ -455,7 +457,7 @@ export function JobDetailsTab({
           </div>
 
           <div>
-            <FieldLabel>Estimated Completion Date</FieldLabel>
+            <FieldLabel>{t("detailFieldEstCompletionDate")}</FieldLabel>
             {isReadOnly ? (
               <ReadonlyField value={estimatedCompletionDate} />
             ) : (
@@ -481,7 +483,7 @@ export function JobDetailsTab({
       ) : null}
 
       {/* ── 6. Additional Details ──────────────────────────────────────── */}
-      <SectionCard icon={Info} title="Additional Details">
+      <SectionCard icon={Info} title={t("detailSectionAdditional")}>
         {isReadOnly ? (
           <ReadonlyField value={additionalDetail} />
         ) : (
@@ -489,7 +491,7 @@ export function JobDetailsTab({
             value={additionalDetail}
             onChange={(v) => onFieldChange("additionalDetail", v)}
             changed={isFieldChanged("additionalDetail")}
-            placeholder="Any additional relevant information…"
+            placeholder={t("detailPlaceholderAdditional")}
             rows={4}
           />
         )}
@@ -497,10 +499,10 @@ export function JobDetailsTab({
 
       {/* ── 6. PTL Details ────────────────────────────────────────────── */}
       {isPTL && (
-        <SectionCard icon={Tag} title="PTL Details">
+        <SectionCard icon={Tag} title={t("detailSectionPtl")}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <FieldLabel>Superintendent</FieldLabel>
+              <FieldLabel>{t("detailFieldSuperintendent")}</FieldLabel>
               {isReadOnly ? (
                 <ReadonlyField value={ptlSuperintendent} />
               ) : (
@@ -508,12 +510,12 @@ export function JobDetailsTab({
                   value={ptlSuperintendent}
                   onChange={(v) => onFieldChange("ptlSuperintendent", v)}
                   changed={isFieldChanged("ptlSuperintendent")}
-                  placeholder="Superintendent name"
+                  placeholder={t("detailPlaceholderSuperintendent")}
                 />
               )}
             </div>
             <div>
-              <FieldLabel>Property ID</FieldLabel>
+              <FieldLabel>{t("detailFieldPropertyId")}</FieldLabel>
               {isReadOnly ? (
                 <ReadonlyField value={ptlPropertyId} />
               ) : (
@@ -521,7 +523,7 @@ export function JobDetailsTab({
                   value={ptlPropertyId}
                   onChange={(v) => onFieldChange("ptlPropertyId", v)}
                   changed={isFieldChanged("ptlPropertyId")}
-                  placeholder="PTL property identifier"
+                  placeholder={t("detailPlaceholderPropertyId")}
                 />
               )}
             </div>

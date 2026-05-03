@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import type { EstimateItem, Subcontractor } from "@/lib/types"
 import { toast } from "sonner"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
@@ -28,9 +29,9 @@ function FG({ children }: { children: React.ReactNode }) {
   return <div className="space-y-1">{children}</div>
 }
 
-function PodioToggle({ value, onChange, jobYear, disabled, textPrefix }: {
+function PodioToggle({ value, onChange, jobYear, disabled, textPrefix, yearNotAvailableLabel }: {
   value: boolean; onChange: (v: boolean) => void
-  jobYear?: number; disabled?: boolean; textPrefix?: string
+  jobYear?: number; disabled?: boolean; textPrefix?: string; yearNotAvailableLabel?: string
 }) {
   return (
     <button
@@ -55,7 +56,7 @@ function PodioToggle({ value, onChange, jobYear, disabled, textPrefix }: {
           </span>
         )}
         {value && !jobYear && (
-          <span className="ml-2 text-[10px] text-red-500">Year no resuelto</span>
+          <span className="ml-2 text-[10px] text-red-500">{yearNotAvailableLabel ?? "Year not available"}</span>
         )}
       </div>
     </button>
@@ -83,6 +84,7 @@ export function EditOrderDialog({
   jobYearForPodioSync,
   onEditOrder,
 }: EditOrderDialogProps) {
+  const t = useTranslations("jobs")
   const [orderName, setOrderName] = useState("")
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [itemsQuery, setItemsQuery] = useState("")
@@ -159,7 +161,7 @@ export function EditOrderDialog({
       return
     }
     if (selectedItems.length === 0) {
-      toast.error("Please select at least one estimate item for the order")
+      toast.error(t("orderSelectItemError"))
       return
     }
 
@@ -206,8 +208,8 @@ export function EditOrderDialog({
               <PackageOpen className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Edit Order</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Order ID: <span className="font-mono">{order.ID_Order}</span></p>
+              <h2 className="text-base font-bold text-slate-900">{t("orderEditTitle")}</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t("orderEditIdPrefix")} <span className="font-mono">{order.ID_Order}</span></p>
             </div>
           </div>
           <button
@@ -225,7 +227,7 @@ export function EditOrderDialog({
           {/* Left panel */}
           <div className="lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-100 bg-white px-4 py-4 sm:px-6 sm:py-5 flex flex-col gap-4 sm:gap-6 overflow-y-auto shrink-0 max-h-[42%] lg:max-h-none lg:shrink">
             <FG>
-              <FL required>Order Name</FL>
+              <FL required>{t("orderNameLabel")}</FL>
               <div className="relative">
                 <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
@@ -235,16 +237,16 @@ export function EditOrderDialog({
                     setOrderName(e.target.value)
                     setErrors({})
                   }}
-                  placeholder="e.g., Interior Finishing Package"
+                  placeholder={t("orderNamePlaceholder")}
                   className={`${FIELD_BASE} pl-9 ${errors.orderName ? FIELD_ERR : ""}`}
                   disabled={isSubmitting}
                 />
               </div>
-              {errors.orderName && <p className="text-[11px] text-red-500">{errors.orderName}</p>}
+              {errors.orderName && <p className="text-[11px] text-red-500">{t("orderNameRequired")}</p>}
             </FG>
 
             <FG>
-              <FL>Assigned Subcontractor</FL>
+              <FL>{t("orderAssignedSubLabel")}</FL>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
@@ -255,55 +257,56 @@ export function EditOrderDialog({
                 />
               </div>
               <p className="text-[10px] text-slate-400 leading-tight">
-                Subcontractor Cannot Be Changed During Editing.
+                {t("orderSubCannotChange")}
               </p>
             </FG>
 
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 flex flex-col">
-                  Cost Summary
-                  <span className="text-[10px] font-normal normal-case text-slate-400 mt-0.5">Preview calculations</span>
+                  {t("orderCostSummaryTitle")}
+                  <span className="text-[10px] font-normal normal-case text-slate-400 mt-0.5">{t("orderCostSummaryHint")}</span>
                 </h3>
               </div>
 
               <div className="space-y-3">
                 <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100">
-                  <span className="text-xs font-semibold text-slate-500">Formula (Current)</span>
+                  <span className="text-xs font-semibold text-slate-500">{t("orderFormulaCurrent")}</span>
                   <span className="text-sm font-semibold text-slate-400">${formulaData.currentFormula.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col gap-1 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-amber-800">New Formula</span>
+                    <span className="text-xs font-bold text-amber-800">{t("orderNewFormula")}</span>
                     <span className="text-sm font-black text-amber-700">${formulaData.newFormula.toFixed(2)}</span>
                   </div>
-                  <span className="text-[10px] text-amber-600/70">Sum of selected builder costs</span>
+                  <span className="text-[10px] text-amber-600/70">{t("orderNewFormulaHint")}</span>
                 </div>
-                
+
                 <div className="h-px bg-slate-200 my-1" />
 
                 <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100">
-                  <span className="text-xs font-semibold text-slate-500">Adj. Formula (Current)</span>
+                  <span className="text-xs font-semibold text-slate-500">{t("orderAdjFormulaCurrent")}</span>
                   <span className="text-sm font-semibold text-slate-400">${formulaData.currentAdjFormula.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col gap-1 bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-emerald-800">New Adj. Formula</span>
+                    <span className="text-xs font-bold text-emerald-800">{t("orderNewAdjFormula")}</span>
                     <span className="text-sm font-black text-emerald-700">${formulaData.newAdjFormula.toFixed(2)}</span>
                   </div>
-                  <span className="text-[10px] text-emerald-600/70">New formula + change orders</span>
+                  <span className="text-[10px] text-emerald-600/70">{t("orderNewAdjFormulaHint")}</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2 mt-auto pt-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Podio Integration</p>
-              <PodioToggle 
-                value={syncPodioLocal} 
-                onChange={setSyncPodioLocal} 
-                jobYear={jobYearForPodioSync} 
-                disabled={isSubmitting} 
-                textPrefix="Sync changes to Podio" 
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("orderPodioIntegration")}</p>
+              <PodioToggle
+                value={syncPodioLocal}
+                onChange={setSyncPodioLocal}
+                jobYear={jobYearForPodioSync}
+                disabled={isSubmitting}
+                textPrefix={t("orderSyncChangesToPodio")}
+                yearNotAvailableLabel={t("orderPodioYearUnavailable")}
               />
             </div>
           </div>
@@ -312,8 +315,8 @@ export function EditOrderDialog({
           <div className="flex-1 min-h-0 flex flex-col bg-slate-50/30 overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Assign Estimate Costs</h3>
-                <p className="text-xs text-slate-500">{selectedItems.length} of {availableItems.length} selected</p>
+                <h3 className="text-sm font-bold text-slate-800">{t("orderAssignCosts")}</h3>
+                <p className="text-xs text-slate-500">{selectedItems.length} {t("orderSelectedOf")} {availableItems.length} {t("orderSelectedLabel")}</p>
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -322,7 +325,7 @@ export function EditOrderDialog({
                   <Input
                     value={itemsQuery}
                     onChange={(e) => setItemsQuery(e.target.value)}
-                    placeholder="Search cost code..."
+                    placeholder={t("orderSearchCostCode")}
                     className="pl-8 h-8 text-xs bg-slate-50 border-slate-200"
                     disabled={isSubmitting}
                   />
@@ -332,7 +335,7 @@ export function EditOrderDialog({
                   onClick={selectAllVisible}
                   disabled={isSubmitting || filteredAvailableItems.length === 0}
                   className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                  title="Select Visible"
+                  title={t("orderSelectVisible")}
                 >
                   <CheckSquare className="h-4 w-4" />
                 </button>
@@ -341,7 +344,7 @@ export function EditOrderDialog({
                   onClick={clearSelection}
                   disabled={isSubmitting || selectedItems.length === 0}
                   className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                  title="Clear Selection"
+                  title={t("orderClearSelection")}
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -352,7 +355,7 @@ export function EditOrderDialog({
               {filteredAvailableItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-8 text-slate-400">
                   <PackageOpen className="h-10 w-10 mb-3 opacity-20" />
-                  <p className="text-sm">No estimate costs available</p>
+                  <p className="text-sm">{t("orderNoEstimateCosts")}</p>
                 </div>
               ) : (
                 <div className="grid gap-2">
@@ -403,7 +406,7 @@ export function EditOrderDialog({
                             )}
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
-                              Client: ${(clientPrice).toFixed(2)}
+                              {t("orderClientPrefix")} ${(clientPrice).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -424,17 +427,17 @@ export function EditOrderDialog({
             disabled={isSubmitting}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
-            Cancel
+            {t("orderCancelBtn")}
           </button>
-          <button 
-            type="button" 
-            onClick={handleSubmit} 
+          <button
+            type="button"
+            onClick={handleSubmit}
             disabled={isSubmitting}
             className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
           >
-            {isSubmitting 
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> 
-              : <><Check className="h-4 w-4" /> Save Changes</>
+            {isSubmitting
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("orderSaving")}</>
+              : <><Check className="h-4 w-4" /> {t("orderSaveChanges")}</>
             }
           </button>
         </div>

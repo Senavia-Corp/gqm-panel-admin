@@ -11,6 +11,7 @@ import { Send, RefreshCw, AlertCircle, BookOpen } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useJobChat, type ChatMessageData } from "@/app/jobs/[id]/useJobChat"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ function DateDivider({ date }: { date: string }) {
 
 export function JobSidebarChat({ jobId }: { jobId: string }) {
   const { toast } = useToast()
+  const t = useTranslations("jobs")
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState("")
 
@@ -118,7 +120,7 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
     try {
       await sendMessage(trimmed)
     } catch {
-      toast({ title: "Failed to send", description: "Please try again.", variant: "destructive" })
+      toast({ title: t("logbookFailedSend"), description: t("logbookFailedSendDesc"), variant: "destructive" })
       setInput(trimmed)
     }
   }, [input, isSending, sendMessage, toast])
@@ -166,9 +168,9 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
           <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold text-slate-800">Logbook</p>
+          <p className="truncate text-xs font-semibold text-slate-800">{t("logbookTitle")}</p>
           <p className="text-[10px] text-slate-400">
-            {isLoading ? "Loading…" : `${messages.length} entr${messages.length !== 1 ? "ies" : "y"}`}
+            {isLoading ? t("logbookLoading") : `${messages.length} ${messages.length !== 1 ? t("logbookEntries") : t("logbookEntry")}`}
           </p>
         </div>
         {isLoading && <RefreshCw className="h-3 w-3 animate-spin text-slate-400" />}
@@ -189,8 +191,8 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
               <BookOpen className="h-5 w-5 text-indigo-200" />
             </div>
-            <p className="text-xs font-medium text-slate-400">No entries yet</p>
-            <p className="text-[10px] text-slate-300">Document notes and events below.</p>
+            <p className="text-xs font-medium text-slate-400">{t("logbookNoEntries")}</p>
+            <p className="text-[10px] text-slate-300">{t("logbookNoEntriesHint")}</p>
           </div>
         )}
 
@@ -213,7 +215,7 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
         <div className="flex items-end gap-2">
           <textarea
             rows={1}
-            placeholder="Add a log entry…"
+            placeholder={t("logbookPlaceholder")}
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
@@ -229,7 +231,7 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
             onClick={handleSend}
             disabled={!input.trim() || isSending}
             className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
-            title="Send (Enter)"
+            title={t("logbookSendTitle")}
           >
             {isSending
               ? <RefreshCw className="h-3 w-3 animate-spin" />
@@ -237,7 +239,7 @@ export function JobSidebarChat({ jobId }: { jobId: string }) {
           </button>
         </div>
         <p className="mt-1 text-[9px] text-slate-400">
-          Shift+Enter for new line · updates every 10 s
+          {t("logbookHint")}
         </p>
       </div>
     </div>

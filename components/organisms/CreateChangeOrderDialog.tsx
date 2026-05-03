@@ -10,6 +10,7 @@ import {
   DollarSign, Tag, AlignLeft, CheckCircle2, Clock, XCircle, ChevronDown,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,8 +35,11 @@ const stateColorMap: Record<string, string> = {
 function StateSelect({ value, onChange, error }: {
   value: State; onChange: (v: State) => void; error?: string
 }) {
+  const t = useTranslations("jobs")
   const [open, setOpen] = useState(false)
   const Icon = value ? stateIconMap[value] : null
+  const stateLabel = (s: State): string =>
+    s === "Pending" ? t("coStatePending") : s === "Approved" ? t("coStateApproved") : s === "Rejected" ? t("coStateRejected") : s
   return (
     <div className="relative">
       <button
@@ -48,10 +52,10 @@ function StateSelect({ value, onChange, error }: {
         {value ? (
           <span className={`flex items-center gap-1.5 font-medium ${stateColorMap[value] ?? "text-slate-700"}`}>
             {Icon && <Icon className="h-3.5 w-3.5" />}
-            {value}
+            {stateLabel(value)}
           </span>
         ) : (
-          <span className="text-slate-400">Select state…</span>
+          <span className="text-slate-400">{t("coStateSelect")}</span>
         )}
         <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -70,7 +74,7 @@ function StateSelect({ value, onChange, error }: {
                 } ${stateColorMap[s] ?? "text-slate-700"}`}
               >
                 {SIcon && <SIcon className="h-3.5 w-3.5 flex-shrink-0" />}
-                {s}
+                {stateLabel(s)}
                 {isSelected && <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-emerald-500" />}
               </button>
             )
@@ -126,6 +130,9 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 function StateBadge({ state }: { state: State }) {
+  const t = useTranslations("jobs")
+  const stateLabel = (s: State): string =>
+    s === "Pending" ? t("coStatePending") : s === "Approved" ? t("coStateApproved") : s === "Rejected" ? t("coStateRejected") : s
   const map: Record<string, { cls: string; icon: React.ComponentType<{ className?: string }> }> = {
     Pending:  { cls: "bg-amber-50 text-amber-700 border-amber-200",   icon: Clock },
     Approved: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -136,7 +143,7 @@ function StateBadge({ state }: { state: State }) {
   const Icon = cfg.icon
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cfg.cls}`}>
-      <Icon className="h-3 w-3" />{state}
+      <Icon className="h-3 w-3" />{stateLabel(state)}
     </span>
   )
 }
@@ -150,6 +157,7 @@ export function CreateChangeOrderDialog({
   jobId, orderId, jobPodioId, defaultSyncPodio, jobYearForPodioSync,
   initialData, onCreated, onUpdated,
 }: Props) {
+  const t = useTranslations("jobs")
   const isEdit = mode === "edit"
   const initialSync = useMemo(() => defaultSyncPodio, [defaultSyncPodio])
 
@@ -178,12 +186,12 @@ export function CreateChangeOrderDialog({
 
   const validate = (): boolean => {
     const errs: typeof errors = {}
-    if (!form.Name.trim())               errs.Name = "Name is required"
-    if (!form.State)                     errs.State = "State is required"
-    if (!form.ChangeOrderFormula.trim()) errs.ChangeOrderFormula = "Formula is required"
-    else if (Number.isNaN(Number(form.ChangeOrderFormula))) errs.ChangeOrderFormula = "Must be a number"
-    if (form.syncPodio && !jobYearForPodioSync) errs.syncPodio = "Year unavailable for Podio sync"
-    if (isEdit && !changeOrderId) errs.Name = "Missing change order ID"
+    if (!form.Name.trim())               errs.Name = t("coNameRequired")
+    if (!form.State)                     errs.State = t("coStateRequired")
+    if (!form.ChangeOrderFormula.trim()) errs.ChangeOrderFormula = t("coFormulaRequired")
+    else if (Number.isNaN(Number(form.ChangeOrderFormula))) errs.ChangeOrderFormula = t("coFormulaMustBeNumber")
+    if (form.syncPodio && !jobYearForPodioSync) errs.syncPodio = t("coPodioYearSync")
+    if (isEdit && !changeOrderId) errs.Name = t("coMissingId")
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -218,13 +226,13 @@ export function CreateChangeOrderDialog({
         const msg = await res.text().catch(() => "")
         throw new Error(msg || `Request failed (${res.status})`)
       }
-      toast.success(isEdit ? "Change order updated" : "Change order created")
+      toast.success(isEdit ? t("coSuccessUpdated") : t("coSuccessCreated"))
       onOpenChange(false)
       if (isEdit) onUpdated?.(formulaValue)
       else        onCreated?.(formulaValue)
     } catch (e: any) {
       console.error(e)
-      toast.error(e?.message || "Something went wrong")
+      toast.error(e?.message || t("coErrorGeneric"))
     } finally {
       setLoading(false)
     }
@@ -253,10 +261,10 @@ export function CreateChangeOrderDialog({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 leading-tight">
-                {isEdit ? "Edit Change Order" : "New Change Order"}
+                {isEdit ? t("coEditTitle") : t("coNewTitle")}
               </h2>
               <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                Order: {orderId}
+                {t("coOrderPrefix")} {orderId}
               </p>
             </div>
           </div>
@@ -275,19 +283,19 @@ export function CreateChangeOrderDialog({
           {/* Name + State row */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <FieldLabel required>Name</FieldLabel>
+              <FieldLabel required>{t("coNameLabel")}</FieldLabel>
               <input
                 type="text"
                 value={form.Name}
                 onChange={(e) => set("Name", e.target.value)}
-                placeholder="e.g. Extra ducts"
+                placeholder={t("coNamePlaceholder")}
                 className={`${FIELD_BASE} ${errors.Name ? FIELD_ERROR : ""}`}
               />
               {errors.Name && <p className="mt-1 text-[11px] text-red-500">{errors.Name}</p>}
             </div>
 
             <div>
-              <FieldLabel required>State</FieldLabel>
+              <FieldLabel required>{t("coStateLabel")}</FieldLabel>
               <StateSelect
                 value={form.State}
                 onChange={(v) => set("State", v)}
@@ -299,7 +307,7 @@ export function CreateChangeOrderDialog({
 
           {/* Formula */}
           <div>
-            <FieldLabel required>Change Order Formula ($)</FieldLabel>
+            <FieldLabel required>{t("coFormulaLabel")}</FieldLabel>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               <input
@@ -307,7 +315,7 @@ export function CreateChangeOrderDialog({
                 inputMode="decimal"
                 value={form.ChangeOrderFormula}
                 onChange={(e) => set("ChangeOrderFormula", e.target.value)}
-                placeholder="e.g. 1250"
+                placeholder={t("coFormulaPlaceholder")}
                 className={`${FIELD_BASE} pl-9 ${errors.ChangeOrderFormula ? FIELD_ERROR : ""}`}
               />
             </div>
@@ -318,11 +326,11 @@ export function CreateChangeOrderDialog({
 
           {/* Description */}
           <div>
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t("coDescLabel")}</FieldLabel>
             <textarea
               value={form.Description}
               onChange={(e) => set("Description", e.target.value)}
-              placeholder="Optional details about this change order…"
+              placeholder={t("coDescPlaceholder")}
               rows={3}
               className={`${FIELD_BASE} resize-none leading-relaxed`}
             />
@@ -339,14 +347,14 @@ export function CreateChangeOrderDialog({
               }
               <div>
                 <p className={`text-sm font-semibold ${form.syncPodio ? "text-emerald-800" : "text-slate-600"}`}>
-                  Podio Sync {form.syncPodio ? "Enabled" : "Disabled"}
+                  {form.syncPodio ? t("coPodioEnabled") : t("coPodioDisabled")}
                 </p>
                 <p className={`text-[11px] ${form.syncPodio ? "text-emerald-600" : "text-slate-400"}`}>
                   {form.syncPodio
                     ? jobYearForPodioSync
-                      ? `Will sync to Podio · year ${jobYearForPodioSync}`
-                      : "Year not available — sync may fail"
-                    : "Changes will only be saved locally"
+                      ? `${t("coPodioWillSync")} ${jobYearForPodioSync}`
+                      : t("coPodioYearNotAvail")
+                    : t("coPodioLocalOnly")
                   }
                 </p>
               </div>
@@ -385,7 +393,7 @@ export function CreateChangeOrderDialog({
               disabled={loading}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              Cancel
+              {t("coCancelBtn")}
             </button>
             <button
               type="button"
@@ -394,8 +402,8 @@ export function CreateChangeOrderDialog({
               className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               {loading
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
-                : <><TitleIcon className="h-4 w-4" /> {isEdit ? "Save Changes" : "Create"}</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("coSaving")}</>
+                : <><TitleIcon className="h-4 w-4" /> {isEdit ? t("coSaveChanges") : t("coCreate")}</>
               }
             </button>
           </div>
