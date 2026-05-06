@@ -437,17 +437,21 @@ export function EstimateBreakdownTable({
 
   const sumBC = (arr: EstimateItem[]) => arr.reduce((s, i) => s + i.Builder_Cost, 0)
 
-  const totSubInOrders = sumBC(subInOrders)
-  const totSubNoOrders = sumBC(subNoOrders)
-  const totSub         = sumBC(subItems)
-  const totRent        = sumBC(safeItems.filter((i) => i.Cost_Type === "Rent"))
-  const totMaterial    = sumBC(safeItems.filter((i) => i.Cost_Type === "Material"))
-  const totPermit      = sumBC(safeItems.filter((i) => i.Cost_Type === "Permit"))
-  const totBDF         = sumBC(safeItems.filter((i) => i.Cost_Type === "BDF"))
-  const totPTLGCF      = sumBC(safeItems.filter((i) => i.Cost_Type === "PTLGCF"))
+  const totSubInOrders   = sumBC(subInOrders)
+  const totSubNoOrders   = sumBC(subNoOrders)
+  const totSub           = sumBC(subItems)
+  // ALL Rent Builder_Cost → mirrors estimated_rent contribution
+  const totRentEstimated = safeItems.filter((i) => i.Cost_Type === "Rent").reduce((s, i) => s + i.Builder_Cost, 0)
+  // Only Approved Rent Client_Price → mirrors Paid Fees (Rent)
+  const totRentApproved  = safeItems.filter((i) => i.Cost_Type === "Rent" && i.Status === "Approved").reduce((s, i) => s + i.Client_Price, 0)
+  const totMaterial      = sumBC(safeItems.filter((i) => i.Cost_Type === "Material"))
+  // ALL BDF Builder_Cost → mirrors estimated_city contribution
+  const totBDFEstimated  = safeItems.filter((i) => i.Cost_Type === "BDF").reduce((s, i) => s + i.Builder_Cost, 0)
+  // Only Approved BDF Client_Price → mirrors Bldg_dept_fees (confirmed spend)
+  const totBDFApproved   = safeItems.filter((i) => i.Cost_Type === "BDF" && i.Status === "Approved").reduce((s, i) => s + i.Client_Price, 0)
+  const totPTLGCF        = sumBC(safeItems.filter((i) => i.Cost_Type === "PTLGCF"))
 
   const canCreateOrder = !hasUnsaved
-  const bdfCount       = safeItems.filter((i) => i.Cost_Type === "BDF").length
 
   return (
     <div className="space-y-4">
@@ -555,12 +559,13 @@ export function EstimateBreakdownTable({
           />
         </div>
         {/* Type breakdown */}
-        <div className={`grid gap-3 sm:grid-cols-2 ${isPTL ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
-          <StatCard label="Total Estimated Rent"           value={`$${fmtCurrency(totRent)}`}     color="teal"   />
-          <StatCard label="Total Estimated Material"       value={`$${fmtCurrency(totMaterial)}`} color="violet" />
-          <StatCard label="Total Estimated City Permits"   value={`$${fmtCurrency(totPermit)}`}   color="orange" />
-          <StatCard label="Total Building Dept. Fees"      value={`$${fmtCurrency(totBDF)}`}      color="rose"   />
-          {isPTL && <StatCard label="Total PTL G.C. Fees"  value={`$${fmtCurrency(totPTLGCF)}`}  color="slate"  />}
+        <div className={`grid gap-3 sm:grid-cols-2 ${isPTL ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+          <StatCard label="Rent Estimated"                 value={`$${fmtCurrency(totRentEstimated)}`} color="teal"   sub="Quoted, pending approval" />
+          <StatCard label="Rent Approved"                  value={`$${fmtCurrency(totRentApproved)}`}  color="emerald" sub="Confirmed spend" />
+          <StatCard label="Total Estimated Material"       value={`$${fmtCurrency(totMaterial)}`}      color="violet" />
+          <StatCard label="BDF Estimated"                  value={`$${fmtCurrency(totBDFEstimated)}`}  color="orange" sub="Quoted, pending approval" />
+          <StatCard label="BDF Approved"                   value={`$${fmtCurrency(totBDFApproved)}`}   color="rose"   sub="Confirmed spend" />
+          {isPTL && <StatCard label="Total PTL G.C. Fees"  value={`$${fmtCurrency(totPTLGCF)}`}       color="slate"  />}
         </div>
       </div>
 
@@ -629,11 +634,14 @@ export function EstimateBreakdownTable({
                         <td />
                       </tr>
 
-                      {expanded && groupItems.map((item) => (
+                      {expanded && groupItems.map((item) => {
+                        const isBDF  = item.Cost_Type === "BDF"
+                        const isRent = item.Cost_Type === "Rent"
+                        return (
                         <tr key={item.ID_EstimateItem} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3" />
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-slate-800">{item.Title}</span>
                               {item.ID_Order && (
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -645,10 +653,19 @@ export function EstimateBreakdownTable({
                                   Unsaved
                                 </span>
                               )}
-                              {/* Badge for Podio-relevant types */}
                               {PODIO_SYNC_TYPES.has(item.Cost_Type ?? "") && (
                                 <span className="rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
                                   Podio field
+                                </span>
+                              )}
+                              {(isBDF || isRent) && item.Status === "Approved" && (
+                                <span className="rounded-full border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">
+                                  Approved
+                                </span>
+                              )}
+                              {(isBDF || isRent) && item.Status !== "Approved" && (
+                                <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
+                                  Estimated
                                 </span>
                               )}
                             </div>
@@ -669,14 +686,18 @@ export function EstimateBreakdownTable({
                           <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">${fmtCurrency(item.Client_Price)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => onViewDetails(item)}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                                title="View details"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
-                              {onEditItem && (
+                              {/* BDF/Rent details are only accessible from their respective manager tabs */}
+                              {!isBDF && !isRent && (
+                                <button
+                                  onClick={() => onViewDetails(item)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
+                                  title="View details"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {/* BDF/Rent items are managed from their manager tabs — no edit/delete here */}
+                              {onEditItem && !isBDF && !isRent && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); onEditItem(item); }}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
@@ -685,7 +706,7 @@ export function EstimateBreakdownTable({
                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                                 </button>
                               )}
-                              {onDeleteItem && (
+                              {onDeleteItem && !isBDF && !isRent && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); }}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
@@ -694,10 +715,21 @@ export function EstimateBreakdownTable({
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
+                              {isBDF && (
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-400 select-none">
+                                  BDF Manager
+                                </span>
+                              )}
+                              {isRent && (
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-400 select-none">
+                                  Rent Manager
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </React.Fragment>
                   )
                 })
@@ -736,7 +768,6 @@ export function EstimateBreakdownTable({
         onOpenChange={setCreateOpen}
         jobId={jobId}
         jobYear={jobYear}
-        existingBdfCount={bdfCount}
         onCreated={handleManualCreated}
       />
     </div>

@@ -187,6 +187,29 @@ function EditableTextarea({
   )
 }
 
+const SERVICE_TYPE_OPTIONS = [
+  "Appliances",
+  "Cabinets/Countertops",
+  "Drywall",
+  "Discoloration",
+  "Driveways & sidewalks",
+  "Doors/Windows/Siding",
+  "Electrical/Lighting",
+  "Flooring",
+  "Garage/Garage Door",
+  "General Maintenance",
+  "Landscape/Irrigation",
+  "Masonry/Fencing/Gates",
+  "Paint",
+  "Plumbing",
+  "Violations - City / HOA",
+  "Showers / Tub",
+  "Stucco / Exterior",
+  "Violations",
+  "Roof Service/Repair",
+  "Interior Remodel",
+]
+
 export function JobDetailsTab({
   role,
   job,
@@ -326,12 +349,19 @@ export function JobDetailsTab({
             {isReadOnly ? (
               <ReadonlyField value={serviceType} />
             ) : (
-              <EditableInput
-                value={serviceType}
-                onChange={(v) => onFieldChange("serviceType", v)}
-                changed={isFieldChanged("serviceType")}
-                placeholder={t("detailPlaceholderServiceType")}
-              />
+              <Select value={serviceType} onValueChange={(v) => onFieldChange("serviceType", v)}>
+                <SelectTrigger className={`text-sm transition-all ${isFieldChanged("serviceType")
+                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-300"
+                    : "border-slate-200 bg-slate-50"
+                  }`}>
+                  <SelectValue placeholder={t("detailPlaceholderServiceType")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPE_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
         )}

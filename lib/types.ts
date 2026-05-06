@@ -386,6 +386,7 @@ export interface Task {
 
 export type CostType = "Subcontractor" | "Material" | "Labor" | "Rent" | "Permit" | "BDF" | "PTLGCF" | "None" | ""
 export type MarkupType = "C/P" | "%" | ""
+export type BDFStatus = "Estimated" | "Approved"
 
 export interface EstimateItem {
   ID_EstimateItem: string
@@ -413,8 +414,9 @@ export interface EstimateItem {
   Profit: number
   Percent_Invoiced: number
   Internal_Notes: string
+  Status: BDFStatus | null
   ID_Jobs: string
-  ID_Order?: string | null // Link to order if assigned
+  ID_Order?: string | null
 }
 
 export interface SubcontractorOrder {

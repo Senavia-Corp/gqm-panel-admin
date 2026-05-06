@@ -16,11 +16,11 @@ import type { EstimateItem } from "@/lib/types"
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
 const FIELD_ERR  = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
 
-const COST_TYPES   = ["Subcontractor", "Rent", "Permit", "BDF", "PTLGCF", "Labor", "Equipment", "Other"] as const
+// BDF/Permit managed from BDF Manager; Rent/Equipment managed from Rent Manager
+const COST_TYPES   = ["Subcontractor", "PTLGCF", "Labor", "Other"] as const
 const MARKUP_TYPES = ["%", "$"] as const
-const BDF_MAX      = 3   // Podio hard limit
 
-const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF"])
+const PODIO_SYNC_TYPES = new Set(["PTLGCF"])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,20 +111,26 @@ interface Props {
   onOpenChange: (v: boolean) => void
   jobId: string
   jobYear?: number
-  existingBdfCount?: number   // how many BDF costs already exist (enforces 3-slot limit)
+  /** When provided, the Cost Type is pre-set and locked to this value (e.g. "BDF"). */
+  forcedCostType?: string
   onCreated: (item: EstimateItem) => void
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function CreateEstimateItemDialog({
-  open, onOpenChange, jobId, jobYear, existingBdfCount = 0, onCreated,
+  open, onOpenChange, jobId, jobYear, forcedCostType, onCreated,
 }: Props) {
-  const [form, setForm]           = useState<FormState>(EMPTY_FORM)
+  const [form, setForm]           = useState<FormState>({ ...EMPTY_FORM, Cost_Type: forcedCostType ?? EMPTY_FORM.Cost_Type })
   const [errors, setErrors]       = useState<Partial<Record<keyof FormState, string>>>({})
   const [loading, setLoading]     = useState(false)
   const [section, setSection]     = useState<"basic" | "costs">("basic")
   const [syncPodio, setSyncPodio] = useState(false)
+
+  // When the dialog opens, honour forcedCostType
+  useEffect(() => {
+    if (open && forcedCostType) setForm((p) => ({ ...p, Cost_Type: forcedCostType }))
+  }, [open, forcedCostType])
 
   // Reset sync toggle when Cost_Type changes away from sync-relevant types
   useEffect(() => {
@@ -143,8 +149,7 @@ export function CreateEstimateItemDialog({
     setErrors((p) => { const n = { ...p }; delete n[key]; return n })
   }
 
-  const isBdfAtLimit = form.Cost_Type === "BDF" && existingBdfCount >= BDF_MAX
-  const isSyncType   = PODIO_SYNC_TYPES.has(form.Cost_Type)
+  const isSyncType = PODIO_SYNC_TYPES.has(form.Cost_Type)
 
   const validate = (): boolean => {
     const errs: typeof errors = {}
@@ -152,7 +157,6 @@ export function CreateEstimateItemDialog({
     if (!form.Cost_Code.trim()) errs.Cost_Code = "Required"
     const qty = parseFloat(form.Quantity)
     if (isNaN(qty) || qty < 0) errs.Quantity = "Must be ≥ 0"
-    if (isBdfAtLimit)          errs.Cost_Type = `Maximum ${BDF_MAX} BDF costs reached (Podio limit)`
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -170,7 +174,7 @@ export function CreateEstimateItemDialog({
         Quatity:          parseFloat(form.Quantity) || 0,
         Unit:             form.Unit.trim() || null,
         Unit_cost:        parseFloat(form.Unit_Cost) || 0,
-        Cost_type:        form.Cost_Type || null,
+        Cost_type:        forcedCostType ?? form.Cost_Type ?? null,
         Builder_cost:     parseFloat(form.Builder_Cost) || 0,
         Client_price:     parseFloat(form.Client_Price) || 0,
         Markup:           parseFloat(form.Markup) || 0,
@@ -216,6 +220,7 @@ export function CreateEstimateItemDialog({
         Unit:                     created.Unit ?? form.Unit,
         Unit_Cost:                (created.Unit_cost ?? parseFloat(form.Unit_Cost)) || 0,
         Cost_Type:                created.Cost_type ?? form.Cost_Type as any,
+        Status:                   created.Status ?? null,
         Marked_As:                "",
         Builder_Cost:             (created.Builder_cost ?? parseFloat(form.Builder_Cost)) || 0,
         Markup:                   (created.Markup ?? parseFloat(form.Markup)) || 0,
@@ -232,7 +237,7 @@ export function CreateEstimateItemDialog({
       toast.success("Estimate cost created")
       onCreated(item)
       onOpenChange(false)
-      setForm(EMPTY_FORM)
+      setForm({ ...EMPTY_FORM, Cost_Type: forcedCostType ?? EMPTY_FORM.Cost_Type })
       setSyncPodio(false)
       setSection("basic")
     } catch (e: any) {
@@ -264,7 +269,9 @@ export function CreateEstimateItemDialog({
               <FilePlus2 className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">New Estimate Cost</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                {forcedCostType ? `New ${forcedCostType} Cost` : "New Estimate Cost"}
+              </h2>
               <p className="text-[11px] text-slate-400 mt-0.5">Job: <span className="font-mono">{jobId}</span></p>
             </div>
           </div>
@@ -355,26 +362,18 @@ export function CreateEstimateItemDialog({
               <div className="grid gap-4 sm:grid-cols-3">
                 <FG>
                   <FL>Cost Type</FL>
-                  <NativeSelect value={form.Cost_Type} options={COST_TYPES} onChange={(v) => set("Cost_Type", v)} />
-                  {errors.Cost_Type && <p className="text-[11px] text-red-500">{errors.Cost_Type}</p>}
-
-                  {/* BDF limit warning */}
-                  {form.Cost_Type === "BDF" && isBdfAtLimit && (
-                    <div className="flex items-start gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 mt-1">
-                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-red-700">
-                        Maximum {BDF_MAX} BDF costs reached. Podio only supports {BDF_MAX} building dept fee fields.
-                        Delete an existing BDF cost before adding a new one.
-                      </p>
+                  {forcedCostType ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                        {forcedCostType}
+                      </span>
+                      <span className="text-xs text-slate-400">Locked</span>
                     </div>
-                  )}
-
-                  {/* BDF slot info when under limit */}
-                  {form.Cost_Type === "BDF" && !isBdfAtLimit && (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Will occupy slot {existingBdfCount + 1} of {BDF_MAX} in Podio.
-                      Values are compacted left-to-right — deletions shift remaining values up.
-                    </p>
+                  ) : (
+                    <>
+                      <NativeSelect value={form.Cost_Type} options={COST_TYPES} onChange={(v) => set("Cost_Type", v)} />
+                      {errors.Cost_Type && <p className="text-[11px] text-red-500">{errors.Cost_Type}</p>}
+                    </>
                   )}
                 </FG>
                 <FG>
@@ -395,8 +394,8 @@ export function CreateEstimateItemDialog({
                 </FG>
               </div>
 
-              {/* Podio sync toggle — BDF (under limit) and PTLGCF */}
-              {isSyncType && !isBdfAtLimit && (
+              {/* Podio sync toggle — PTLGCF (and BDF when forced from BDF Manager) */}
+              {isSyncType && (
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Podio Sync</p>
                   <p className="text-[11px] text-slate-400">
@@ -524,7 +523,7 @@ export function CreateEstimateItemDialog({
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
               Cancel
             </button>
-            <button type="button" onClick={handleSubmit} disabled={loading || isBdfAtLimit}
+            <button type="button" onClick={handleSubmit} disabled={loading}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm">
               {loading
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
