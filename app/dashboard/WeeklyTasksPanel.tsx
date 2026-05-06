@@ -93,10 +93,10 @@ type JobRow = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getWeekDays(): Date[] {
+function getWeekDays(offset = 0): Date[] {
   const today = new Date()
   const monday = new Date(today)
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + offset * 7)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
@@ -1076,6 +1076,7 @@ function FilterChip({
 
 export default function WeeklyTasksPanel() {
   const t = useTranslations("dashboard")
+  const [weekOffset, setWeekOffset] = useState(0)
   const [jobType, setJobType] = useState<JobType>("ALL")
   const [tasks, setTasks] = useState<WeeklyTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1096,7 +1097,7 @@ export default function WeeklyTasksPanel() {
   // Detail dialog
   const [detailTask, setDetailTask] = useState<WeeklyTask | null>(null)
 
-  const weekDays = useMemo(() => getWeekDays(), [])
+  const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
 
   // Fetch
   useEffect(() => {
@@ -1106,6 +1107,7 @@ export default function WeeklyTasksPanel() {
         setIsLoading(true)
         const qs = new URLSearchParams()
         if (jobType !== "ALL") qs.set("job_type", jobType)
+        if (weekOffset !== 0) qs.set("week_offset", String(weekOffset))
         const res = await apiFetch(`/api/tasks/weekly?${qs.toString()}`, {
           cache: "no-store",
         })
@@ -1121,12 +1123,12 @@ export default function WeeklyTasksPanel() {
       }
     }
     run()
-  }, [jobType])
+  }, [jobType, weekOffset])
 
   // Reset page when filters change
   useEffect(() => {
     setScrollPage(0)
-  }, [statusFilter, memberFilter, subFilter, jobFilter])
+  }, [statusFilter, memberFilter, subFilter, jobFilter, weekOffset])
 
   // Priority sort + client-side filters
   const filteredTasks = useMemo(() => {
@@ -1201,12 +1203,39 @@ export default function WeeklyTasksPanel() {
             <CalendarDays className="h-5 w-5 text-white" />
             <h2 className="text-white text-lg font-semibold">{t("weeklyTasks")}</h2>
           </div>
-          <p className="text-white/70 text-sm mt-0.5">
-            {fmtShortDate(weekDays[0], t)} – {fmtShortDate(weekDays[6], t)} ·{" "}
-            {hasActiveFilters
-              ? `${filteredTasks.length} ${t("ofPagination")} ${tasks.length} ${t("tasksSuffix")}`
-              : `${tasks.length} ${tasks.length !== 1 ? t("tasksSuffix") : t("taskSuffix")}`}
-          </p>
+          <div className="flex items-center gap-1 mt-1.5">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => o - 1)}
+              aria-label={t("weekNavPrev")}
+              className="rounded-full p-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <p className="text-white/70 text-sm">
+              {fmtShortDate(weekDays[0], t)} – {fmtShortDate(weekDays[6], t)} ·{" "}
+              {hasActiveFilters
+                ? `${filteredTasks.length} ${t("ofPagination")} ${tasks.length} ${t("tasksSuffix")}`
+                : `${tasks.length} ${tasks.length !== 1 ? t("tasksSuffix") : t("taskSuffix")}`}
+            </p>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => o + 1)}
+              aria-label={t("weekNavNext")}
+              className="rounded-full p-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="ml-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition-colors"
+              >
+                {t("weekNavToday")}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Summary chips */}

@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import type { Attachment } from "@/lib/types"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type Props = {
   job: any
@@ -18,10 +19,10 @@ type Props = {
 type FolderKey = "members" | "technicians"
 
 const FILE_FILTERS = [
-  { id: "all",       label: "All Files",  icon: Files     },
-  { id: "images",    label: "Images",     icon: Images    },
-  { id: "videos",    label: "Videos",     icon: FileVideo },
-  { id: "documents", label: "Documents",  icon: FileText  },
+  { id: "all",       icon: Files     },
+  { id: "images",    icon: Images    },
+  { id: "videos",    icon: FileVideo },
+  { id: "documents", icon: FileText  },
 ] as const
 
 const IMAGE_FMTS    = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
@@ -52,9 +53,10 @@ function FolderCard({
   count: number
   onClick: () => void
 }) {
+  const t = useTranslations("jobs")
   const isMembers = folder === "members"
   const Icon      = isMembers ? Users : HardHat
-  const label     = isMembers ? "Members" : "Technicians"
+  const label     = isMembers ? t("docFolderMembers") : t("docFolderTechnicians")
   const colors    = isMembers
     ? { ring: "ring-emerald-200", bg: "bg-emerald-50", icon: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700" }
     : { ring: "ring-sky-200",     bg: "bg-sky-50",     icon: "text-sky-600",     badge: "bg-sky-100 text-sky-700" }
@@ -70,7 +72,9 @@ function FolderCard({
       <div className="flex-1 text-left">
         <p className="text-base font-semibold text-slate-900">{label}</p>
         <p className="text-xs text-slate-500 mt-0.5">
-          {count === 0 ? "No files" : `${count} file${count !== 1 ? "s" : ""}`}
+          {count === 0
+            ? t("docFolderNoFiles")
+            : `${count} ${count !== 1 ? t("docFilePlural") : t("docFileSingular")}`}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -85,6 +89,7 @@ function FolderCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function JobDocumentsTab({ job, onRefresh }: Props) {
+  const t = useTranslations("jobs")
   const [activeFolder, setActiveFolder] = useState<FolderKey | null>(null)
   const [activeFilter, setActiveFilter] = useState<string>("all")
   const { hasPermission } = usePermissions()
@@ -137,6 +142,20 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
     documents: folderFiles.filter((a) => DOCUMENT_FMTS.includes((a.Document_type ?? "").toLowerCase())).length,
   }), [folderFiles])
 
+  const filterLabels = useMemo(() => ({
+    all:       t("docFilterAll"),
+    images:    t("docFilterImages"),
+    videos:    t("docFilterVideos"),
+    documents: t("docFilterDocuments"),
+  }), [t])
+
+  const filterEmptyTexts = useMemo(() => ({
+    all:       t("docEmptyAllFilter"),
+    images:    t("docEmptyImagesFilter"),
+    videos:    t("docEmptyVideosFilter"),
+    documents: t("docEmptyDocsFilter"),
+  }), [t])
+
   const handleOpenFolder = (folder: FolderKey) => {
     setActiveFolder(folder)
     setActiveFilter("all")
@@ -157,11 +176,11 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
             <FolderOpen className="h-4 w-4 text-slate-600" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Documents</h3>
+            <h3 className="text-base font-semibold text-slate-900">{t("docTitle")}</h3>
             <p className="text-xs text-slate-500">
               {allAttachments.length === 0
-                ? "No files uploaded yet"
-                : `${allAttachments.length} file${allAttachments.length !== 1 ? "s" : ""} across all folders`}
+                ? t("docNoFilesYet")
+                : `${allAttachments.length} ${allAttachments.length !== 1 ? t("docFilePlural") : t("docFileSingular")} ${t("docAcrossAllFolders")}`}
             </p>
           </div>
         </div>
@@ -180,7 +199,7 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
   }
 
   // ── Folder view: upload + gallery ─────────────────────────────────────────
-  const folderLabel  = activeFolder === "members" ? "Members" : "Technicians"
+  const folderLabel  = activeFolder === "members" ? t("docFolderMembers") : t("docFolderTechnicians")
   const FolderIcon   = activeFolder === "members" ? Users : HardHat
   const folderColors = activeFolder === "members"
     ? { bg: "bg-emerald-50", icon: "text-emerald-600" }
@@ -194,7 +213,7 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
         <button
           onClick={handleBack}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-          title="Back to folders"
+          title={t("docBackToFolders")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -205,8 +224,8 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           <h3 className="text-base font-semibold text-slate-900">{folderLabel}</h3>
           <p className="text-xs text-slate-500">
             {folderFiles.length === 0
-              ? "No files in this folder"
-              : `${folderFiles.length} file${folderFiles.length !== 1 ? "s" : ""}`}
+              ? t("docFolderEmpty")
+              : `${folderFiles.length} ${folderFiles.length !== 1 ? t("docFilePlural") : t("docFileSingular")}`}
           </p>
         </div>
       </div>
@@ -219,8 +238,8 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
               <FileStack className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Upload to {folderLabel}</h3>
-              <p className="text-xs text-slate-500">Supports images, videos, PDFs and office files</p>
+              <h3 className="text-sm font-semibold text-slate-900">{t("docUploadTo")} {folderLabel}</h3>
+              <p className="text-xs text-slate-500">{t("docUploadSupports")}</p>
             </div>
           </div>
           <DocumentUpload
@@ -241,9 +260,11 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
               <Images className="h-4 w-4 text-sky-600" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">{folderLabel} Gallery</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{folderLabel} {t("docGallery")}</h3>
               <p className="text-xs text-slate-500">
-                {folderFiles.length === 0 ? "No files uploaded yet" : `${folderFiles.length} file${folderFiles.length !== 1 ? "s" : ""} total`}
+                {folderFiles.length === 0
+                  ? t("docNoFilesYet")
+                  : `${folderFiles.length} ${folderFiles.length !== 1 ? t("docFilePlural") : t("docFileSingular")} ${t("docGalleryTotal")}`}
               </p>
             </div>
           </div>
@@ -251,7 +272,8 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           {/* File-type filter tabs */}
           <div className="w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex w-max min-w-full items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1">
-              {FILE_FILTERS.map(({ id, label, icon: Icon }) => {
+              {FILE_FILTERS.map(({ id, icon: Icon }) => {
+                const label  = filterLabels[id as keyof typeof filterLabels]
                 const count  = counts[id as keyof typeof counts]
                 const active = activeFilter === id
                 return (
@@ -284,10 +306,12 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
               <FileStack className="h-7 w-7" />
             </div>
             <p className="text-sm font-medium text-slate-600">
-              {folderFiles.length === 0 ? "No files in this folder yet" : `No ${activeFilter} found`}
+              {folderFiles.length === 0
+                ? t("docEmptyNoFilesYet")
+                : filterEmptyTexts[activeFilter as keyof typeof filterEmptyTexts] ?? t("docEmptyAllFilter")}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              {folderFiles.length === 0 ? "Upload a file using the zone above" : "Try a different filter"}
+              {folderFiles.length === 0 ? t("docEmptyUploadHint") : t("docEmptyFilterHint")}
             </p>
           </div>
         ) : (

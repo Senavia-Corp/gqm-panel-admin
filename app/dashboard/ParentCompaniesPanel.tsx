@@ -16,9 +16,11 @@ import {
   Clock,
   BarChart2,
   Users,
+  HelpCircle,
 } from "lucide-react"
 
 import { KpiCard } from "./components/KpiCard"
+import { InfoTooltip } from "./components/InfoTooltip"
 import { SectionCard } from "./components/SectionCard"
 import { EmptyState } from "./components/EmptyState"
 import { CardCarouselSkeleton, TableSkeleton } from "./components/LoadingSkeleton"
@@ -34,18 +36,22 @@ interface Props { jobTab: JobTab; yearTab: YearTab }
 interface DashboardStats {
   total_amount_of_quotes: number
   dollars_quoted:         number
+  pquote_jobs_count:      number
   in_progress_jobs_count: number
   dollars_in_progress:    number
   paid_jobs_count:        number
   dollars_paid:           number
-  ave_target_sold_pct:    number   // 0–1
+  invoiced_revenue:       number
+  ave_target_sold_pct:    number
+  ave_final_target_pct:   number
 }
 
 interface TopCommunity {
-  name:      string
-  total_jobs:number
-  paid_jobs: number
-  revenue:   number
+  name:         string
+  total_jobs:   number
+  paid_jobs:    number
+  revenue:      number
+  approval_pct: number
 }
 
 interface CommunityAssignment {
@@ -118,12 +124,16 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
   const [search,              setSearch]              = useState("")
   const [orderBy,             setOrderBy]             = useState<"closed" | "revenue">("closed")
   const [assignmentsVisible,  setAssignmentsVisible]  = useState(10)
+  const [communitiesVisible,  setCommunitiesVisible]  = useState(10)
 
   // Reset on filter change
   useEffect(() => { setPage(1); setSelectedId(null) }, [jobTab, yearTab, orderBy])
 
   // Reset assignments pagination when selected company changes
-  useEffect(() => { setAssignmentsVisible(10) }, [selectedId])
+  useEffect(() => {
+    setAssignmentsVisible(10)
+    setCommunitiesVisible(10)
+  }, [selectedId])
 
   // Fetch
   useEffect(() => {
@@ -206,12 +216,21 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                      <div className="text-muted-foreground">{t("statTotalQuotes")}</div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <InfoTooltip content={t("statTotalQuotesTooltip")} iconSize={12} />
+                        {t("statTotalQuotes")}
+                      </div>
                       <div className="text-right font-semibold tabular-nums">{s.total_amount_of_quotes}</div>
 
                       <div className="text-muted-foreground">{t("statDollarsQuoted")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtK(s.dollars_quoted)}</div>
+
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <InfoTooltip content={t("statAssignedPQuoteTooltip")} iconSize={12} />
+                        {t("statAssignedPQuote")}
+                      </div>
+                      <div className="text-right font-semibold tabular-nums">{s.pquote_jobs_count}</div>
 
                       <div className="text-muted-foreground">{t("statInProgressCount")}</div>
                       <div className="text-right font-semibold tabular-nums">{s.in_progress_jobs_count}</div>
@@ -335,11 +354,13 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
             <div className="space-y-5">
               {/* KPI chips */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard title={t("statTotalQuotes")}     value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
-                <KpiCard title={t("statDollarsQuoted")}   value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
-                <KpiCard title={t("statDollarsInProgress")} value={fmtK(selected.dashboard_stats.dollars_in_progress)}    Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
-                <KpiCard title={t("statDollarsPaid")}     value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title={t("statAvgTargetPct")}    value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statAssignedPQuote")}   value={String(selected.dashboard_stats.pquote_jobs_count)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" tooltip={t("statAssignedPQuoteTooltip")} />
+                <KpiCard title={t("statPaidJobsCount")}    value={String(selected.dashboard_stats.paid_jobs_count)}        Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statDollarsQuoted")}    value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" tooltip={t("statTotalQuotesTooltip")} />
+                <KpiCard title={t("statDollarsPaid")}      value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statInvoicedRevenue")}  value={fmtK(selected.dashboard_stats.invoiced_revenue)}        Icon={DollarSign}   accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statAvgTargetPct")}     value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statAvgFinalTargetPct")} value={fmtPct(selected.dashboard_stats.ave_final_target_pct)} Icon={TrendingUp}   accentClass="bg-sky-100 text-sky-700" />
                 <KpiCard title={t("statCommunities")}     value={String(selected.communities_count)}                       Icon={Users}        accentClass="bg-amber-100 text-amber-700" />
               </div>
 
@@ -348,17 +369,21 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                 <div>
                   <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
-                    {t("topCommunities")}
+                    {t("associatedCommunities")}
                   </h3>
 
                   {/* Mobile cards */}
                   <div className="sm:hidden space-y-2">
-                    {selected.top_communities.map((c, i) => (
+                    {selected.top_communities.slice(0, communitiesVisible).map((c, i) => (
                       <div key={i} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
                         <p className="font-semibold">{c.name}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">{t("colTotalJobs")} / {t("colPaidJobs")}</span>
                           <span className="tabular-nums">{c.total_jobs} / {c.paid_jobs}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{t("colApprovalPct")}</span>
+                          <span className="font-semibold">{fmtPct(c.approval_pct)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">{t("colRevenue")}</span>
@@ -376,21 +401,51 @@ export default function ParentCompaniesPanel({ jobTab, yearTab }: Props) {
                           <th className="px-2 py-1.5 font-medium">{t("colCommunity")}</th>
                           <th className="px-2 py-1.5 font-medium text-right">{t("colTotalJobs")}</th>
                           <th className="px-2 py-1.5 font-medium text-right">{t("colPaidJobs")}</th>
+                          <th className="px-2 py-1.5 font-medium text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {t("colApprovalPct")}
+                              <InfoTooltip content={t("statApprovalTooltip")} />
+                            </div>
+                          </th>
                           <th className="px-2 py-1.5 font-medium text-right">{t("colRevenue")}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selected.top_communities.map((c, i) => (
+                        {selected.top_communities.slice(0, communitiesVisible).map((c, i) => (
                           <tr key={i} className="border-b hover:bg-gray-50 transition">
                             <td className="px-2 py-1.5 font-medium">{c.name}</td>
                             <td className="px-2 py-1.5 text-right tabular-nums">{c.total_jobs}</td>
                             <td className="px-2 py-1.5 text-right tabular-nums">{c.paid_jobs}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(c.approval_pct)}</td>
                             <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-emerald-700">{fmtK(c.revenue)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+
+                  {selected.top_communities.length > 10 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {communitiesVisible < selected.top_communities.length && (
+                        <button
+                          type="button"
+                          onClick={() => setCommunitiesVisible((v) => Math.min(v + 10, selected.top_communities.length))}
+                          className="text-xs text-gqm-green-dark hover:text-green-800 font-medium"
+                        >
+                          {t("loadMore")} ({selected.top_communities.length - communitiesVisible} {t("remaining")})
+                        </button>
+                      )}
+                      {communitiesVisible > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setCommunitiesVisible(10)}
+                          className="text-xs text-muted-foreground hover:text-gray-700 font-medium"
+                        >
+                          {t("showLess")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

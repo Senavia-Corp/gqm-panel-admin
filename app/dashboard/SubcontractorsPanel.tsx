@@ -72,11 +72,14 @@ interface BillingPeriod {
 
 interface PendingBill {
   bill_id:         string
+  job_ref_qbo:     string | null
   vendor_customer: string
   total_amount:    number
-  balance_amount:  number
+  balance_amount:  number | null
+  total_paid:      number | null
   percentage_paid: number | null
   due_date:        string | null
+  completion_date: string | null
   notes:           string | null
   order:           { order_id: string; title: string } | null
 }
@@ -309,9 +312,9 @@ export default function SubcontractorsPanel() {
                             <HardHat className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate leading-tight">{s.name}</p>
+                            <p className="font-semibold text-sm truncate leading-tight">{s.organization}</p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {s.specialty ?? s.organization ?? <span className="italic opacity-50">No Organization</span>}
+                              {s.name ?? <span className="italic opacity-50">No Name</span>}
                             </p>
                           </div>
                         </div>
@@ -400,9 +403,9 @@ export default function SubcontractorsPanel() {
                             <HardHat className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-sm truncate">{s.name}</div>
+                            <div className="font-semibold text-sm truncate">{s.organization}</div>
                             <div className="text-xs text-muted-foreground">
-                              {s.specialty ?? <span className="italic opacity-50">{t("noSpecialty")}</span>}
+                              {s.name ?? <span className="italic opacity-50">No Name</span>}
                             </div>
                           </div>
                           <div className="text-right text-xs shrink-0">
@@ -420,8 +423,8 @@ export default function SubcontractorsPanel() {
 
             {/* Detail */}
             <SectionCard
-              title={detail?.subcontractor.name ?? t("individualStats")}
-              subtitle={detail?.subcontractor.specialty ?? t("selectSubcontractorLeft")}
+              title={detail?.subcontractor.organization ?? t("individualStats")}
+              subtitle={detail?.subcontractor.name ?? t("selectSubcontractorLeft")}
               action={selectedId ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t("clear")}</Button> : undefined}
             >
               {!selectedId ? (
@@ -566,21 +569,26 @@ export default function SubcontractorsPanel() {
 
                       {/* Mobile cards */}
                       <div className="sm:hidden space-y-2">
-                        {detail.pending_bills.bills.map((b) => (
+                        {detail.pending_bills.bills.map((b) => {
+                          const balClass = b.balance_amount == null ? "text-muted-foreground" : b.balance_amount < 0 ? "text-green-700" : b.balance_amount === 0 ? "text-muted-foreground" : "text-amber-700"
+                          return (
                           <div key={b.bill_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono">{b.bill_id}</span>
+                              <span className="font-mono font-semibold">{b.job_ref_qbo ?? b.bill_id}</span>
                               <span className="tabular-nums text-muted-foreground">{b.due_date ?? "—"}</span>
                             </div>
                             <p className="font-mono font-semibold text-gqm-green-dark truncate">{b.order?.title ?? "—"}</p>
-                            <div className="flex items-center justify-between border-t pt-1.5">
-                              <div className="flex items-center gap-3">
-                                <span className="text-muted-foreground">{t("colBalance")}: <span className="font-semibold text-amber-700">{fmtK(b.balance_amount)}</span></span>
-                              </div>
+                            <div className="flex items-center justify-between border-t pt-1.5 gap-2">
+                              <span className="text-muted-foreground">{t("colTotalPaid")}: <span className="font-semibold text-blue-700">{b.total_paid != null ? fmtK(b.total_paid) : "—"}</span></span>
+                              <span className="text-muted-foreground">{t("colBalance")}: <span className={`font-semibold ${balClass}`}>{b.balance_amount != null ? fmtK(b.balance_amount) : "—"}</span></span>
                               <span className="font-semibold">{fmtK(b.total_amount)}</span>
                             </div>
+                            {b.completion_date && (
+                              <div className="text-muted-foreground border-t pt-1.5">{t("colCompletionDate")}: <span className="font-semibold text-green-700">{b.completion_date}</span></div>
+                            )}
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
 
                       {/* Desktop table */}
@@ -588,25 +596,33 @@ export default function SubcontractorsPanel() {
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                              <th className="px-2 py-1.5 font-medium">{t("colBillId")}</th>
+                              <th className="px-2 py-1.5 font-medium">{t("colJobRefQbo")}</th>
                               <th className="px-2 py-1.5 font-medium">{t("colOrder")}</th>
                               <th className="px-2 py-1.5 font-medium">{t("colDueDate")}</th>
-                              <th className="px-2 py-1.5 font-medium text-right">{t("colBalance")}</th>
                               <th className="px-2 py-1.5 font-medium text-right">{t("colTotal")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colTotalPaid")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colBalance")}</th>
+                              <th className="px-2 py-1.5 font-medium text-right">{t("colCompletionDate")}</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {detail.pending_bills.bills.map((b) => (
+                            {detail.pending_bills.bills.map((b) => {
+                              const balClass = b.balance_amount == null ? "text-muted-foreground" : b.balance_amount < 0 ? "text-green-700" : b.balance_amount === 0 ? "text-muted-foreground" : "text-amber-700"
+                              return (
                               <tr key={b.bill_id} className="border-b hover:bg-gray-50 transition">
-                                <td className="px-2 py-1.5 font-mono text-xs">{b.bill_id}</td>
+                                <td className="px-2 py-1.5 font-mono text-xs">{b.job_ref_qbo ?? b.bill_id}</td>
                                 <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{b.order?.title ?? "—"}</td>
                                 <td className="px-2 py-1.5 tabular-nums">{b.due_date ?? "—"}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-amber-700">{fmtK(b.balance_amount)}</td>
                                 <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtK(b.total_amount)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-blue-700">{b.total_paid != null ? fmtK(b.total_paid) : "—"}</td>
+                                <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${balClass}`}>{b.balance_amount != null ? fmtK(b.balance_amount) : "—"}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-green-700">{b.completion_date ?? "—"}</td>
                               </tr>
-                            ))}
+                              )
+                            })}
                           </tbody>
                         </table>
+                        <p className="mt-1.5 text-[10px] text-muted-foreground italic">{t("posReleasedPaidNote")}</p>
                       </div>
                     </div>
                   )}

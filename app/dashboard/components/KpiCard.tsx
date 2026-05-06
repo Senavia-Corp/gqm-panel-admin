@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-import type { LucideIcon } from "lucide-react"
+import { InfoTooltip } from "./InfoTooltip"
 
 interface KpiCardProps {
   title: string
@@ -11,6 +10,7 @@ interface KpiCardProps {
   accentClass?: string   // Tailwind bg + text for the icon bubble
   valueClass?: string    // Override for the value text colour
   large?: boolean        // Taller variant for the first row
+  tooltip?: string       // Optional explanation for the metric
 }
 
 export function KpiCard({
@@ -21,6 +21,7 @@ export function KpiCard({
   accentClass = "bg-emerald-100 text-emerald-700",
   valueClass  = "text-gray-900",
   large       = false,
+  tooltip,
 }: KpiCardProps) {
   return (
     <div
@@ -30,9 +31,12 @@ export function KpiCard({
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground leading-tight">
-          {title}
-        </p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {tooltip && <InfoTooltip content={tooltip} />}
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground leading-tight truncate">
+            {title}
+          </p>
+        </div>
         <span
           className={[
             "inline-flex shrink-0 items-center justify-center rounded-lg",

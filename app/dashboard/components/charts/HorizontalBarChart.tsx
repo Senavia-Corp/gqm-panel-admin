@@ -58,7 +58,7 @@ export function HorizontalBarChart({
   primaryColor   = "#1e4d2b",
   secondaryColor = "#f59e0b",
 }: Props) {
-  const rowHeight = 48
+  const rowHeight = 56
   const computedHeight = height ?? Math.max(data.length * rowHeight + 48, 200)
 
   return (
@@ -71,7 +71,13 @@ export function HorizontalBarChart({
       >
         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
         <XAxis type="number" tickFormatter={formatMoney} tick={{ fontSize: 11 }} />
-        <YAxis type="category" dataKey="label" width={130} tick={{ fontSize: 11 }} />
+        <YAxis 
+          type="category" 
+          dataKey="label" 
+          width={180} 
+          tick={{ fontSize: 10, fill: "#666" }} 
+          tickFormatter={(v) => v.length > 30 ? v.substring(0, 27) + "..." : v}
+        />
         <Tooltip content={<CustomTooltip />} />
 
         <Bar dataKey="value" name={primaryLabel} fill={primaryColor} radius={[0, 4, 4, 0]}>

@@ -15,12 +15,15 @@ import {
   CheckCircle2,
   Clock,
   BarChart2,
+  HelpCircle,
 } from "lucide-react"
 
 import { KpiCard } from "./components/KpiCard"
+import { InfoTooltip } from "./components/InfoTooltip"
 import { SectionCard } from "./components/SectionCard"
 import { EmptyState } from "./components/EmptyState"
 import { CardCarouselSkeleton, TableSkeleton } from "./components/LoadingSkeleton"
+import { HorizontalBarChart } from "./components/charts/HorizontalBarChart"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type JobTab  = "ALL" | "QID" | "PTL" | "PAR"
@@ -33,11 +36,14 @@ interface Props { jobTab: JobTab; yearTab: YearTab }
 interface DashboardStats {
   total_amount_of_quotes: number
   dollars_quoted:         number
+  pquote_jobs_count:      number
   in_progress_jobs_count: number
   dollars_in_progress:    number
   paid_jobs_count:        number
   dollars_paid:           number
+  invoiced_revenue:       number
   ave_target_sold_pct:    number
+  ave_final_target_pct:   number
 }
 
 interface Client {
@@ -56,6 +62,7 @@ interface Client {
 interface ApiResponse {
   pagination: { page: number; limit: number; total_pages: number }
   clients:    Client[]
+  summary?:   DashboardStats
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -97,6 +104,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
 
   const [items,      setItems]      = useState<Client[]>([])
   const [totalPages, setTotalPages] = useState(1)
+  const [summary,    setSummary]    = useState<DashboardStats | null>(null)
 
   const [selectedId,      setSelectedId]      = useState<string | null>(null)
   const [search,          setSearch]          = useState("")
@@ -125,6 +133,7 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
         const data: ApiResponse = await res.json()
         setItems(data.clients ?? [])
         setTotalPages(data.pagination?.total_pages ?? 1)
+        if (data.summary) setSummary(data.summary)
       } catch (e) {
         console.error("[ClientsPanel] error:", e)
         setItems([])
@@ -188,7 +197,10 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                      <div className="text-muted-foreground">{t("statTotalQuotes")}</div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <InfoTooltip content={t("statTotalQuotesTooltip")} iconSize={12} />
+                        {t("statTotalQuotes")}
+                      </div>
                       <div className="text-right font-semibold tabular-nums">{s.total_amount_of_quotes}</div>
 
                       <div className="text-muted-foreground">{t("statDollarsQuoted")}</div>
@@ -304,22 +316,59 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
 
         {/* Detail */}
         <SectionCard
-          title={selected ? selected.client.name : t("individualStats")}
-          subtitle={selected ? selected.client.address || "—" : t("selectClientLeft")}
+          title={selected ? selected.client.name : (summary ? t("overallStats") : t("individualStats"))}
+          subtitle={selected ? selected.client.address || "—" : (summary ? t("allClients") : t("selectClientLeft"))}
           action={selected ? <Button variant="outline" size="sm" onClick={() => setSelectedId(null)}>{t("clear")}</Button> : undefined}
         >
           {!selected ? (
-            <EmptyState message={t("selectClientDetail")} />
+            summary ? (
+              <div className="space-y-6">
+                {/* Global KPI chips */}
+                <div className="grid grid-cols-2 gap-3">
+                  <KpiCard title={t("statAssignedPQuote")}   value={String(summary.pquote_jobs_count)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" tooltip={t("statAssignedPQuoteTooltip")} />
+                  <KpiCard title={t("statPaidJobsCount")}    value={String(summary.paid_jobs_count)}        Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                  <KpiCard title={t("statDollarsQuoted")}    value={fmtK(summary.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" tooltip={t("statTotalQuotesTooltip")} />
+                  <KpiCard title={t("statDollarsPaid")}      value={fmtK(summary.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                  <KpiCard title={t("statInvoicedRevenue")}  value={fmtK(summary.invoiced_revenue)}        Icon={DollarSign}   accentClass="bg-amber-100 text-amber-700" />
+                  <KpiCard title={t("statAvgTargetPct")}     value={fmtPct(summary.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                  <KpiCard title={t("statAvgFinalTargetPct")} value={fmtPct(summary.ave_final_target_pct)} Icon={TrendingUp}   accentClass="bg-sky-100 text-sky-700" />
+                  <KpiCard title={t("statInProgressCount")}  value={String(summary.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-slate-100 text-slate-700" />
+                </div>
+
+                {/* Top Clients Chart */}
+                {items.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                      {t("topClientsByRevenue")}
+                    </h3>
+                    <HorizontalBarChart
+                      data={items.slice(0, 10).map(i => ({
+                        label: i.client.name,
+                        value: i.dashboard_stats.dollars_paid,
+                        badge: i.dashboard_stats.paid_jobs_count ? `${i.dashboard_stats.paid_jobs_count} ${t("paid")}` : undefined
+                      }))}
+                      primaryLabel={t("statDollarsPaid")}
+                      height={items.length > 5 ? 400 : 250}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <EmptyState message={t("selectClientDetail")} />
+            )
           ) : (
             <div className="space-y-5">
               {/* KPI chips */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard title={t("statTotalQuotes")}      value={String(selected.dashboard_stats.total_amount_of_quotes)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" />
-                <KpiCard title={t("statDollarsQuoted")}    value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
-                <KpiCard title={t("statDollarsInProgress")} value={fmtK(selected.dashboard_stats.dollars_in_progress)}    Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
+                <KpiCard title={t("statAssignedPQuote")}   value={String(selected.dashboard_stats.pquote_jobs_count)} Icon={Briefcase}    accentClass="bg-slate-100 text-slate-700" tooltip={t("statAssignedPQuoteTooltip")} />
+                <KpiCard title={t("statPaidJobsCount")}    value={String(selected.dashboard_stats.paid_jobs_count)}        Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
+                <KpiCard title={t("statDollarsQuoted")}    value={fmtK(selected.dashboard_stats.dollars_quoted)}           Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" tooltip={t("statTotalQuotesTooltip")} />
                 <KpiCard title={t("statDollarsPaid")}      value={fmtK(selected.dashboard_stats.dollars_paid)}             Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title={t("statInProgressCount")}  value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statInvoicedRevenue")}  value={fmtK(selected.dashboard_stats.invoiced_revenue)}        Icon={DollarSign}   accentClass="bg-amber-100 text-amber-700" />
                 <KpiCard title={t("statAvgTargetPct")}     value={fmtPct(selected.dashboard_stats.ave_target_sold_pct)}    Icon={TrendingUp}   accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statAvgFinalTargetPct")} value={fmtPct(selected.dashboard_stats.ave_final_target_pct)} Icon={TrendingUp}   accentClass="bg-sky-100 text-sky-700" />
+                <KpiCard title={t("statInProgressCount")}  value={String(selected.dashboard_stats.in_progress_jobs_count)} Icon={BarChart2}    accentClass="bg-slate-100 text-slate-700" />
               </div>
 
               {/* Top communities */}

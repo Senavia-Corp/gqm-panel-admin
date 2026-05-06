@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface DocumentUploadProps {
   jobId: string
@@ -39,6 +40,7 @@ function PodioToggle({
   jobYear?: number
   disabled?: boolean
 }) {
+  const t = useTranslations("jobs")
   return (
     <button
       type="button"
@@ -51,7 +53,7 @@ function PodioToggle({
           : "border-slate-200 bg-white text-slate-400 hover:border-slate-300",
         disabled && "opacity-50 cursor-not-allowed",
       )}
-      title={value ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
+      title={value ? t("docPodioSyncEnabled") : t("docPodioSyncDisabled")}
     >
       {value
         ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
@@ -59,7 +61,7 @@ function PodioToggle({
       }
       <div className="flex-1 text-left">
         <span className="text-xs font-semibold">
-          Sync to Podio {value ? "ON" : "OFF"}
+          {value ? t("docPodioSyncOn") : t("docPodioSyncOff")}
         </span>
         {value && jobYear && (
           <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -67,7 +69,7 @@ function PodioToggle({
           </span>
         )}
         {value && !jobYear && (
-          <span className="ml-2 text-[10px] text-red-500">Year not resolved — sync may fail</span>
+          <span className="ml-2 text-[10px] text-red-500">{t("docPodioYearNotResolved")}</span>
         )}
       </div>
     </button>
@@ -77,6 +79,7 @@ function PodioToggle({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadComplete }: DocumentUploadProps) {
+  const t = useTranslations("jobs")
   const [isDragging,             setIsDragging]             = useState(false)
   const [isUploading,            setIsUploading]            = useState(false)
   const [pendingFile,            setPendingFile]            = useState<File | null>(null)
@@ -125,13 +128,13 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
         throw new Error((err as any)?.error ?? (err as any)?.detail ?? `Upload failed (${response.status})`)
       }
 
-      toast({ title: "Upload successful", description: `${file.name} uploaded successfully` })
+      toast({ title: t("docToastUploadTitle"), description: `${file.name} ${t("docToastUploadDescSuffix")}` })
       onUploadComplete?.()
     } catch (error) {
       console.error("[DocumentUpload] error:", error)
       toast({
-        title:       "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload file",
+        title:       t("docToastUploadFailedTitle"),
+        description: error instanceof Error ? error.message : t("docToastUploadFailedDesc"),
         variant:     "destructive",
       })
     } finally {
@@ -208,10 +211,10 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
           }
         </div>
         <p className="mt-3 sm:mt-4 text-base sm:text-lg font-medium">
-          {isUploading ? "Uploading…" : "Drag and drop files here"}
+          {isUploading ? t("docUploading") : t("docDragDrop")}
         </p>
         <p className="text-sm text-muted-foreground">
-          {isUploading ? "Please wait…" : "Or click to browse"}
+          {isUploading ? t("docPleaseWait") : t("docOrClickToBrowse")}
         </p>
       </div>
 
@@ -219,7 +222,7 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
       <Dialog open={showDescriptionDialog} onOpenChange={(v) => !v && handleCancelDialog()}>
         <DialogContent className="!max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>Upload File</DialogTitle>
+            <DialogTitle>{t("docUploadDialogTitle")}</DialogTitle>
             <DialogDescription>
               {pendingFile?.name && (
                 <span className="font-mono text-xs text-slate-500">{pendingFile.name}</span>
@@ -230,10 +233,12 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
           <div className="space-y-4 py-2">
             {/* Description */}
             <div className="space-y-1.5">
-              <Label htmlFor="upload-description">Description <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <Label htmlFor="upload-description">
+                {t("docUploadDescLabel")} <span className="text-slate-400 font-normal">{t("docUploadDescOptional")}</span>
+              </Label>
               <Input
                 id="upload-description"
-                placeholder="Enter file description…"
+                placeholder={t("docUploadDescPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleUploadConfirmed()}
@@ -242,7 +247,7 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
 
             {/* Podio sync toggle */}
             <div className="space-y-1.5">
-              <Label>Podio Sync</Label>
+              <Label>{t("docPodioSectionLabel")}</Label>
               <PodioToggle
                 value={syncPodio}
                 onChange={setSyncPodio}
@@ -252,9 +257,9 @@ export function DocumentUpload({ jobId, jobType, jobYear, accessLevel, onUploadC
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handleCancelDialog}>Cancel</Button>
+            <Button variant="outline" onClick={handleCancelDialog}>{t("docUploadCancelBtn")}</Button>
             <Button onClick={handleUploadConfirmed} className="bg-gqm-green hover:bg-gqm-green/90">
-              Upload
+              {t("docUploadBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>
