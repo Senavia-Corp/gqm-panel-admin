@@ -3,11 +3,12 @@
 import { useMemo, useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import {
-  X, Briefcase, Building2, CheckSquare, Loader2, PackageOpen, Search, XCircle, Zap, ZapOff, DollarSign, Tag, Check
+  X, Briefcase, Building2, CheckSquare, Loader2, PackageOpen, Search, XCircle, Zap, ZapOff, DollarSign, Tag, Check, FileText
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import type { EstimateItem, Subcontractor } from "@/lib/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { EstimateItem, Subcontractor, FinancialDocument } from "@/lib/types"
 import { toast } from "sonner"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -66,12 +67,13 @@ function PodioToggle({ value, onChange, jobYear, disabled, textPrefix, yearNotAv
 interface EditOrderDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  order: any // the initial order
+  order: any
   items: EstimateItem[]
   subcontractors: Subcontractor[]
+  bills?: FinancialDocument[]
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
-  onEditOrder: (orderId: string, orderName: string, selectedItems: string[], syncPodio: boolean) => Promise<void>
+  onEditOrder: (orderId: string, orderName: string, selectedItems: string[], syncPodio: boolean, subcontractorId: string, billId?: string) => Promise<void>
 }
 
 export function EditOrderDialog({
@@ -80,6 +82,7 @@ export function EditOrderDialog({
   order,
   items,
   subcontractors,
+  bills = [],
   defaultSyncPodio,
   jobYearForPodioSync,
   onEditOrder,
@@ -87,6 +90,8 @@ export function EditOrderDialog({
   const t = useTranslations("jobs")
   const [orderName, setOrderName] = useState("")
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [selectedSubcontractorId, setSelectedSubcontractorId] = useState("")
+  const [selectedBillId, setSelectedBillId] = useState("")
   const [itemsQuery, setItemsQuery] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [syncPodioLocal, setSyncPodioLocal] = useState(defaultSyncPodio)
@@ -99,7 +104,10 @@ export function EditOrderDialog({
       setSyncPodioLocal(defaultSyncPodio)
       const orderItems = order.Items || []
       const orderItemIds = orderItems.map(getItemId)
-      setSelectedItems(orderItemIds.filter((id: string) => id && !id.startsWith("0."))) // avoid Math.random entries
+      setSelectedItems(orderItemIds.filter((id: string) => id && !id.startsWith("0.")))
+      setSelectedSubcontractorId(order.ID_Subcontractor || order.subcontractor?.ID_Subcontractor || "")
+      const currentBill = order.financial_docs?.[0]?.ID_FinancialDoc ?? ""
+      setSelectedBillId(currentBill || "none")
       setItemsQuery("")
       setErrors({})
     }
@@ -109,6 +117,14 @@ export function EditOrderDialog({
   const availableItems = useMemo(() => {
     return items.filter((i) => !i.ID_Order || i.ID_Order === order?.ID_Order)
   }, [items, order?.ID_Order])
+
+  // Bills: unlinked or already linked to this order
+  const availableBills = useMemo(() => {
+    return bills.filter(b =>
+      b.Type_of_document?.toLowerCase() === "bill" &&
+      (!b.ID_Order || b.ID_Order === order?.ID_Order)
+    )
+  }, [bills, order?.ID_Order])
 
   const filteredAvailableItems = useMemo(() => {
     const q = itemsQuery.trim().toLowerCase()
@@ -167,26 +183,19 @@ export function EditOrderDialog({
 
     setIsSubmitting(true)
     try {
-      await onEditOrder(order.ID_Order, orderName.trim(), selectedItems, syncPodioLocal)
+      await onEditOrder(
+        order.ID_Order,
+        orderName.trim(),
+        selectedItems,
+        syncPodioLocal,
+        selectedSubcontractorId || order.ID_Subcontractor,
+        selectedBillId && selectedBillId !== "none" ? selectedBillId : undefined,
+      )
       onOpenChange(false)
     } finally {
       setIsSubmitting(false)
     }
   }
-
-  const selectedSubcLabel = useMemo(() => {
-    if (!order) return "—"
-    const sub = order.subcontractor || subcontractors.find((s) => s.ID_Subcontractor === order.ID_Subcontractor)
-    if (!sub) return order.ID_Subcontractor || "—"
-    
-    const name = sub.Name || "Unknown"
-    let org = sub.Organization || ""
-    if (org && org.startsWith("{") && org.endsWith("}")) {
-      org = org.replace(/^\{"|"\}/g, '').replace(/^\{|\}$/g, '').replace(/\\"/g, '"')
-    }
-    
-    return `${name}${org ? ` • ${org}` : ""}`
-  }, [order, subcontractors])
 
   if (!open || !order) return null
 
@@ -248,17 +257,68 @@ export function EditOrderDialog({
             <FG>
               <FL>{t("orderAssignedSubLabel")}</FL>
               <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  value={selectedSubcLabel}
-                  disabled
-                  className={`${FIELD_BASE} pl-9 bg-slate-100 text-slate-500 cursor-not-allowed`}
-                />
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none z-10" />
+                <Select
+                  value={selectedSubcontractorId}
+                  onValueChange={setSelectedSubcontractorId}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className={`${FIELD_BASE} pl-9 h-auto`}>
+                    <SelectValue placeholder="Select subcontractor" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[320px] z-[10000]">
+                    {subcontractors.map((sub) => {
+                      let org = sub.Organization || ""
+                      if (org && org.startsWith("{") && org.endsWith("}")) {
+                        org = org.replace(/^\{"|"\}/g, "").replace(/^\{|\}$/g, "").replace(/\\"/g, '"')
+                      }
+                      return (
+                        <SelectItem key={sub.ID_Subcontractor} value={sub.ID_Subcontractor}>
+                          <div className="flex flex-col text-left">
+                            <span className="font-medium text-slate-800">{sub.Name || "Unknown"}</span>
+                            {org ? <span className="text-[10px] text-slate-500">{org}</span> : null}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="text-[10px] text-slate-400 leading-tight">
-                {t("orderSubCannotChange")}
-              </p>
+            </FG>
+
+            <FG>
+              <FL>{t("orderLinkedBillLabel")}</FL>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none z-10" />
+                <Select value={selectedBillId} onValueChange={setSelectedBillId} disabled={isSubmitting}>
+                  <SelectTrigger className={`${FIELD_BASE} pl-9 h-auto`}>
+                    <SelectValue placeholder={t("orderSelectBill")} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[320px] z-[10000]">
+                    <SelectItem value="none">{t("orderNoBillLinked")}</SelectItem>
+                    {availableBills.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-slate-400">
+                        {t("orderNoBillsFound")}
+                      </div>
+                    ) : (
+                      availableBills.map((bill) => (
+                        <SelectItem key={bill.ID_FinancialDoc} value={bill.ID_FinancialDoc}>
+                          <div className="flex flex-col text-left">
+                            <span className="font-medium text-slate-800">
+                              {bill.Job_Ref_QBO ? `${bill.Job_Ref_QBO} - ` : ""}
+                              ${bill.Total_Amount?.toFixed(2) || "0.00"}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {bill.Vendor_Customer || "Unknown Vendor"}{bill.Due_Date ? ` • Due: ${bill.Due_Date}` : ""}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">{t("orderBillsFilterHint")}</p>
             </FG>
 
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-4">

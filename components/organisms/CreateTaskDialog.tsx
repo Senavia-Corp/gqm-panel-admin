@@ -42,6 +42,7 @@ interface CreateTaskDialogProps {
   onTaskCreated: () => void
   prefill?: TaskPrefill
   isRecommended?: boolean
+  defaultSubcId?: string  // Pre-selects this subcontractor and sets assignType to "subcontractor"
 }
 
 const INITIAL_FORM = () => ({
@@ -117,6 +118,7 @@ export function CreateTaskDialog({
   onTaskCreated,
   prefill,
   isRecommended,
+  defaultSubcId,
 }: CreateTaskDialogProps) {
   const [formData, setFormData] = useState(INITIAL_FORM())
   const [assignType, setAssignType] = useState<AssignType>("none")
@@ -131,17 +133,19 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (open) {
       const base = INITIAL_FORM()
+      const subcOverride = defaultSubcId ? { ID_Subcontractor: defaultSubcId } : {}
       if (prefill) {
         setFormData({
           ...base,
           Name: prefill.name ?? base.Name,
           Priority: prefill.priority ?? base.Priority,
           Designation_date: prefill.minDate ?? base.Designation_date,
+          ...subcOverride,
         })
       } else {
-        setFormData(base)
+        setFormData({ ...base, ...subcOverride })
       }
-      setAssignType("none")
+      setAssignType(defaultSubcId ? "subcontractor" : "none")
       setError(null)
       setFocusedField(null)
       setShowConfirmClose(false)
@@ -230,7 +234,7 @@ export function CreateTaskDialog({
         Priority:         nullable(formData.Priority),
         Designation_date: formData.Designation_date || null,
         Delivery_date:    formData.Delivery_date    || null,
-        ID_Jobs:          jobId,
+        ID_Jobs:          jobId || null,
         ID_Member:        assignType === "member"        ? nullable(formData.ID_Member)        : null,
         ID_Subcontractor: assignType === "subcontractor" ? nullable(formData.ID_Subcontractor) : null,
         ID_Technician:    assignType === "subcontractor" ? nullable(formData.ID_Technician)    : null,

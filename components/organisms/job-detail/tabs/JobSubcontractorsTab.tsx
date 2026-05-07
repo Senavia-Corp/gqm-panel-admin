@@ -100,6 +100,8 @@ export function JobSubcontractorsTab({
       client={job?.client}
       timelineEvents={timelineEvents}
       estimateCosts={job?.estimate_costs || []}
+      bills={job?.financial_docs || []}
+      jobSubcontractors={job?.subcontractors || []}
       defaultSyncPodio={syncPodio}
       jobYearForPodioSync={jobYearForPodioSync}
       jobPodioId={jobPodioId}

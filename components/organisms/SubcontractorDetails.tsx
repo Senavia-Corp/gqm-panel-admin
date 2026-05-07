@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Subcontractor, Technician, ChangeOrder, Client, TimelineEvent } from "@/lib/types"
+import type { Subcontractor, Technician, ChangeOrder, Client, TimelineEvent, FinancialDocument } from "@/lib/types"
 import {
   ArrowLeft,
   Plus,
@@ -98,7 +98,8 @@ interface SubcontractorDetailsProps {
   client: Client
   timelineEvents: TimelineEvent[]
   estimateCosts?: any[]
-
+  bills?: FinancialDocument[]
+  jobSubcontractors?: Subcontractor[]
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
 }
@@ -144,6 +145,8 @@ export function SubcontractorDetails({
   client,
   timelineEvents,
   estimateCosts = [],
+  bills = [],
+  jobSubcontractors,
   defaultSyncPodio,
   jobYearForPodioSync,
 }: SubcontractorDetailsProps) {
@@ -201,21 +204,21 @@ export function SubcontractorDetails({
     fetchOrdersForJobAndSub()
   }, [fetchOrdersForJobAndSub])
 
-  const handleEditOrderSubmit = async (orderId: string, orderName: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
+  const handleEditOrderSubmit = async (orderId: string, orderName: string, selectedItemIds: string[], syncPodioOverride: boolean, subcontractorId: string, billId?: string) => {
     try {
       const currentItems = targetOrderForEdit?.Items || []
       const currentItemIds = currentItems.map((i: any) => String(i.ID_EstimateItem || i.ID_EstimateCost || i.id || i.ID)).filter(Boolean)
       const itemsToAdd = selectedItemIds.filter(id => !currentItemIds.includes(id))
       const itemsToRemove = currentItemIds.filter((id: string) => !selectedItemIds.includes(id))
 
-      await Promise.all(itemsToRemove.map((id: string) => 
+      await Promise.all(itemsToRemove.map((id: string) =>
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ID_Order: null })
         })
       ))
-      await Promise.all(itemsToAdd.map((id: string) => 
+      await Promise.all(itemsToAdd.map((id: string) =>
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -230,7 +233,11 @@ export function SubcontractorDetails({
       const orderRes = await apiFetch(`/api/order/${orderId}?${qs.toString()}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Title: orderName })
+        body: JSON.stringify({
+          Title: orderName,
+          ID_Subcontractor: subcontractorId,
+          ID_FinancialDoc: billId ?? null,
+        })
       })
 
       if (!orderRes.ok) throw new Error("Failed to update order")
@@ -530,7 +537,7 @@ export function SubcontractorDetails({
 
       <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} />
       <DeleteOrderDialog open={deleteOrderOpen} onOpenChange={(v) => { setDeleteOrderOpen(v); if (!v) setTargetOrderForDelete(null); }} order={targetOrderForDelete} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onDeleted={fetchOrdersForJobAndSub} jobPodioId={jobPodioId} subcontractorId={subcontractor?.ID_Subcontractor ?? ""} />
-      <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={[subcontractor]} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
+      <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={jobSubcontractors ?? [subcontractor]} bills={bills} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
       
       {/* Change Order Dialogs */}
       {targetOrderForCh?.ID_Order && (

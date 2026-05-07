@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { cn } from "@/lib/utils"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -24,7 +26,8 @@ import {
   Briefcase, ShieldCheck, Search, Plus, Link2, Unlink,
   RefreshCw, AlertCircle, CheckCircle, Eye, EyeOff,
   Calendar, DollarSign, Tag, ExternalLink, Activity,
-  Clock, FileText, Wrench, Shield,
+  Clock, FileText, Wrench, Shield, Filter, ChevronDown, ChevronUp,
+  Users, Building2,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -199,6 +202,146 @@ function PasswordInput({ value, onChange, placeholder }: {
   )
 }
 
+// ─── Job helpers ──────────────────────────────────────────────────────────────
+
+function fmtCurrency(val?: number | null) {
+  if (!val) return null
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(val)
+}
+
+const JOB_STATUS_COLOR: Record<string, string> = {
+  "Assigned/P. Quote":            "bg-blue-500",
+  "Waiting for Approval":         "bg-yellow-500",
+  "Scheduled / Work in Progress": "bg-green-500",
+  "Completed P. INV / POs":       "bg-emerald-600",
+  "Invoiced":                     "bg-purple-500",
+  "HOLD":                         "bg-orange-600",
+  "PAID":                         "bg-green-600",
+  "Paid":                         "bg-green-600",
+  "Warranty":                     "bg-indigo-500",
+  "Received-Stand By":            "bg-slate-500",
+  "Assigned-In progress":         "bg-sky-500",
+  "In Progress":                  "bg-sky-500",
+  "Completed PVI":                "bg-teal-600",
+  "Completed PVI / POs":          "bg-teal-600",
+  "Cancelled":                    "bg-red-500",
+  "Archived":                     "bg-gray-700",
+}
+
+function JobCard({ job, clientName, onClick }: { job: Job; clientName?: string | null; onClick: () => void }) {
+  const name = job.Project_name ?? job.ID_Jobs
+  const status = job.Job_status
+  const price = fmtCurrency(job.Gqm_final_sold_pricing)
+  const assignedDate = fmtDate(job.Date_assigned)
+  const statusColors: Record<string, string> = {
+    "assigned/p. quote": "bg-blue-50 text-blue-700 border-blue-200",
+    "in progress":       "bg-emerald-50 text-emerald-700 border-emerald-200",
+    closed:              "bg-slate-100 text-slate-500 border-slate-200",
+    pending:             "bg-yellow-50 text-yellow-700 border-yellow-200",
+    completed:           "bg-teal-50 text-teal-700 border-teal-200",
+  }
+  const statusCls = status ? (statusColors[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200") : null
+  const typeColors: Record<string, string> = { qid: "bg-violet-100 text-violet-700", wo: "bg-amber-100 text-amber-700", bid: "bg-cyan-100 text-cyan-700", par: "bg-indigo-100 text-indigo-700" }
+  const typeCls = job.Job_type ? (typeColors[job.Job_type.toLowerCase()] ?? "bg-slate-100 text-slate-600") : null
+  return (
+    <button onClick={onClick} className="group w-full rounded-xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all hover:border-violet-200 hover:shadow-md">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-violet-700 sm:text-base">{name}</p>
+          <p className="font-mono text-[10px] text-slate-400 sm:text-[11px]">{job.ID_Jobs}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 sm:flex-shrink-0">
+          {typeCls && <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold sm:text-[11px] ${typeCls}`}>{job.Job_type}</span>}
+          {statusCls && <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium sm:text-[11px] ${statusCls}`}>{status}</span>}
+        </div>
+      </div>
+
+      {clientName && (
+        <div className="mb-2 flex items-center gap-1.5">
+          <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <p className="truncate text-xs font-medium text-slate-600">{clientName}</p>
+        </div>
+      )}
+
+      {job.Project_location && (
+        <div className="mb-3 flex items-start gap-1.5">
+          <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <p className="line-clamp-2 text-xs text-slate-500 sm:line-clamp-1">{job.Project_location}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-500 sm:text-xs">
+        {job.Service_type && (
+          <span className="flex items-center gap-1">
+            <Wrench className="h-3 w-3 text-slate-400" />
+            <span className="truncate max-w-[120px]">{job.Service_type}</span>
+          </span>
+        )}
+        {assignedDate && (
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-slate-400" />
+            {assignedDate}
+          </span>
+        )}
+        {price && (
+          <span className="flex items-center gap-1 font-semibold text-emerald-700">
+            <DollarSign className="h-3 w-3" />
+            {price}
+          </span>
+        )}
+        {(job.Gqm_total_change_orders ?? 0) > 0 && (
+          <span className="flex items-center gap-1 text-orange-600">
+            <Tag className="h-3 w-3" />
+            {job.Gqm_total_change_orders} CO{job.Gqm_total_change_orders !== 1 ? "s" : ""}
+          </span>
+        )}
+        {job.Permit && job.Permit !== "No" && (
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+            Permit: {job.Permit}
+          </span>
+        )}
+        <div className="ml-auto flex items-center">
+          <ExternalLink className="h-3.5 w-3.5 text-slate-300 group-hover:text-violet-400" />
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function JobFilterSelect({ label, icon, value, onValueChange, children }: {
+  label: string; icon: React.ReactNode; value: string
+  onValueChange: (v: string) => void; children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2 group">
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-slate-400 group-focus-within:text-violet-600 transition-colors">{icon}</span>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">{label}</label>
+      </div>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/30 group-focus-within:bg-white transition-all shadow-none hover:bg-slate-50">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-72">
+          {children}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+function ActiveJobBadge({ label, value, onClear }: { label: string; value: string; onClear: () => void }) {
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+      <span className="text-slate-400 font-medium">{label}:</span>
+      <span>{value}</span>
+      <button onClick={onClear} className="ml-1 text-slate-400 hover:text-red-500 transition-colors">
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function PageSkeleton({ user }: { user: any }) {
@@ -266,8 +409,18 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const [pwSaving,   setPwSaving]   = useState(false)
   const [pwForm, setPwForm] = useState({ old: "", new: "", confirm: "" })
 
-  // ── Jobs search ────────────────────────────────────────────────────────────
-  const [jobSearch, setJobSearch] = useState("")
+  // ── Jobs filters ───────────────────────────────────────────────────────────
+  const [jobSearch,         setJobSearch]         = useState("")
+  const [jobYear,           setJobYear]           = useState("")
+  const [jobType,           setJobType]           = useState("")
+  const [jobStatus,         setJobStatus]         = useState("")
+  const [jobCommunityId,    setJobCommunityId]    = useState("")
+  const [jobParentCompany,  setJobParentCompany]  = useState("")
+  const [jobFiltersExpanded, setJobFiltersExpanded] = useState(false)
+
+  // community name/parent lookup keyed by ID_Client
+  const [communitiesMap, setCommunitiesMap] = useState<Map<string, { name: string; parentCompany: string | null }>>(new Map())
+  const [communitiesLoading, setCommunitiesLoading] = useState(false)
 
   // ── Roles & Permissions modal state ───────────────────────────────────────
   const [modalMode, setModalMode] = useState<"role" | "permission" | null>(null)
@@ -446,18 +599,93 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
     )
   }, [allPerms, rpSearch])
 
+  // ── Fetch community names for jobs ─────────────────────────────────────────
+  useEffect(() => {
+    const jobs = member?.jobs ?? []
+    if (!jobs.length) return
+    const clientIds = [...new Set(jobs.map(j => j.ID_Client).filter((id): id is string => !!id))]
+    if (!clientIds.length) return
+    setCommunitiesLoading(true)
+    Promise.all(
+      clientIds.map(cid =>
+        apiFetch(`/api/clients/${cid}`, { cache: "no-store" })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map = new Map<string, { name: string; parentCompany: string | null }>()
+      results.forEach((client: any) => {
+        if (client?.ID_Client) {
+          map.set(client.ID_Client, {
+            name: client.Client_Community ?? client.ID_Client,
+            parentCompany: client.parent_mgmt_co?.Property_mgmt_co ?? null,
+          })
+        }
+      })
+      setCommunitiesMap(map)
+      setCommunitiesLoading(false)
+    })
+  }, [member?.jobs])
+
+  // ── Filter option lists ─────────────────────────────────────────────────────
+  const jobStatusOptions = useMemo(() => {
+    const set = new Set<string>()
+    ;(member?.jobs ?? []).forEach(j => { if (j.Job_status) set.add(j.Job_status) })
+    return Array.from(set).sort()
+  }, [member?.jobs])
+
+  const jobCommunityOptions = useMemo(() => {
+    if (communitiesLoading) return []
+    const map = new Map<string, string>()
+    ;(member?.jobs ?? []).forEach(j => {
+      if (j.ID_Client && !map.has(j.ID_Client)) {
+        const entry = communitiesMap.get(j.ID_Client)
+        if (entry) map.set(j.ID_Client, entry.name)
+      }
+    })
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [member?.jobs, communitiesMap, communitiesLoading])
+
+  const jobParentCompanyOptions = useMemo(() => {
+    const set = new Set<string>()
+    ;(member?.jobs ?? []).forEach(j => {
+      const pc = communitiesMap.get(j.ID_Client ?? "")?.parentCompany
+      if (pc) set.add(pc)
+    })
+    return Array.from(set).sort()
+  }, [member?.jobs, communitiesMap])
+
   // ── Filtered jobs ──────────────────────────────────────────────────────────
   const filteredJobs = useMemo(() => {
-    const q = jobSearch.trim().toLowerCase()
-    if (!q) return member?.jobs ?? []
-    return (member?.jobs ?? []).filter(j =>
-      asStr(j.ID_Jobs).toLowerCase().includes(q) ||
-      asStr(j.Project_name).toLowerCase().includes(q) ||
-      asStr(j.Job_status).toLowerCase().includes(q) ||
-      asStr(j.Service_type).toLowerCase().includes(q) ||
-      asStr(j.Project_location).toLowerCase().includes(q)
-    )
-  }, [member?.jobs, jobSearch])
+    let result = member?.jobs ?? []
+
+    if (jobSearch) {
+      const q = jobSearch.trim().toLowerCase()
+      result = result.filter(j =>
+        asStr(j.ID_Jobs).toLowerCase().includes(q) ||
+        asStr(j.Project_name).toLowerCase().includes(q) ||
+        asStr(j.Job_status).toLowerCase().includes(q) ||
+        asStr(j.Service_type).toLowerCase().includes(q) ||
+        asStr(j.Project_location).toLowerCase().includes(q)
+      )
+    }
+    if (jobYear) {
+      result = result.filter(j => {
+        const d = j.Date_assigned
+        return d ? new Date(d).getFullYear().toString() === jobYear : false
+      })
+    }
+    if (jobType)  result = result.filter(j => (j.Job_type ?? "").toUpperCase() === jobType.toUpperCase())
+    if (jobStatus) result = result.filter(j => (j.Job_status ?? "").toLowerCase() === jobStatus.toLowerCase())
+    if (jobCommunityId) result = result.filter(j => j.ID_Client === jobCommunityId)
+    if (jobParentCompany) {
+      result = result.filter(j => communitiesMap.get(j.ID_Client ?? "")?.parentCompany === jobParentCompany)
+    }
+
+    return result
+  }, [member?.jobs, jobSearch, jobYear, jobType, jobStatus, jobCommunityId, jobParentCompany, communitiesMap])
+
+  const hasJobFilters = !!(jobSearch || jobYear || jobType || jobStatus || jobCommunityId || jobParentCompany)
 
   const linkedPermIds = useMemo(() => new Set((member?.permissions ?? []).map(p => p.ID_Permission)), [member?.permissions])
 
@@ -649,89 +877,170 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
 
                   {/* ── JOBS tab ──────────────────────────────────────────── */}
                   <TabsContent value="jobs">
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                            <Briefcase className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <h3 className="text-sm font-semibold text-slate-800">Jobs</h3>
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{member.jobs?.length ?? 0}</span>
-                        </div>
-                        <div className="relative w-full sm:w-56">
-                          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                          <Input placeholder="Search jobs…" value={jobSearch} onChange={e => setJobSearch(e.target.value)} className={`pl-9 text-xs ${inputCls}`} />
-                          {jobSearch && <button onClick={() => setJobSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>}
-                        </div>
-                      </div>
-                      <div className="p-4 sm:p-6">
-                        {filteredJobs.length === 0 ? (
-                          <div className="flex flex-col items-center gap-2 py-12">
-                            <Briefcase className="h-8 w-8 text-slate-300" />
-                            <p className="text-sm text-slate-500">{jobSearch ? `No jobs matching "${jobSearch}"` : "No jobs associated"}</p>
-                          </div>
-                        ) : (
-                          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            {filteredJobs.map(job => {
-                              const typeMap: Record<string, { cls: string }> = {
-                                QID: { cls: "bg-violet-100 text-violet-700 border-violet-200" },
-                                WO:  { cls: "bg-amber-100 text-amber-700 border-amber-200" },
-                                BID: { cls: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-                                PAR: { cls: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-                              }
-                              const typeCls = typeMap[job.Job_type ?? ""]?.cls ?? "bg-slate-100 text-slate-600 border-slate-200"
-                              const statusMap: Record<string, string> = {
-                                PAID: "bg-emerald-100 text-emerald-700 border-emerald-200",
-                                COMPLETED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-                                ACTIVE: "bg-blue-100 text-blue-700 border-blue-200",
-                                PENDING: "bg-yellow-100 text-yellow-700 border-yellow-200",
-                                CANCELLED: "bg-red-100 text-red-600 border-red-200",
-                              }
-                              const statusCls = statusMap[(job.Job_status ?? "").toUpperCase()] ?? "bg-slate-100 text-slate-500 border-slate-200"
-                              const sold    = job.Gqm_final_sold_pricing != null ? Number(job.Gqm_final_sold_pricing) : null
-                              const formula = job.Gqm_formula_pricing    != null ? Number(job.Gqm_formula_pricing)    : null
-                              const cos     = job.Gqm_total_change_orders != null ? Number(job.Gqm_total_change_orders) : null
+                    <div className="space-y-4">
 
-                              return (
-                                <div key={job.ID_Jobs} className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-semibold text-slate-800 leading-none">{job.Project_name ?? job.ID_Jobs}</p>
-                                      <p className="mt-1 font-mono text-[11px] text-slate-400">{job.ID_Jobs}</p>
-                                    </div>
-                                    <div className="flex flex-shrink-0 items-center gap-1.5">
-                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${typeCls}`}>{job.Job_type ?? "—"}</span>
-                                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusCls}`}>{job.Job_status ?? "—"}</span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    {job.Project_location && <div className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin className="h-3 w-3 text-slate-400" /><span className="truncate">{job.Project_location}</span></div>}
-                                    {job.Service_type      && <div className="flex items-center gap-1.5 text-xs text-slate-500"><Wrench className="h-3 w-3 text-slate-400" /><span>{job.Service_type}</span></div>}
-                                    {fmtDate(job.Date_assigned) && <div className="flex items-center gap-1.5 text-xs text-slate-500"><Calendar className="h-3 w-3 text-slate-400" /><span>Assigned {fmtDate(job.Date_assigned)}</span></div>}
-                                  </div>
-                                  {(sold != null || formula != null || cos != null) && (
-                                    <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                                      {sold    != null && <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700"><DollarSign className="h-3 w-3" />${sold.toLocaleString()} <span className="font-normal text-slate-400">sold</span></div>}
-                                      {formula != null && <div className="flex items-center gap-1 text-xs font-semibold text-blue-700"><DollarSign className="h-3 w-3" />${formula.toLocaleString()} <span className="font-normal text-slate-400">formula</span></div>}
-                                      {cos     != null && <div className="flex items-center gap-1 text-xs font-semibold text-orange-600"><Tag className="h-3 w-3" />${cos.toLocaleString()} <span className="font-normal text-slate-400">COs</span></div>}
-                                    </div>
-                                  )}
-                                  <div className="flex items-center justify-between">
-                                    {job.Permit && job.Permit !== "No" && job.Permit !== "N/A"
-                                      ? <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Permit: {job.Permit}</span>
-                                      : <div />
-                                    }
-                                    <button onClick={() => router.push(`/jobs/${job.ID_Jobs}`)}
-                                      className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
-                                      View Job <ExternalLink className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )
-                            })}
+                      {/* Filter card */}
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="space-y-4 p-4 sm:p-5">
+
+                          {/* Title + filter toggle */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="rounded-xl bg-violet-50 p-2 text-violet-700">
+                                <Briefcase className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h3 className="text-base font-bold tracking-tight text-slate-900">Jobs</h3>
+                                <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
+                                  {filteredJobs.length.toLocaleString()} record{filteredJobs.length !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setJobFiltersExpanded(e => !e)}
+                              className={cn(
+                                "flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all",
+                                jobFiltersExpanded
+                                  ? "bg-slate-900 text-white hover:bg-slate-800"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              )}
+                            >
+                              <Filter className={cn("h-4 w-4", hasJobFilters && "text-yellow-400")} />
+                              Filters
+                              {hasJobFilters && (
+                                <Badge className="flex h-5 min-w-5 items-center justify-center rounded-full border-none bg-yellow-400 p-0 text-[10px] text-slate-900">
+                                  {[jobYear, jobType, jobStatus, jobCommunityId, jobParentCompany].filter(Boolean).length}
+                                </Badge>
+                              )}
+                              {jobFiltersExpanded
+                                ? <ChevronUp className="ml-1 h-4 w-4" />
+                                : <ChevronDown className="ml-1 h-4 w-4" />}
+                            </button>
                           </div>
-                        )}
+
+                          {/* Search + reset */}
+                          <div className="flex gap-2 sm:gap-3">
+                            <div className="group relative flex-1">
+                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-violet-600 sm:left-4" />
+                              <input
+                                value={jobSearch}
+                                onChange={e => setJobSearch(e.target.value)}
+                                placeholder="Search by name, ID, location…"
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-3 text-sm placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-400/20 transition-all sm:pl-12"
+                              />
+                            </div>
+                            {hasJobFilters && (
+                              <button
+                                onClick={() => { setJobSearch(""); setJobYear(""); setJobType(""); setJobStatus(""); setJobCommunityId(""); setJobParentCompany("") }}
+                                className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-500 transition-all hover:border-red-100 hover:bg-red-50 hover:text-red-600"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                                <span className="hidden sm:inline">Reset</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Expandable filter panel */}
+                          <div className={cn(
+                            "grid transition-all duration-300 ease-in-out",
+                            jobFiltersExpanded
+                              ? "grid-rows-[1fr] border-t border-slate-100 pt-4 opacity-100"
+                              : "invisible grid-rows-[0fr] overflow-hidden opacity-0"
+                          )}>
+                            <div className="overflow-hidden">
+                              <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-5">
+                                <JobFilterSelect label="Year" icon={<Calendar className="h-3.5 w-3.5" />}
+                                  value={jobYear || "all"} onValueChange={v => setJobYear(v === "all" ? "" : v)}>
+                                  <SelectItem value="all">All years</SelectItem>
+                                  {["2026", "2025", "2024", "2023"].map(y => (
+                                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                                  ))}
+                                </JobFilterSelect>
+
+                                <JobFilterSelect label="Type" icon={<Tag className="h-3.5 w-3.5" />}
+                                  value={jobType || "all"} onValueChange={v => setJobType(v === "all" ? "" : v)}>
+                                  <SelectItem value="all">All types</SelectItem>
+                                  {["QID", "PTL", "PAR"].map(tp => (
+                                    <SelectItem key={tp} value={tp}>{tp}</SelectItem>
+                                  ))}
+                                </JobFilterSelect>
+
+                                <JobFilterSelect label="Status" icon={<Activity className="h-3.5 w-3.5" />}
+                                  value={jobStatus || "all"} onValueChange={v => setJobStatus(v === "all" ? "" : v)}>
+                                  <SelectItem value="all">All statuses</SelectItem>
+                                  {jobStatusOptions.map(s => (
+                                    <SelectItem key={s} value={s}>
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn("h-2 w-2 flex-shrink-0 rounded-full", JOB_STATUS_COLOR[s] ?? "bg-slate-400")} />
+                                        {s}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </JobFilterSelect>
+
+                                <JobFilterSelect label="Community" icon={<Building2 className="h-3.5 w-3.5" />}
+                                  value={jobCommunityId || "all"} onValueChange={v => setJobCommunityId(v === "all" ? "" : v)}>
+                                  <SelectItem value="all">All communities</SelectItem>
+                                  {communitiesLoading
+                                    ? <SelectItem value="__loading__" disabled>Loading…</SelectItem>
+                                    : jobCommunityOptions.map(({ id, name }) => (
+                                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                                      ))
+                                  }
+                                </JobFilterSelect>
+
+                                <JobFilterSelect label="Parent Co." icon={<Users className="h-3.5 w-3.5" />}
+                                  value={jobParentCompany || "all"} onValueChange={v => setJobParentCompany(v === "all" ? "" : v)}>
+                                  <SelectItem value="all">All companies</SelectItem>
+                                  {jobParentCompanyOptions.map(pc => (
+                                    <SelectItem key={pc} value={pc}>{pc}</SelectItem>
+                                  ))}
+                                </JobFilterSelect>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Active filter badges (collapsed state) */}
+                          {hasJobFilters && !jobFiltersExpanded && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {jobYear         && <ActiveJobBadge label="Year"      value={jobYear}   onClear={() => setJobYear("")} />}
+                              {jobType         && <ActiveJobBadge label="Type"      value={jobType}   onClear={() => setJobType("")} />}
+                              {jobStatus       && <ActiveJobBadge label="Status"    value={jobStatus} onClear={() => setJobStatus("")} />}
+                              {jobCommunityId  && <ActiveJobBadge label="Community" value={jobCommunityOptions.find(c => c.id === jobCommunityId)?.name ?? jobCommunityId} onClear={() => setJobCommunityId("")} />}
+                              {jobParentCompany && <ActiveJobBadge label="Parent Co." value={jobParentCompany} onClear={() => setJobParentCompany("")} />}
+                            </div>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Job grid */}
+                      {filteredJobs.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-16">
+                          <Briefcase className="h-10 w-10 text-slate-300" />
+                          <p className="text-sm font-medium text-slate-500">
+                            {hasJobFilters ? "No jobs match the current filters" : "No jobs associated"}
+                          </p>
+                          {hasJobFilters && (
+                            <button
+                              onClick={() => { setJobSearch(""); setJobYear(""); setJobType(""); setJobStatus(""); setJobCommunityId(""); setJobParentCompany("") }}
+                              className="text-xs text-violet-600 hover:underline"
+                            >
+                              Clear filters
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {filteredJobs.map(job => (
+                            <JobCard
+                              key={job.ID_Jobs}
+                              job={job}
+                              clientName={communitiesMap.get(job.ID_Client ?? "")?.name}
+                              onClick={() => router.push(`/jobs/${job.ID_Jobs}`)}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
 

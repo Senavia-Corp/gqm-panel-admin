@@ -61,7 +61,7 @@ function ExpirationBadge({ dateStr, t }: { dateStr: string | null; t: (k: any) =
   const days = daysUntilExpiration(dateStr)
   if (days === null) return <span className="text-xs italic text-slate-400">—</span>
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-wrap items-center gap-1.5">
       <span className="text-xs text-slate-500">{formatDate(dateStr)}</span>
       {days < 0 && (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
@@ -554,56 +554,66 @@ function CertCard({
       )}>
         {(isExpired || isExpiringSoon) && (
           <div className={cn(
-            "flex items-center gap-2 px-4 py-2 text-xs font-medium",
-            isExpired ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"
+            "flex items-center gap-2 border-b px-4 py-1.5 text-[11px] font-medium",
+            isExpired
+              ? "border-red-100 bg-red-50 text-red-700"
+              : "border-amber-100 bg-amber-50 text-amber-700"
           )}>
-            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+            <AlertTriangle className="h-3 w-3 flex-shrink-0" />
             {isExpired
               ? t("certExpired")
               : `${t("certExpiringSoon")} — ${days} ${days === 1 ? "day" : "days"} remaining`}
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className={cn(
-              "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl",
-              isExpired ? "bg-red-50" : isExpiringSoon ? "bg-amber-50" : "bg-emerald-50"
-            )}>
-              <Award className={cn("h-4 w-4",
-                isExpired ? "text-red-500" : isExpiringSoon ? "text-amber-500" : "text-emerald-600"
-              )} />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800">{cert.Name ?? t("unnamed")}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <StatusBadge status={cert.Status} />
-                <ExpirationBadge dateStr={cert.Expiration_date} t={t} />
-                {attachments.length > 0 && (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                    {attachments.length} {attachments.length === 1 ? "doc" : "docs"}
-                  </span>
+        <div className="flex items-start gap-3 px-4 py-5 sm:px-5">
+          {/* Icon */}
+          <div className={cn(
+            "mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl",
+            isExpired ? "bg-red-50" : isExpiringSoon ? "bg-amber-50" : "bg-emerald-50"
+          )}>
+            <Award className={cn("h-4 w-4",
+              isExpired ? "text-red-500" : isExpiringSoon ? "text-amber-500" : "text-emerald-600"
+            )} />
+          </div>
+
+          {/* Name + badges + actions */}
+          <div className="min-w-0 flex-1">
+            {/* Name row with action buttons inline */}
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-slate-800 pt-0.5">
+                {cert.Name ?? t("unnamed")}
+              </p>
+              <div className="flex flex-shrink-0 items-center gap-1.5">
+                {canEdit && (
+                  <>
+                    <button onClick={() => setEditOpen(true)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-600">
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => setDeleteOpen(true)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 )}
+                <button onClick={() => setExpanded(v => !v)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
+                  {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <>
-                <button onClick={() => setEditOpen(true)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-600">
-                  <Edit3 className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => setDeleteOpen(true)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
-            <button onClick={() => setExpanded(v => !v)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50">
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
+
+            {/* Badges row — wraps naturally on narrow screens */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <StatusBadge status={cert.Status} />
+              <ExpirationBadge dateStr={cert.Expiration_date} t={t} />
+              {attachments.length > 0 && (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                  {attachments.length} {attachments.length === 1 ? "doc" : "docs"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -724,7 +734,7 @@ function NotificationPanel({
 
   return (
     <div className={cn(
-      "rounded-2xl border px-5 py-4",
+      "overflow-hidden rounded-2xl border px-4 py-4 sm:px-5",
       isActive ? "border-blue-200 bg-blue-50/50" : "border-slate-200 bg-slate-50"
     )}>
       <div className="flex items-start gap-3">
@@ -734,12 +744,12 @@ function NotificationPanel({
         )}>
           {isActive ? <Bell className="h-4 w-4 text-blue-600" /> : <BellOff className="h-4 w-4 text-slate-400" />}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-slate-700">{t("certNotifyTitle")}</p>
           <p className="mt-0.5 text-[11px] text-slate-500">{t("certNotifyDesc")}</p>
 
           <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Select
                 value={notifyMemberId || "__none__"}
                 onValueChange={v => onMemberChange(v === "__none__" ? "" : v)}
@@ -752,14 +762,13 @@ function NotificationPanel({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">
-                    <span className="text-slate-400 italic">{t("certNotifyNoMember")}</span>
+                    <span className="italic text-slate-400">{t("certNotifyNoMember")}</span>
                   </SelectItem>
                   {members.map(m => (
                     <SelectItem key={m.ID_Member} value={m.ID_Member}>
-                      <span className="flex items-center gap-2">
-                        <User className="h-3 w-3 text-slate-400" />
-                        {m.name}
-                        {m.email && <span className="text-[10px] text-slate-400">{m.email}</span>}
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                        <span className="font-medium">{m.name}</span>
                       </span>
                     </SelectItem>
                   ))}
@@ -775,14 +784,19 @@ function NotificationPanel({
           </div>
 
           {isActive && selected && (
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
-              <CheckCircle2 className="h-3 w-3" />
-              {t("certNotifyActive").replace("{name}", selected.name)}
-            </p>
+            <div className="mt-2 space-y-0.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
+                <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                {t("certNotifyActive").replace("{name}", selected.name)}
+              </p>
+              {selected.email && (
+                <p className="truncate pl-[18px] text-[11px] text-blue-500">{selected.email}</p>
+              )}
+            </div>
           )}
           {!isActive && (
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
-              <BellOff className="h-3 w-3" />
+              <BellOff className="h-3 w-3 flex-shrink-0" />
               {t("certNotifyInactive")}
             </p>
           )}

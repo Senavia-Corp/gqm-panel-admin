@@ -19,6 +19,8 @@ import { SubcontractorTimelineTab } from "@/components/organisms/subcontractor-d
 import { SubcontractorCertificatesTab } from "@/components/organisms/subcontractor-detail/tabs/SubcontractorCertificatesTab"
 import { TechnicianCard } from "@/components/organisms/TechnicianCard"
 import { DeleteTechnicianDialog } from "@/components/organisms/DeleteTechnicianDialog"
+import { CreateTaskDialog } from "@/components/organisms/CreateTaskDialog"
+import { TaskDetailsDialog } from "@/components/organisms/TaskDetailsDialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import {
@@ -34,6 +36,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -59,6 +64,7 @@ type SubcTechnician = {
 
 type SubcFull = Subcontractor & {
   technicians?: SubcTechnician[]
+  tasks?: any[]
   attachments?: any[]
   opportunities?: any[]
   orders?: any[]
@@ -351,6 +357,13 @@ export default function SubcontractorDetailsPage() {
   const [allSkills, setAllSkills] = useState<Skill[]>([])
   const [skillsSearch, setSkillsSearch] = useState("")
   const [skillsPage, setSkillsPage] = useState(1)
+  const [ordersSearch, setOrdersSearch] = useState("")
+  const [ordersPayFilter, setOrdersPayFilter] = useState<"all" | "paid" | "pending" | "unlinked">("all")
+  const [createTaskOpen, setCreateTaskOpen] = useState(false)
+  const [detailTask, setDetailTask] = useState<any | null>(null)
+  const [taskDetailsOpen, setTaskDetailsOpen] = useState(false)
+  const [subcTaskSearch, setSubcTaskSearch] = useState("")
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "Not started" | "Work-in-progress" | "Completed">("all")
   const [linkingSkillId, setLinkingSkillId] = useState<string | null>(null)
   const [unlinkingSkillId, setUnlinkingSkillId] = useState<string | null>(null)
 
@@ -639,6 +652,105 @@ export default function SubcontractorDetailsPage() {
     [technicians]
   )
 
+  const subcDashboard = useMemo(() => {
+    if (!subc) return null
+
+    const COMPLETED_STATUSES = new Set([
+      "Completed P. INV / POs", "Completed PVI / POs", "Completed PVI",
+      "Invoiced", "Paid", "PAID",
+    ])
+    const IN_PROGRESS_STATUSES = new Set([
+      "Scheduled / Work in Progress", "Assigned-In progress", "In Progress",
+    ])
+
+    const jobs: any[] = subc.jobs ?? []
+    const orders: any[] = subc.orders ?? []
+
+    let completedCount = 0, inProgressCount = 0, otherCount = 0
+    for (const j of jobs) {
+      const s = j.Job_status ?? ""
+      if (COMPLETED_STATUSES.has(s)) completedCount++
+      else if (IN_PROGRESS_STATUSES.has(s)) inProgressCount++
+      else otherCount++
+    }
+
+    let pendingTasksCount = 0, totalTasksCount = 0
+    for (const tech of technicians) {
+      for (const task of ((tech as any).tasks ?? [])) {
+        totalTasksCount++
+        if (task.Task_status !== "Completed") pendingTasksCount++
+      }
+    }
+
+    const jobPaymentMap: Record<string, { allPaid: boolean; hasPending: boolean }> = {}
+    let unlinkedOrdersCount = 0
+    for (const order of orders) {
+      const bills = ((order.financial_docs ?? []) as any[]).filter(
+        (d) => d.Type_of_document === "Bill" && !d.is_voided
+      )
+      const jobIds: string[] = [
+        ...new Set(((order.estimate_costs ?? []) as any[]).map((ec) => ec.ID_Jobs).filter(Boolean)),
+      ] as string[]
+
+      if (bills.length === 0) { unlinkedOrdersCount++; continue }
+
+      const allPaid = bills.every((b: any) => (b.Percentage_Paid ?? 0) >= 100)
+      const hasPending = bills.some((b: any) => (b.Percentage_Paid ?? 0) < 100)
+
+      for (const jid of jobIds) {
+        if (!jobPaymentMap[jid]) jobPaymentMap[jid] = { allPaid: true, hasPending: false }
+        if (!allPaid) jobPaymentMap[jid].allPaid = false
+        if (hasPending) jobPaymentMap[jid].hasPending = true
+      }
+    }
+
+    let settledJobsCount = 0, pendingPaymentJobsCount = 0
+    for (const v of Object.values(jobPaymentMap)) {
+      if (v.hasPending) pendingPaymentJobsCount++
+      else if (v.allPaid) settledJobsCount++
+    }
+
+    return {
+      jobs: { completed: completedCount, inProgress: inProgressCount, other: otherCount },
+      tasks: { pending: pendingTasksCount, total: totalTasksCount },
+      payments: { settled: settledJobsCount, pending: pendingPaymentJobsCount, unlinked: unlinkedOrdersCount },
+    }
+  }, [subc, technicians])
+
+  // ── Subcontractor tasks (direct + via technicians, deduplicated) ──────────
+  const allSubcTasks = useMemo(() => {
+    const seen = new Set<string>()
+    const result: any[] = []
+
+    // 1. Direct tasks (ID_Subcontractor set, any ID_Technician value)
+    for (const task of (subc?.tasks ?? [])) {
+      if (!seen.has(task.ID_Tasks)) {
+        seen.add(task.ID_Tasks)
+        const tech = technicians.find((t) => t.ID_Technician === task.ID_Technician)
+        result.push({
+          ...task,
+          _techName: tech?.Name ?? task.ID_Technician ?? null,
+          _techId:   task.ID_Technician ?? null,
+        })
+      }
+    }
+
+    // 2. Tasks from technicians (catches any not already included above)
+    for (const tech of technicians) {
+      for (const task of (tech.tasks ?? [])) {
+        if (!seen.has(task.ID_Tasks)) {
+          seen.add(task.ID_Tasks)
+          result.push({
+            ...task,
+            _techName: tech.Name ?? tech.ID_Technician,
+            _techId:   tech.ID_Technician,
+          })
+        }
+      }
+    }
+
+    return result
+  }, [subc, technicians])
 
   // ── Guards ─────────────────────────────────────────────────────────────────
   if (!user) return null
@@ -775,6 +887,7 @@ export default function SubcontractorDetailsPage() {
                 { value: "technicians",  label: t("tabTechnicians"),  icon: Users,     count: technicians.length },
                 { value: "orders",       label: t("purchaseOrders"),  icon: ShoppingBag, count: subc.orders?.length ?? 0 },
                 { value: "jobs",         label: t("tabJobs"),         icon: Briefcase, count: subc.jobs?.length ?? 0 },
+                { value: "tasks",        label: t("tabTasks"),        icon: ClipboardList, count: allSubcTasks.length },
                 { value: "skills",       label: t("tabSkills"),       icon: Wrench,    count: subc.skills?.length ?? 0 },
                 { value: "timeline",     label: t("tabTimeline"),     icon: Activity,  count: subc.tlactivity?.length ?? 0 },
               ].map(({ value, label, icon: Icon, count }) => {
@@ -1061,6 +1174,250 @@ export default function SubcontractorDetailsPage() {
                     </SectionCard>
                   </TabsContent>
 
+                  {/* ── TASKS tab ────────────────────────────────────────── */}
+                  <TabsContent value="tasks">
+                    {(() => {
+                      const STATUS_STYLE: Record<string, string> = {
+                        "Not started":      "text-slate-500 bg-slate-100 border-slate-200",
+                        "Work-in-progress": "text-amber-700 bg-amber-50 border-amber-200",
+                        "Completed":        "text-emerald-700 bg-emerald-50 border-emerald-200",
+                      }
+                      const STATUS_LABEL: Record<string, string> = {
+                        "Not started":      "Not Started",
+                        "Work-in-progress": "In Progress",
+                        "Completed":        "Completed",
+                      }
+                      const PRIORITY_STYLE: Record<string, string> = {
+                        High:   "text-red-600 bg-red-50 border-red-200",
+                        Medium: "text-amber-600 bg-amber-50 border-amber-200",
+                        Low:    "text-blue-600 bg-blue-50 border-blue-200",
+                      }
+                      const checkOverdue = (delivery: any, status: any) => {
+                        if (!delivery || status === "Completed") return false
+                        const d = new Date(delivery)
+                        return !isNaN(d.getTime()) && d < new Date()
+                      }
+                      const fmtDate = (raw: any) => {
+                        if (!raw) return null
+                        const d = new Date(raw)
+                        return isNaN(d.getTime()) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      }
+
+                      // Derived job data for dialogs (shapes subc as the single linked subcontractor)
+                      const subcJobData = {
+                        subcontractors: [{
+                          ID_Subcontractor: subc.ID_Subcontractor,
+                          Name:             subc.Name,
+                          Organization:     subc.Organization,
+                          technicians:      technicians.map((tech) => ({
+                            ID_Technician: tech.ID_Technician,
+                            Name:          tech.Name,
+                          })),
+                        }],
+                      }
+                      const subcTechList = technicians.map((tech) => ({
+                        id:   tech.ID_Technician,
+                        name: tech.Name ?? tech.ID_Technician,
+                        type: tech.Type_of_technician ?? "",
+                      }))
+
+                      // Filter + search
+                      const tq = subcTaskSearch.trim().toLowerCase()
+                      const filteredTasks = allSubcTasks.filter((task) => {
+                        if (taskStatusFilter !== "all" && task.Task_status !== taskStatusFilter) return false
+                        if (!tq) return true
+                        return (
+                          (task.Name ?? "").toLowerCase().includes(tq) ||
+                          (task.Task_description ?? "").toLowerCase().includes(tq) ||
+                          (task._techName ?? "").toLowerCase().includes(tq) ||
+                          (task.ID_Tasks ?? "").toLowerCase().includes(tq)
+                        )
+                      })
+
+                      const statusCounts = {
+                        all:              allSubcTasks.length,
+                        "Not started":    allSubcTasks.filter(t => t.Task_status === "Not started").length,
+                        "Work-in-progress": allSubcTasks.filter(t => t.Task_status === "Work-in-progress").length,
+                        "Completed":      allSubcTasks.filter(t => t.Task_status === "Completed").length,
+                      }
+
+                      return (
+                        <>
+                          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            {/* Header */}
+                            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                                <ClipboardList className="h-4 w-4 text-emerald-600" />
+                              </div>
+                              <h3 className="text-sm font-semibold text-slate-800">{t("tabTasks")}</h3>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                                {filteredTasks.length}/{allSubcTasks.length}
+                              </span>
+                              {hasPermission("subcontractor:update") && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setCreateTaskOpen(true)}
+                                  className="ml-auto h-8 gap-1.5 bg-emerald-700 text-xs hover:bg-emerald-800"
+                                >
+                                  <Plus className="h-3.5 w-3.5" /> {t("newTask")}
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Search + Status filter */}
+                            <div className="border-b border-slate-100 px-4 py-3 sm:px-6">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div className="relative flex-1">
+                                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                  <Input
+                                    value={subcTaskSearch}
+                                    onChange={(e) => setSubcTaskSearch(e.target.value)}
+                                    placeholder={t("searchTasks")}
+                                    className="h-8 pl-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex shrink-0 flex-wrap gap-1.5">
+                                  {([
+                                    { key: "all" as const,              label: t("filterAll"),      cls: "bg-slate-800 text-white border-slate-800" },
+                                    { key: "Not started" as const,      label: t("taskNotStarted"), cls: "bg-slate-500 text-white border-slate-500" },
+                                    { key: "Work-in-progress" as const,  label: t("taskInProgress"), cls: "bg-amber-600 text-white border-amber-600" },
+                                    { key: "Completed" as const,        label: t("taskCompleted"),  cls: "bg-emerald-600 text-white border-emerald-600" },
+                                  ]).map(({ key, label, cls }) => {
+                                    const on = taskStatusFilter === key
+                                    return (
+                                      <button
+                                        key={key}
+                                        onClick={() => setTaskStatusFilter(key)}
+                                        className={cn(
+                                          "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                                          on ? cls : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                                        )}
+                                      >
+                                        {label}
+                                        <span className={cn("rounded-full px-1 py-0.5 text-[9px] leading-none font-bold", on ? "bg-white/20" : "bg-slate-100 text-slate-500")}>
+                                          {key === "all" ? statusCounts.all : statusCounts[key] ?? 0}
+                                        </span>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Task list */}
+                            <div className="p-4 sm:p-6">
+                              {allSubcTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center gap-2 py-12">
+                                  <ClipboardList className="h-8 w-8 text-slate-300" />
+                                  <p className="text-sm text-slate-500">{t("noTasks")}</p>
+                                  {hasPermission("subcontractor:update") && (
+                                    <Button size="sm" variant="outline" onClick={() => setCreateTaskOpen(true)} className="mt-1 gap-1.5 text-xs">
+                                      <Plus className="h-3.5 w-3.5" /> {t("newTask")}
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : filteredTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center gap-2 py-10">
+                                  <Search className="h-7 w-7 text-slate-300" />
+                                  <p className="text-sm text-slate-500">{t("noTasksMatch")}</p>
+                                </div>
+                              ) : (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {filteredTasks.map((task: any) => {
+                                    const overdue   = checkOverdue(task.Delivery_date, task.Task_status)
+                                    const sCls      = STATUS_STYLE[task.Task_status ?? "Not started"] ?? STATUS_STYLE["Not started"]
+                                    const sLabel    = STATUS_LABEL[task.Task_status ?? "Not started"] ?? task.Task_status
+                                    const pCls      = task.Priority ? PRIORITY_STYLE[task.Priority] : null
+                                    const startDate = fmtDate(task.Designation_date)
+                                    const dueDate   = fmtDate(task.Delivery_date)
+
+                                    return (
+                                      <button
+                                        key={task.ID_Tasks}
+                                        onClick={() => { setDetailTask(task); setTaskDetailsOpen(true) }}
+                                        className="group flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:border-emerald-300 hover:shadow-sm"
+                                      >
+                                        {/* Top row: status + priority */}
+                                        <div className="flex items-center gap-2">
+                                          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold", sCls)}>
+                                            {sLabel}
+                                          </span>
+                                          {pCls && (
+                                            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold", pCls)}>
+                                              {task.Priority}
+                                            </span>
+                                          )}
+                                          {overdue && (
+                                            <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                                              Overdue
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Task name */}
+                                        <p className="text-sm font-semibold leading-snug text-slate-800 group-hover:text-emerald-800">
+                                          {task.Name ?? "—"}
+                                        </p>
+
+                                        {/* Description snippet */}
+                                        {task.Task_description && (
+                                          <p className="line-clamp-2 text-[11px] leading-relaxed text-slate-500">
+                                            {task.Task_description}
+                                          </p>
+                                        )}
+
+                                        {/* Footer: dates + technician */}
+                                        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[10px] text-slate-400">
+                                          {startDate && (
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" /> {startDate}
+                                            </span>
+                                          )}
+                                          {dueDate && (
+                                            <span className={cn("flex items-center gap-1", overdue && "text-red-500")}>
+                                              <Clock className="h-3 w-3" /> {dueDate}
+                                            </span>
+                                          )}
+                                          {task._techName && (
+                                            <span className="flex items-center gap-1 ml-auto">
+                                              <Wrench className="h-3 w-3" /> {task._techName}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Task ID */}
+                                        <p className="font-mono text-[9px] text-slate-300">{task.ID_Tasks}</p>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ── Dialogs ── */}
+                          <CreateTaskDialog
+                            open={createTaskOpen}
+                            onOpenChange={setCreateTaskOpen}
+                            jobId=""
+                            jobData={subcJobData}
+                            defaultSubcId={subc.ID_Subcontractor}
+                            onTaskCreated={() => { setCreateTaskOpen(false); fetchSubc() }}
+                          />
+                          <TaskDetailsDialog
+                            task={detailTask}
+                            open={taskDetailsOpen}
+                            onOpenChange={setTaskDetailsOpen}
+                            technicians={subcTechList}
+                            jobData={subcJobData}
+                            onDelete={() => fetchSubc()}
+                            onSave={() => fetchSubc()}
+                          />
+                        </>
+                      )
+                    })()}
+                  </TabsContent>
+
                   {/* ── SKILLS tab ───────────────────────────────────────── */}
                   <TabsContent value="skills">
                     <SectionCard icon={Wrench} iconBg="bg-amber-50" iconColor="text-amber-600" title={t("tabSkills")}
@@ -1308,25 +1665,109 @@ export default function SubcontractorDetailsPage() {
                         rejected: "bg-red-100 text-red-600 border-red-200",
                       }
 
-                      const orders = subc.orders ?? []
+                      const allOrders: any[] = subc.orders ?? []
+
+                      // ── Payment-status classifier ──────────────────────────
+                      const getOrderPayStatus = (order: any): "paid" | "pending" | "unlinked" => {
+                        const bills = ((order.financial_docs ?? []) as any[]).filter(
+                          (d) => d.Type_of_document === "Bill" && !d.is_voided
+                        )
+                        if (bills.length === 0) return "unlinked"
+                        return bills.every((b: any) => (b.Percentage_Paid ?? 0) >= 100) ? "paid" : "pending"
+                      }
+
+                      // ── Filter + search ────────────────────────────────────
+                      const oq = ordersSearch.trim().toLowerCase()
+                      const orders = allOrders.filter((order: any) => {
+                        if (ordersPayFilter !== "all" && getOrderPayStatus(order) !== ordersPayFilter) return false
+                        if (!oq) return true
+                        const jobIds = ((order.estimate_costs ?? []) as any[]).map((ec: any) => ec.ID_Jobs).filter(Boolean)
+                        const linkedJobNames = jobIds.map((jid: string) => {
+                          const j = jobMap[jid]
+                          return j ? `${j.Project_name ?? ""} ${j.ID_Jobs ?? ""}`.toLowerCase() : ""
+                        }).join(" ")
+                        return (
+                          (order.Title ?? "").toLowerCase().includes(oq) ||
+                          (order.ID_Order ?? "").toLowerCase().includes(oq) ||
+                          (order.Notes ?? "").toLowerCase().includes(oq) ||
+                          linkedJobNames.includes(oq)
+                        )
+                      })
+
+                      const payFilterCounts = {
+                        all:      allOrders.length,
+                        paid:     allOrders.filter(o => getOrderPayStatus(o) === "paid").length,
+                        pending:  allOrders.filter(o => getOrderPayStatus(o) === "pending").length,
+                        unlinked: allOrders.filter(o => getOrderPayStatus(o) === "unlinked").length,
+                      }
+
                       return (
                         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                           {/* Header */}
-                          <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
-                              <ClipboardList className="h-4 w-4 text-amber-600" />
+                          <div className="border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
+                                <ClipboardList className="h-4 w-4 text-amber-600" />
+                              </div>
+                              <h3 className="text-sm font-semibold text-slate-800">{t("purchaseOrders")}</h3>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                                {orders.length}/{allOrders.length}
+                              </span>
                             </div>
-                            <h3 className="text-sm font-semibold text-slate-800">{t("purchaseOrders")}</h3>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                              {orders.length}
-                            </span>
+
+                            {/* Search + filter */}
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <div className="relative flex-1">
+                                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                  value={ordersSearch}
+                                  onChange={(e) => setOrdersSearch(e.target.value)}
+                                  placeholder={t("searchOrders")}
+                                  className="h-8 pl-8 text-xs"
+                                />
+                              </div>
+                              <div className="flex shrink-0 flex-wrap gap-1.5">
+                                {(["all", "paid", "pending", "unlinked"] as const).map((f) => {
+                                  const on = ordersPayFilter === f
+                                  const colorCls = {
+                                    all:      on ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400",
+                                    paid:     on ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400",
+                                    pending:  on ? "bg-rose-600 text-white border-rose-600" : "bg-white text-slate-600 border-slate-200 hover:border-rose-400",
+                                    unlinked: on ? "bg-slate-500 text-white border-slate-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400",
+                                  }[f]
+                                  const label = {
+                                    all:      t("filterAll"),
+                                    paid:     t("filterPaid"),
+                                    pending:  t("filterPending"),
+                                    unlinked: t("filterUnlinked"),
+                                  }[f]
+                                  return (
+                                    <button
+                                      key={f}
+                                      onClick={() => setOrdersPayFilter(f)}
+                                      className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${colorCls}`}
+                                    >
+                                      {label}
+                                      <span className={`rounded-full px-1 py-0.5 text-[9px] leading-none font-bold ${on ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>
+                                        {payFilterCounts[f]}
+                                      </span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="p-4 sm:p-6">
-                            {orders.length === 0 ? (
+                            {allOrders.length === 0 ? (
                               <div className="flex flex-col items-center justify-center gap-2 py-12">
                                 <ClipboardList className="h-8 w-8 text-slate-300" />
                                 <p className="text-sm text-slate-500">{t("noOrders")}</p>
+                              </div>
+                            ) : orders.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center gap-2 py-10">
+                                <Search className="h-7 w-7 text-slate-300" />
+                                <p className="text-sm text-slate-500">{t("noOrdersMatch")}</p>
                               </div>
                             ) : (
                               <div className="grid gap-4 sm:grid-cols-2">
@@ -1585,38 +2026,171 @@ export default function SubcontractorDetailsPage() {
                   </div>
                 </div>
 
-                {/* Quick Summary */}
+                {/* Quick Summary Dashboard */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("quickSummary")}</p>
                   </div>
-                  <div className="divide-y divide-slate-50 px-4 sm:px-5">
-                    {[
-                      { label: "ID", value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span> },
-                      { label: t("status"), value: <StatusBadge status={subc.Status} /> },
-                      { label: t("experienceScore"), value: <ScoreBadge score={subc.Score} /> },
-                      { label: t("compliance"), value: <CertBadge value={subc.Gqm_compliance} /> },
-                      { label: t("bst"), value: <CertBadge value={subc.Gqm_best_service_training} /> },
-                      { label: t("tabTechnicians"), value: <span className="text-sm font-semibold text-slate-800">{technicians.length}</span> },
-                      { label: t("tabSkills"), value: <span className="text-sm font-semibold text-slate-800">{subc.skills?.length ?? 0}</span> },
-                      { label: t("purchaseOrders"), value: <span className="text-sm font-semibold text-slate-800">{subc.orders?.length ?? 0}</span> },
-                      { label: t("tabJobs"), value: <span className="text-sm font-semibold text-slate-800">{subc.jobs?.length ?? 0}</span> },
-                      { label: t("attachments"), value: <span className="text-sm font-semibold text-slate-800">{subc.attachments?.length ?? 0}</span> },
-                      { label: t("opportunities"), value: <span className="text-sm font-semibold text-slate-800">{subc.opportunities?.length ?? 0}</span> },
-                      {
-                        label: t("podio"), value: subc.podio_item_id
-                          ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                            <CheckCircle className="h-3 w-3" /> {t("podioLinked")}
-                          </span>
-                          : <span className="text-[11px] italic text-slate-400">{t("podioNotLinked")}</span>
-                      },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between py-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                        {value}
-                      </div>
-                    ))}
+
+                  {/* Identity strip */}
+                  <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{subc.ID_Subcontractor}</span>
+                      <StatusBadge status={subc.Status} />
+                      <ScoreBadge score={subc.Score} />
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3 text-slate-400" />
+                        <span className="text-slate-400">{t("compliance")}:</span>
+                        <CertBadge value={subc.Gqm_compliance} />
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Award className="h-3 w-3 text-slate-400" />
+                        <span className="text-slate-400">{t("bst")}:</span>
+                        <CertBadge value={subc.Gqm_best_service_training} />
+                      </span>
+                    </div>
                   </div>
+
+                  {subcDashboard && (
+                    <TooltipProvider delayDuration={200}>
+
+                      {/* ── Jobs ─────────────────────────────────────── */}
+                      <div className="px-4 py-3 sm:px-5">
+                        <div className="mb-2.5 flex items-center gap-1.5">
+                          <Briefcase className="h-3 w-3 text-slate-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("tabJobs")}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex cursor-default flex-col items-center rounded-xl border border-emerald-100 bg-emerald-50 px-1.5 py-2.5 text-center">
+                                <CheckCircle className="mb-1 h-3.5 w-3.5 text-emerald-500" />
+                                <span className="text-base font-bold leading-none text-emerald-700">{subcDashboard.jobs.completed}</span>
+                                <span className="mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide text-emerald-600">{t("dashCompleted")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[220px] text-xs">{t("tooltipCompleted")}</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex cursor-default flex-col items-center rounded-xl border border-amber-100 bg-amber-50 px-1.5 py-2.5 text-center">
+                                <Clock className="mb-1 h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-base font-bold leading-none text-amber-700">{subcDashboard.jobs.inProgress}</span>
+                                <span className="mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide text-amber-600">{t("dashInProgress")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[220px] text-xs">{t("tooltipInProgress")}</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex cursor-default flex-col items-center rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-2.5 text-center">
+                                <Activity className="mb-1 h-3.5 w-3.5 text-slate-400" />
+                                <span className="text-base font-bold leading-none text-slate-600">{subcDashboard.jobs.other}</span>
+                                <span className="mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide text-slate-400">{t("dashOther")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[220px] text-xs">{t("tooltipOther")}</TooltipContent>
+                          </Tooltip>
+
+                        </div>
+                      </div>
+
+                      {/* ── Payments ──────────────────────────────────── */}
+                      <div className="border-t border-slate-100 px-4 py-3 sm:px-5">
+                        <div className="mb-2.5 flex items-center gap-1.5">
+                          <DollarSign className="h-3 w-3 text-slate-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("dashPayments")}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex cursor-default flex-col items-center rounded-xl border border-emerald-100 bg-emerald-50 px-1.5 py-2.5 text-center">
+                                <CheckCircle className="mb-1 h-3.5 w-3.5 text-emerald-500" />
+                                <span className="text-base font-bold leading-none text-emerald-700">{subcDashboard.payments.settled}</span>
+                                <span className="mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide text-emerald-600">{t("dashSettled")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[220px] text-xs">{t("tooltipSettled")}</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={cn(
+                                "flex cursor-default flex-col items-center rounded-xl border px-1.5 py-2.5 text-center",
+                                subcDashboard.payments.pending > 0 ? "border-rose-100 bg-rose-50" : "border-slate-200 bg-slate-50"
+                              )}>
+                                <AlertCircle className={cn("mb-1 h-3.5 w-3.5", subcDashboard.payments.pending > 0 ? "text-rose-500" : "text-slate-400")} />
+                                <span className={cn("text-base font-bold leading-none", subcDashboard.payments.pending > 0 ? "text-rose-700" : "text-slate-500")}>{subcDashboard.payments.pending}</span>
+                                <span className={cn("mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide", subcDashboard.payments.pending > 0 ? "text-rose-600" : "text-slate-400")}>{t("dashPendingPay")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[220px] text-xs">{t("tooltipPendingPay")}</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={cn(
+                                "flex cursor-default flex-col items-center rounded-xl border px-1.5 py-2.5 text-center",
+                                subcDashboard.payments.unlinked > 0 ? "border-slate-300 bg-slate-100" : "border-slate-200 bg-slate-50"
+                              )}>
+                                <Unlink className={cn("mb-1 h-3.5 w-3.5", subcDashboard.payments.unlinked > 0 ? "text-slate-500" : "text-slate-300")} />
+                                <span className={cn("text-base font-bold leading-none", subcDashboard.payments.unlinked > 0 ? "text-slate-600" : "text-slate-400")}>{subcDashboard.payments.unlinked}</span>
+                                <span className="mt-1 line-clamp-2 text-[9px] font-semibold uppercase leading-tight tracking-wide text-slate-400">{t("dashUnlinked")}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[240px] text-xs">{t("tooltipUnlinked")}</TooltipContent>
+                          </Tooltip>
+
+                        </div>
+                      </div>
+
+                      {/* ── Tasks ─────────────────────────────────────── */}
+                      <div className="border-t border-slate-100 px-4 py-3 sm:px-5">
+                        <div className="mb-2.5 flex items-center gap-1.5">
+                          <ClipboardList className="h-3 w-3 text-slate-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("dashTasks")}</p>
+                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className={cn(
+                              "flex cursor-default items-center gap-3 rounded-xl border px-3 py-2.5",
+                              subcDashboard.tasks.pending > 0 ? "border-amber-100 bg-amber-50" : "border-emerald-100 bg-emerald-50"
+                            )}>
+                              <div className={cn(
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                subcDashboard.tasks.pending > 0 ? "bg-amber-100" : "bg-emerald-100"
+                              )}>
+                                {subcDashboard.tasks.pending > 0
+                                  ? <ClipboardList className="h-4 w-4 text-amber-600" />
+                                  : <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                }
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className={cn("text-lg font-bold leading-none", subcDashboard.tasks.pending > 0 ? "text-amber-700" : "text-emerald-700")}>
+                                  {subcDashboard.tasks.pending}
+                                </p>
+                                <p className={cn("mt-0.5 text-[10px] font-medium leading-tight", subcDashboard.tasks.pending > 0 ? "text-amber-600" : "text-emerald-600")}>
+                                  {t("dashPendingTasks")}
+                                </p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <p className="text-xs font-semibold text-slate-600">{subcDashboard.tasks.total}</p>
+                                <p className="text-[10px] text-slate-400">total</p>
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-[220px] text-xs">{t("tooltipPendingTasks")}</TooltipContent>
+                        </Tooltip>
+                      </div>
+
+                    </TooltipProvider>
+                  )}
                 </div>
 
                 {/* Coverage area summary */}
