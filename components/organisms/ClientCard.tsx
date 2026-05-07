@@ -214,6 +214,49 @@ export function ClientCard({ client, title }: ClientCardProps) {
             )}
           </div>
         </div>
+
+        {/* Project Managers */}
+        {client.managers && client.managers.length > 0 && (
+          <div className="pt-2 border-t border-slate-100">
+            <FieldLabel icon={UserIcon}>{t("clientCardManagers") || "Project Managers"}</FieldLabel>
+            <div className="space-y-3 mt-3">
+              {client.managers.map((mgr, i) => (
+                <div key={mgr.ID_Manager || i} className="group relative rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-gqm-green/30 hover:shadow-md">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 group-hover:bg-gqm-green/10 group-hover:text-gqm-green-dark transition-colors">
+                        <UserIcon className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">{mgr.Manager_name}</h4>
+                        {mgr.rol && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gqm-green-dark bg-gqm-green/10 px-2 py-0.5 rounded-full">
+                            {mgr.rol}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs">
+                    {mgr.Manager_email && (
+                      <a href={`mailto:${mgr.Manager_email}`} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 hover:underline transition-colors">
+                        <Mail className="h-3.5 w-3.5" />
+                        {mgr.Manager_email}
+                      </a>
+                    )}
+                    {mgr.Manager_location && (
+                      <div className="flex items-start gap-2 text-slate-400">
+                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span className="leading-tight">{mgr.Manager_location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </SectionCard>
   )

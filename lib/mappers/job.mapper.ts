@@ -29,5 +29,6 @@ export function mapJobDtoToJob(dto: JobDTO): Job {
       gqmFinalPercentage: dto.Gqm_final_percentage ?? 0,
       gqmTotalChangeOrders: dto.Gqm_total_change_orders ?? 0,
     },
+    financialDocs: dto.financial_docs ?? [],
   }
 }

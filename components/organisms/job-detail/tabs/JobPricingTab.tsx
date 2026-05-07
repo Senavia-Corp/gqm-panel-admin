@@ -357,6 +357,7 @@ function FinancialDocItem({ item }: { item: any }) {
 }
 
 function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
+  const t = useTranslations("jobs")
   const isInv = type === "invoice"
   const accent = isInv
     ? { bg: "bg-emerald-50/50", icon: "bg-emerald-100", iconColor: "text-emerald-600", badge: "bg-emerald-100 border-emerald-200 text-emerald-700", balance: "text-emerald-700" }
@@ -373,6 +374,18 @@ function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
           </div>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
+          {doc?.order && (
+            <div className="text-right px-3 border-r border-slate-100">
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t("pricingLinkedOrder")}</div>
+              <div className="text-xs font-bold text-slate-700 truncate max-w-[140px]">
+                {doc.order.Title || "Unnamed Order"}
+              </div>
+              <div className="flex gap-2 justify-end mt-0.5">
+                <span className="text-[9px] text-slate-400 tabular-nums">F: ${Number(doc.order.Formula || 0).toFixed(2)}</span>
+                <span className="text-[9px] font-bold text-slate-500 tabular-nums">A: ${Number(doc.order.Adj_formula || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-1 text-xs text-slate-400"><Calendar className="h-3 w-3" /> {fmtDate(doc?.Due_Date)}</div>
           <div className="text-right"><div className="text-[10px] text-slate-400">Total</div><div className="text-sm font-semibold text-slate-800">{fmtMoney(Number(doc?.Total_Amount || 0))}</div></div>
           <div className="text-right"><div className="text-[10px] text-slate-400">Balance</div><div className={`text-sm font-semibold ${accent.balance}`}>{fmtMoney(Number(doc?.Balance_Amount || 0))}</div></div>

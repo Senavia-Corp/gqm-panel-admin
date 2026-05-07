@@ -1,6 +1,6 @@
 "use client"
 
-import React, { use, useEffect, useMemo, useState } from "react"
+import React, { use, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X, Trash2, Zap, ZapOff, Shield, Building2, MapPin, Edit3, Loader2 } from "lucide-react"
+import { Save, ArrowLeft, RefreshCw, Search, Users, Mail, Phone, Plus, X, Trash2, Zap, ZapOff, Shield, Building2, MapPin, Edit3, Loader2, Calendar, ExternalLink, Briefcase, Wrench } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -293,6 +293,18 @@ type ParentMgmtCoDetailsPageProps = {
   params: Promise<{ id: string }>
 }
 
+type JobRef = {
+  ID_Jobs: string
+  Project_name?: string | null
+  Job_type?: string | null
+  Job_status?: string | null
+  Date_assigned?: string | null
+  Estimated_start_date?: string | null
+  Project_location?: string | null
+  Service_type?: string | null
+  client?: { ID_Client: string; Client_Community?: string | null } | null
+}
+
 const SKIP_ON_PATCH: Array<keyof ParentMgmtCo> = ["clients", "managers", "ID_Community_Tracking"]
 
 // ─── Delete dialog ────────────────────────────────────────────────────────────
@@ -382,6 +394,8 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
 
   const [communitySearch, setCommunitySearch] = useState("")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [oldestJob, setOldestJob] = useState<JobRef | null>(null)
+  const [oldestJobLoading, setOldestJobLoading] = useState(false)
 
   const handleOpenCommunityDetails = (clientId: string) => {
     router.push(`/communities/${clientId}`)
@@ -429,6 +443,21 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
     fetchParentMgmtCoData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentMgmtCoId])
+
+  const fetchOldestJob = useCallback(async () => {
+    if (!parentMgmtCoId) return
+    setOldestJobLoading(true)
+    try {
+      const res = await apiFetch(
+        `/api/jobs/oldest?parent_mgmt_co_id=${encodeURIComponent(parentMgmtCoId)}`,
+        { cache: "no-store" }
+      )
+      if (!res.ok) { setOldestJob(null); return }
+      setOldestJob(await res.json())
+    } catch { setOldestJob(null) } finally { setOldestJobLoading(false) }
+  }, [parentMgmtCoId])
+
+  useEffect(() => { fetchOldestJob() }, [fetchOldestJob])
 
   const handleFieldChange = (field: keyof ParentMgmtCo, value: any) => {
     setEditedFields((prev) => new Set([...prev, field as string]))
@@ -888,8 +917,114 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                         {item.value}
                       </div>
                     ))}
+
+                    {/* ── Active since row ── */}
+                    {oldestJobLoading ? (
+                      <div className="flex items-center justify-between gap-3 py-2.5">
+                        <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                          Active since
+                        </span>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-300" />
+                      </div>
+                    ) : oldestJob ? (() => {
+                      const dateRaw = oldestJob.Job_type === "PTL" ? oldestJob.Estimated_start_date : oldestJob.Date_assigned
+                      const dateFmt = dateRaw ? new Date(dateRaw).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null
+                      return dateFmt ? (
+                        <div className="flex items-center justify-between gap-3 py-2.5">
+                          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            Active since
+                          </span>
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                            {dateFmt}
+                          </span>
+                        </div>
+                      ) : null
+                    })() : null}
                   </div>
                 </div>
+
+                {/* ── Oldest Job card ── */}
+                {oldestJob && (() => {
+                  const dateRaw = oldestJob.Job_type === "PTL" ? oldestJob.Estimated_start_date : oldestJob.Date_assigned
+                  const dateFmt = dateRaw ? new Date(dateRaw).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null
+                  const typeColors: Record<string, string> = {
+                    QID: "bg-violet-100 text-violet-700",
+                    PTL: "bg-amber-100 text-amber-700",
+                    PAR: "bg-cyan-100 text-cyan-700",
+                  }
+                  return (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-slate-400" />
+                          <h3 className="text-sm font-semibold text-slate-700">Oldest job</h3>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Reference</span>
+                      </div>
+
+                      <div className="space-y-3 p-4 sm:p-5">
+                        {/* Name + ID + badges */}
+                        <div>
+                          <p className="text-sm font-bold leading-snug text-slate-800">
+                            {oldestJob.Project_name ?? oldestJob.ID_Jobs}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] text-slate-400">{oldestJob.ID_Jobs}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {oldestJob.Job_type && (
+                              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${typeColors[oldestJob.Job_type] ?? "bg-slate-100 text-slate-600"}`}>
+                                {oldestJob.Job_type}
+                              </span>
+                            )}
+                            {oldestJob.Job_status && (
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                {oldestJob.Job_status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Detail rows */}
+                        <div className="space-y-1.5">
+                          {dateFmt && (
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                              <span>{dateFmt}</span>
+                            </div>
+                          )}
+                          {oldestJob.client?.Client_Community && (
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                              <span className="truncate">{oldestJob.client.Client_Community}</span>
+                            </div>
+                          )}
+                          {oldestJob.Project_location && (
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                              <span className="truncate">{oldestJob.Project_location}</span>
+                            </div>
+                          )}
+                          {oldestJob.Service_type && (
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <Wrench className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                              <span className="truncate">{oldestJob.Service_type}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CTA */}
+                        <button
+                          onClick={() => router.push(`/jobs/${oldestJob.ID_Jobs}`)}
+                          className="group flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition-all hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+                        >
+                          View job
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-400 transition-colors group-hover:text-violet-500" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Timeline */}
                 <ParentCompanyTimelineTab pmcId={parentMgmtCoId} />

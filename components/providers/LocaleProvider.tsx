@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import enMessages from "@/messages/en.json"
 import esMessages from "@/messages/es.json"
 
@@ -64,23 +64,21 @@ export function useLocale() {
  */
 export function useTranslations(namespace: keyof Messages) {
   const { messages } = useContext(LocaleContext)
-  const section = messages[namespace] as Record<string, any>
 
-  const t = (key: string, values?: Record<string, any>): string => {
-    let text = section?.[key] || key
-    if (values) {
-      Object.entries(values).forEach(([k, v]) => {
-        text = text.replace(new RegExp(`{${k}}`, "g"), String(v))
-      })
+  return useMemo(() => {
+    const section = messages[namespace] as Record<string, any>
+
+    const t = (key: string, values?: Record<string, any>): string => {
+      let text = section?.[key] || key
+      if (values) {
+        Object.entries(values).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`{${k}}`, "g"), String(v))
+        })
+      }
+      return text
     }
-    return text
-  }
 
-  // Basic implementation of .rich to avoid crashes
-  // In a full implementation, this would handle React components in chunks
-  t.rich = (key: string, values?: Record<string, any>): string => {
-    return t(key, values)
-  }
-
-  return t
+    t.rich = t
+    return t
+  }, [messages, namespace])
 }

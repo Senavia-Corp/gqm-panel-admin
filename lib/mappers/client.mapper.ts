@@ -20,5 +20,6 @@ export function mapClientDetailsToClient(client: ClientDetails): Client {
     propManager: client.Prop_Manager ?? undefined,
     clientStatus: client.Client_Status ?? undefined,
     servicesInterestedIn: client.Services_interested_in ?? undefined,
+    managers: client.manager ?? [],
   }
 }

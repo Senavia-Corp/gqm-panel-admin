@@ -25,6 +25,7 @@ import {
   Calculator,
   Tag,
   Eye,
+  DollarSign,
 } from "lucide-react"
 import { TechniciansTable } from "./TechniciansTable"
 import { TechnicianDetails } from "./TechnicianDetails"
@@ -447,6 +448,40 @@ export function SubcontractorDetails({
                           <Badge variant="secondary" className="h-5 px-2 text-[11px] font-bold rounded-lg border-none bg-slate-100 text-slate-600">{order.Items?.length || 0}</Badge>
                         </div>
                       </div>
+
+                      {/* Linked Financial Documents (Bills) */}
+                      {order.financial_docs?.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-1 rounded bg-orange-50 text-orange-600">
+                              <DollarSign className="h-2.5 w-2.5" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("linkedBill")}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {order.financial_docs.map((fd: any) => (
+                              <div key={fd.ID_FinancialDoc} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-orange-200 hover:shadow-sm transition-all group/fd">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.4)] flex-shrink-0" />
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-slate-600 truncate">{fd.Job_Ref_QBO || fd.ID_FinancialDoc}</div>
+                                    <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                      <Calendar className="h-2 w-2" />
+                                      {fd.Due_Date || "No Date"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 flex-shrink-0">
+                                  <span className="text-xs font-black text-slate-700 tabular-nums">${Number(fd.Total_Amount || 0).toFixed(2)}</span>
+                                  <Badge variant="outline" className="text-[9px] font-bold h-4 border-orange-200 text-orange-600 uppercase">
+                                    {fd.Percentage_Paid ?? 0}% PAID
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Change Orders Mini List */}
                       {order.change_orders?.length > 0 && (

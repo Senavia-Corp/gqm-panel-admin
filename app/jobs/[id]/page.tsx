@@ -945,7 +945,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setEstimateItems([])
   }
 
-  const handleCreateOrder = async (orderName: string, subcontractorId: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
+  const handleCreateOrder = async (
+    orderName: string,
+    subcontractorId: string,
+    selectedItemIds: string[],
+    syncPodioOverride: boolean,
+    billId?: string
+  ) => {
     try {
       const getItemId = (i: any) => String(i?.ID_EstimateItem || i?.ID_EstimateCost || i?.ID_Estimate_Cost || i?.id || i?.ID || "")
       const selectedItems = estimateItems.filter((item) => selectedItemIds.includes(getItemId(item)))
@@ -971,7 +977,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         Adj_formula: formula,
         ID_Subcontractor: subcontractorId,
         job_podio_id: (job as any)?.podio_item_id ?? null,
-        estimate_cost_ids: selectedItemIds, // Added this field for the new backend logic!
+        estimate_cost_ids: selectedItemIds,
+        ID_FinancialDoc: billId && billId !== "none" ? billId : null,
       }
 
       const orderResponse = await apiFetch(`/api/order${qsCreate}`, {
@@ -1479,6 +1486,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         jobYearForPodioSync={resolveJobYearForPodioSync(job)}
         jobId={String((job as any)?.ID_Jobs ?? "")}
         existingOrdersCount={(job as any)?.subcontractors?.flatMap((s: any) => s.orders ?? []).length ?? 0}
+        bills={(job as any)?.financial_docs || []}
         onSubcontractorLinked={() => jobDetail.reload()}
         onCreateOrder={handleCreateOrder}
       />
