@@ -17,6 +17,7 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   ArrowLeft, Save, Loader2, Users, MapPin, Mail, Phone,
   Globe, ShieldCheck, Plus, X, Building2, FileText,
@@ -42,6 +43,7 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
   icon: React.ElementType
   onChange: (v: string[]) => void
 }) {
+  const t = useTranslations("clients")
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
@@ -74,7 +76,7 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
         onClick={() => onChange([...items, ""])}
         className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
       >
-        <Plus className="h-3 w-3" /> Add another
+        <Plus className="h-3 w-3" /> {t("addAnother")}
       </button>
     </div>
   )
@@ -147,6 +149,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
   onOpenChange: (v: boolean) => void
   onSelect: (company: ParentMgmtCo) => void
 }) {
+  const t = useTranslations("clients")
   const [companies, setCompanies] = useState<ParentMgmtCo[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
@@ -167,7 +170,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
       const d = await r.json()
       setCompanies(d.results ?? [])
     } catch (e: any) {
-      setError(e?.message ?? "Failed to load companies")
+      setError(e?.message ?? t("failedLoadCompanies"))
     } finally { setLoading(false) }
   }, [])
 
@@ -189,7 +192,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-emerald-600" />
-            Select Parent Company
+            {t("modalSelectParent")}
           </DialogTitle>
         </DialogHeader>
 
@@ -200,7 +203,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
             autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, abbrev, state…"
+            placeholder={t("modalSearchPlaceholder")}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400/20"
           />
         </div>
@@ -214,11 +217,11 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
           ) : error ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
               <p className="text-sm text-red-500">{error}</p>
-              <button onClick={fetchCompanies} className="text-xs text-emerald-600 hover:underline">Retry</button>
+              <button onClick={fetchCompanies} className="text-xs text-emerald-600 hover:underline">{t("retry")}</button>
             </div>
           ) : filtered.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-400">
-              {search ? `No results for "${search}"` : "No companies available"}
+              {search ? t("noResults", { query: search }) : t("modalNoResults")}
             </p>
           ) : (
             filtered.map((company) => (
@@ -231,7 +234,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-emerald-800">
-                      {company.Property_mgmt_co ?? <span className="font-normal italic text-slate-400">Unnamed</span>}
+                      {company.Property_mgmt_co ?? <span className="font-normal italic text-slate-400">{t("unnamed")}</span>}
                     </p>
                     {company.Company_abbrev && (
                       <span className="flex-shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-700">
@@ -268,7 +271,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
         {/* Footer count */}
         {!loading && !error && filtered.length > 0 && (
           <p className="text-right text-xs text-slate-400">
-            {filtered.length} of {companies.length} companies
+            {t("modalCount", { filtered: filtered.length, total: companies.length })}
           </p>
         )}
       </DialogContent>
@@ -279,6 +282,7 @@ function ParentCompanySelectorModal({ open, onOpenChange, onSelect }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CreateCommunityPage() {
+  const t = useTranslations("clients")
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
@@ -328,7 +332,7 @@ export default function CreateCommunityPage() {
 
   const handleSubmit = async () => {
     if (!form.Client_Community.trim()) {
-      toast({ title: "Required field", description: "Community name is required.", variant: "destructive" })
+      toast({ title: t("requiredField"), description: t("nameRequired"), variant: "destructive" })
       return
     }
 
@@ -359,12 +363,11 @@ export default function CreateCommunityPage() {
       })
 
       if (!res.ok) throw new Error(await res.text())
-
       const created = await res.json()
-      toast({ title: "Community created", description: `${form.Client_Community} was created successfully.` })
+      toast({ title: t("toastCreated"), description: t("toastCreatedDesc", { name: form.Client_Community }) })
       router.push(`/communities/${created.ID_Client}`)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to create community.", variant: "destructive" })
+      toast({ title: t("error"), description: e?.message ?? t("failedCreateCommunity"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -386,13 +389,13 @@ export default function CreateCommunityPage() {
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
               <Shield className="h-10 w-10" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
+            <h1 className="text-2xl font-black text-slate-900">{t("accessDenied")}</h1>
             <p className="mt-2 max-w-sm text-slate-500">
-              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">client:create</code> permission required to access this resource.
+              {t("accessDeniedDesc")}
             </p>
             <Button onClick={() => router.back()} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Go Back
+              {t("goBack")}
             </Button>
           </main>
         </div>
@@ -422,8 +425,8 @@ export default function CreateCommunityPage() {
                     <Users className="h-4 w-4 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">New Community</h1>
-                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Fill in the details to create a new community</p>
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{t("createTitle")}</h1>
+                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">{t("createSubtitle")}</p>
                   </div>
                 </div>
               </div>
@@ -431,19 +434,19 @@ export default function CreateCommunityPage() {
               <div className="flex flex-shrink-0 items-center gap-2">
                 {/* Podio toggle */}
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-emerald-200 hover:text-emerald-700 sm:gap-2.5 sm:px-3">
-                  <div
-                    className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
-                    onClick={() => setSyncPodio((v) => !v)}
-                  >
-                    <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
-                  </div>
-                  <span className="hidden sm:inline">Sync Podio</span>
-                </label>
+                    <div
+                      className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
+                      onClick={() => setSyncPodio((v) => !v)}
+                    >
+                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                    </div>
+                    <span className="hidden sm:inline">{t("syncPodio")}</span>
+                  </label>
 
                 {/* Cancel — text on desktop, icon-only on mobile */}
                 <Button variant="outline" onClick={() => router.back()} disabled={saving}
                   className="hidden h-9 gap-2 text-sm sm:flex">
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button variant="outline" onClick={() => router.back()} disabled={saving}
                   size="icon" className="h-8 w-8 border-slate-200 sm:hidden">
@@ -454,8 +457,8 @@ export default function CreateCommunityPage() {
                 <Button onClick={handleSubmit} disabled={saving}
                   className="hidden h-9 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex">
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-                    : <><Save className="h-3.5 w-3.5" /> Create Community</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("btnCreate")}</>
                   }
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving} size="icon"
@@ -470,7 +473,7 @@ export default function CreateCommunityPage() {
               <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
                 <div className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-xs font-medium text-emerald-700">
-                  Podio sync enabled — this community will also be created in Podio
+                  {t("syncPodioDesc")}
                 </p>
               </div>
             )}
@@ -480,42 +483,42 @@ export default function CreateCommunityPage() {
           <div className="mx-auto max-w-4xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* ── 1. Community Information ── */}
-            <Section icon={Users} title="Community Information" iconBg="bg-emerald-50" iconColor="text-emerald-600">
+            <Section icon={Users} title={t("infoSection")} iconBg="bg-emerald-50" iconColor="text-emerald-600">
               <div className="grid gap-5">
-                <Field label="Community Name" required>
+                <Field label={t("colName")} required>
                   <Input
                     value={form.Client_Community}
                     onChange={(e) => set("Client_Community", e.target.value)}
-                    placeholder="e.g. Sunset Villas HOA"
+                    placeholder={t("namePlaceholder")}
                     className={inputCls}
                   />
                 </Field>
 
-                <Field label="Address">
+                <Field label={t("colAddress")}>
                   <Textarea
                     value={form.Address}
                     onChange={(e) => set("Address", e.target.value)}
-                    placeholder="Full street address"
+                    placeholder={t("addressPlaceholder")}
                     rows={2}
                     className={textareaCls}
                   />
                 </Field>
 
                 <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Website">
+                  <Field label={t("colWebsite")}>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input
                         value={form.Website}
                         onChange={(e) => set("Website", e.target.value)}
-                        placeholder="https://…"
+                        placeholder={t("websitePlaceholder")}
                         className={`pl-8 ${inputCls}`}
                       />
                     </div>
                   </Field>
 
                   {/* ✅ Parent Company selector */}
-                  <Field label="Parent Company" hint="Optional — link to a parent management company">
+                  <Field label={t("tabCompanies")} hint={t("parentHint")}>
                     {selectedParent ? (
                       // Selected state: show company card with clear button
                       <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
@@ -525,7 +528,7 @@ export default function CreateCommunityPage() {
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-slate-800">
-                            {selectedParent.Property_mgmt_co ?? "Unnamed"}
+                            {selectedParent.Property_mgmt_co ?? t("unnamed")}
                           </p>
                           <p className="font-mono text-[11px] text-slate-500">
                             {selectedParent.ID_Community_Tracking}
@@ -548,7 +551,7 @@ export default function CreateCommunityPage() {
                         className="flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-400 transition-all hover:border-emerald-300 hover:bg-emerald-50/40 hover:text-emerald-600"
                       >
                         <Building2 className="h-4 w-4 flex-shrink-0" />
-                        <span>Click to select a parent company…</span>
+                        <span>{t("parentSelectPlaceholder")}</span>
                       </button>
                     )}
                   </Field>
@@ -557,22 +560,22 @@ export default function CreateCommunityPage() {
             </Section>
 
             {/* ── 2. Contact Information ── */}
-            <Section icon={Mail} title="Contact Information" iconBg="bg-blue-50" iconColor="text-blue-600">
+            <Section icon={Mail} title={t("contactSection")} iconBg="bg-blue-50" iconColor="text-blue-600">
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Email Address">
+                <Field label={t("colEmail")}>
                   <ArrayInputField
                     values={form.Email_Address}
                     icon={Mail}
-                    placeholder="email@example.com"
+                    placeholder={t("emailPlaceholder")}
                     onChange={(v) => set("Email_Address", v)}
                   />
                 </Field>
 
-                <Field label="Phone Number">
+                <Field label={t("colPhone")}>
                   <ArrayInputField
                     values={form.Phone_Number}
                     icon={Phone}
-                    placeholder="(555) 000-0000"
+                    placeholder={t("phonePlaceholder")}
                     onChange={(v) => set("Phone_Number", v)}
                   />
                 </Field>
@@ -580,43 +583,43 @@ export default function CreateCommunityPage() {
             </Section>
 
             {/* ── 3. Status & Compliance ── */}
-            <Section icon={ShieldCheck} title="Status & Compliance" iconBg="bg-violet-50" iconColor="text-violet-600">
+            <Section icon={ShieldCheck} title={t("statusSection")} iconBg="bg-violet-50" iconColor="text-violet-600">
               <div className="grid gap-5 md:grid-cols-3">
                 {/* ✅ Updated status options */}
-                <Field label="Client Status">
+                <Field label={t("colStatus")}>
                   <Select value={form.Client_Status} onValueChange={(v) => set("Client_Status", v)}>
                     <SelectTrigger className={inputCls}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="New Client">New Client</SelectItem>
-                      <SelectItem value="Current Client">Current Client</SelectItem>
-                      <SelectItem value="No Longer a Client">No Longer a Client</SelectItem>
+                      <SelectItem value="New Client">{t("statusNew")}</SelectItem>
+                      <SelectItem value="Current Client">{t("statusCurrent")}</SelectItem>
+                      <SelectItem value="No Longer a Client">{t("statusFormer")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
 
-                <Field label="Compliance Partner">
+                <Field label={t("colCompliance")}>
                   <Select value={form.Compliance_Partner || "none"} onValueChange={(v) => set("Compliance_Partner", v === "none" ? "" : v)}>
                     <SelectTrigger className={inputCls}>
-                      <SelectValue placeholder="Select…" />
+                      <SelectValue placeholder={t("select") + "\u2026"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
+                      <SelectItem value="none">{t("none")}</SelectItem>
+                      <SelectItem value="Yes">{t("yes")}</SelectItem>
+                      <SelectItem value="No">{t("no")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
 
-                <Field label="Risk Value">
+                <Field label={t("colRisk")}>
                   <Select value={form.Risk_Value} onValueChange={(v) => set("Risk_Value", v)}>
                     <SelectTrigger className={inputCls}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {["Low", "Medium", "High"].map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                        <SelectItem key={r} value={r}>{t(`risk${r}`)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -624,23 +627,23 @@ export default function CreateCommunityPage() {
               </div>
 
               <div className="mt-5 grid gap-5 md:grid-cols-2">
-                <Field label="Maintenance Supervisor">
+                <Field label={t("colSupervisor")}>
                   <Input
                     value={form.Maintenance_Sup}
                     onChange={(e) => set("Maintenance_Sup", e.target.value)}
-                    placeholder="Supervisor name"
+                    placeholder={t("supervisorPlaceholder")}
                     className={inputCls}
                   />
                 </Field>
 
-                <Field label="Services Interested In">
+                <Field label={t("colServices")}>
                   <Select value={form.Services_interested_in} onValueChange={(v) => set("Services_interested_in", v)}>
                     <SelectTrigger className={inputCls}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {["Rehabs", "Work Orders", "Paint", "Plumbing", "HVAC", "General"].map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(`service${s.replace(" ", "")}`)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -649,32 +652,32 @@ export default function CreateCommunityPage() {
             </Section>
 
             {/* ── 4. Billing & Collections ── */}
-            <Section icon={CreditCard} title="Billing & Collections" iconBg="bg-amber-50" iconColor="text-amber-600">
+            <Section icon={CreditCard} title={t("billingSection")} iconBg="bg-amber-50" iconColor="text-amber-600">
               <div className="grid gap-5">
-                <Field label="Payment Collection">
+                <Field label={t("colPayment")}>
                   <Input
                     value={form.Payment_Collection}
                     onChange={(e) => set("Payment_Collection", e.target.value)}
-                    placeholder="e.g. Net 30, Check, ACH…"
+                    placeholder={t("paymentPlaceholder")}
                     className={inputCls}
                   />
                 </Field>
 
-                <Field label="Invoice Collection">
+                <Field label={t("colInvoice")}>
                   <Textarea
                     value={form.Invoice_Collection}
                     onChange={(e) => set("Invoice_Collection", e.target.value)}
-                    placeholder="Describe invoice submission process…"
+                    placeholder={t("invoicePlaceholder")}
                     rows={2}
                     className={textareaCls}
                   />
                 </Field>
 
-                <Field label="Collection Process">
+                <Field label={t("colProcess")}>
                   <Textarea
                     value={form.Collection_Process}
                     onChange={(e) => set("Collection_Process", e.target.value)}
-                    placeholder="Describe collection follow-up process…"
+                    placeholder={t("processPlaceholder")}
                     rows={2}
                     className={textareaCls}
                   />
@@ -683,12 +686,12 @@ export default function CreateCommunityPage() {
             </Section>
 
             {/* ── 5. Notes ── */}
-            <Section icon={FileText} title="Additional Notes" iconBg="bg-slate-100" iconColor="text-slate-500">
-              <Field label="Notes">
+            <Section icon={FileText} title={t("notesSection")} iconBg="bg-slate-100" iconColor="text-slate-500">
+              <Field label={t("colNotes")}>
                 <Textarea
                   value={form.Text}
                   onChange={(e) => set("Text", e.target.value)}
-                  placeholder="Any additional notes or context about this community…"
+                  placeholder={t("notesPlaceholder")}
                   rows={3}
                   className={textareaCls}
                 />
@@ -698,11 +701,11 @@ export default function CreateCommunityPage() {
             {/* ── Bottom action bar ── */}
             <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p className="text-sm text-slate-500">
-                Fields marked with <span className="text-red-500">*</span> are required
+                {t("requiredFields")}
               </p>
               <div className="flex items-center gap-2.5">
                 <Button variant="outline" onClick={() => router.back()} disabled={saving} className="h-9 flex-1 text-sm sm:flex-none">
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -710,8 +713,8 @@ export default function CreateCommunityPage() {
                   className="h-9 flex-1 gap-2 bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex-none"
                 >
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</>
-                    : <><Save className="h-3.5 w-3.5" /> Create Community</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("btnCreate")}</>
                   }
                 </Button>
               </div>

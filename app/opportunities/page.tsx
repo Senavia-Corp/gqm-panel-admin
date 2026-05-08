@@ -86,7 +86,9 @@ function OpportunitiesTable({
 }: {
   rows: OpportunityRow[]
   onDelete: (row: OpportunityRow) => void
+  userRole?: string
 }) {
+  const isTech = userRole === "LEAD_TECHNICIAN"
   if (rows.length === 0) {
     return (
       <div className="flex flex-col h-48 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white">
@@ -133,10 +135,12 @@ function OpportunitiesTable({
                     <span className="rounded-full bg-violet-100 px-1.5 text-[11px] font-bold text-violet-700">{row.skills?.length ?? 0}</span>
                     skills
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">{row.subcontractors?.length ?? 0}</span>
-                    applicants
-                  </span>
+                  {!isTech && (
+                    <span className="flex items-center gap-1">
+                      <span className="rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">{row.subcontractors?.length ?? 0}</span>
+                      applicants
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-shrink-0 gap-1">
@@ -145,10 +149,12 @@ function OpportunitiesTable({
                     <Eye className="h-3.5 w-3.5" />
                   </button>
                 </Link>
-                <button onClick={() => onDelete(row)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {!isTech && (
+                  <button onClick={() => onDelete(row)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -161,8 +167,8 @@ function OpportunitiesTable({
           <table className="w-full min-w-[780px] border-collapse">
             <thead className="border-b border-slate-100 bg-slate-50/80">
               <tr>
-                {["ID", "Project", "Job", "Priority", "State", "Start Date", "Skills", "Applicants", ""].map((h) => (
-                  <th key={h} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
+                {["ID", "Project", "Job", "Priority", "State", "Start Date", "Skills", !isTech && "Applicants", ""].filter(Boolean).map((h) => (
+                  <th key={String(h)} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
                     {h}
                   </th>
                 ))}
@@ -212,11 +218,13 @@ function OpportunitiesTable({
                       {row.skills?.length ?? 0}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
-                      {row.subcontractors?.length ?? 0}
-                    </span>
-                  </td>
+                  {!isTech && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
+                        {row.subcontractors?.length ?? 0}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
                       <Link href={`/opportunities/${row.ID_Opportunities}`}>
@@ -224,10 +232,12 @@ function OpportunitiesTable({
                           <Eye className="h-3.5 w-3.5" />
                         </button>
                       </Link>
-                      <button onClick={() => onDelete(row)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {!isTech && (
+                        <button onClick={() => onDelete(row)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -372,14 +382,16 @@ export default function OpportunitiesPage() {
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => router.push("/opportunities/create")}
-                  className="ml-3 flex-shrink-0 gap-1.5 bg-violet-600 hover:bg-violet-700 text-sm text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="sm:hidden">New</span>
-                  <span className="hidden sm:inline">New Opportunity</span>
-                </Button>
+                {user?.role !== "LEAD_TECHNICIAN" && (
+                  <Button
+                    onClick={() => router.push("/opportunities/create")}
+                    className="ml-3 flex-shrink-0 gap-1.5 bg-violet-600 hover:bg-violet-700 text-sm text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">New</span>
+                    <span className="hidden sm:inline">New Opportunity</span>
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
@@ -417,7 +429,11 @@ export default function OpportunitiesPage() {
                 </Button>
               </div>
             ) : (
-              <OpportunitiesTable rows={rows} onDelete={(row) => { setDeleteTarget(row); setDeleteOpen(true) }} />
+              <OpportunitiesTable
+                rows={rows}
+                onDelete={(row) => { setDeleteTarget(row); setDeleteOpen(true) }}
+                userRole={user?.role}
+              />
             )}
 
             {/* Pagination */}

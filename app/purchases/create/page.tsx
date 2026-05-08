@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import {
   ArrowLeft, CheckCircle2, Plus, Trash2, Loader2, X,
   ShoppingCart, ClipboardList, Tag, Link2, Search,
-  User, Briefcase, ChevronLeft, ChevronRight, AlertCircle,
+  User, Briefcase, ChevronLeft, ChevronRight, AlertCircle, Zap,
 } from "lucide-react"
 import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
 import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
@@ -577,6 +577,7 @@ export default function CreatePurchasePage() {
   // Step 1 state
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null)
   const [description, setDescription] = useState("")
+  const [isExtra, setIsExtra] = useState(false)
 
   // Step 2 state
   const [orderTitle, setOrderTitle] = useState("")
@@ -689,6 +690,7 @@ export default function CreatePurchasePage() {
         Description: description.trim(),
         Status: "Pending",
         ID_Member: selectedMember.ID_Member,
+        Is_extra: isExtra,
       }
       const data = await postJson<{ ID_Purchase?: string }>(API.purchases, payload)
       const id = data?.ID_Purchase
@@ -932,6 +934,33 @@ export default function CreatePurchasePage() {
                             placeholder="e.g. Tile 12x8 for main bathroom"
                             className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
                           />
+                        </div>
+
+                        {/* Extra / Unplanned Purchase toggle */}
+                        <div
+                          onClick={() => setIsExtra(v => !v)}
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
+                            isExtra
+                              ? "border-orange-200 bg-orange-50"
+                              : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100/60"
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${isExtra ? "bg-orange-500" : "bg-slate-300"}`}>
+                            <div className={`h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${isExtra ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <Zap className={`h-3.5 w-3.5 flex-shrink-0 ${isExtra ? "text-orange-500" : "text-slate-400"}`} />
+                              <p className={`text-xs font-semibold ${isExtra ? "text-orange-700" : "text-slate-600"}`}>
+                                Extra / Unplanned Purchase
+                              </p>
+                            </div>
+                            <p className={`mt-0.5 text-[11px] ${isExtra ? "text-orange-600" : "text-slate-400"}`}>
+                              {isExtra
+                                ? "Items will NOT be added to the job estimate. Spending will still be counted when completed."
+                                : "Mark this if the purchase was not in the original estimate (e.g. a last-minute or unforeseen need)."}
+                            </p>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-end pt-1">

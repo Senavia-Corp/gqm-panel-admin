@@ -102,6 +102,7 @@ interface SubcontractorDetailsProps {
   jobSubcontractors?: Subcontractor[]
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
+  role: string
 }
 
 function normalizeOrg(raw: any): string {
@@ -149,8 +150,10 @@ export function SubcontractorDetails({
   jobSubcontractors,
   defaultSyncPodio,
   jobYearForPodioSync,
+  role,
 }: SubcontractorDetailsProps) {
   const t = useTranslations("subcontractors")
+  const isTech = role === "LEAD_TECHNICIAN"
   const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [activeSubTab, setActiveSubTab] = useState("orders")
@@ -425,18 +428,22 @@ export function SubcontractorDetails({
                       </div>
                       
                       <div className="flex items-center gap-1.5 transition-opacity">
-                        <Button 
-                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                          onClick={() => { setTargetOrderForEdit(order); setEditOrderOpen(true); }}
-                        ><Pencil className="h-3.5 w-3.5" /></Button>
+                        {!isTech && (
+                          <Button 
+                            variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                            onClick={() => { setTargetOrderForEdit(order); setEditOrderOpen(true); }}
+                          ><Pencil className="h-3.5 w-3.5" /></Button>
+                        )}
                         <Button 
                           variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
                           onClick={() => setSelectedOrder(order)}
                         ><Eye className="h-3.5 w-3.5" /></Button>
-                        <Button 
-                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
-                          onClick={() => { setTargetOrderForDelete(order); setDeleteOrderOpen(true); }}
-                        ><Trash2 className="h-3.5 w-3.5" /></Button>
+                        {!isTech && (
+                          <Button 
+                            variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
+                            onClick={() => { setTargetOrderForDelete(order); setDeleteOrderOpen(true); }}
+                          ><Trash2 className="h-3.5 w-3.5" /></Button>
+                        )}
                       </div>
                     </div>
 
@@ -508,9 +515,11 @@ export function SubcontractorDetails({
                                 </div>
                                 <div className="flex items-center gap-3 flex-shrink-0">
                                   <span className="text-xs font-black text-slate-700 tabular-nums">${Number(co.ChangeOrderFormula || 0).toFixed(2)}</span>
-                                  <div className="flex gap-1 transition-opacity">
-                                    <button onClick={() => { setTargetOrderForCh(order); setTargetChangeOrder(co); setEditChOpen(true); }} className="text-slate-300 hover:text-amber-600 p-0.5"><Pencil className="h-3 w-3" /></button>
-                                  </div>
+                                  {!isTech && (
+                                    <div className="flex gap-1 transition-opacity">
+                                      <button onClick={() => { setTargetOrderForCh(order); setTargetChangeOrder(co); setEditChOpen(true); }} className="text-slate-300 hover:text-amber-600 p-0.5"><Pencil className="h-3 w-3" /></button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -535,7 +544,7 @@ export function SubcontractorDetails({
         </div>
       </div>
 
-      <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} />
+      <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} role={role} />
       <DeleteOrderDialog open={deleteOrderOpen} onOpenChange={(v) => { setDeleteOrderOpen(v); if (!v) setTargetOrderForDelete(null); }} order={targetOrderForDelete} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onDeleted={fetchOrdersForJobAndSub} jobPodioId={jobPodioId} subcontractorId={subcontractor?.ID_Subcontractor ?? ""} />
       <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={jobSubcontractors ?? [subcontractor]} bills={bills} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
       
@@ -546,6 +555,7 @@ export function SubcontractorDetails({
           onOpenChange={(v) => { setCreateChOpen(v); if (!v) setTargetOrderForCh(null); }}
           jobId={String(jobId)} jobPodioId={jobPodioId} orderId={String(targetOrderForCh.ID_Order)} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync}
           onCreated={fetchOrdersForJobAndSub}
+          role={role}
         />
       )}
       {targetOrderForCh?.ID_Order && targetChangeOrder?.ID_ChangeOrder && (

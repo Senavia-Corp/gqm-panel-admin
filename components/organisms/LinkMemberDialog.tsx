@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   UserCheck,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 
 type MemberRow = {
@@ -84,10 +85,12 @@ function MemberTableRow({
   member,
   isSelected,
   onSelect,
+  t,
 }: {
   member: MemberRow
   isSelected: boolean
   onSelect: () => void
+  t: (key: string, params?: any) => string
 }) {
   const name = member.Member_Name ?? "—"
   const bg   = avatarBg(String(member.Member_Name ?? member.ID_Member))
@@ -121,11 +124,11 @@ function MemberTableRow({
         {isSelected ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Selected
+            {t("selected")}
           </span>
         ) : (
           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
-            Select
+            {t("select")}
           </span>
         )}
       </td>
@@ -138,10 +141,12 @@ function MemberListItem({
   member,
   isSelected,
   onSelect,
+  t,
 }: {
   member: MemberRow
   isSelected: boolean
   onSelect: () => void
+  t: (key: string, params?: any) => string
 }) {
   const name = member.Member_Name ?? "—"
   const bg   = avatarBg(String(member.Member_Name ?? member.ID_Member))
@@ -167,11 +172,11 @@ function MemberListItem({
         {isSelected ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
             <CheckCircle2 className="h-3 w-3" />
-            Selected
+            {t("selected")}
           </span>
         ) : (
           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-500">
-            Select
+            {t("select")}
           </span>
         )}
       </div>
@@ -188,6 +193,7 @@ export function LinkMemberDialog({
   jobYear,
   onMemberLinked,
 }: Props) {
+  const t = useTranslations("jobMembers")
   const { toast } = useToast()
 
   const [syncPodio, setSyncPodio]               = React.useState<boolean>(defaultSyncPodio)
@@ -228,7 +234,7 @@ export function LinkMemberDialog({
       setData(json)
     } catch (err) {
       console.error("[LinkMemberDialog] fetchMembers error:", err)
-      toast({ title: "Error", description: "Failed to load members list.", variant: "destructive" })
+      toast({ title: "Error", description: t("errorFetch"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -265,16 +271,16 @@ export function LinkMemberDialog({
 
   const handleLink = async () => {
     if (!selectedMemberId) {
-      toast({ title: "No member selected", description: "Please select a member to link.", variant: "destructive" })
+      toast({ title: t("noMemberSelected"), description: t("selectMemberToLink"), variant: "destructive" })
       return
     }
     // FIX: validar que rol no sea vacío (es parte de la PK en job_member)
     if (!selectedRole) {
-      toast({ title: "Role required", description: "Please select a project role.", variant: "destructive" })
+      toast({ title: t("roleRequired"), description: t("selectProjectRole"), variant: "destructive" })
       return
     }
     if (syncPodio && !jobYear) {
-      toast({ title: "Missing job year", description: "Year is required when Sync Podio is enabled.", variant: "destructive" })
+      toast({ title: t("missingJobYear"), description: t("yearRequired"), variant: "destructive" })
       return
     }
 
@@ -299,14 +305,17 @@ export function LinkMemberDialog({
       if (!res.ok) throw new Error(payload?.error || payload?.detail || "Failed to link member")
 
       toast({
-        title: "Member linked",
-        description: `${selectedMember?.Member_Name ?? selectedMemberId} added as ${selectedRole}.`,
+        title: t("memberLinked"),
+        description: t("memberLinkedDesc", {
+          name: selectedMember?.Member_Name ?? selectedMemberId,
+          role: selectedRole
+        }),
       })
       await onMemberLinked?.()
       onClose()
     } catch (err) {
       console.error("[LinkMemberDialog] link error:", err)
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to link member.", variant: "destructive" })
+      toast({ title: "Error", description: err instanceof Error ? err.message : t("linking"), variant: "destructive" })
     } finally {
       setLinking(false)
     }
@@ -323,9 +332,9 @@ export function LinkMemberDialog({
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-sm sm:text-base font-semibold text-slate-900">Link Member to Job</DialogTitle>
+              <DialogTitle className="text-sm sm:text-base font-semibold text-slate-900">{t("linkTitle")}</DialogTitle>
               <p className="mt-0.5 text-xs text-slate-500 hidden sm:block">
-                Select a team member and assign their project role.
+                {t("linkSubtitle")}
               </p>
             </div>
           </div>
@@ -368,7 +377,7 @@ export function LinkMemberDialog({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, role, email…"
+                placeholder={t("searchPlaceholder")}
                 className="pl-9 text-sm"
               />
               {loading && (
@@ -381,7 +390,7 @@ export function LinkMemberDialog({
               <Select value={selectedRole} onValueChange={setSelectedRole}>
                 <SelectTrigger className="flex-1 sm:w-[180px] sm:flex-initial text-sm">
                   <UserCheck className="mr-1.5 h-3.5 w-3.5 text-slate-400" />
-                  <SelectValue placeholder="Project role" />
+                  <SelectValue placeholder={t("projectRole")} />
                 </SelectTrigger>
                 <SelectContent>
                   {ROLE_OPTIONS.map((r) => (
@@ -420,11 +429,11 @@ export function LinkMemberDialog({
               {loading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-slate-400">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-500" />
-                  <span className="text-sm">Loading members…</span>
+                  <span className="text-sm">{t("loadingMembers")}</span>
                 </div>
               ) : data.results.length === 0 ? (
                 <p className="py-10 text-center text-sm text-slate-400">
-                  {search ? `No results for "${debouncedSearch}"` : "No members found"}
+                  {search ? t("noResultsFor", { query: debouncedSearch }) : t("noMembersFound")}
                 </p>
               ) : (
                 data.results.map((m) => (
@@ -433,6 +442,7 @@ export function LinkMemberDialog({
                     member={m}
                     isSelected={selectedMemberId === m.ID_Member}
                     onSelect={() => handleSelect(m)}
+                    t={t}
                   />
                 ))
               )}
@@ -440,11 +450,11 @@ export function LinkMemberDialog({
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-3 py-2">
               <span className="text-xs text-slate-400">
                 {debouncedSearch
-                  ? `${data.total} result${data.total !== 1 ? "s" : ""}`
-                  : `${data.total} members`}
+                  ? t("resultsCount", { count: data.total })
+                  : t("totalMembers", { count: data.total })}
               </span>
               {selectedMemberId && !data.results.find((m) => m.ID_Member === selectedMemberId) && (
-                <span className="text-xs text-emerald-600 font-medium">✓ Selected (other page)</span>
+                <span className="text-xs text-emerald-600 font-medium">✓ {t("selectedOtherPage")}</span>
               )}
             </div>
           </div>
@@ -455,10 +465,10 @@ export function LinkMemberDialog({
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-50">
                   <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    <th className="p-3">Member</th>
-                    <th className="p-3">Company Role</th>
-                    <th className="p-3">Email</th>
-                    <th className="p-3">Phone</th>
+                    <th className="p-3">{t("colMember")}</th>
+                    <th className="p-3">{t("colCompanyRole")}</th>
+                    <th className="p-3">{t("colEmail")}</th>
+                    <th className="p-3">{t("colPhone")}</th>
                     <th className="p-3 w-[120px] text-right"></th>
                   </tr>
                 </thead>
@@ -468,14 +478,14 @@ export function LinkMemberDialog({
                       <td colSpan={5} className="py-12 text-center">
                         <div className="flex items-center justify-center gap-2 text-slate-400">
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-500" />
-                          <span className="text-sm">Loading members…</span>
+                          <span className="text-sm">{t("loadingMembers")}</span>
                         </div>
                       </td>
                     </tr>
                   ) : data.results.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-12 text-center text-sm text-slate-400">
-                        {search ? `No results for "${debouncedSearch}"` : "No members found"}
+                        {search ? t("noResultsFor", { query: debouncedSearch }) : t("noMembersFound")}
                       </td>
                     </tr>
                   ) : (
@@ -485,6 +495,7 @@ export function LinkMemberDialog({
                         member={m}
                         isSelected={selectedMemberId === m.ID_Member}
                         onSelect={() => handleSelect(m)}
+                        t={t}
                       />
                     ))
                   )}
@@ -494,12 +505,12 @@ export function LinkMemberDialog({
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2">
               <span className="text-xs text-slate-400">
                 {debouncedSearch
-                  ? `${data.total} result${data.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
-                  : `${data.total} total members`}
+                  ? t("resultsCount", { count: data.total })
+                  : t("totalMembers", { count: data.total })}
               </span>
               {selectedMemberId && !data.results.find((m) => m.ID_Member === selectedMemberId) && (
                 <span className="text-xs text-emerald-600 font-medium">
-                  ✓ Member selected (on another page)
+                  ✓ {t("selectedOtherPage")}
                 </span>
               )}
             </div>
@@ -516,7 +527,7 @@ export function LinkMemberDialog({
                   {selectedMember.Member_Name ?? selectedMember.ID_Member}
                 </p>
                 <p className="text-xs text-emerald-600">
-                  Will be linked as <strong>{selectedRole}</strong>
+                  {t("willBeLinkedAs")} <strong>{selectedRole}</strong>
                 </p>
               </div>
               <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-emerald-500" />
@@ -528,7 +539,7 @@ export function LinkMemberDialog({
         {/* ── Footer ─ fixed ────────────────────────────────────────────── */}
         <div className="flex-shrink-0 flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:px-6">
           <Button variant="outline" onClick={onClose} disabled={linking}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={handleLink}
@@ -538,12 +549,12 @@ export function LinkMemberDialog({
             {linking ? (
               <>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Linking…
+                {t("linking")}
               </>
             ) : (
               <>
                 <Link2 className="mr-1.5 h-4 w-4" />
-                Link Member
+                {t("linkMember")}
               </>
             )}
           </Button>

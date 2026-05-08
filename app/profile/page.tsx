@@ -20,10 +20,12 @@ import { ProfilePipelineJobs } from "./components/ProfilePipelineJobs"
 import { ProfileWeeklyTasks } from "./components/ProfileWeeklyTasks"
 import { ProfileCommunities } from "./components/ProfileCommunities"
 import { ProfileCommissions } from "./components/ProfileCommissions"
+import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface MemberProfile {
   ID_Member: string
+  ID_Subcontractor?: string | null
   Member_Name: string | null
   Company_Role: string | null
   Email_Address: string
@@ -179,21 +181,39 @@ export default function ProfilePage() {
   // ── Fetch profile from API ────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
-    const memberId = localStorage.getItem("user_id") ?? user?.user_id ?? user?.id ?? user?.ID_Member
+    const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+    const isTech = userRole === "LEAD_TECHNICIAN"
+    const memberId = localStorage.getItem("user_id") ?? user?.id ?? user?.user_id ?? user?.ID_Member ?? user?.ID_Technician
     if (!memberId) { setIsLoading(false); return }
 
     void (async () => {
       try {
-        const res = await apiFetch(`/api/members/${memberId}`)
+        const endpoint = isTech ? `/api/technician/${memberId}` : `/api/members/${memberId}`
+        const res = await apiFetch(endpoint)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data: MemberProfile = await res.json()
-        setProfile(data)
+        const data: any = await res.json()
+        
+        const mappedProfile: MemberProfile = isTech 
+            ? {
+                ID_Member: data.ID_Technician,
+                ID_Subcontractor: data.subcontractor?.ID_Subcontractor ?? data.ID_Subcontractor,
+                Member_Name: data.Name,
+                Company_Role: data.Type_of_technician,
+                Email_Address: data.Email_Address,
+                Phone_Number: data.Phone_Number || null,
+                Address: data.Location || null,
+                podio_profile_id: null,
+                podio_item_id: null,
+              }
+          : data
+
+        setProfile(mappedProfile)
         setEditValues({
-          Member_Name: data.Member_Name ?? "",
-          Company_Role: data.Company_Role ?? "",
-          Email_Address: data.Email_Address ?? "",
-          Phone_Number: data.Phone_Number ?? "",
-          Address: data.Address ?? "",
+          Member_Name: mappedProfile.Member_Name ?? "",
+          Company_Role: mappedProfile.Company_Role ?? "",
+          Email_Address: mappedProfile.Email_Address ?? "",
+          Phone_Number: mappedProfile.Phone_Number ?? "",
+          Address: mappedProfile.Address ?? "",
           currentPassword: "",
           newPassword: "",
           confirmPassword: "",
@@ -212,18 +232,33 @@ export default function ProfilePage() {
 
   // ── Save info ─────────────────────────────────────────────────────────────
   const handleSaveInfo = async () => {
-    if (!profile) return
+    if (!profile || !user) return
     setIsSaving(true)
     try {
-      const payload: Record<string, string> = {
-        Member_Name: editValues.Member_Name,
-        Company_Role: editValues.Company_Role,
-        Email_Address: editValues.Email_Address,
-        Phone_Number: editValues.Phone_Number,
-        Address: editValues.Address,
-      }
+      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+      const isTech = userRole === "LEAD_TECHNICIAN"
 
-      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
+      const payload: Record<string, string> = isTech
+        ? {
+            Name: editValues.Member_Name,
+            Type_of_technician: editValues.Company_Role,
+            Email_Address: editValues.Email_Address,
+            Phone_Number: editValues.Phone_Number,
+            Location: editValues.Address,
+          }
+        : {
+            Member_Name: editValues.Member_Name,
+            Company_Role: editValues.Company_Role,
+            Email_Address: editValues.Email_Address,
+            Phone_Number: editValues.Phone_Number,
+            Address: editValues.Address,
+          }
+
+      const endpoint = isTech 
+        ? `/api/technician/${profile.ID_Member}` 
+        : `/api/members/${profile.ID_Member}`
+
+      const res = await apiFetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -245,7 +280,7 @@ export default function ProfilePage() {
 
   // ── Save password ─────────────────────────────────────────────────────────
   const handleSavePassword = async () => {
-    if (!profile) return
+    if (!profile || !user) return
     if (editValues.newPassword !== editValues.confirmPassword) {
       toast({ title: "Passwords don't match", description: "New password and confirmation must be identical.", variant: "destructive" })
       return
@@ -256,7 +291,14 @@ export default function ProfilePage() {
     }
     setIsSaving(true)
     try {
-      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
+      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+      const isTech = userRole === "LEAD_TECHNICIAN"
+
+      const endpoint = isTech 
+        ? `/api/technician/${profile.ID_Member}` 
+        : `/api/members/${profile.ID_Member}`
+
+      const res = await apiFetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Password: editValues.newPassword }),
@@ -294,6 +336,9 @@ export default function ProfilePage() {
 
   if (!user) return null
 
+  const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+  const isTech = userRole === "LEAD_TECHNICIAN"
+
   return (
     <div className="flex h-screen bg-slate-50/80">
       <Sidebar />
@@ -321,7 +366,7 @@ export default function ProfilePage() {
                   <AvatarInitials name={profile?.Member_Name ?? null} />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
-                      Member Profile
+                      {isTech ? "Technician Profile" : "Member Profile"}
                     </p>
                     <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
                       {profile?.Member_Name ?? "—"}
@@ -336,13 +381,13 @@ export default function ProfilePage() {
                 {/* Stat pills */}
                 <div className="flex flex-wrap gap-2">
                   <StatPill
-                    label="Member ID"
+                    label={isTech ? "Technician ID" : "Member ID"}
                     value={profile?.ID_Member ?? "—"}
                     color="bg-white/5 text-white"
                   />
                   <StatPill
                     label="Role"
-                    value={profile?.role?.Role_Name ?? "Member"}
+                    value={isTech ? "Leader" : (profile?.role?.Role_Name ?? "Member")}
                     color="bg-emerald-500/20 text-emerald-300"
                   />
                 </div>
@@ -361,7 +406,7 @@ export default function ProfilePage() {
               </div>
             ) : profile && (
               <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-6 grid w-full grid-cols-3 sm:grid-cols-5 h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm">
+                <TabsList className={`mb-6 grid w-full h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm ${isTech ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3 sm:grid-cols-5"}`}>
                   <TabsTrigger value="personal" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                     <span className="sm:hidden">Personal</span>
                     <span className="hidden sm:inline">Personal Info</span>
@@ -374,8 +419,18 @@ export default function ProfilePage() {
                     <span className="sm:hidden">Tasks</span>
                     <span className="hidden sm:inline">Weekly Tasks</span>
                   </TabsTrigger>
-                  <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
-                  <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
+                  {isTech && (
+                    <TabsTrigger value="opportunities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                      <span className="sm:hidden">Opps</span>
+                      <span className="hidden sm:inline">Applied Opportunities</span>
+                    </TabsTrigger>
+                  )}
+                  {!isTech && (
+                    <>
+                      <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
+                      <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
+                    </>
+                  )}
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-6 mt-0">
@@ -537,7 +592,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                     {[
-                      { label: "Member ID", value: profile?.ID_Member, icon: IdCard },
+                      { label: isTech ? "Technician ID" : "Member ID", value: profile?.ID_Member, icon: IdCard },
                       { label: "Podio Profile ID", value: profile?.podio_profile_id, icon: Building2 },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
@@ -555,20 +610,42 @@ export default function ProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="jobs" className="mt-0">
-                  <ProfilePipelineJobs memberId={profile.ID_Member} />
+                  <ProfilePipelineJobs 
+                    memberId={profile.ID_Member} 
+                    subcontractorId={profile.ID_Subcontractor}
+                    isTechnician={isTech} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="tasks" className="mt-0">
-                  <ProfileWeeklyTasks memberId={profile.ID_Member} />
+                  <ProfileWeeklyTasks 
+                    memberId={profile.ID_Member} 
+                    subcontractorId={profile.ID_Subcontractor}
+                    isTechnician={isTech} 
+                  />
                 </TabsContent>
 
-                <TabsContent value="communities" className="mt-0">
-                  <ProfileCommunities memberId={profile.ID_Member} />
-                </TabsContent>
+                {isTech && (
+                  <TabsContent value="opportunities" className="mt-0">
+                    <OpportunitiesPanel 
+                      subcontractorId={profile.ID_Subcontractor} 
+                      isTechnician={true} 
+                      onlyApplied={true}
+                    />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="commissions" className="mt-0">
-                  <ProfileCommissions memberId={profile.ID_Member} />
-                </TabsContent>
+                {!isTech && (
+                  <>
+                    <TabsContent value="communities" className="mt-0">
+                      <ProfileCommunities memberId={profile.ID_Member} />
+                    </TabsContent>
+
+                    <TabsContent value="commissions" className="mt-0">
+                      <ProfileCommissions memberId={profile.ID_Member} />
+                    </TabsContent>
+                  </>
+                )}
               </Tabs>
             )}
           </div>

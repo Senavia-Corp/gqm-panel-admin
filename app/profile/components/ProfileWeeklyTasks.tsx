@@ -5,18 +5,25 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, CheckSquare, Calendar, ChevronRight, AlertCircle, Clock } from "lucide-react"
 
-export function ProfileWeeklyTasks({ memberId }: { memberId: string }) {
+export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!memberId) return
+    // Para técnicos necesitamos el subcontractorId, para miembros el memberId
+    const targetId = isTechnician ? subcontractorId : memberId
+    if (!targetId) {
+      if (isTechnician) setError("No subcontractor associated with this technician profile.")
+      setLoading(false)
+      return
+    }
 
     const fetchTasks = async () => {
       try {
         setLoading(true)
-        const res = await apiFetch(`/api/tasks/weekly?member_id=${memberId}`)
+        const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
+        const res = await apiFetch(`/api/tasks/weekly?${idParam}`)
         if (!res.ok) throw new Error("Failed to fetch weekly tasks")
         const data = await res.json()
         setTasks(data || [])
@@ -28,7 +35,7 @@ export function ProfileWeeklyTasks({ memberId }: { memberId: string }) {
     }
 
     fetchTasks()
-  }, [memberId])
+  }, [memberId, subcontractorId, isTechnician])
 
   if (loading) {
     return (

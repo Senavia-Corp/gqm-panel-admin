@@ -8,10 +8,12 @@ interface OrderDetailsDialogProps {
   order: any
   open: boolean
   onOpenChange: (open: boolean) => void
+  role: string
 }
 
-export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDialogProps) {
+export function OrderDetailsDialog({ order, open, onOpenChange, role }: OrderDetailsDialogProps) {
   const t = useTranslations("jobs")
+  const isTech = role === "LEAD_TECHNICIAN"
   if (!order) return null
 
   const items = order.Items ?? []
@@ -54,7 +56,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                   <div className="text-2xl font-black text-violet-700 tabular-nums sm:text-3xl">
                     ${Number(order.Formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-xs text-violet-400 font-medium mt-1">{t("orderDetailsFormulaSub")}</p>
+                  <p className="text-xs text-violet-400 font-medium mt-1">{isTech ? "Sum of final costs" : t("orderDetailsFormulaSub")}</p>
                 </div>
               </div>
 
@@ -87,8 +89,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                           <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColCategory")}</th>
                           <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColQty")}</th>
                           <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColUnitCost")}</th>
-                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColBuilderCost")}</th>
-                          <th className="px-6 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColClientPrice")}</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{isTech ? "Final Cost" : t("orderDetailsColBuilderCost")}</th>
+                          {!isTech && <th className="px-6 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColClientPrice")}</th>}
                         </tr>
                       </thead>
 
@@ -105,9 +107,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                             <td className="px-4 py-4 text-right font-bold text-violet-600 tabular-nums whitespace-nowrap">
                               ${Number(item.Builder_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums whitespace-nowrap">
-                              ${Number(item.Client_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            </td>
+                            {!isTech && (
+                              <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                                ${Number(item.Client_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -120,9 +124,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                           <td className="px-4 py-5 text-right font-black text-violet-700 text-lg tabular-nums whitespace-nowrap">
                             ${totalBuilder.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-6 py-5 text-right font-black text-emerald-700 text-lg tabular-nums whitespace-nowrap">
-                            ${totalClient.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                          </td>
+                          {!isTech && (
+                            <td className="px-6 py-5 text-right font-black text-emerald-700 text-lg tabular-nums whitespace-nowrap">
+                              ${totalClient.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </td>
+                          )}
                         </tr>
                       </tfoot>
                     </table>

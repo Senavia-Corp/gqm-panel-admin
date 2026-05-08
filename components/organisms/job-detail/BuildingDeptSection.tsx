@@ -20,6 +20,7 @@ interface Props {
   isReadOnly: boolean
   patch: (updates: Record<string, any>, opts?: { sync_podio?: boolean }) => Promise<void>
   isSaving: boolean
+  role?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -276,8 +277,9 @@ function LinkBldgDeptModal({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props) {
+export function BuildingDeptSection({ job, isReadOnly, patch, isSaving, role }: Props) {
   const t = useTranslations("jobs")
+  const isTech = role === "LEAD_TECHNICIAN"
   const dept = job?.building_dept ?? null
   const linkedId: string | null = job?.ID_BldgDept ?? dept?.ID_BldgDept ?? null
 
@@ -323,16 +325,18 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
-            <Link href={`/building-departments/${dept.ID_BldgDept}`} target="_blank">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
-              >
-                <ArrowUpRight className="h-3.5 w-3.5" />
-                {t("bldgViewDept")}
-              </Button>
-            </Link>
+            {!isTech && (
+              <Link href={`/building-departments/${dept.ID_BldgDept}`} target="_blank">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  {t("bldgViewDept")}
+                </Button>
+              </Link>
+            )}
             {dept.Link && (
               <a href={dept.Link} target="_blank" rel="noopener noreferrer">
                 <Button
@@ -395,7 +399,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
                   )}
                 </a>
               )}
-              {phones.length > 0 && (
+              {phones.length > 0 && !isTech && (
                 <span className="flex items-center gap-1.5 text-xs text-slate-600">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
                   {phones[0]}
@@ -407,7 +411,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
             </div>
           )}
 
-          {dept.Portal_Log_In && (
+          {dept.Portal_Log_In && !isTech && (
             <p className="text-xs text-slate-500">
               <span className="font-medium text-slate-600">{t("bldgLogin")}</span>{" "}
               {dept.Portal_Log_In}
@@ -436,16 +440,18 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
               </p>
             </div>
           </div>
-          <Link href={`/building-departments/${linkedId}`} target="_blank">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" />
-              {t("bldgViewDept")}
-            </Button>
-          </Link>
+          {!isTech && (
+            <Link href={`/building-departments/${linkedId}`} target="_blank">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                {t("bldgViewDept")}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     )

@@ -196,11 +196,13 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                   <Eye className="h-3.5 w-3.5" /> {t("viewDetails")}
                 </Button>
               </Link>
-              <Button variant="ghost" size="sm"
-                className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
-                onClick={() => onDelete?.(s)}>
-                <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
-              </Button>
+              {onDelete && (
+                <Button variant="ghost" size="sm"
+                  className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
+                  onClick={() => onDelete?.(s)}>
+                  <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -296,12 +298,14 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="icon"
-                    className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
-                    onClick={() => onDelete?.(s)}
-                    title={t("delete")}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {onDelete && (
+                    <Button variant="ghost" size="icon"
+                      className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
+                      onClick={() => onDelete?.(s)}
+                      title={t("delete")}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

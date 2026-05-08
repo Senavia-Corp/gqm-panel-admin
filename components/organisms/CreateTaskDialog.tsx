@@ -20,6 +20,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // Sentinel — never pass "" to Radix Select
 const NONE = "__none__"
@@ -120,6 +121,7 @@ export function CreateTaskDialog({
   isRecommended,
   defaultSubcId,
 }: CreateTaskDialogProps) {
+  const t = useTranslations("jobTasks")
   const [formData, setFormData] = useState(INITIAL_FORM())
   const [assignType, setAssignType] = useState<AssignType>("none")
   const [loading, setLoading] = useState(false)
@@ -223,7 +225,7 @@ export function CreateTaskDialog({
   }
 
   const handleSubmit = async () => {
-    if (!formData.Name.trim()) { setError("Task name is required"); return }
+    if (!formData.Name.trim()) { setError(t("taskName") + " is required"); return }
     setLoading(true); setError(null)
 
     try {
@@ -255,7 +257,7 @@ export function CreateTaskDialog({
       onOpenChange(false)
       reset()
     } catch (e: any) {
-      setError(e.message ?? "Failed to create task")
+      setError(e.message ?? t("failedToSave"))
     } finally {
       setLoading(false)
     }
@@ -271,7 +273,7 @@ export function CreateTaskDialog({
           className="p-0 overflow-hidden gap-0 flex flex-col"
           style={{ maxWidth: "680px", width: "95vw", borderRadius: "16px", maxHeight: "92vh", border: "none" }}
         >
-          <VisuallyHidden><DialogTitle>Create New Task</DialogTitle></VisuallyHidden>
+          <VisuallyHidden><DialogTitle>{t("createTaskTitle")}</DialogTitle></VisuallyHidden>
           {/* ── Header ────────────────────────────────────────────────────────── */}
           <div
             className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-7 sm:py-5"
@@ -289,7 +291,7 @@ export function CreateTaskDialog({
               </div>
               <div>
                 <h2 style={{ color: "#fff", fontSize: "17px", fontWeight: 700, margin: 0, lineHeight: 1.3 }}>
-                  Create New Task
+                  {t("createTaskTitle")}
                 </h2>
                 <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", margin: "2px 0 0" }}>
                   {jobId}
@@ -321,7 +323,7 @@ export function CreateTaskDialog({
             >
               <AlertTriangle size={14} color="#D97706" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: "12px", color: "#92400E", fontWeight: 500 }}>
-                It is recommended to create this task at this point in the workflow.
+                {t("recommendedTaskBanner")}
               </span>
             </div>
           )}
@@ -334,11 +336,11 @@ export function CreateTaskDialog({
 
             <div style={{ marginBottom: "14px" }}>
               <FieldLabel>
-                Task Name <span style={{ color: "#EF4444" }}>*</span>
+                {t("taskName")} <span style={{ color: "#EF4444" }}>*</span>
               </FieldLabel>
               <input
                 type="text"
-                placeholder="Enter a clear, descriptive task name..."
+                placeholder={t("nameHint")}
                 value={formData.Name}
                 onChange={e => setFormData(p => ({ ...p, Name: e.target.value }))}
                 onKeyDown={e => { if (e.key === "Enter") handleSubmit() }}
@@ -351,11 +353,11 @@ export function CreateTaskDialog({
             <div>
               <FieldLabel>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                  <AlignLeft size={12} color="#9CA3AF" /> Description
+                  <AlignLeft size={12} color="#9CA3AF" /> {t("description")}
                 </span>
               </FieldLabel>
               <textarea
-                placeholder="Provide details about what needs to be done..."
+                placeholder={t("descHint")}
                 value={formData.Task_description}
                 onChange={e => setFormData(p => ({ ...p, Task_description: e.target.value }))}
                 rows={3}
@@ -371,12 +373,12 @@ export function CreateTaskDialog({
             <Divider />
 
             {/* Section 2 — Classification */}
-            <SectionHeader icon={<Flag size={13} />} label="Classification" />
+            <SectionHeader icon={<Flag size={13} />} label={t("classification")} />
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {/* Status */}
               <div>
-                <FieldLabel>Status</FieldLabel>
+                <FieldLabel>{t("status")}</FieldLabel>
                 <Select
                   value={formData.Task_status}
                   onValueChange={v => setFormData(p => ({ ...p, Task_status: v }))}
@@ -388,19 +390,19 @@ export function CreateTaskDialog({
                     <SelectItem value="Not started">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <Circle size={12} color="#9CA3AF" />
-                        <span>Not Started</span>
+                        <span>{t("notStarted")}</span>
                       </span>
                     </SelectItem>
                     <SelectItem value="Work-in-progress">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <Clock size={12} color="#D97706" />
-                        <span>In Progress</span>
+                        <span>{t("inProgress")}</span>
                       </span>
                     </SelectItem>
                     <SelectItem value="Completed">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <CheckCircle2 size={12} color="#16A34A" />
-                        <span>Completed</span>
+                        <span>{t("completed")}</span>
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -409,32 +411,32 @@ export function CreateTaskDialog({
 
               {/* Priority */}
               <div>
-                <FieldLabel>Priority</FieldLabel>
+                <FieldLabel>{t("priority")}</FieldLabel>
                 <Select
                   value={formData.Priority}
                   onValueChange={v => setFormData(p => ({ ...p, Priority: v }))}
                 >
                   <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px" }}>
-                    <SelectValue placeholder="No priority" />
+                    <SelectValue placeholder={t("noPriority")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE}>No priority</SelectItem>
+                    <SelectItem value={NONE}>{t("noPriority")}</SelectItem>
                     <SelectItem value="High">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#EF4444", display: "inline-block", flexShrink: 0 }} />
-                        <span>High</span>
+                        <span>{t("high")}</span>
                       </span>
                     </SelectItem>
                     <SelectItem value="Medium">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
-                        <span>Medium</span>
+                        <span>{t("medium")}</span>
                       </span>
                     </SelectItem>
                     <SelectItem value="Low">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#3B82F6", display: "inline-block", flexShrink: 0 }} />
-                        <span>Low</span>
+                        <span>{t("low")}</span>
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -445,7 +447,7 @@ export function CreateTaskDialog({
             <Divider />
 
             {/* Section 3 — Timeline */}
-            <SectionHeader icon={<Calendar size={13} />} label="Timeline" />
+            <SectionHeader icon={<Calendar size={13} />} label={t("timeline")} />
 
             {prefill?.minDate && prefill?.maxDate && (
               <div style={{
@@ -461,13 +463,13 @@ export function CreateTaskDialog({
                 gap: "6px",
               }}>
                 <Calendar size={12} style={{ flexShrink: 0 }} />
-                Dates are limited to the next {prefill.businessDays ?? 5} business days ({prefill.minDate} – {prefill.maxDate}).
+                {t("datesLimitHint", { count: prefill.businessDays ?? 5, min: prefill.minDate, max: prefill.maxDate })}
               </div>
             )}
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div>
-                <FieldLabel>Start Date</FieldLabel>
+                <FieldLabel>{t("startDate")}</FieldLabel>
                 <input
                   type="date"
                   value={formData.Designation_date}
@@ -480,7 +482,7 @@ export function CreateTaskDialog({
                 />
               </div>
               <div>
-                <FieldLabel>Delivery Date</FieldLabel>
+                <FieldLabel>{t("deliveryDate")}</FieldLabel>
                 <input
                   type="date"
                   value={formData.Delivery_date}
@@ -497,14 +499,14 @@ export function CreateTaskDialog({
             <Divider />
 
             {/* Section 4 — Assignment */}
-            <SectionHeader icon={<UserCheck size={13} />} label="Assignment" />
+            <SectionHeader icon={<UserCheck size={13} />} label={t("assignment")} />
 
             {/* Assignment type tabs */}
             <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
               {[
-                { key: "none" as AssignType,          label: "Unassigned",     icon: <Circle size={13} /> },
-                { key: "member" as AssignType,        label: "GQM Member",     icon: <Users size={13} /> },
-                { key: "subcontractor" as AssignType, label: "Subcontractor",  icon: <Building2 size={13} /> },
+                { key: "none" as AssignType,          label: t("unassignedType"),     icon: <Circle size={13} /> },
+                { key: "member" as AssignType,        label: t("gqmMember"),     icon: <Users size={13} /> },
+                { key: "subcontractor" as AssignType, label: t("subcontractor"),  icon: <Building2 size={13} /> },
               ].map(opt => {
                 const active = assignType === opt.key
                 return (
@@ -543,13 +545,13 @@ export function CreateTaskDialog({
               }}>
                 <FieldLabel>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                    <Users size={12} color="#059669" /> Select GQM Member
+                    <Users size={12} color="#059669" /> {t("selectMember")}
                   </span>
                 </FieldLabel>
                 {loadingMembers ? (
                   <div style={{ fontSize: "13px", color: "#9CA3AF", padding: "10px 0", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div className="animate-spin" style={{ width: "14px", height: "14px", border: "2px solid #E5E7EB", borderTopColor: "#059669", borderRadius: "50%" }} />
-                    Loading members...
+                    {t("loadingMembers")}
                   </div>
                 ) : (
                   <Select
@@ -557,11 +559,11 @@ export function CreateTaskDialog({
                     onValueChange={v => setFormData(p => ({ ...p, ID_Member: v }))}
                   >
                     <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                      <SelectValue placeholder="Select a GQM member..." />
+                      <SelectValue placeholder={t("selectMember")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>
-                        <span style={{ color: "#9CA3AF" }}>— No member —</span>
+                        <span style={{ color: "#9CA3AF" }}>{t("noMember")}</span>
                       </SelectItem>
                       {allMembers.map(m => (
                         <SelectItem key={m.id} value={m.id}>
@@ -609,7 +611,7 @@ export function CreateTaskDialog({
                 <div>
                   <FieldLabel>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                      <Building2 size={12} color="#059669" /> Select Subcontractor
+                      <Building2 size={12} color="#059669" /> {t("selectSubcontractor")}
                     </span>
                   </FieldLabel>
                   {jobSubcontractors.length === 0 ? (
@@ -625,7 +627,7 @@ export function CreateTaskDialog({
                       gap: "8px",
                     }}>
                       <Building2 size={14} color="#D97706" />
-                      No subcontractors are linked to this job yet.
+                      {t("noSubcontractorsLinkedLong")}
                     </div>
                   ) : (
                     <Select
@@ -633,11 +635,11 @@ export function CreateTaskDialog({
                       onValueChange={v => setFormData(p => ({ ...p, ID_Subcontractor: v, ID_Technician: NONE }))}
                     >
                       <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                        <SelectValue placeholder="Select a subcontractor..." />
+                        <SelectValue placeholder={t("selectSubcontractor")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>
-                          <span style={{ color: "#9CA3AF" }}>— No subcontractor —</span>
+                          <span style={{ color: "#9CA3AF" }}>{t("noSubcontractor")}</span>
                         </SelectItem>
                         {jobSubcontractors.map(s => (
                           <SelectItem key={s.id} value={s.id}>
@@ -661,8 +663,8 @@ export function CreateTaskDialog({
                   <div>
                     <FieldLabel>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                        <Wrench size={12} color="#9CA3AF" /> Assign Technician
-                        <span style={{ fontWeight: 400, color: "#9CA3AF" }}>(optional)</span>
+                        <Wrench size={12} color="#9CA3AF" /> {t("selectTechnician")}
+                        <span style={{ fontWeight: 400, color: "#9CA3AF" }}>({t("skip")})</span>
                       </span>
                     </FieldLabel>
                     <Select
@@ -670,11 +672,11 @@ export function CreateTaskDialog({
                       onValueChange={v => setFormData(p => ({ ...p, ID_Technician: v }))}
                     >
                       <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                        <SelectValue placeholder="Select a technician..." />
+                        <SelectValue placeholder={t("selectTechnician")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>
-                          <span style={{ color: "#9CA3AF" }}>— No specific technician —</span>
+                          <span style={{ color: "#9CA3AF" }}>{t("noSpecificTechnician")}</span>
                         </SelectItem>
                         {selectedSubc.technicians.map(t => (
                           <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -724,7 +726,7 @@ export function CreateTaskDialog({
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               onClick={handleSubmit}
@@ -756,12 +758,12 @@ export function CreateTaskDialog({
                       borderRadius: "50%",
                     }}
                   />
-                  Creating...
+                  {t("creating")}
                 </>
               ) : (
                 <>
                   <ClipboardList size={14} />
-                  Create Task
+                  {t("createTask")}
                 </>
               )}
             </button>
@@ -776,7 +778,7 @@ export function CreateTaskDialog({
           className="p-0 overflow-hidden gap-0"
           style={{ maxWidth: "420px", width: "92vw", borderRadius: "14px", border: "none" }}
         >
-          <VisuallyHidden><DialogTitle>Confirm Close</DialogTitle></VisuallyHidden>
+          <VisuallyHidden><DialogTitle>{t("confirmDeleteTitle")}</DialogTitle></VisuallyHidden>
           <div style={{ padding: "28px 28px 0" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
               <div style={{
@@ -790,10 +792,10 @@ export function CreateTaskDialog({
               </div>
               <div>
                 <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>
-                  Skip task creation?
+                  {t("skipTaskCreationTitle")}
                 </h3>
                 <p style={{ fontSize: "13px", color: "#6B7280", margin: 0, lineHeight: 1.5 }}>
-                  Creating this task is recommended at this stage of the workflow. Are you sure you want to exit without creating it?
+                  {t("skipTaskCreationDesc")}
                 </p>
               </div>
             </div>
@@ -817,7 +819,7 @@ export function CreateTaskDialog({
                 cursor: "pointer",
               }}
             >
-              Go back
+              {t("goBack")}
             </button>
             <button
               onClick={handleConfirmClose}
@@ -832,7 +834,7 @@ export function CreateTaskDialog({
                 cursor: "pointer",
               }}
             >
-              Exit anyway
+              {t("exitAnyway")}
             </button>
           </div>
         </DialogContent>

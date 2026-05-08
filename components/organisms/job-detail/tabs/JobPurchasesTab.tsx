@@ -6,7 +6,7 @@ import {
   ShoppingCart, Plus, Trash2, ExternalLink, RefreshCcw, Loader2,
   AlertCircle, Search, X, Package,
   Tag, ClipboardList, CheckCircle2, Clock, XCircle,
-  ChevronDown, Eye,
+  ChevronDown, Eye, Zap,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 
@@ -23,6 +23,7 @@ type PurchaseRow = {
   Return_request?: string | null
   Return_status?: string | null
   Total_spending?: number | null
+  Is_extra?: boolean | null
   ID_Jobs?: string | null
   ID_Member?: string | null
   order_count?: number
@@ -254,6 +255,11 @@ function PurchaseCard({
               {purchase.Description || <span className="italic text-slate-400">No description</span>}
             </span>
             <StatusBadge status={purchase.Status} />
+            {purchase.Is_extra && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-600">
+                <Zap className="h-3 w-3" />Extra
+              </span>
+            )}
           </div>
           <p className="mt-0.5 text-[11px] font-mono text-slate-400">
             {purchase.ID_Purchase}

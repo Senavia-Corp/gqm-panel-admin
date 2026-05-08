@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const jobType          = searchParams.get("job_type")
   const memberId         = searchParams.get("member_id")
+  const technicianId     = searchParams.get("technician_id")
+  const subcontractorId  = searchParams.get("subcontractor_id") || searchParams.get("subcontractorId")
   const weekOffset       = searchParams.get("week_offset")
 
   // Validación temprana en el proxy — evita un round-trip innecesario al backend
@@ -33,9 +35,11 @@ export async function GET(request: NextRequest) {
   }
 
   const url = new URL(`${API_BASE_URL}/tasks/weekly`)
-  if (jobType)    url.searchParams.set("job_type", jobType)
-  if (memberId)   url.searchParams.set("member_id", memberId)
-  if (weekOffset) url.searchParams.set("week_offset", weekOffset)
+  if (jobType)         url.searchParams.set("job_type", jobType)
+  if (memberId)        url.searchParams.set("member_id", memberId)
+  if (technicianId)    url.searchParams.set("technician_id", technicianId)
+  if (subcontractorId) url.searchParams.set("subcontractor_id", subcontractorId)
+  if (weekOffset)      url.searchParams.set("week_offset", weekOffset)
 
   const controller = new AbortController()
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)

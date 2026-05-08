@@ -435,7 +435,30 @@ export default function SubcontractorDetailsPage() {
     }
   }
 
-  useEffect(() => { if (user && id) fetchSubc() }, [user, id]) // eslint-disable-line
+  useEffect(() => {
+    if (user && id) {
+      const isTech = user.role === "LEAD_TECHNICIAN"
+      if (isTech) {
+        apiFetch(`/api/technician/${user.id}`)
+          .then(res => res.ok ? res.json() : Promise.reject("Failed to verify access"))
+          .then(data => {
+            const mySubId = data?.subcontractor?.ID_Subcontractor
+            if (mySubId && String(mySubId) !== String(id)) {
+              router.replace(`/subcontractors/${mySubId}`)
+            } else {
+              fetchSubc()
+            }
+          })
+          .catch(err => {
+            setLoadError(err.message || "Access denied")
+            setLoading(false)
+          })
+      } else {
+        fetchSubc()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, id])
 
   // ── Save changes ───────────────────────────────────────────────────────────
   const handleSave = async () => {

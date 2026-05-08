@@ -5,20 +5,27 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, Briefcase, MapPin, ChevronRight, AlertCircle } from "lucide-react"
 
-export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
+export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!memberId) return
+    // Para técnicos necesitamos el subcontractorId, para miembros el memberId
+    const targetId = isTechnician ? subcontractorId : memberId
+    if (!targetId) {
+      if (isTechnician) setError("No subcontractor associated with this technician profile.")
+      setLoading(false)
+      return
+    }
 
     const fetchJobs = async () => {
       try {
         setLoading(true)
         // Pedimos los estados de pipeline
         const statuses = encodeURIComponent("Assigned/P. Quote,Scheduled / Work in Progress,In Progress")
-        const res = await apiFetch(`/api/jobs?member_id=${memberId}&status=${statuses}&limit=50`)
+        const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
+        const res = await apiFetch(`/api/jobs?${idParam}&status=${statuses}&limit=50`)
         if (!res.ok) throw new Error("Failed to fetch pipeline jobs")
         const data = await res.json()
         setJobs(data.results || [])
@@ -30,7 +37,7 @@ export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
     }
 
     fetchJobs()
-  }, [memberId])
+  }, [memberId, subcontractorId, isTechnician])
 
   if (loading) {
     return (

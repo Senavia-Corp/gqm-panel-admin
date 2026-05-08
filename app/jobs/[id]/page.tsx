@@ -59,10 +59,7 @@ import { useSearchParams } from "next/navigation"
 import { usePermissions } from "@/hooks/usePermissions"
 
 
-const TechnicianJobSidebar = dynamic(
-  () => import("@/components/organisms/TechnicianJobSidebar").then((mod) => mod.TechnicianJobSidebar),
-  { ssr: false },
-)
+
 const LeadTechnicianPricingView = dynamic(
   () => import("@/components/organisms/LeadTechnicianPricingView").then((mod) => mod.LeadTechnicianPricingView),
   { ssr: false },
@@ -176,6 +173,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const { hasPermission } = usePermissions()
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
+  const tTasks = useTranslations("jobTasks")
 
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
@@ -332,7 +330,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const { minDate, maxDate } = getBusinessDateRange(5)
 
     setTaskPrefill({
-      name: `Send Proposal for ${jobId}`,
+      name: tTasks("taskPrefillProposal", { jobId }),
       priority: "High",
       minDate,
       maxDate,
@@ -459,7 +457,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       jobDetail.setJob({ ...(job as any), tasks: prevTasks } as any)
       toast({
         title: tCommon("error"),
-        description: error instanceof Error ? error.message : t("toastTaskStatusFailed"),
+        description: error instanceof Error ? error.message : tTasks("toastTaskStatusFailed"),
         variant: "destructive",
       })
     }
@@ -565,7 +563,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       if (isScheduledTransition) {
         pendingSaveRef.current = true
         setTaskPrefill({
-          name: `Schedule/Manage ${jobId}`,
+          name: tTasks("taskPrefillSchedule", { jobId }),
           priority: "Medium",
         })
         setCreateTaskOpen(true)
@@ -581,7 +579,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         pendingSaveRef.current = true
         const { minDate, maxDate } = getBusinessDateRange(3)
         setTaskPrefill({
-          name: `Upload Invoice for ${jobId}`,
+          name: tTasks("taskPrefillInvoice", { jobId }),
           priority: "High",
           minDate,
           maxDate,
@@ -1018,7 +1016,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const tabs = useMemo(() => {
     if (!user) return []
 
-    // 1. Details — accessible to anyone who can see the job (basics or full read)
+    // For LEAD_TECHNICIAN, we only show specific tabs: Details, Subcontractors, Documents, Pricing, Tasks, Timeline
+    if (user.role === "LEAD_TECHNICIAN") {
+      return [
+        { id: "details", label: t("tabDetails") },
+        { id: "subcontractors", label: t("tabSubcontractors") },
+        { id: "documents", label: t("tabDocuments") },
+        { id: "pricing", label: t("tabPricing") },
+        { id: "tasks", label: t("tabTasks") },
+        { id: "timeline", label: t("tabTimeline") },
+      ]
+    }
+
+    // Standard logic for GQM_MEMBER and others
     const canReadDocs = hasPermission("job:read")
     const canViewSubcontractors = hasPermission("subcontractor:read")
     const canViewMembers = hasPermission("member:read")
@@ -1048,12 +1058,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       items.push({ id: "estimate", label: t("tabEstimate") })
     }
 
-    // Technicians tab for Lead Techs usually depends on subcontractor permission
-    if (user.role === "LEAD_TECHNICIAN") {
-      items.push({ id: "technicians", label: t("tabTechnicians") })
-    }
-
-    // Purchases & Commissions - user asked to prepare ground, defaulting to job:read for now
+    // Purchases & Commissions
     if (canReadDocs) {
       items.push({ id: "purchases", label: t("tabPurchases") })
       items.push({ id: "commissions", label: t("tabCommissions") })
@@ -1074,10 +1079,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     return <JobRightSidebar role={user.role} job={job as any} />
   }, [user, job])
 
-  const technicianSidebar = useMemo(() => {
-    if (!job) return null
-    return <TechnicianJobSidebar job={job as any} subcontractor={(job as any)?.subcontractors?.[0]} />
-  }, [job])
+
 
   // ---------------------------
   // renderTab
@@ -1135,7 +1137,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       )
     }
 
-    if (activeTab === "subcontractors" && user.role === "GQM_MEMBER") {
+    if (activeTab === "subcontractors") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Subcontractors
@@ -1157,12 +1159,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "pricing") {
       if (user.role === "LEAD_TECHNICIAN") {
         return (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
-              <LeadTechnicianPricingView jobId={jobId} job={job as any} />
-            </div>
-            <div className="space-y-6">{technicianSidebar}</div>
-          </div>
+          <JobTabLayout sidebar={rightSidebar}>
+            <LeadTechnicianPricingView jobId={jobId} job={job as any} />
+          </JobTabLayout>
         )
       }
 

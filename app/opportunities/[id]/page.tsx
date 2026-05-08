@@ -324,6 +324,7 @@ export default function OpportunityDetailPage() {
   const [applicantModalOpen, setApplicantModalOpen] = useState(false)
   const [jobPickerOpen, setJobPickerOpen] = useState(false)
   const [skillSearch, setSkillSearch] = useState("")
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   // Edit form state
   const [projectName, setProjectName] = useState("")
@@ -361,6 +362,8 @@ export default function OpportunityDetailPage() {
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
+    const parsed = JSON.parse(u)
+    setUserRole(parsed.role)
     fetchOpp()
     apiFetch("/api/skills")
       .then((r) => r.json())
@@ -520,26 +523,28 @@ export default function OpportunityDetailPage() {
                 </div>
               </div>
               <div className="ml-2 flex flex-shrink-0 items-center gap-2">
-                {editing ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
-                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
-                      <span className="sm:hidden">Save</span>
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
-                      <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5 text-xs border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-600">
-                      <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
-                    </Button>
-                  </>
+                {userRole !== "LEAD_TECHNICIAN" && (
+                  editing ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
+                        <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
+                      </Button>
+                      <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
+                        <span className="sm:hidden">Save</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
+                        <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5 text-xs border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-600">
+                        <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    </>
+                  )
                 )}
               </div>
             </div>
@@ -666,125 +671,130 @@ export default function OpportunityDetailPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {opp.skills.map((skill) => (
                     <span key={skill.ID_Skill} className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-                      {skill.Skill_name ?? skill.ID_Skill}
-                      <button onClick={() => handleUnlinkSkill(skill.ID_Skill)} className="hover:text-violet-900 ml-0.5">
-                        <X className="h-3 w-3" />
-                      </button>
+                      {skill.Division_trade || skill.Skill_name || skill.ID_Skill}
+                      {userRole !== "LEAD_TECHNICIAN" && (
+                        <button onClick={() => handleUnlinkSkill(skill.ID_Skill)} className="hover:text-violet-900 ml-0.5">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
               )}
 
-              <div>
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search skills to add…"
-                    value={skillSearch}
-                    onChange={(e) => setSkillSearch(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200"
-                  />
-                </div>
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
-                  {filteredSkills.map((skill) => {
-                    const linked = linkedSkillIds.includes(skill.ID_Skill)
-                    return (
-                      <button
-                        key={skill.ID_Skill}
-                        type="button"
-                        onClick={() => linked ? handleUnlinkSkill(skill.ID_Skill) : handleLinkSkill(skill.ID_Skill)}
-                        className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${linked ? "bg-violet-50" : "hover:bg-slate-50"}`}
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{skill.Skill_name}</p>
-                          {skill.Division_trade && <p className="text-xs text-slate-500">{skill.Division_trade}</p>}
-                        </div>
-                        <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${linked ? "border-violet-500 bg-violet-500" : "border-slate-300"}`}>
-                          {linked && <span className="text-white text-[9px] font-bold">✓</span>}
-                        </div>
-                      </button>
-                    )
-                  })}
-                  {filteredSkills.length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-4">No skills found</p>
-                  )}
-                </div>
-              </div>
-            </SectionCard>
-
-            {/* Applicants */}
-            <SectionCard
-              icon={Users}
-              title={`Applicants (${applicants.length})`}
-              action={
-                <Button variant="outline" size="sm" onClick={() => setApplicantModalOpen(true)} className="h-7 gap-1.5 rounded-lg px-2.5 text-xs border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-600">
-                  <Plus className="h-3.5 w-3.5" /> Add
-                </Button>
-              }
-            >
-              {applicants.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                    <Users className="h-5 w-5 text-slate-300" />
+              {userRole !== "LEAD_TECHNICIAN" && (
+                <div>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search skills to add…"
+                      value={skillSearch}
+                      onChange={(e) => setSkillSearch(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200"
+                    />
                   </div>
-                  <p className="text-sm text-slate-400">No applicants yet</p>
-                </div>
-              ) : (
-                <div className="-mx-4 -mb-4 divide-y divide-slate-50 sm:-mx-5 sm:-mb-5">
-                  {applicants.map((applicant) => (
-                    <div key={applicant.ID_Subcontractor} className="flex items-center gap-2.5 px-4 py-3 transition-colors hover:bg-slate-50 sm:gap-3 sm:px-5 sm:py-3.5">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-500 sm:h-9 sm:w-9">
-                        {String(applicant.Name ?? "?")[0]?.toUpperCase()}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-800">{applicant.Name || "—"}</p>
-                          {applicant.Score !== null && applicant.Score !== undefined && (
-                            <span className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-                              <Star className="h-2.5 w-2.5" />{applicant.Score}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2">
-                          {applicant.Email_Address && (
-                            <a href={`mailto:${String(applicant.Email_Address).split(",")[0].trim()}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors">
-                              <Mail className="h-2.5 w-2.5 flex-shrink-0" />
-                              <span className="max-w-[80px] truncate sm:max-w-[160px]">{String(applicant.Email_Address).split(",")[0].trim()}</span>
-                            </a>
-                          )}
-                          {applicant.Phone_Number && (
-                            <span className="hidden items-center gap-1 text-[11px] text-slate-400 sm:flex">
-                              <Phone className="h-2.5 w-2.5 flex-shrink-0" />
-                              {String(applicant.Phone_Number).split(",")[0].trim()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <AppStateSelector
-                        value={applicant.application_state}
-                        onChange={(s) => handleUpdateState(applicant.ID_Subcontractor, s)}
-                      />
-
-                      <Link href={`/subcontractors/${applicant.ID_Subcontractor}`} target="_blank">
-                        <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-600 transition-colors">
-                          <ExternalLink className="h-3.5 w-3.5" />
+                  <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+                    {filteredSkills.map((skill) => {
+                      const linked = linkedSkillIds.includes(skill.ID_Skill)
+                      return (
+                        <button
+                          key={skill.ID_Skill}
+                          type="button"
+                          onClick={() => linked ? handleUnlinkSkill(skill.ID_Skill) : handleLinkSkill(skill.ID_Skill)}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${linked ? "bg-violet-50" : "hover:bg-slate-50"}`}
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">{skill.Skill_name}</p>
+                            {skill.Division_trade && <p className="text-xs text-slate-500">{skill.Division_trade}</p>}
+                          </div>
+                          <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${linked ? "border-violet-500 bg-violet-500" : "border-slate-300"}`}>
+                            {linked && <span className="text-white text-[9px] font-bold">✓</span>}
+                          </div>
                         </button>
-                      </Link>
-
-                      <button
-                        onClick={() => handleUnlinkApplicant(applicant.ID_Subcontractor)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                      )
+                    })}
+                    {filteredSkills.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-4">No skills found</p>
+                    )}
+                  </div>
                 </div>
               )}
             </SectionCard>
+
+            {userRole !== "LEAD_TECHNICIAN" && (
+              <SectionCard
+                icon={Users}
+                title={`Applicants (${applicants.length})`}
+                action={
+                  <Button variant="outline" size="sm" onClick={() => setApplicantModalOpen(true)} className="h-7 gap-1.5 rounded-lg px-2.5 text-xs border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-600">
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </Button>
+                }
+              >
+                {applicants.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-6 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                      <Users className="h-5 w-5 text-slate-300" />
+                    </div>
+                    <p className="text-sm text-slate-400">No applicants yet</p>
+                  </div>
+                ) : (
+                  <div className="-mx-4 -mb-4 divide-y divide-slate-50 sm:-mx-5 sm:-mb-5">
+                    {applicants.map((applicant) => (
+                      <div key={applicant.ID_Subcontractor} className="flex items-center gap-2.5 px-4 py-3 transition-colors hover:bg-slate-50 sm:gap-3 sm:px-5 sm:py-3.5">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-500 sm:h-9 sm:w-9">
+                          {String(applicant.Name ?? "?")[0]?.toUpperCase()}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-slate-800">{applicant.Name || "—"}</p>
+                            {applicant.Score !== null && applicant.Score !== undefined && (
+                              <span className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                <Star className="h-2.5 w-2.5" />{applicant.Score}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            {applicant.Email_Address && (
+                              <a href={`mailto:${String(applicant.Email_Address).split(",")[0].trim()}`} className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors">
+                                <Mail className="h-2.5 w-2.5 flex-shrink-0" />
+                                <span className="max-w-[80px] truncate sm:max-w-[160px]">{String(applicant.Email_Address).split(",")[0].trim()}</span>
+                              </a>
+                            )}
+                            {applicant.Phone_Number && (
+                              <span className="hidden items-center gap-1 text-[11px] text-slate-400 sm:flex">
+                                <Phone className="h-2.5 w-2.5 flex-shrink-0" />
+                                {String(applicant.Phone_Number).split(",")[0].trim()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <AppStateSelector
+                          value={applicant.application_state}
+                          onChange={(s) => handleUpdateState(applicant.ID_Subcontractor, s)}
+                        />
+
+                        <Link href={`/subcontractors/${applicant.ID_Subcontractor}`} target="_blank">
+                          <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-600 transition-colors">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                        </Link>
+
+                        <button
+                          onClick={() => handleUnlinkApplicant(applicant.ID_Subcontractor)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            )}
 
           </div>
         </main>

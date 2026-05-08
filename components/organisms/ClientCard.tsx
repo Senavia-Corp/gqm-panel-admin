@@ -95,9 +95,10 @@ function normalizeArrayField(raw: any): string[] {
 interface ClientCardProps {
   client: Client
   title?: string
+  isTechnician?: boolean
 }
 
-export function ClientCard({ client, title }: ClientCardProps) {
+export function ClientCard({ client, title, isTechnician = false }: ClientCardProps) {
   const t = useTranslations("jobs")
   const phones = normalizeArrayField(client.phone)
   const addresses = normalizeArrayField(client.address)
@@ -110,12 +111,14 @@ export function ClientCard({ client, title }: ClientCardProps) {
       iconColor="text-gqm-green-dark"
       title={title ?? t("clientCardTitle")}
       action={
-        <Link href={`/communities/${client.id}`}>
-          <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider text-gqm-green-dark hover:bg-gqm-green/10 hover:text-gqm-green-dark transition-all rounded-lg gap-1.5">
-            {t("clientCardViewSection")}
-            <ExternalLink className="h-3 w-3" />
-          </Button>
-        </Link>
+        !isTechnician && (
+          <Link href={`/communities/${client.id}`}>
+            <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider text-gqm-green-dark hover:bg-gqm-green/10 hover:text-gqm-green-dark transition-all rounded-lg gap-1.5">
+              {t("clientCardViewSection")}
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </Link>
+        )
       }
     >
       <div className="flex items-center gap-4 mb-2">
@@ -165,21 +168,23 @@ export function ClientCard({ client, title }: ClientCardProps) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Phones */}
-          <div>
-            <FieldLabel icon={Phone}>{t("clientCardPhones")}</FieldLabel>
-            <div className="space-y-1.5">
-              {phones.length > 0 ? (
-                phones.map((p, i) => (
-                  <a key={i} href={`tel:${p.replace(/\D/g, "")}`} className="flex items-center gap-2.5 rounded-xl border border-blue-50 bg-blue-50/30 px-3 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 hover:underline transition-all">
-                    <Phone className="h-3.5 w-3.5" />
-                    {p}
-                  </a>
-                ))
-              ) : (
-                <ReadonlyField value={null} />
-              )}
+          {!isTechnician && (
+            <div>
+              <FieldLabel icon={Phone}>{t("clientCardPhones")}</FieldLabel>
+              <div className="space-y-1.5">
+                {phones.length > 0 ? (
+                  phones.map((p, i) => (
+                    <a key={i} href={`tel:${p.replace(/\D/g, "")}`} className="flex items-center gap-2.5 rounded-xl border border-blue-50 bg-blue-50/30 px-3 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 hover:underline transition-all">
+                      <Phone className="h-3.5 w-3.5" />
+                      {p}
+                    </a>
+                  ))
+                ) : (
+                  <ReadonlyField value={null} />
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Status */}
           <div className="flex flex-col">
@@ -199,24 +204,26 @@ export function ClientCard({ client, title }: ClientCardProps) {
         </div>
 
         {/* Emails */}
-        <div>
-          <FieldLabel icon={Mail}>{t("clientCardEmails")}</FieldLabel>
-          <div className="space-y-1.5">
-            {emails.length > 0 ? (
-              emails.map((e, i) => (
-                <a key={i} href={`mailto:${e}`} className="flex items-center gap-2.5 rounded-xl border border-indigo-50 bg-indigo-50/30 px-3 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 hover:underline transition-all truncate">
-                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{e}</span>
-                </a>
-              ))
-            ) : (
-              <ReadonlyField value={null} />
-            )}
+        {!isTechnician && (
+          <div>
+            <FieldLabel icon={Mail}>{t("clientCardEmails")}</FieldLabel>
+            <div className="space-y-1.5">
+              {emails.length > 0 ? (
+                emails.map((e, i) => (
+                  <a key={i} href={`mailto:${e}`} className="flex items-center gap-2.5 rounded-xl border border-indigo-50 bg-indigo-50/30 px-3 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 hover:underline transition-all truncate">
+                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{e}</span>
+                  </a>
+                ))
+              ) : (
+                <ReadonlyField value={null} />
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Project Managers */}
-        {client.managers && client.managers.length > 0 && (
+        {!isTechnician && client.managers && client.managers.length > 0 && (
           <div className="pt-2 border-t border-slate-100">
             <FieldLabel icon={UserIcon}>{t("clientCardManagers") || "Project Managers"}</FieldLabel>
             <div className="space-y-3 mt-3">

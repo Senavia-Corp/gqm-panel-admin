@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState } from "react"
 import { RefreshCw, Activity } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { TimelineItem, type TLActivityEntry } from "@/components/molecules/TimelineItem"
 import { apiFetch } from "@/lib/apiFetch"
 
@@ -17,6 +18,7 @@ interface TimelineState {
 const PAGE_LIMIT = 15
 
 export function CommunityTimelineTab({ clientId }: { clientId: string }) {
+  const t = useTranslations("clients")
   const [tl, setTl] = useState<TimelineState>({
     entries: [], total: 0, page: 1, loading: true, loadingMore: false, error: null,
   })
@@ -35,9 +37,9 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
         total, page, loading: false, loadingMore: false, error: null,
       }))
     } catch (e: any) {
-      setTl(prev => ({ ...prev, loading: false, loadingMore: false, error: e?.message ?? "Failed to load timeline" }))
+      setTl(prev => ({ ...prev, loading: false, loadingMore: false, error: e?.message ?? t("error") }))
     }
-  }, [clientId])
+  }, [clientId, t])
 
   useEffect(() => { fetchPage(1, false) }, [fetchPage])
 
@@ -54,16 +56,16 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
             <Activity className="h-5 w-5 text-slate-600" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Activity Timeline</p>
+            <p className="text-sm font-semibold text-slate-800">{t("tlTitle")}</p>
             <p className="text-[11px] text-slate-400">
-              {tl.loading ? "Loading…" : tl.total > 0 ? `${tl.total} event${tl.total !== 1 ? "s" : ""} recorded` : "No events yet"}
+              {tl.loading ? t("tlLoading") : tl.total > 0 ? (tl.total === 1 ? t("tlEventsRecorded").replace("{count}", "1") : t("tlEventsRecordedPlural").replace("{count}", String(tl.total))) : t("tlNoEventsYet")}
             </p>
           </div>
         </div>
         <button
           onClick={() => fetchPage(1, false)}
           disabled={tl.loading}
-          title="Refresh timeline"
+          title={t("tlRefresh")}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${tl.loading ? "animate-spin" : ""}`} />
@@ -76,7 +78,7 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
           <span className="text-red-500">⚠</span>
           <p className="flex-1 text-xs text-red-700">{tl.error}</p>
           <button onClick={() => fetchPage(1, false)} className="text-[11px] font-semibold text-blue-600">
-            Retry
+            {t("tlRetry")}
           </button>
         </div>
       )}
@@ -97,8 +99,8 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
               <Activity className="h-7 w-7 text-slate-300" />
             </div>
-            <p className="text-sm font-medium text-slate-500">No activity recorded yet</p>
-            <p className="text-xs text-slate-400">Events will appear here as changes happen on this community.</p>
+            <p className="text-sm font-medium text-slate-500">{t("tlNoActivityTitle")}</p>
+            <p className="text-xs text-slate-400">{t("tlNoActivityDesc")}</p>
           </div>
         )}
 
@@ -121,9 +123,9 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {tl.loadingMore ? (
-                    <><RefreshCw className="h-3 w-3 animate-spin" />Loading…</>
+                    <><RefreshCw className="h-3 w-3 animate-spin" />{t("tlLoading")}</>
                   ) : (
-                    `Load more (${tl.total - tl.entries.length} remaining)`
+                    t("tlLoadMore").replace("{count}", String(tl.total - tl.entries.length))
                   )}
                 </button>
               </div>
@@ -131,7 +133,7 @@ export function CommunityTimelineTab({ clientId }: { clientId: string }) {
 
             {!hasMore && tl.entries.length > 0 && (
               <p className="pt-4 text-center text-[10px] text-slate-300">
-                All {tl.total} event{tl.total !== 1 ? "s" : ""} loaded
+                {tl.total === 1 ? t("tlAllLoaded").replace("{count}", "1") : t("tlAllLoadedPlural").replace("{count}", String(tl.total))}
               </p>
             )}
           </div>

@@ -1,30 +1,50 @@
 import { NextResponse } from "next/server"
-const PYTHON_API_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
+
+// Use the same environment variable as the rest of the app for consistency
+const getBaseUrl = () => {
+  const url = process.env.PYTHON_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://6qh4h0kx-80.use.devtunnels.ms"
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const url = `${PYTHON_API_URL}/technician/${id}`
+    const baseUrl = getBaseUrl()
+    const url = `${baseUrl}/technician/${id}`
+    console.log(`[technician proxy] GET ${url}`)
 
     const authHeader = request.headers.get("Authorization")
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+    if (authHeader) headers["Authorization"] = authHeader
+
     const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(authHeader ? { Authorization: authHeader } : {}),
-      },
+      method: "GET",
+      headers,
       cache: "no-store",
     })
 
+    const text = await response.text()
     if (!response.ok) {
-      const errorText = await response.text()
-      return NextResponse.json({ error: "Failed to fetch technician", details: errorText }, { status: response.status })
+      console.error(`[technician proxy] Backend error ${response.status}:`, text.slice(0, 500))
+      return NextResponse.json({ error: "Backend error", details: text }, { status: response.status })
     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("[v0] Error in technician GET API route:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    try {
+      const data = JSON.parse(text)
+      return NextResponse.json(data)
+    } catch (e) {
+      console.error("[technician proxy] JSON parse error:", text.slice(0, 500))
+      return NextResponse.json({ error: "Invalid JSON from backend", details: text }, { status: 500 })
+    }
+  } catch (error: any) {
+    console.error("[technician proxy] Request failed:", error.message)
+    return NextResponse.json({ 
+      error: "Connection failed", 
+      message: error.message,
+      target: getBaseUrl() 
+    }, { status: 502 })
   }
 }
 
@@ -32,56 +52,71 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params
     const body = await request.json()
-    const url = `${PYTHON_API_URL}/technician/${id}`
+    const baseUrl = getBaseUrl()
+    const url = `${baseUrl}/technician/${id}`
+    console.log(`[technician proxy] PATCH ${url}`)
 
     const authHeader = request.headers.get("Authorization")
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+    if (authHeader) headers["Authorization"] = authHeader
+
     const response = await fetch(url, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authHeader ? { Authorization: authHeader } : {}),
-      },
+      headers,
       body: JSON.stringify(body),
     })
 
-    const responseText = await response.text()
-
+    const text = await response.text()
     if (!response.ok) {
-      return NextResponse.json({ error: "Failed to update technician", details: responseText }, { status: response.status })
+      console.error(`[technician proxy] PATCH backend error ${response.status}:`, text.slice(0, 500))
+      return NextResponse.json({ error: "Backend error", details: text }, { status: response.status })
     }
 
-    const data = JSON.parse(responseText)
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("[v0] Error in technician PATCH API route:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    try {
+      const data = JSON.parse(text)
+      return NextResponse.json(data)
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid JSON from backend", details: text }, { status: 500 })
+    }
+  } catch (error: any) {
+    console.error("[technician proxy] PATCH failed:", error.message)
+    return NextResponse.json({ error: "Connection failed", message: error.message }, { status: 502 })
   }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const url = `${PYTHON_API_URL}/technician/${id}`
+    const baseUrl = getBaseUrl()
+    const url = `${baseUrl}/technician/${id}`
+    console.log(`[technician proxy] DELETE ${url}`)
 
     const authHeader = request.headers.get("Authorization")
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+    if (authHeader) headers["Authorization"] = authHeader
+
     const response = await fetch(url, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authHeader ? { Authorization: authHeader } : {}),
-      },
+      headers,
     })
 
-    const responseText = await response.text()
-
+    const text = await response.text()
     if (!response.ok) {
-      return NextResponse.json({ error: "Failed to delete technician", details: responseText }, { status: response.status })
+      return NextResponse.json({ error: "Backend error", details: text }, { status: response.status })
     }
 
-    const data = JSON.parse(responseText)
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("[v0] Error in technician DELETE API route:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    try {
+      const data = JSON.parse(text)
+      return NextResponse.json(data)
+    } catch (e) {
+      return NextResponse.json({ success: true })
+    }
+  } catch (error: any) {
+    console.error("[technician proxy] DELETE failed:", error.message)
+    return NextResponse.json({ error: "Connection failed", message: error.message }, { status: 502 })
   }
 }

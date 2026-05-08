@@ -113,6 +113,7 @@ interface Props {
   }
   onCreated?: (formula: number) => void
   onUpdated?: (newFormula: number) => void
+  role?: string
 }
 
 // ─── Design helpers ───────────────────────────────────────────────────────────
@@ -155,11 +156,12 @@ const STATES: State[] = ["Pending", "Approved", "Rejected"]
 export function CreateChangeOrderDialog({
   open, onOpenChange, mode = "create", changeOrderId,
   jobId, orderId, jobPodioId, defaultSyncPodio, jobYearForPodioSync,
-  initialData, onCreated, onUpdated,
+  initialData, onCreated, onUpdated, role,
 }: Props) {
   const t = useTranslations("jobs")
   const isEdit = mode === "edit"
   const initialSync = useMemo(() => defaultSyncPodio, [defaultSyncPodio])
+  const isTech = role === "LEAD_TECHNICIAN"
 
   const [loading, setLoading] = useState(false)
   const [errors, setErrors]   = useState<Partial<Record<keyof FormState, string>>>({})
@@ -174,10 +176,10 @@ export function CreateChangeOrderDialog({
       Name:               String(initialData?.Name ?? ""),
       Description:        String(initialData?.Description ?? ""),
       ChangeOrderFormula: initialData?.ChangeOrderFormula == null ? "" : String(initialData.ChangeOrderFormula),
-      State:              (initialData?.State as State) ?? "",
+      State:              isTech ? "Pending" : ((initialData?.State as State) ?? ""),
       syncPodio:          initialSync,
     })
-  }, [open, initialData, initialSync])
+  }, [open, initialData, initialSync, isTech])
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((p) => ({ ...p, [key]: value }))
@@ -298,9 +300,10 @@ export function CreateChangeOrderDialog({
               <FieldLabel required>{t("coStateLabel")}</FieldLabel>
               <StateSelect
                 value={form.State}
-                onChange={(v) => set("State", v)}
+                onChange={(v) => !isTech && set("State", v)}
                 error={errors.State}
               />
+              {isTech && <p className="mt-1 text-[10px] text-amber-600 font-medium italic">Technicians can only create Pending change orders.</p>}
               {errors.State && <p className="mt-1 text-[11px] text-red-500">{errors.State}</p>}
             </div>
           </div>

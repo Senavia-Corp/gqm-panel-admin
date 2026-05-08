@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { SubcontractorsTable } from "@/components/organisms/SubcontractorsTable"
 import { SubcontractorDetails } from "@/components/organisms/SubcontractorDetails"
 import type { Subcontractor } from "@/lib/types"
@@ -20,18 +20,12 @@ type Props = {
   jobPodioId?: string
 }
 
-/**
- * FIX: derive year from the first numeric digit in the Job ID.
- * QID5xxx → 2025 | PTL6xxx → 2026 | PAR4xxx → 2024
- * Falls back to date-based resolution only if no numeric digit is found.
- */
 function resolveJobYearFromId(job: any): number | undefined {
   const id = String(job?.ID_Jobs ?? job?.id ?? "").trim()
   if (id) {
     const match = id.match(/\d/)
     if (match) return 2020 + parseInt(match[0], 10)
   }
-  // Fallback to date
   const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
   const dateStr =
     jobType === "PTL"
@@ -52,15 +46,42 @@ export function JobSubcontractorsTab({
   timelineEvents,
   syncPodio,
 }: Props) {
-  if (role !== "GQM_MEMBER") return null
+  const isTech = role === "LEAD_TECHNICIAN"
+  const [techSubId, setTechSubId] = useState<string | null>(null)
+  const [loadingTech, setLoadingTech] = useState(isTech)
+
+  useEffect(() => {
+    if (isTech) {
+      const fetchTechData = async () => {
+        try {
+          const userData = localStorage.getItem("user_data")
+          if (!userData) return
+          const user = JSON.parse(userData)
+          const res = await apiFetch(`/api/technician/${user.id}`)
+          if (res.ok) {
+            const data = await res.json()
+            setTechSubId(data?.subcontractor?.ID_Subcontractor || null)
+          }
+        } catch (error) {
+          console.error("Failed to fetch tech sub ID:", error)
+        } finally {
+          setLoadingTech(false)
+        }
+      }
+      fetchTechData()
+    }
+  }, [isTech])
+
+  if (role !== "GQM_MEMBER" && role !== "LEAD_TECHNICIAN") return null
   if (!job) return null
+  if (loadingTech) return <div className="p-8 text-center text-slate-400">Loading subcontractor information...</div>
 
   const jobId              = String(job?.ID_Jobs ?? job?.id ?? "")
   const jobPodioId         = job.podio_item_id
-  // FIX: use ID-based year resolution
   const jobYearForPodioSync = resolveJobYearFromId(job)
 
   const handleUnlink = async ({ subcontractorId, syncPodio }: { subcontractorId: string; syncPodio: boolean }) => {
+    if (isTech) return // Guard
     const yearToSend = syncPodio ? jobYearForPodioSync : undefined
     if (syncPodio && !yearToSend) {
       throw new Error("Year is required when Sync Podio is enabled.")
@@ -77,15 +98,21 @@ export function JobSubcontractorsTab({
     await onReload?.()
   }
 
+  // Filter subcontractors for technicians
+  const allSubcontractors = job?.subcontractors || []
+  const filteredSubcontractors = isTech 
+    ? allSubcontractors.filter((s: any) => s.ID_Subcontractor === techSubId)
+    : allSubcontractors
+
   if (!selectedSubcontractor) {
     return (
       <div className="space-y-8">
         <SubcontractorsTable
           jobId={jobId}
           onViewDetails={setSelectedSubcontractor}
-          subcontractors={job?.subcontractors || []}
-          onLinkClick={onOpenLinkDialog}
-          onUnlink={handleUnlink}
+          subcontractors={filteredSubcontractors}
+          onLinkClick={isTech ? undefined : onOpenLinkDialog}
+          onUnlink={isTech ? undefined : handleUnlink}
         />
         <JobOpportunitiesSection jobId={jobId} userRole={role} />
       </div>
@@ -105,6 +132,7 @@ export function JobSubcontractorsTab({
       defaultSyncPodio={syncPodio}
       jobYearForPodioSync={jobYearForPodioSync}
       jobPodioId={jobPodioId}
+      role={role}
     />
   )
 }

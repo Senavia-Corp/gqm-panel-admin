@@ -10,7 +10,7 @@ import {
   ArrowLeft, ExternalLink, RefreshCcw, AlertTriangle, Pencil, Check, X,
   ShoppingCart, ClipboardList, Tag, Plus, Trash2, Loader2, Search,
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle, MapPin,
-  Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp,
+  Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp, Zap,
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/apiFetch"
@@ -67,6 +67,7 @@ type Purchase = {
   Return_status?: string | null
   Purchase_note?: string | null
   Total_spending?: number | null
+  Is_extra?: boolean | null
   // Scalar FKs (normalized from nested objects on fetch)
   ID_Member?: string | null
   ID_Jobs?: string | null
@@ -463,10 +464,12 @@ function ItemRow({
   item,
   onUpdate,
   onDelete,
+  isRequestOnly,
 }: {
   item: PurchaseOrderItem
   onUpdate: (id: string, patch: Partial<PurchaseOrderItem>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  isRequestOnly?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -486,10 +489,12 @@ function ItemRow({
       if (draft.Quote_link !== item.Quote_link) patch.Quote_link = draft.Quote_link
       if (draft.Quote_value !== item.Quote_value) patch.Quote_value = asNumber(draft.Quote_value)
       if (draft.Quote_notes !== item.Quote_notes) patch.Quote_notes = draft.Quote_notes
-      if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
-      if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
-      if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
-      if (draft.Purchase_notes !== item.Purchase_notes) patch.Purchase_notes = draft.Purchase_notes
+      if (!isRequestOnly) {
+        if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
+        if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
+        if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
+        if (draft.Purchase_notes !== item.Purchase_notes) patch.Purchase_notes = draft.Purchase_notes
+      }
       await onUpdate(item.ID_PurchaseOrderItem, patch)
       setEditing(false)
     } catch (e: any) {
@@ -548,34 +553,42 @@ function ItemRow({
               className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
             />
           </div>
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Shop</label>
-            <Input value={draft.Purchase_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_shop: e.target.value }))}
-              className="text-sm border-slate-200 focus:border-emerald-400" />
-          </div>
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Value</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
-              <Input value={draft.Purchase_value ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_value: e.target.value as any }))}
-                className="pl-6 text-sm border-slate-200 focus:border-emerald-400" inputMode="decimal" />
+          {isRequestOnly ? (
+            <div className="sm:col-span-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-700">
+              Purchasing data (shop, value, link) can only be filled in by authorized members.
             </div>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Link</label>
-            <Input value={draft.Purchase_link ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_link: e.target.value }))}
-              className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Notes</label>
-            <textarea
-              value={draft.Purchase_notes ?? ""}
-              onChange={e => setDraft(p => ({ ...p, Purchase_notes: e.target.value }))}
-              placeholder="Notes on the actual purchase made…"
-              rows={2}
-              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
-            />
-          </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Shop</label>
+                <Input value={draft.Purchase_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_shop: e.target.value }))}
+                  className="text-sm border-slate-200 focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Value</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
+                  <Input value={draft.Purchase_value ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_value: e.target.value as any }))}
+                    className="pl-6 text-sm border-slate-200 focus:border-emerald-400" inputMode="decimal" />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Link</label>
+                <Input value={draft.Purchase_link ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_link: e.target.value }))}
+                  className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Notes</label>
+                <textarea
+                  value={draft.Purchase_notes ?? ""}
+                  onChange={e => setDraft(p => ({ ...p, Purchase_notes: e.target.value }))}
+                  placeholder="Notes on the actual purchase made…"
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+                />
+              </div>
+            </>
+          )}
         </div>
         {err && <p className="text-[11px] text-red-500">{err}</p>}
         <div className="flex gap-2">
@@ -770,6 +783,7 @@ function OrderBlock({
   onUpdateItem,
   onDeleteItem,
   onAddItem,
+  isRequestOnly,
 }: {
   order: PurchaseOrder
   onUpdateOrder: (id: string, patch: Partial<PurchaseOrder>) => Promise<void>
@@ -777,6 +791,7 @@ function OrderBlock({
   onUpdateItem: (id: string, patch: Partial<PurchaseOrderItem>) => Promise<void>
   onDeleteItem: (orderId: string, itemId: string) => Promise<void>
   onAddItem: (orderId: string, item: PurchaseOrderItem) => void
+  isRequestOnly?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -889,6 +904,7 @@ function OrderBlock({
               item={it}
               onUpdate={onUpdateItem}
               onDelete={(itemId) => onDeleteItem(order.ID_PurchaseOrder!, itemId)}
+              isRequestOnly={isRequestOnly}
             />
           ))}
           <AddItemForm
@@ -928,6 +944,9 @@ export default function PurchaseDetailsPage() {
   const [statusDraft, setStatusDraft] = useState("")
   const [statusSaving, setStatusSaving] = useState(false)
 
+  // Permission context
+  const [isRequestOnly, setIsRequestOnly] = useState(false)
+
   // New order form
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [newOrderTitle, setNewOrderTitle] = useState("")
@@ -960,6 +979,13 @@ export default function PurchaseDetailsPage() {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
     setUser(JSON.parse(u))
+    apiFetch("/api/auth/can?actions=purchase:update,purchase:request_only", { cache: "no-store" })
+      .then(r => r.json())
+      .then(data => {
+        const r = data?.results ?? {}
+        setIsRequestOnly(!!r["purchase:request_only"] && !r["purchase:update"])
+      })
+      .catch(() => {})
   }, [router])
 
   const fetchPurchase = useCallback(async (pid: string) => {
@@ -1206,6 +1232,11 @@ export default function PurchaseDetailsPage() {
                       <span className={`flex-shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold sm:px-3 ${statusColor}`}>
                         {purchase.Status ?? "—"}
                       </span>
+                      {purchase.Is_extra && (
+                        <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-600 sm:px-3">
+                          <Zap className="h-3 w-3" />Extra
+                        </span>
+                      )}
                       {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />}
                     </div>
                     <p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:block">{purchase.Description || "No description"}</p>
@@ -1295,6 +1326,7 @@ export default function PurchaseDetailsPage() {
                           onUpdateItem={handleUpdateItem}
                           onDeleteItem={handleDeleteItem}
                           onAddItem={handleAddItem}
+                          isRequestOnly={isRequestOnly}
                         />
                       ))
                     )}
@@ -1328,8 +1360,11 @@ export default function PurchaseDetailsPage() {
                               autoFocus
                               className="w-full rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
                             >
-                              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                              {(isRequestOnly ? ["Pending", "In Review"] : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
+                            {isRequestOnly && (
+                              <p className="text-[10px] text-amber-600">Your permissions allow Pending and In Review only.</p>
+                            )}
                             <div className="flex gap-1.5">
                               <button
                                 disabled={statusSaving}

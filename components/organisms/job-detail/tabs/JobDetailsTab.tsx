@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ClientCard } from "@/components/organisms/ClientCard"
 import { ClientSelect } from "@/components/organisms/ClientSelect"
 // NOTE: Make sure ClientSelect is the new version that uses /api/clients/table
 import { BuildingDeptSection } from "@/components/organisms/job-detail/BuildingDeptSection"
@@ -222,7 +223,12 @@ export function JobDetailsTab({
   isSaving = false,
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
-  const isReadOnly = readOnly || isTech
+  
+  // Base readOnly coming from prop
+  // isRestrictedReadOnly is for fields that tech CANNOT edit
+  const isRestrictedReadOnly = readOnly || isTech 
+  // isActuallyReadOnly is for fields that tech CAN edit (Status, Additional Details)
+  const isActuallyReadOnly = readOnly
 
   const { hasPermission } = usePermissions()
   const canReadClients = hasPermission("client:read")
@@ -262,36 +268,34 @@ export function JobDetailsTab({
     <div className="space-y-4">
 
       {/* ── 1. Client ─────────────────────────────────────────────────── */}
-      {role !== "LEAD_TECHNICIAN" && (
-        <SectionCard icon={Building2} title={t("detailSectionClient")}>
-          <ClientSelect
-            value={currentClientId || ""}
-            initialClients={clients}
-            changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
-            disabled={isReadOnly || !canReadClients}
-            onChange={(selected) => {
-              if (isReadOnly) return
-              if (!selected) {
-                onFieldChange("client", null)
-                onFieldChange("ID_Client", null)
-                return
-              }
-              onFieldChange("ID_Client", selected.id)
-              onFieldChange("client", {
-                ID_Client: selected.id,
-                id: selected.id,
-                name: selected.name,
-                companyName: selected.companyName,
-                email: selected.email,
-                phone: selected.phone,
-                address: selected.address,
-                avatar: selected.avatar,
-                status: selected.status,
-              })
-            }}
-          />
-        </SectionCard>
-      )}
+      <SectionCard icon={Building2} title={t("detailSectionClient")}>
+        <ClientSelect
+          value={currentClientId || ""}
+          initialClients={clients}
+          changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
+          disabled={isRestrictedReadOnly || !canReadClients}
+          onChange={(selected) => {
+            if (isRestrictedReadOnly) return
+            if (!selected) {
+              onFieldChange("client", null)
+              onFieldChange("ID_Client", null)
+              return
+            }
+            onFieldChange("ID_Client", selected.id)
+            onFieldChange("client", {
+              ID_Client: selected.id,
+              id: selected.id,
+              name: selected.name,
+              companyName: selected.companyName,
+              email: selected.email,
+              phone: selected.phone,
+              address: selected.address,
+              avatar: selected.avatar,
+              status: selected.status,
+            })
+          }}
+        />
+      </SectionCard>
 
       {/* ── 2. Job Characteristics ─────────────────────────────────────── */}
       <SectionCard icon={Hash} title={t("detailSectionCharacteristics")}>
@@ -319,7 +323,7 @@ export function JobDetailsTab({
           {/* Status */}
           <div>
             <FieldLabel>{t("detailFieldStatus")}</FieldLabel>
-            {isReadOnly ? (
+            {isActuallyReadOnly ? (
               <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${statusColor}`}>
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
                 <span className="text-sm font-medium">{status || "—"}</span>
@@ -346,7 +350,7 @@ export function JobDetailsTab({
         {isQID && (
           <div>
             <FieldLabel>{t("detailFieldServiceType")}</FieldLabel>
-            {isReadOnly ? (
+            {isRestrictedReadOnly ? (
               <ReadonlyField value={serviceType} />
             ) : (
               <Select value={serviceType} onValueChange={(v) => onFieldChange("serviceType", v)}>
@@ -374,7 +378,7 @@ export function JobDetailsTab({
           {isQID && (
             <div>
               <FieldLabel>{t("detailFieldProjectName")}</FieldLabel>
-              {isReadOnly ? (
+              {isRestrictedReadOnly ? (
                 <ReadonlyField value={projectName} />
               ) : (
                 <EditableInput
@@ -391,7 +395,7 @@ export function JobDetailsTab({
           {(isQID || isPTL) && (
             <div>
               <FieldLabel>{t("detailFieldProjectLocation")}</FieldLabel>
-              {isReadOnly ? (
+              {isRestrictedReadOnly ? (
                 <ReadonlyField value={projectLocation} />
               ) : (
                 <EditableTextarea
@@ -409,7 +413,7 @@ export function JobDetailsTab({
           {(isQID || isPAR) && (
             <div>
               <FieldLabel>{t("detailFieldPoWtnWo")}</FieldLabel>
-              {isReadOnly ? (
+              {isRestrictedReadOnly ? (
                 <ReadonlyField value={poWtnWo} />
               ) : (
                 <EditableInput
@@ -429,7 +433,7 @@ export function JobDetailsTab({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <FieldLabel>{t("detailFieldDateAssigned")}</FieldLabel>
-            {isReadOnly ? (
+            {isRestrictedReadOnly ? (
               <ReadonlyField value={dateAssigned} />
             ) : (
               <EditableInput
@@ -443,7 +447,7 @@ export function JobDetailsTab({
 
           <div>
             <FieldLabel>{t("detailFieldEstStartDate")}</FieldLabel>
-            {isReadOnly ? (
+            {isRestrictedReadOnly ? (
               <ReadonlyField value={estimatedStartDate} />
             ) : (
               <EditableInput
@@ -458,7 +462,7 @@ export function JobDetailsTab({
 
         <div>
           <FieldLabel>{t("detailFieldEstDuration")}</FieldLabel>
-          {isReadOnly ? (
+          {isRestrictedReadOnly ? (
             <ReadonlyField value={durationRaw || "—"} />
           ) : (
             <EditableInput
@@ -474,7 +478,7 @@ export function JobDetailsTab({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <FieldLabel>{t("detailFieldDateReceived")}</FieldLabel>
-            {isReadOnly ? (
+            {isRestrictedReadOnly ? (
               <ReadonlyField value={dateReceived} />
             ) : (
               <EditableInput
@@ -488,7 +492,7 @@ export function JobDetailsTab({
 
           <div>
             <FieldLabel>{t("detailFieldEstCompletionDate")}</FieldLabel>
-            {isReadOnly ? (
+            {isRestrictedReadOnly ? (
               <ReadonlyField value={estimatedCompletionDate} />
             ) : (
               <EditableInput
@@ -506,15 +510,16 @@ export function JobDetailsTab({
       {patch ? (
         <BuildingDeptSection
           job={job}
-          isReadOnly={isReadOnly}
+          isReadOnly={isRestrictedReadOnly}
           patch={patch}
           isSaving={isSaving}
+          role={role}
         />
       ) : null}
 
       {/* ── 6. Additional Details ──────────────────────────────────────── */}
       <SectionCard icon={Info} title={t("detailSectionAdditional")}>
-        {isReadOnly ? (
+        {isActuallyReadOnly ? (
           <ReadonlyField value={additionalDetail} />
         ) : (
           <EditableTextarea
@@ -533,7 +538,7 @@ export function JobDetailsTab({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <FieldLabel>{t("detailFieldSuperintendent")}</FieldLabel>
-              {isReadOnly ? (
+              {isRestrictedReadOnly ? (
                 <ReadonlyField value={ptlSuperintendent} />
               ) : (
                 <EditableInput
@@ -546,7 +551,7 @@ export function JobDetailsTab({
             </div>
             <div>
               <FieldLabel>{t("detailFieldPropertyId")}</FieldLabel>
-              {isReadOnly ? (
+              {isRestrictedReadOnly ? (
                 <ReadonlyField value={ptlPropertyId} />
               ) : (
                 <EditableInput

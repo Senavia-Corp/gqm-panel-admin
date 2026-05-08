@@ -34,6 +34,7 @@ import {
   Save,
   AlertTriangle,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ── Sentinel — never pass "" to Radix Select ──────────────────────────────────
 const NONE = "__none__"
@@ -48,12 +49,12 @@ function fromForm(v: string): string | null {
 type AssignType = "none" | "member" | "subcontractor"
 
 interface TaskDetailsDialogProps {
-  task: Task | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onDelete: (taskId: string) => void
-  onSave: () => void
-  technicians?: Array<{ id: string; name: string; type: string }>
+  task: Task | null
+  onTaskSave: () => void
+  onTaskDelete: (taskId: string) => void
+  onTaskStatusChange: (taskId: string, newStatus: string) => void
   jobData?: any
 }
 
@@ -118,6 +119,8 @@ function editInputStyle(edited = false): React.CSSProperties {
   }
 }
 
+
+
 function viewFieldStyle(highlighted = false): React.CSSProperties {
   return {
     padding: "11px 14px",
@@ -159,25 +162,26 @@ function toDateInputValue(d: string | null | undefined): string {
 }
 
 // Human-readable display. Uses local Date constructor at noon — zero UTC-offset risk.
-function formatDate(d: string | null | undefined): string {
+function formatDate(d: string | null | undefined, locale: string = "en-US"): string {
   const parts = extractDateParts(d)
-  if (!parts) return "Not set"
+  if (!parts) return ""
   const dt = new Date(parts[0], parts[1], parts[2], 12, 0, 0)
-  if (isNaN(dt.getTime())) return "Not set"
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  if (isNaN(dt.getTime())) return ""
+  return dt.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TaskDetailsDialog({
-  task,
   open,
   onOpenChange,
-  onDelete,
-  onSave,
-  technicians = [],
+  task,
+  onTaskSave,
+  onTaskDelete,
+  onTaskStatusChange,
   jobData,
 }: TaskDetailsDialogProps) {
+  const t = useTranslations("jobTasks")
   const [isEditMode,        setIsEditMode]        = useState(false)
   const [editedFields,      setEditedFields]      = useState<Set<string>>(new Set())
   const [isSaving,          setIsSaving]          = useState(false)
@@ -326,9 +330,9 @@ const memberId = toForm(task.ID_Member)
 
       setIsEditMode(false)
       setEditedFields(new Set())
-      onSave()
+      onTaskSave()
     } catch (e: any) {
-      setSaveError(e.message ?? "Failed to save changes")
+      setSaveError(e.message ?? t("failedToSave"))
     } finally {
       setIsSaving(false)
     }
@@ -347,10 +351,10 @@ const memberId = toForm(task.ID_Member)
       }
       setShowDeleteConfirm(false)
       onOpenChange(false)
-      onDelete(task.ID_Tasks)
-      onSave()
+      onTaskDelete(task.ID_Tasks)
+      onTaskSave()
     } catch (e: any) {
-      setSaveError(e.message ?? "Failed to delete task")
+      setSaveError(e.message ?? t("failedToDelete"))
       setShowDeleteConfirm(false)
     } finally {
       setIsDeleting(false)
@@ -372,7 +376,7 @@ const memberId = toForm(task.ID_Member)
 
   const memberDisplay  = allMembers.find(m => m.id === fromForm(formData.ID_Member))
   const memberName     = memberDisplay?.name ?? fromForm(formData.ID_Member)
-  const techName       = technicians.find(t => t.id === fromForm(formData.ID_Technician))?.name ?? fromForm(formData.ID_Technician)
+  const techName       = jobSubcontractors.flatMap(s => s.technicians).find(t => t.id === fromForm(formData.ID_Technician))?.name ?? fromForm(formData.ID_Technician)
   const subcDisplay    = jobSubcontractors.find(s => s.id === fromForm(formData.ID_Subcontractor))
   const selectedSubc   = jobSubcontractors.find(s => s.id === formData.ID_Subcontractor)
 
@@ -419,7 +423,7 @@ const memberId = toForm(task.ID_Member)
                     padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 700,
                     background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)",
                   }}>
-                    {formData.Task_status === "Work-in-progress" ? "In Progress" : formData.Task_status}
+                    {formData.Task_status === "Work-in-progress" ? t("inProgress") : (formData.Task_status === "Not started" ? t("notStarted") : t("completed"))}
                   </span>
                   {/* Priority pill */}
                   {pStyle && (
@@ -430,7 +434,7 @@ const memberId = toForm(task.ID_Member)
                       display: "inline-flex", alignItems: "center", gap: "5px",
                     }}>
                       <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: pStyle.dot }} />
-                      {priorityKey}
+                      {priorityKey === "High" ? t("high") : (priorityKey === "Medium" ? t("medium") : t("low"))}
                     </span>
                   )}
                   {isOverdue && (
@@ -438,7 +442,7 @@ const memberId = toForm(task.ID_Member)
                       padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 700,
                       background: "rgba(239,68,68,0.3)", color: "#FCA5A5", border: "1px solid rgba(239,68,68,0.4)",
                     }}>
-                      ⚠ Overdue
+                      ⚠ {t("overdueLabel")}
                     </span>
                   )}
                 </div>
@@ -471,7 +475,7 @@ const memberId = toForm(task.ID_Member)
             )}
 
             {/* ── Section 1: Classification ──────────────────────────── */}
-            <SectionHeader icon={<Flag size={13} />} label="Classification" />
+            <SectionHeader icon={<Flag size={13} />} label={t("classification")} />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Status card */}
@@ -482,7 +486,7 @@ const memberId = toForm(task.ID_Member)
                 background: editedFields.has("Task_status") ? "#EFF6FF" : "#FAFAFA",
               }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "#9CA3AF", marginBottom: "10px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  <Circle size={10} /> Status
+                  <Circle size={10} /> {t("status")}
                 </div>
                 {isEditMode ? (
                   <Select value={formData.Task_status} onValueChange={v => handleFieldChange("Task_status", v)}>
@@ -491,13 +495,13 @@ const memberId = toForm(task.ID_Member)
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Not started">
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><Circle size={11} color="#9CA3AF" /> Not Started</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><Circle size={11} color="#9CA3AF" /> {t("notStarted")}</span>
                       </SelectItem>
                       <SelectItem value="Work-in-progress">
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><Clock size={11} color="#D97706" /> In Progress</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><Clock size={11} color="#D97706" /> {t("inProgress")}</span>
                       </SelectItem>
                       <SelectItem value="Completed">
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><CheckCircle2 size={11} color="#16A34A" /> Completed</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}><CheckCircle2 size={11} color="#16A34A" /> {t("completed")}</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -510,7 +514,7 @@ const memberId = toForm(task.ID_Member)
                     {formData.Task_status === "Not started" && <Circle size={10} />}
                     {formData.Task_status === "Work-in-progress" && <Clock size={10} />}
                     {formData.Task_status === "Completed" && <CheckCircle2 size={10} />}
-                    {formData.Task_status === "Work-in-progress" ? "In Progress" : formData.Task_status}
+                    {formData.Task_status === "Work-in-progress" ? t("inProgress") : (formData.Task_status === "Not started" ? t("notStarted") : t("completed"))}
                   </span>
                 )}
               </div>
@@ -523,20 +527,24 @@ const memberId = toForm(task.ID_Member)
                 background: editedFields.has("Priority") ? "#EFF6FF" : "#FAFAFA",
               }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "#9CA3AF", marginBottom: "10px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  <Flag size={10} /> Priority
+                  <Flag size={10} /> {t("priority")}
                 </div>
                 {isEditMode ? (
                   <Select value={formData.Priority} onValueChange={v => handleFieldChange("Priority", v)}>
                     <SelectTrigger style={{ borderRadius: "8px", fontSize: "13px", height: "36px", background: "#fff" }}>
-                      <SelectValue placeholder="No priority" />
+                      <SelectValue placeholder={t("noPriority")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>No priority</SelectItem>
-                      {["High", "Medium", "Low"].map(p => (
-                        <SelectItem key={p} value={p}>
+                      <SelectItem value={NONE}>{t("noPriority")}</SelectItem>
+                      {[
+                        { key: "High", label: t("high") },
+                        { key: "Medium", label: t("medium") },
+                        { key: "Low", label: t("low") }
+                      ].map(p => (
+                        <SelectItem key={p.key} value={p.key}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
-                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: PRIORITY_STYLE[p].dot, display: "inline-block" }} />
-                            {p}
+                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: PRIORITY_STYLE[p.key].dot, display: "inline-block" }} />
+                            {p.label}
                           </span>
                         </SelectItem>
                       ))}
@@ -549,10 +557,10 @@ const memberId = toForm(task.ID_Member)
                     background: pStyle.bg, color: pStyle.color, border: `1px solid ${pStyle.border}`,
                   }}>
                     <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: pStyle.dot, flexShrink: 0 }} />
-                    {priorityKey}
+                    {priorityKey === "High" ? t("high") : (priorityKey === "Medium" ? t("medium") : t("low"))}
                   </span>
                 ) : (
-                  <span style={{ fontSize: "13px", color: "#9CA3AF", fontStyle: "italic" }}>No priority</span>
+                  <span style={{ fontSize: "13px", color: "#9CA3AF", fontStyle: "italic" }}>{t("noPriority")}</span>
                 )}
               </div>
             </div>
@@ -560,10 +568,10 @@ const memberId = toForm(task.ID_Member)
             <Divider />
 
             {/* ── Section 2: Task Details ────────────────────────────── */}
-            <SectionHeader icon={<ClipboardList size={13} />} label="Task Details" />
+            <SectionHeader icon={<ClipboardList size={13} />} label={t("taskDetails")} />
 
             <div style={{ marginBottom: "14px" }}>
-              <FieldLabel>Task Name</FieldLabel>
+              <FieldLabel>{t("taskName")}</FieldLabel>
               {isEditMode ? (
                 <input
                   type="text"
@@ -581,14 +589,14 @@ const memberId = toForm(task.ID_Member)
             <div>
               <FieldLabel>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                  <AlignLeft size={12} color="#9CA3AF" /> Description
+                  <AlignLeft size={12} color="#9CA3AF" /> {t("description")}
                 </span>
               </FieldLabel>
               {isEditMode ? (
                 <textarea
                   value={formData.Task_description ?? ""}
                   onChange={e => handleFieldChange("Task_description", e.target.value)}
-                  placeholder="Add a description..."
+                  placeholder={t("descHint")}
                   rows={4}
                   style={{ ...editInputStyle(editedFields.has("Task_description")), resize: "vertical" }}
                 />
@@ -603,7 +611,7 @@ const memberId = toForm(task.ID_Member)
                   color: formData.Task_description ? "#374151" : "#9CA3AF",
                   fontStyle: formData.Task_description ? "normal" : "italic",
                 }}>
-                  {formData.Task_description || "No description provided"}
+                  {formData.Task_description || t("noDescription")}
                 </div>
               )}
             </div>
@@ -611,11 +619,11 @@ const memberId = toForm(task.ID_Member)
             <Divider />
 
             {/* ── Section 3: Timeline ───────────────────────────────── */}
-            <SectionHeader icon={<Calendar size={13} />} label="Timeline" />
+            <SectionHeader icon={<Calendar size={13} />} label={t("timeline")} />
 
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div>
-                <FieldLabel>Start Date</FieldLabel>
+                <FieldLabel>{t("startDate")}</FieldLabel>
                 {isEditMode ? (
                   <input
                     type="date"
@@ -627,13 +635,13 @@ const memberId = toForm(task.ID_Member)
                   <div style={viewFieldStyle()}>
                     <Calendar size={14} color="#9CA3AF" />
                     <span style={{ color: formData.Designation_date ? "#374151" : "#9CA3AF" }}>
-                      {formatDate(formData.Designation_date)}
+                      {formatDate(formData.Designation_date, t("locale") === "es" ? "es-ES" : "en-US")}
                     </span>
                   </div>
                 )}
               </div>
               <div>
-                <FieldLabel>Delivery Date</FieldLabel>
+                <FieldLabel>{t("deliveryDate")}</FieldLabel>
                 {isEditMode ? (
                   <input
                     type="date"
@@ -645,11 +653,11 @@ const memberId = toForm(task.ID_Member)
                   <div style={viewFieldStyle(isOverdue)}>
                     <Clock size={14} color={isOverdue ? "#DC2626" : "#9CA3AF"} />
                     <span style={{ color: isOverdue ? "#DC2626" : (formData.Delivery_date ? "#374151" : "#9CA3AF") }}>
-                      {formatDate(formData.Delivery_date)}
+                      {formatDate(formData.Delivery_date, t("locale") === "es" ? "es-ES" : "en-US")}
                     </span>
                     {isOverdue && (
                       <span style={{ marginLeft: "auto", fontSize: "10px", fontWeight: 700, color: "#DC2626", background: "#FEE2E2", padding: "1px 7px", borderRadius: "10px" }}>
-                        OVERDUE
+                        {t("overdueLabel")}
                       </span>
                     )}
                   </div>
@@ -660,16 +668,16 @@ const memberId = toForm(task.ID_Member)
             <Divider />
 
             {/* ── Section 4: Assignment ─────────────────────────────── */}
-            <SectionHeader icon={<UserCheck size={13} />} label="Assignment" />
+            <SectionHeader icon={<UserCheck size={13} />} label={t("assignment")} />
 
             {isEditMode ? (
               <>
                 {/* Assignment type tabs */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
                   {[
-                    { key: "none" as AssignType,          label: "Unassigned",    icon: <Circle size={13} /> },
-                    { key: "member" as AssignType,        label: "GQM Member",    icon: <Users size={13} /> },
-                    { key: "subcontractor" as AssignType, label: "Subcontractor", icon: <Building2 size={13} /> },
+                    { key: "none" as AssignType,          label: t("unassignedLabel"),    icon: <Circle size={13} /> },
+                    { key: "member" as AssignType,        label: t("gqmMember"),    icon: <Users size={13} /> },
+                    { key: "subcontractor" as AssignType, label: t("subcontractor"), icon: <Building2 size={13} /> },
                   ].map(opt => {
                     const active = assignType === opt.key
                     return (
@@ -698,21 +706,21 @@ const memberId = toForm(task.ID_Member)
                   <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "12px", padding: "14px" }}>
                     <FieldLabel>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                        <Users size={12} color="#059669" /> Select GQM Member
+                        <Users size={12} color="#059669" /> {t("selectMember")}
                       </span>
                     </FieldLabel>
                     {loadingMembers ? (
                       <div style={{ fontSize: "13px", color: "#9CA3AF", display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
                         <div className="animate-spin" style={{ width: "14px", height: "14px", border: "2px solid #E5E7EB", borderTopColor: "#059669", borderRadius: "50%" }} />
-                        Loading members...
+                        {t("loadingMembers")}
                       </div>
                     ) : (
                       <Select value={formData.ID_Member} onValueChange={v => handleFieldChange("ID_Member", v)}>
                         <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                          <SelectValue placeholder="Select a GQM member..." />
+                          <SelectValue placeholder={t("selectMember")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>— No member —</span></SelectItem>
+                          <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>{t("noMember")}</span></SelectItem>
                           {allMembers.map(m => (
                             <SelectItem key={m.id} value={m.id}>
                               <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -738,12 +746,12 @@ const memberId = toForm(task.ID_Member)
                     <div>
                       <FieldLabel>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                          <Building2 size={12} color="#059669" /> Select Subcontractor
+                          <Building2 size={12} color="#059669" /> {t("selectSubcontractor")}
                         </span>
                       </FieldLabel>
                       {jobSubcontractors.length === 0 ? (
                         <div style={{ padding: "10px 12px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "9px", fontSize: "13px", color: "#92400E", display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Building2 size={13} color="#D97706" /> No subcontractors linked to this job.
+                          <Building2 size={13} color="#D97706" /> {t("noSubcontractorsLinked")}
                         </div>
                       ) : (
                         <Select
@@ -751,10 +759,10 @@ const memberId = toForm(task.ID_Member)
                           onValueChange={v => { handleFieldChange("ID_Subcontractor", v); handleFieldChange("ID_Technician", NONE) }}
                         >
                           <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                            <SelectValue placeholder="Select a subcontractor..." />
+                            <SelectValue placeholder={t("selectSubcontractor")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>— No subcontractor —</span></SelectItem>
+                            <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>{t("noSubcontractor")}</span></SelectItem>
                             {jobSubcontractors.map(s => (
                               <SelectItem key={s.id} value={s.id}>
                                 <span style={{ fontWeight: 500 }}>{s.org || s.name}</span>
@@ -770,16 +778,16 @@ const memberId = toForm(task.ID_Member)
                       <div>
                         <FieldLabel>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                            <Wrench size={12} color="#9CA3AF" /> Technician
-                            <span style={{ fontWeight: 400, color: "#9CA3AF" }}>(optional)</span>
+                            <Wrench size={12} color="#9CA3AF" /> {t("selectTechnician")}
+                            <span style={{ fontWeight: 400, color: "#9CA3AF" }}>({t("skip")})</span>
                           </span>
                         </FieldLabel>
                         <Select value={formData.ID_Technician} onValueChange={v => handleFieldChange("ID_Technician", v)}>
                           <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
-                            <SelectValue placeholder="Select a technician..." />
+                            <SelectValue placeholder={t("selectTechnician")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>— No specific technician —</span></SelectItem>
+                            <SelectItem value={NONE}><span style={{ color: "#9CA3AF" }}>{t("noSpecificTechnician")}</span></SelectItem>
                             {selectedSubc.technicians.map(t => (
                               <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
@@ -886,7 +894,7 @@ const memberId = toForm(task.ID_Member)
                 cursor: "pointer", transition: "all 0.15s",
               }}
             >
-              <Trash2 size={13} /> Delete Task
+              <Trash2 size={13} /> {t("deleteTask")}
             </button>
 
             {/* Edit / Save-Cancel */}
@@ -901,7 +909,7 @@ const memberId = toForm(task.ID_Member)
                       background: "#fff", color: "#6B7280", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                     }}
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                   <button
                     onClick={handleSaveChanges}
@@ -921,7 +929,7 @@ const memberId = toForm(task.ID_Member)
                     {isSaving ? (
                       <>
                         <div className="animate-spin" style={{ width: "13px", height: "13px", border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%" }} />
-                        Saving...
+                        {t("saving")}
                       </>
                     ) : (
                       <>
@@ -944,7 +952,7 @@ const memberId = toForm(task.ID_Member)
                     background: "#fff", color: "#374151", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                   }}
                 >
-                  <Pencil size={13} /> Edit Task
+                  <Pencil size={13} /> {t("editTask")}
                 </button>
               )}
             </div>
@@ -956,19 +964,19 @@ const memberId = toForm(task.ID_Member)
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirmDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{task?.Name}&quot;? This action cannot be undone.
+              {t("confirmDeleteDesc", { name: task?.Name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isDeleting ? "Deleting…" : "Delete Task"}
+              {isDeleting ? t("deleting") : t("deleteTask")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

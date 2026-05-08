@@ -60,6 +60,16 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
   const t = useTranslations("subcontractors")
   const router = useRouter()
 
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    const u = localStorage.getItem("user_data")
+    if (u) setUser(JSON.parse(u))
+  }, [])
+
+  const isTech = user?.role === "LEAD_TECHNICIAN"
+  const [techSubId, setTechSubId] = useState<string | null>(null)
+
+
   const [rows, setRows]         = useState<Subcontractor[]>([])
   const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
@@ -107,15 +117,40 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
   }, [t])
 
   useEffect(() => {
+    if (isTech && user?.id) {
+      const fetchTechSub = async () => {
+        try {
+          const res = await apiFetch(`/api/technician/${user.id}`)
+          if (res.ok) {
+            const data = await res.json()
+            setTechSubId(data?.subcontractor?.ID_Subcontractor ? String(data.subcontractor.ID_Subcontractor) : null)
+          }
+        } catch (err) {
+          console.error("Failed to fetch tech sub ID:", err)
+        }
+      }
+      fetchTechSub()
+    }
+  }, [isTech, user?.id])
+
+  useEffect(() => {
+    if (isTech && !techSubId) {
+      // Don't fetch the whole list if we are tech and don't have our sub ID yet
+      if (techSubId === null) {
+        // Only if we finished fetching and it's still null, then we can show empty or handle
+      }
+      return
+    }
     fetchPage(page, dSearch, status)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, dSearch, status])
+  }, [page, dSearch, status, techSubId, isTech])
 
   useEffect(() => { setPage(1) }, [dSearch, status])
 
   const handleDelete = (s: Subcontractor) => { setDeleteTarget(s); setDeleteOpen(true) }
 
   const confirmDelete = async (syncPodio: boolean) => {
+    if (isTech) return // Techs can't delete subs
     if (!deleteTarget?.ID_Subcontractor) return
     try {
       const res = await apiFetch(
@@ -130,9 +165,14 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
     }
   }
 
-  const totalPages  = Math.max(1, Math.ceil(total / PER_PAGE))
-  const showFrom    = total === 0 ? 0 : (page - 1) * PER_PAGE + 1
-  const showTo      = Math.min(page * PER_PAGE, total)
+  const filteredRows = isTech 
+    ? (techSubId ? rows.filter(r => String(r.ID_Subcontractor) === techSubId) : [])
+    : rows
+
+  const displayTotal = isTech && techSubId ? filteredRows.length : total
+  const totalPages  = Math.max(1, Math.ceil(displayTotal / PER_PAGE))
+  const showFrom    = displayTotal === 0 ? 0 : (page - 1) * PER_PAGE + 1
+  const showTo      = Math.min(page * PER_PAGE, displayTotal)
   const activeFilters = (search ? 1 : 0) + (status !== "all" ? 1 : 0)
 
   return (
@@ -143,7 +183,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
           <div className="flex items-center gap-2.5">
             <h2 className="text-base font-bold text-slate-800">{t("toolbarTitle")}</h2>
             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
-              {total}
+              {displayTotal}
             </span>
             {activeFilters > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
@@ -151,7 +191,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
               </span>
             )}
           </div>
-          {hasPermission("subcontractor:create") && (
+          {hasPermission("subcontractor:create") && !isTech && (
             <Button
               onClick={() => router.push("/subcontractors/create")}
               className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto"
@@ -214,7 +254,10 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
           </Button>
         </div>
       ) : (
-        <SubcontractorManagementTable subcontractors={rows} onDelete={handleDelete} />
+        <SubcontractorManagementTable 
+          subcontractors={filteredRows} 
+          onDelete={isTech ? undefined : handleDelete} 
+        />
       )}
 
       {/* ── Pagination ── */}
@@ -224,7 +267,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
             {t.rich("showingRange", {
               from: showFrom,
               to: showTo,
-              total: total,
+              total: displayTotal,
               span: (chunks) => <span className="font-semibold text-slate-800">{chunks}</span>
             })}
           </p>

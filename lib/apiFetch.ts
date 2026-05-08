@@ -11,6 +11,13 @@ export async function apiFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
+  // Smart Redirect: If a technician ID (starting with TEC) is being fetched from the members endpoint,
+  // redirect it to the technician endpoint to avoid 404 errors.
+  let finalUrl = url
+  if (url.includes("/api/members/TEC")) {
+    finalUrl = url.replace("/api/members/", "/api/technician/")
+  }
+
   const userId = _getUserId()
   const headers = new Headers(options.headers)
 
@@ -35,7 +42,7 @@ export async function apiFetch(
   }
 
   // 1. First Attempt
-  let response = await fetch(url, { ...options, headers })
+  let response = await fetch(finalUrl, { ...options, headers })
 
   // 2. Handle 401 Unauthorized - Possible token expiration
   if (response.status === 401) {
@@ -58,7 +65,7 @@ export async function apiFetch(
           headers.set("Authorization", `Bearer ${newToken}`)
           
           // 5. Retry the original request
-          response = await fetch(url, { ...options, headers })
+          response = await fetch(finalUrl, { ...options, headers })
           
           // If still 401 after refresh, then the refresh token might be actually invalid
           if (response.status === 401) {

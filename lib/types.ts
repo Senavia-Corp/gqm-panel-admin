@@ -567,6 +567,7 @@ export interface JobFilters {
   dateFrom?: string   // "YYYY-MM-DD"
   dateTo?: string   // "YYYY-MM-DD"
   memberId?: string
+  subcontractorId?: string
 }
 
 // --- Excel Export ---

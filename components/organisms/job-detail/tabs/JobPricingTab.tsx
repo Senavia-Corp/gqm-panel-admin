@@ -23,10 +23,7 @@ import {
 import { ChangeOrdersSection } from "@/components/organisms/ChangeOrdersSection"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
-const TechnicianJobSidebar = dynamic(
-  () => import("@/components/organisms/TechnicianJobSidebar").then((m) => m.TechnicianJobSidebar),
-  { ssr: false },
-)
+
 const LeadTechnicianPricingView = dynamic(
   () => import("@/components/organisms/LeadTechnicianPricingView").then((m) => m.LeadTechnicianPricingView),
   { ssr: false },
@@ -628,14 +625,7 @@ export function JobPricingTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  if (role === "LEAD_TECHNICIAN") {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2"><LeadTechnicianPricingView jobId={jobId} job={job} /></div>
-        <div className="lg:col-span-1"><TechnicianJobSidebar job={job} subcontractor={job?.subcontractors?.[0]} /></div>
-      </div>
-    )
-  }
+
 
   const formula = gqmFormula ?? null
   const applicableMultiplier = formula != null ? findApplicableMultiplier(formula, job?.multipliers || []) : null
