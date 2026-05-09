@@ -8,6 +8,7 @@ import {
   Zap, ZapOff, AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 import type { EstimateItem } from "@/lib/types"
 
@@ -16,11 +17,11 @@ import type { EstimateItem } from "@/lib/types"
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
 const FIELD_ERR  = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
 
-const COST_TYPES   = ["Subcontractor", "Rent", "Permit", "BDF", "PTLGCF", "Labor", "Equipment", "Other"] as const
+// BDF/Permit managed from BDF Manager; Rent/Equipment managed from Rent Manager
+const COST_TYPES   = ["Subcontractor", "PTLGCF", "Labor", "Other"] as const
 const MARKUP_TYPES = ["%", "$"] as const
-const BDF_MAX      = 3   // Podio hard limit
 
-const PODIO_SYNC_TYPES = new Set(["BDF", "PTLGCF"])
+const PODIO_SYNC_TYPES = new Set(["PTLGCF"])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,20 +112,27 @@ interface Props {
   onOpenChange: (v: boolean) => void
   jobId: string
   jobYear?: number
-  existingBdfCount?: number   // how many BDF costs already exist (enforces 3-slot limit)
+  /** When provided, the Cost Type is pre-set and locked to this value (e.g. "BDF"). */
+  forcedCostType?: string
   onCreated: (item: EstimateItem) => void
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function CreateEstimateItemDialog({
-  open, onOpenChange, jobId, jobYear, existingBdfCount = 0, onCreated,
+  open, onOpenChange, jobId, jobYear, forcedCostType, onCreated,
 }: Props) {
-  const [form, setForm]           = useState<FormState>(EMPTY_FORM)
+  const t = useTranslations("jobEstimate.createItemModal")
+  const [form, setForm]           = useState<FormState>({ ...EMPTY_FORM, Cost_Type: forcedCostType ?? EMPTY_FORM.Cost_Type })
   const [errors, setErrors]       = useState<Partial<Record<keyof FormState, string>>>({})
   const [loading, setLoading]     = useState(false)
   const [section, setSection]     = useState<"basic" | "costs">("basic")
   const [syncPodio, setSyncPodio] = useState(false)
+
+  // When the dialog opens, honour forcedCostType
+  useEffect(() => {
+    if (open && forcedCostType) setForm((p) => ({ ...p, Cost_Type: forcedCostType }))
+  }, [open, forcedCostType])
 
   // Reset sync toggle when Cost_Type changes away from sync-relevant types
   useEffect(() => {
@@ -143,8 +151,7 @@ export function CreateEstimateItemDialog({
     setErrors((p) => { const n = { ...p }; delete n[key]; return n })
   }
 
-  const isBdfAtLimit = form.Cost_Type === "BDF" && existingBdfCount >= BDF_MAX
-  const isSyncType   = PODIO_SYNC_TYPES.has(form.Cost_Type)
+  const isSyncType = PODIO_SYNC_TYPES.has(form.Cost_Type)
 
   const validate = (): boolean => {
     const errs: typeof errors = {}
@@ -152,7 +159,6 @@ export function CreateEstimateItemDialog({
     if (!form.Cost_Code.trim()) errs.Cost_Code = "Required"
     const qty = parseFloat(form.Quantity)
     if (isNaN(qty) || qty < 0) errs.Quantity = "Must be ≥ 0"
-    if (isBdfAtLimit)          errs.Cost_Type = `Maximum ${BDF_MAX} BDF costs reached (Podio limit)`
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -170,7 +176,7 @@ export function CreateEstimateItemDialog({
         Quatity:          parseFloat(form.Quantity) || 0,
         Unit:             form.Unit.trim() || null,
         Unit_cost:        parseFloat(form.Unit_Cost) || 0,
-        Cost_type:        form.Cost_Type || null,
+        Cost_type:        forcedCostType ?? form.Cost_Type ?? null,
         Builder_cost:     parseFloat(form.Builder_Cost) || 0,
         Client_price:     parseFloat(form.Client_Price) || 0,
         Markup:           parseFloat(form.Markup) || 0,
@@ -216,6 +222,7 @@ export function CreateEstimateItemDialog({
         Unit:                     created.Unit ?? form.Unit,
         Unit_Cost:                (created.Unit_cost ?? parseFloat(form.Unit_Cost)) || 0,
         Cost_Type:                created.Cost_type ?? form.Cost_Type as any,
+        Status:                   created.Status ?? null,
         Marked_As:                "",
         Builder_Cost:             (created.Builder_cost ?? parseFloat(form.Builder_Cost)) || 0,
         Markup:                   (created.Markup ?? parseFloat(form.Markup)) || 0,
@@ -229,14 +236,14 @@ export function CreateEstimateItemDialog({
         ID_Order:                 null,
       }
 
-      toast.success("Estimate cost created")
+      toast.success(t("successMsg"))
       onCreated(item)
       onOpenChange(false)
-      setForm(EMPTY_FORM)
+      setForm({ ...EMPTY_FORM, Cost_Type: forcedCostType ?? EMPTY_FORM.Cost_Type })
       setSyncPodio(false)
       setSection("basic")
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create estimate cost")
+      toast.error(e?.message ?? t("failMsg"))
     } finally {
       setLoading(false)
     }
@@ -264,8 +271,10 @@ export function CreateEstimateItemDialog({
               <FilePlus2 className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">New Estimate Cost</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Job: <span className="font-mono">{jobId}</span></p>
+              <h2 className="text-base font-bold text-slate-900">
+                {forcedCostType ? t("titleNewForced", { type: forcedCostType }) : t("titleNew")}
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t("jobLabel")}<span className="font-mono">{jobId}</span></p>
             </div>
           </div>
           <button
@@ -286,8 +295,8 @@ export function CreateEstimateItemDialog({
               }`}
             >
               {s === "basic"
-                ? <><Tag className="h-3.5 w-3.5" /> Basic Info</>
-                : <><DollarSign className="h-3.5 w-3.5" /> Pricing</>
+                ? <><Tag className="h-3.5 w-3.5" /> {t("tabBasic")}</>
+                : <><DollarSign className="h-3.5 w-3.5" /> {t("tabPricing")}</>
               }
               {s === "basic" && basicComplete && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
             </button>
@@ -302,7 +311,7 @@ export function CreateEstimateItemDialog({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FG>
-                  <FL required>Title</FL>
+                  <FL required>{t("fTitle")}</FL>
                   <div className="relative">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="text" value={form.Title} onChange={(e) => set("Title", e.target.value)}
@@ -313,7 +322,7 @@ export function CreateEstimateItemDialog({
                   {errors.Title && <p className="text-[11px] text-red-500">{errors.Title}</p>}
                 </FG>
                 <FG>
-                  <FL required>Cost Code</FL>
+                  <FL required>{t("fCostCode")}</FL>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="text" value={form.Cost_Code} onChange={(e) => set("Cost_Code", e.target.value)}
@@ -327,7 +336,7 @@ export function CreateEstimateItemDialog({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FG>
-                  <FL>Category</FL>
+                  <FL>{t("fCategory")}</FL>
                   <div className="relative">
                     <Layers className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="text" value={form.Category} onChange={(e) => set("Category", e.target.value)}
@@ -335,7 +344,7 @@ export function CreateEstimateItemDialog({
                   </div>
                 </FG>
                 <FG>
-                  <FL>Parent Group</FL>
+                  <FL>{t("fParentGroup")}</FL>
                   <div className="relative">
                     <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="text" value={form.Parent_Group} onChange={(e) => set("Parent_Group", e.target.value)}
@@ -345,7 +354,7 @@ export function CreateEstimateItemDialog({
               </div>
 
               <FG>
-                <FL>Description</FL>
+                <FL>{t("fDesc")}</FL>
                 <textarea value={form.Description} onChange={(e) => set("Description", e.target.value)}
                   rows={3} placeholder="Optional — describe the scope of work…"
                   className={`${FIELD_BASE} resize-none leading-relaxed`}
@@ -354,31 +363,23 @@ export function CreateEstimateItemDialog({
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <FG>
-                  <FL>Cost Type</FL>
-                  <NativeSelect value={form.Cost_Type} options={COST_TYPES} onChange={(v) => set("Cost_Type", v)} />
-                  {errors.Cost_Type && <p className="text-[11px] text-red-500">{errors.Cost_Type}</p>}
-
-                  {/* BDF limit warning */}
-                  {form.Cost_Type === "BDF" && isBdfAtLimit && (
-                    <div className="flex items-start gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 mt-1">
-                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-red-700">
-                        Maximum {BDF_MAX} BDF costs reached. Podio only supports {BDF_MAX} building dept fee fields.
-                        Delete an existing BDF cost before adding a new one.
-                      </p>
+                  <FL>{t("fCostType")}</FL>
+                  {forcedCostType ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                        {forcedCostType}
+                      </span>
+                      <span className="text-xs text-slate-400">{t("locked")}</span>
                     </div>
-                  )}
-
-                  {/* BDF slot info when under limit */}
-                  {form.Cost_Type === "BDF" && !isBdfAtLimit && (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Will occupy slot {existingBdfCount + 1} of {BDF_MAX} in Podio.
-                      Values are compacted left-to-right — deletions shift remaining values up.
-                    </p>
+                  ) : (
+                    <>
+                      <NativeSelect value={form.Cost_Type} options={COST_TYPES} onChange={(v) => set("Cost_Type", v)} />
+                      {errors.Cost_Type && <p className="text-[11px] text-red-500">{errors.Cost_Type}</p>}
+                    </>
                   )}
                 </FG>
                 <FG>
-                  <FL>Quantity</FL>
+                  <FL>{t("fQty")}</FL>
                   <div className="relative">
                     <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="number" min={0} step="any" value={form.Quantity}
@@ -389,20 +390,20 @@ export function CreateEstimateItemDialog({
                   {errors.Quantity && <p className="text-[11px] text-red-500">{errors.Quantity}</p>}
                 </FG>
                 <FG>
-                  <FL>Unit</FL>
+                  <FL>{t("fUnit")}</FL>
                   <input type="text" value={form.Unit} onChange={(e) => set("Unit", e.target.value)}
                     placeholder="e.g. SF, LF, EA" className={FIELD_BASE} />
                 </FG>
               </div>
 
-              {/* Podio sync toggle — BDF (under limit) and PTLGCF */}
-              {isSyncType && !isBdfAtLimit && (
+              {/* Podio sync toggle — PTLGCF (and BDF when forced from BDF Manager) */}
+              {isSyncType && (
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Podio Sync</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("podioSyncTitle")}</p>
                   <p className="text-[11px] text-slate-400">
                     {form.Cost_Type === "BDF"
-                      ? `After saving, the updated Bldg_dept_fees array will be pushed to Podio.`
-                      : "After saving, the updated Ptl_gc_fee will be pushed to Podio."
+                      ? t("podioSyncDescBdf")
+                      : t("podioSyncDescPtl")
                     }
                   </p>
                   <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} />
@@ -412,7 +413,7 @@ export function CreateEstimateItemDialog({
               <button type="button" onClick={() => setSection("costs")}
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
               >
-                Next: Pricing <DollarSign className="h-4 w-4" />
+                {t("btnNext")} <DollarSign className="h-4 w-4" />
               </button>
             </div>
           )}
@@ -422,7 +423,7 @@ export function CreateEstimateItemDialog({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <FG>
-                  <FL>Unit Cost ($)</FL>
+                  <FL>{t("fUnitCost")}</FL>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="number" min={0} step="any" value={form.Unit_Cost}
@@ -431,7 +432,7 @@ export function CreateEstimateItemDialog({
                   </div>
                 </FG>
                 <FG>
-                  <FL>Builder Cost ($) <span className="ml-1 text-[10px] text-slate-400 normal-case font-normal">(auto: qty × unit cost)</span></FL>
+                  <FL>{t("fBuilderCost")} <span className="ml-1 text-[10px] text-slate-400 normal-case font-normal">{t("fBuilderCostHint")}</span></FL>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="number" min={0} step="any" value={form.Builder_Cost}
@@ -443,7 +444,7 @@ export function CreateEstimateItemDialog({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FG>
-                  <FL>Client Price ($)</FL>
+                  <FL>{t("fClientPrice")}</FL>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                     <input type="number" min={0} step="any" value={form.Client_Price}
@@ -452,7 +453,7 @@ export function CreateEstimateItemDialog({
                   </div>
                 </FG>
                 <FG>
-                  <FL>Markup</FL>
+                  <FL>{t("fMarkup")}</FL>
                   <div className="flex gap-2">
                     <input type="number" min={0} step="any" value={form.Markup}
                       onChange={(e) => set("Markup", e.target.value)}
@@ -464,12 +465,12 @@ export function CreateEstimateItemDialog({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FG>
-                  <FL>Margin (%)</FL>
+                  <FL>{t("fMargin")}</FL>
                   <input type="number" min={0} max={100} step="any" value={form.Margin}
                     onChange={(e) => set("Margin", e.target.value)} className={FIELD_BASE} />
                 </FG>
                 <FG>
-                  <FL>% Invoiced</FL>
+                  <FL>{t("fPctInvoiced")}</FL>
                   <input type="number" min={0} max={100} step="any" value={form.Percent_Invoiced}
                     onChange={(e) => set("Percent_Invoiced", e.target.value)} className={FIELD_BASE} />
                 </FG>
@@ -480,7 +481,7 @@ export function CreateEstimateItemDialog({
                 const isPos  = profit >= 0
                 return (
                   <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${isPos ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
-                    <p className={`text-sm font-semibold ${isPos ? "text-emerald-700" : "text-red-600"}`}>Estimated Profit</p>
+                    <p className={`text-sm font-semibold ${isPos ? "text-emerald-700" : "text-red-600"}`}>{t("profitLabel")}</p>
                     <p className={`text-lg font-black ${isPos ? "text-emerald-800" : "text-red-700"}`}>
                       {isPos ? "+" : ""}${profit.toFixed(2)}
                     </p>
@@ -489,7 +490,7 @@ export function CreateEstimateItemDialog({
               })()}
 
               <FG>
-                <FL>Internal Notes</FL>
+                <FL>{t("fNotes")}</FL>
                 <textarea value={form.Internal_Notes} onChange={(e) => set("Internal_Notes", e.target.value)}
                   rows={2} placeholder="Optional internal notes…"
                   className={`${FIELD_BASE} resize-none`} />
@@ -500,9 +501,8 @@ export function CreateEstimateItemDialog({
                 <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
                   <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
                   <p className="text-[11px] text-emerald-700">
-                    <span className="font-semibold">Podio sync ON</span> — the updated{" "}
-                    {form.Cost_Type === "BDF" ? "Bldg_dept_fees array" : "Ptl_gc_fee"} will be pushed
-                    to Podio{jobYear ? ` (${jobYear})` : ""} after creating.
+                    <span className="font-semibold">{t("podioSyncReminder")}</span>{" "}
+                    {form.Cost_Type === "BDF" ? t("podioSyncReminderBdf", { year: jobYear ? ` (${jobYear})` : "" }) : t("podioSyncReminderPtl", { year: jobYear ? ` (${jobYear})` : "" })}
                   </p>
                 </div>
               )}
@@ -522,13 +522,13 @@ export function CreateEstimateItemDialog({
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => !loading && onOpenChange(false)} disabled={loading}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-              Cancel
+              {t("btnCancel")}
             </button>
-            <button type="button" onClick={handleSubmit} disabled={loading || isBdfAtLimit}
+            <button type="button" onClick={handleSubmit} disabled={loading}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm">
               {loading
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
-                : <><FilePlus2 className="h-4 w-4" /> Create Cost</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("btnCreating")}</>
+                : <><FilePlus2 className="h-4 w-4" /> {t("btnCreate")}</>
               }
             </button>
           </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,7 @@ import {
   Clock,
   Users,
   BarChart2,
+  FileText,
 } from "lucide-react"
 
 import { KpiCard } from "./components/KpiCard"
@@ -43,8 +45,9 @@ interface MemberSummary {
   inprogress_usd:      number
   paid_count:          number
   paid_usd:            number
-  avg_sale_per_job:    number
-  avg_target_sold_pct: number  // 0–1
+  avg_sale_per_job:      number
+  avg_target_sold_pct:   number  // 0–1
+  assigned_pquote_count: number
 }
 
 interface ApiMember {
@@ -306,6 +309,9 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
 
                       <div className="text-muted-foreground">{t("statAvgTargetPct")}</div>
                       <div className="text-right font-semibold tabular-nums">{fmtPct(s?.avg_target_sold_pct ?? 0)}</div>
+
+                      <div className="text-muted-foreground">{t("statAssignedPQuote")}</div>
+                      <div className="text-right font-semibold tabular-nums text-orange-600">{s?.assigned_pquote_count ?? 0}</div>
                     </div>
                   </div>
 
@@ -461,8 +467,9 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
                 <KpiCard title={t("statDollarsQuoted")}     value={fmtK(detail.summary.total_quoted_usd)}      Icon={DollarSign}   accentClass="bg-blue-100 text-blue-700" />
                 <KpiCard title={t("statDollarsInProgress")} value={fmtK(detail.summary.inprogress_usd)}        Icon={Clock}        accentClass="bg-sky-100 text-sky-700" />
                 <KpiCard title={t("statDollarsPaid")}       value={fmtK(detail.summary.paid_usd)}              Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-                <KpiCard title={t("statAvgSalePerJob")}     value={fmtK(detail.summary.avg_sale_per_job)}      Icon={TrendingUp}   accentClass="bg-amber-100 text-amber-700" />
-                <KpiCard title={t("statAvgTargetPct")}      value={fmtPct(detail.summary.avg_target_sold_pct)} Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statAvgSalePerJob")}     value={fmtK(detail.summary.avg_sale_per_job)}              Icon={TrendingUp}   accentClass="bg-amber-100 text-amber-700" />
+                <KpiCard title={t("statAvgTargetPct")}      value={fmtPct(detail.summary.avg_target_sold_pct)}         Icon={BarChart2}    accentClass="bg-violet-100 text-violet-700" />
+                <KpiCard title={t("statAssignedPQuote")}    value={String(detail.summary.assigned_pquote_count)}       Icon={FileText}     accentClass="bg-orange-100 text-orange-700" />
               </div>
 
               {/* Communities assigned */}
@@ -492,7 +499,9 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
                       {detail.pending_vendor_quotes.map((q) => (
                         <div key={q.qid} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono font-semibold text-gqm-green-dark">{q.qid}</span>
+                            <Link href={`/jobs/${q.qid}`} className="font-mono font-semibold text-gqm-green-dark hover:underline">
+                              {q.qid}
+                            </Link>
                             <span className="tabular-nums text-muted-foreground">{q.date}</span>
                           </div>
                           <p className="font-medium truncate">{q.client}</p>
@@ -515,7 +524,11 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
                         <tbody>
                           {detail.pending_vendor_quotes.map((q) => (
                             <tr key={q.qid} className="border-b hover:bg-gray-50 transition">
-                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">{q.qid}</td>
+                              <td className="px-2 py-1.5 font-mono font-semibold text-gqm-green-dark">
+                                <Link href={`/jobs/${q.qid}`} className="hover:underline">
+                                  {q.qid}
+                                </Link>
+                              </td>
                               <td className="px-2 py-1.5 tabular-nums">{q.date}</td>
                               <td className="px-2 py-1.5">{q.client}</td>
                               <td className="px-2 py-1.5 text-muted-foreground max-w-[160px] truncate">{q.description}</td>

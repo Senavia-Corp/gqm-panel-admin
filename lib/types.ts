@@ -86,6 +86,14 @@ export type ClientStatus = "Active" | "Inactive"
 export type RiskValue = "Low" | "Medium" | "High"
 export type ServicesInterestedIn = "Rehabs" | "Work Orders"
 
+export interface Manager {
+  ID_Manager: string
+  Manager_name: string
+  Manager_email: string
+  Manager_location: string
+  rol?: string // Role from the link table
+}
+
 export interface ClientDetails {
   ID_Client: string
   Client_Community: string
@@ -102,6 +110,7 @@ export interface ClientDetails {
   Client_Status: ClientStatus
   Services_interested_in: ServicesInterestedIn
   jobs?: any[]
+  manager?: Manager[]
   property_manager?: any[]
   property_mgmt_co?: any
 }
@@ -126,6 +135,7 @@ export interface Client {
   clientStatus?: ClientStatus
   servicesInterestedIn?: ServicesInterestedIn
   jobs?: any[]
+  managers?: Manager[]
   propertyManager?: any[]
   propertyMgmtCo?: any
 }
@@ -271,6 +281,7 @@ export interface Job {
     gqmFinalPercentage: number
     gqmTotalChangeOrders: number
   }
+  financialDocs?: FinancialDocument[]
   comdetails?: CommissionDetail[]
 }
 
@@ -365,6 +376,28 @@ export interface Subcontractor {
   opportunities?: any[]
 }
 
+export type CertificateStatus = "Active" | "Inactive" | "Expired" | "Pending" | string
+
+export interface CertificateAttachment {
+  ID_Attachment: string
+  Document_name: string | null
+  Attachment_descr: string | null
+  Link: string | null
+  Document_type: string | null
+  ID_Certificate: string | null
+}
+
+export interface Certificate {
+  ID_Certificate: string
+  Name: string | null
+  Status: CertificateStatus | null
+  Expiration_date: string | null
+  Notes: string | null
+  Current_doc_id: string | null
+  ID_Subcontractor: string | null
+  attachments?: CertificateAttachment[]
+}
+
 export type TaskStatus = "Not started" | "Work-in-progress" | "Completed"
 
 export interface Task {
@@ -386,6 +419,7 @@ export interface Task {
 
 export type CostType = "Subcontractor" | "Material" | "Labor" | "Rent" | "Permit" | "BDF" | "PTLGCF" | "None" | ""
 export type MarkupType = "C/P" | "%" | ""
+export type BDFStatus = "Estimated" | "Approved"
 
 export interface EstimateItem {
   ID_EstimateItem: string
@@ -413,8 +447,9 @@ export interface EstimateItem {
   Profit: number
   Percent_Invoiced: number
   Internal_Notes: string
+  Status: BDFStatus | null
   ID_Jobs: string
-  ID_Order?: string | null // Link to order if assigned
+  ID_Order?: string | null
 }
 
 export interface SubcontractorOrder {
@@ -439,6 +474,18 @@ export interface ChangeOrder {
   ID_Subcontractor: string
   ID_Jobs: string
   Status: "Pending" | "Approved" | "Rejected"
+}
+export interface FinancialDocument {
+  ID_FinancialDoc: string
+  Type_of_document: "Bill" | "Invoice"
+  Job_Ref_QBO?: string | null
+  Total_Amount: number | null
+  Balance_Amount: number | null
+  Notes: string | null
+  Due_Date: string | null
+  Vendor_Customer: string | null
+  ID_Order?: string | null
+  ID_Jobs: string
 }
 
 export interface UpdateClientRequest {
@@ -520,6 +567,7 @@ export interface JobFilters {
   dateFrom?: string   // "YYYY-MM-DD"
   dateTo?: string   // "YYYY-MM-DD"
   memberId?: string
+  subcontractorId?: string
 }
 
 // --- Excel Export ---
@@ -651,12 +699,19 @@ export interface Opportunity {
   Priority: string | null
   Start_Date: string | null
   ID_Jobs: string | null
+  ID_Order: string | null
   job: {
     ID_Jobs: string
     Job_type: string | null
     Project_Name: string | null
     Project_location: string | null
     Job_status: string | null
+  } | null
+  order: {
+    ID_Order: string
+    Title: string | null
+    Formula: number | null
+    Adj_formula: number | null
   } | null
   skills: OpportunitySkill[]
   subcontractors: any[]

@@ -4,14 +4,16 @@ import { useMemo, useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import {
   X, Briefcase, Building2, CheckSquare, Loader2, PackageOpen, Search,
-  XCircle, Zap, ZapOff, DollarSign, Tag, Check, PackagePlus, UserPlus, Sparkles
+  XCircle, Zap, ZapOff, DollarSign, Tag, Check, PackagePlus, UserPlus, Sparkles,
+  FileText
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import type { EstimateItem, Subcontractor } from "@/lib/types"
+import type { EstimateItem, Subcontractor, FinancialDocument } from "@/lib/types"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LinkSubcontractorDialog } from "@/components/organisms/LinkSubcontractorDialog"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
@@ -74,7 +76,8 @@ interface CreateOrderDialogProps {
   jobYearForPodioSync?: number
   jobId?: string
   existingOrdersCount?: number
-  onCreateOrder: (orderName: string, subcontractorId: string, selectedItems: string[], syncPodio: boolean) => Promise<void>
+  bills?: FinancialDocument[]
+  onCreateOrder: (orderName: string, subcontractorId: string, selectedItems: string[], syncPodio: boolean, billId?: string) => Promise<void>
   onSubcontractorLinked?: () => void
 }
 
@@ -87,11 +90,13 @@ export function CreateOrderDialog({
   jobYearForPodioSync,
   jobId,
   existingOrdersCount = 0,
+  bills = [],
   onCreateOrder,
   onSubcontractorLinked,
 }: CreateOrderDialogProps) {
   const [orderName, setOrderName] = useState("")
   const [selectedSubcontractor, setSelectedSubcontractor] = useState("")
+  const [selectedBillId, setSelectedBillId] = useState("")
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [itemsQuery, setItemsQuery] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -99,6 +104,9 @@ export function CreateOrderDialog({
   const [errors, setErrors] = useState<{ orderName?: string; sub?: string }>({})
   const [isLinkSubcOpen, setIsLinkSubcOpen] = useState(false)
   const [suggestedName, setSuggestedName] = useState("")
+
+  const t = useTranslations("jobEstimate.createOrder")
+  const tCommon = useTranslations("common")
 
   // Compute the suggested PO code whenever jobId or existingOrdersCount changes
   useEffect(() => {
@@ -113,6 +121,7 @@ export function CreateOrderDialog({
       setSyncPodioLocal(defaultSyncPodio)
       setOrderName("")
       setSelectedSubcontractor("")
+      setSelectedBillId("")
       setSelectedItems([])
       setItemsQuery("")
       setErrors({})
@@ -123,6 +132,10 @@ export function CreateOrderDialog({
   const availableItems = useMemo(() => {
     return items.filter((i) => !i.ID_Order)
   }, [items])
+
+  const availableBills = useMemo(() => {
+    return bills.filter(b => b.Type_of_document?.toLowerCase() === "bill" && !b.ID_Order)
+  }, [bills])
 
   const filteredAvailableItems = useMemo(() => {
     const q = itemsQuery.trim().toLowerCase()
@@ -174,13 +187,13 @@ export function CreateOrderDialog({
     if (Object.keys(newErrs).length > 0) return
 
     if (selectedItems.length === 0) {
-      toast.error("Please select at least one estimate item for the order")
+      toast.error(t("noFreeItems"))
       return
     }
 
     setIsSubmitting(true)
     try {
-      await onCreateOrder(orderName.trim(), selectedSubcontractor, selectedItems, syncPodioLocal)
+      await onCreateOrder(orderName.trim(), selectedSubcontractor, selectedItems, syncPodioLocal, selectedBillId || undefined)
       onOpenChange(false)
     } finally {
       setIsSubmitting(false)
@@ -226,8 +239,8 @@ export function CreateOrderDialog({
                 <PackagePlus className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Create New Order</h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">Pick a subcontractor, choose estimate items, and create an order.</p>
+                <h2 className="text-base font-bold text-slate-900">{t("createTitle")}</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">{t("createSubtitle")}</p>
               </div>
             </div>
             <button
@@ -247,7 +260,7 @@ export function CreateOrderDialog({
               {/* Order Name with Suggestion */}
               <FG>
                 <div className="flex items-center justify-between mb-1.5">
-                  <FL required>Order Name</FL>
+                  <FL required>{t("orderNameLabel")}</FL>
                   {suggestedName && (
                     <button
                       type="button"
@@ -256,7 +269,7 @@ export function CreateOrderDialog({
                         setErrors((prev) => ({ ...prev, orderName: undefined }))
                       }}
                       className="flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 transition-colors"
-                      title={`Use suggested code: ${suggestedName}`}
+                      title={t("suggestedCode", { code: suggestedName })}
                     >
                       <Sparkles className="h-2.5 w-2.5" />
                       {suggestedName}
@@ -283,17 +296,17 @@ export function CreateOrderDialog({
               {/* Subcontractor with Link shortcut */}
               <FG>
                 <div className="flex items-center justify-between mb-1.5">
-                  <FL required>Assigned Subcontractor</FL>
+                  <FL required>{t("orderAssignedSubLabel")}</FL>
                   {jobId && (
                     <button
                       type="button"
                       onClick={() => setIsLinkSubcOpen(true)}
                       disabled={isSubmitting}
                       className="flex items-center gap-1 rounded-lg bg-slate-50 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-40"
-                      title="Link a new subcontractor to this job"
+                      title={t("linkNewSub")}
                     >
                       <UserPlus className="h-2.5 w-2.5" />
-                      Link new
+                      {t("linkNewSub")}
                     </button>
                   )}
                 </div>
@@ -304,19 +317,19 @@ export function CreateOrderDialog({
                     setErrors((prev) => ({ ...prev, sub: undefined }))
                   }} disabled={isSubmitting}>
                     <SelectTrigger className={`${FIELD_BASE} pl-9 h-auto ${errors.sub ? FIELD_ERR : ""}`}>
-                      <SelectValue placeholder="Select a subcontractor" />
+                      <SelectValue placeholder={t("selectSubcontractor") || "Select a subcontractor"} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[320px] z-[10000]">
                       {subcontractors.length === 0 ? (
                         <div className="px-4 py-6 text-center text-sm text-slate-400">
-                          No subcontractors linked.{" "}
+                          {t("noSubcontractorsLinked") || "No subcontractors linked."}{" "}
                           {jobId && (
                             <button
                               type="button"
                               className="text-orange-500 underline hover:text-orange-600 font-semibold"
                               onClick={(e) => { e.preventDefault(); setIsLinkSubcOpen(true) }}
                             >
-                              Link one now
+                              {t("linkOneNow")}
                             </button>
                           )}
                         </div>
@@ -348,43 +361,83 @@ export function CreateOrderDialog({
                 )}
               </FG>
 
+              {/* Linked Bill (Optional) */}
+              <FG>
+                <div className="flex items-center justify-between mb-1.5">
+                  <FL>{t("orderLinkedBillLabel")}</FL>
+                </div>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none z-10" />
+                  <Select value={selectedBillId} onValueChange={setSelectedBillId} disabled={isSubmitting}>
+                    <SelectTrigger className={`${FIELD_BASE} pl-9 h-auto`}>
+                      <SelectValue placeholder={t("orderSelectBill")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[320px] z-[10000]">
+                      <SelectItem value="none">{t("orderNoBillLinked")}</SelectItem>
+                      {availableBills.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-sm text-slate-400">
+                          {t("orderNoBillsFound")}
+                        </div>
+                      ) : (
+                        availableBills.map((bill) => (
+                          <SelectItem key={bill.ID_FinancialDoc} value={bill.ID_FinancialDoc}>
+                            <div className="flex flex-col text-left">
+                              <span className="font-medium text-slate-800">
+                                {bill.Job_Ref_QBO ? `${bill.Job_Ref_QBO} - ` : ""}
+                                ${bill.Total_Amount?.toFixed(2) || "0.00"}
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                {bill.Vendor_Customer || "Unknown Vendor"} {bill.Due_Date ? `• Due: ${bill.Due_Date}` : ""}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {t("orderBillsFilterHint")}
+                </p>
+              </FG>
+
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600 flex flex-col">
-                    Cost Summary
-                    <span className="text-[10px] font-normal normal-case text-slate-400 mt-0.5">Preview calculations</span>
+                    {t("orderCostSummaryTitle")}
+                    <span className="text-[10px] font-normal normal-case text-slate-400 mt-0.5">{t("orderCostSummaryHint")}</span>
                   </h3>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex flex-col gap-1 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-amber-800">Formula (Starting)</span>
+                      <span className="text-xs font-bold text-amber-800">{t("orderNewFormula")}</span>
                       <span className="text-sm font-black text-amber-700">${formulaData.newFormula.toFixed(2)}</span>
                     </div>
-                    <span className="text-[10px] text-amber-600/70">Sum of selected builder costs</span>
+                    <span className="text-[10px] text-amber-600/70">{t("orderNewFormulaHint")}</span>
                   </div>
                   
                   <div className="h-px bg-slate-200 my-1" />
 
                   <div className="flex flex-col gap-1 bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-emerald-800">Adj. Formula (Starting)</span>
+                      <span className="text-xs font-bold text-emerald-800">{t("orderNewAdjFormula")}</span>
                       <span className="text-sm font-black text-emerald-700">${formulaData.newAdjFormula.toFixed(2)}</span>
                     </div>
-                    <span className="text-[10px] text-emerald-600/70">Initial formula amount</span>
+                    <span className="text-[10px] text-emerald-600/70">{t("orderNewFormulaHint")}</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2 mt-auto pt-4">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Podio Integration</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("orderPodioIntegration")}</p>
                 <PodioToggle 
                   value={syncPodioLocal} 
                   onChange={setSyncPodioLocal} 
                   jobYear={jobYearForPodioSync} 
                   disabled={isSubmitting} 
-                  textPrefix="Sync creation to Podio" 
+                  textPrefix={t("podioSyncOn").replace(" ON", "")} 
                 />
               </div>
             </div>
@@ -393,8 +446,8 @@ export function CreateOrderDialog({
             <div className="flex-1 flex flex-col bg-slate-50/30 overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">Assign Estimate Costs</h3>
-                  <p className="text-xs text-slate-500">{selectedItems.length} of {availableItems.length} selected</p>
+                  <h3 className="text-sm font-bold text-slate-800">{t("orderAssignCosts")}</h3>
+                  <p className="text-xs text-slate-500">{selectedItems.length} {t("orderSelectedOf")} {availableItems.length} {t("orderSelectedLabel")}</p>
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -403,7 +456,7 @@ export function CreateOrderDialog({
                     <Input
                       value={itemsQuery}
                       onChange={(e) => setItemsQuery(e.target.value)}
-                      placeholder="Search cost code..."
+                      placeholder={t("orderSearchCostCode")}
                       className="pl-8 h-8 text-xs bg-slate-50 border-slate-200"
                       disabled={isSubmitting}
                     />
@@ -413,7 +466,7 @@ export function CreateOrderDialog({
                     onClick={selectAllVisible}
                     disabled={isSubmitting || filteredAvailableItems.length === 0}
                     className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                    title="Select Visible"
+                    title={tCommon("selectAll")}
                   >
                     <CheckSquare className="h-4 w-4" />
                   </button>
@@ -422,7 +475,7 @@ export function CreateOrderDialog({
                     onClick={clearSelection}
                     disabled={isSubmitting || selectedItems.length === 0}
                     className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                    title="Clear Selection"
+                    title={tCommon("clear")}
                   >
                     <XCircle className="h-4 w-4" />
                   </button>
@@ -433,7 +486,7 @@ export function CreateOrderDialog({
                 {filteredAvailableItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center p-8 text-slate-400">
                     <PackageOpen className="h-10 w-10 mb-3 opacity-20" />
-                    <p className="text-sm">No free estimate costs available</p>
+                    <p className="text-sm">{t("noFreeItems")}</p>
                   </div>
                 ) : (
                   <div className="grid gap-2">
@@ -505,7 +558,7 @@ export function CreateOrderDialog({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
             <button 
               type="button" 
@@ -514,8 +567,8 @@ export function CreateOrderDialog({
               className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-50 transition-colors shadow-sm"
             >
               {isSubmitting 
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> 
-                : <><Check className="h-4 w-4" /> Create Order</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("creating")}</> 
+                : <><Check className="h-4 w-4" /> {t("createOrder")}</>
               }
             </button>
           </div>

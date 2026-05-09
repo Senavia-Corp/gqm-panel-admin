@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { Users, Search, X, Loader2, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [linking, setLinking] = useState<string | null>(null)
+  const t = useTranslations("opportunities")
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   useEffect(() => { if (open) { setQuery(""); setPage(1) } }, [open])
@@ -93,9 +95,9 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
               <Users className="h-5 w-5 text-slate-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Add Applicant</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("modalSub_title")}</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Link a subcontractor to this opportunity{total > 0 && ` · ${total} total`}
+                {total > 0 ? t("modalSub_subtitleTotal", { total }) : t("modalSub_subtitle")}
               </p>
             </div>
           </div>
@@ -111,7 +113,7 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, org, email…"
+              placeholder={t("modalSub_phSearch")}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
@@ -121,7 +123,7 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
           {loading ? (
             <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-300" /></div>
           ) : rows.length === 0 ? (
-            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">No subcontractors found</p></div>
+            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">{t("modalSub_noResults")}</p></div>
           ) : (
             <ul className="divide-y divide-slate-50">
               {rows.map((sub) => {
@@ -158,10 +160,10 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
                       }`}
                     >
                       {isLinking
-                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Linking…</>
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("modalSub_btnLinking")}</>
                         : alreadyLinked
-                        ? "Linked"
-                        : <><Plus className="h-3.5 w-3.5" /> Add</>}
+                        ? t("modalSub_btnLinked")
+                        : <><Plus className="h-3.5 w-3.5" /> {t("modalSub_btnAdd")}</>}
                     </button>
                   </li>
                 )
@@ -172,8 +174,7 @@ export function LinkSubcontractorModal({ open, onClose, onLink, excludeIds }: Li
 
         <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
           <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{total}</span>
+            {t("modal_showing", { count: rows.length, total })}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { Zap, ZapOff, AlertTriangle, Unlink } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type Props = {
   open: boolean
@@ -45,6 +46,7 @@ export function UnlinkMemberDialog({
   jobYear,
   onUnlinked,
 }: Props) {
+  const t = useTranslations("jobMembers")
   const { toast }                   = useToast()
   const [syncPodio, setSyncPodio]   = React.useState(defaultSyncPodio)
   const [loading, setLoading]       = React.useState(false)
@@ -56,7 +58,7 @@ export function UnlinkMemberDialog({
 
   const handleUnlink = async () => {
     if (syncPodio && !jobYear) {
-      toast({ title: "Missing job year", description: "Year is required when Sync Podio is enabled.", variant: "destructive" })
+      toast({ title: t("missingJobYear"), description: t("yearRequired"), variant: "destructive" })
       return
     }
 
@@ -74,12 +76,15 @@ export function UnlinkMemberDialog({
 
       if (!res.ok) throw new Error(payload?.error || payload?.detail || "Failed to unlink member")
 
-      toast({ title: "Member unlinked", description: `${displayName} removed from this job.` })
+      toast({ 
+        title: t("memberUnlinked"), 
+        description: t("memberUnlinkedDesc", { name: displayName })
+      })
       await onUnlinked?.()
       onClose()
     } catch (err) {
       console.error("[UnlinkMemberDialog] error:", err)
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to unlink member.", variant: "destructive" })
+      toast({ title: "Error", description: err instanceof Error ? err.message : t("unlinking"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -96,8 +101,8 @@ export function UnlinkMemberDialog({
               <Unlink className="h-5 w-5 text-red-500" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-slate-900">Unlink Member</DialogTitle>
-              <p className="mt-0.5 text-xs text-slate-500">This action will remove the member from the job.</p>
+              <DialogTitle className="text-base font-semibold text-slate-900">{t("unlinkTitle")}</DialogTitle>
+              <p className="mt-0.5 text-xs text-slate-500">{t("unlinkSubtitle")}</p>
             </div>
           </div>
         </div>
@@ -118,7 +123,7 @@ export function UnlinkMemberDialog({
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
             <p className="text-xs text-amber-700">
-              Unlinking this member is irreversible. They will lose access and their project role will be removed.
+              {t("warningIrreversible")}
             </p>
           </div>
 
@@ -140,10 +145,10 @@ export function UnlinkMemberDialog({
               }
               <div className="text-left">
                 <p className={`text-sm font-semibold ${syncPodio ? "text-emerald-700" : "text-slate-500"}`}>
-                  Podio Sync {syncPodio ? "ON" : "OFF"}
+                  {syncPodio ? t("syncOn") : t("syncOff")}
                 </p>
                 <p className={`text-xs ${syncPodio ? "text-emerald-600" : "text-slate-400"}`}>
-                  {syncPodio ? "Changes will sync to Podio" : "Changes will NOT sync to Podio"}
+                  {syncPodio ? t("syncOnDesc") : t("syncOffDesc")}
                 </p>
               </div>
             </div>
@@ -157,7 +162,7 @@ export function UnlinkMemberDialog({
           {/* Actions */}
           <div className="flex gap-2 pt-1">
             <Button variant="outline" onClick={onClose} disabled={loading} className="flex-1">
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -168,12 +173,12 @@ export function UnlinkMemberDialog({
               {loading ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Unlinking…
+                  {t("unlinking")}
                 </>
               ) : (
                 <>
                   <Unlink className="mr-1.5 h-4 w-4" />
-                  Unlink Member
+                  {t("unlinkMember")}
                 </>
               )}
             </Button>

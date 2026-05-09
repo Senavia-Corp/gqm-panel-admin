@@ -12,11 +12,13 @@ import { ArrowLeft, Shield, CheckCircle2, X, AlertCircle, Plus } from "lucide-re
 import type { IAMDocument, IAMStatement } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
 import { MODULE_ACTIONS } from "@/lib/permissions-modules"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 
 
 export default function CreatePermissionPage() {
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
   const [user, setUser] = useState<any>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -104,7 +106,7 @@ export default function CreatePermissionPage() {
       }
       router.push("/roles-permissions")
     } catch (e: any) {
-      setError(e?.message ?? "Failed to create permission")
+      setError(e?.message ?? t("form.errFailed"))
     } finally { setSubmitting(false) }
   }
 
@@ -123,7 +125,7 @@ export default function CreatePermissionPage() {
             className="mb-5 flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-700 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Roles & Permissions
+            {t("form.backTo")}
           </button>
 
           {/* Page header */}
@@ -132,8 +134,8 @@ export default function CreatePermissionPage() {
               <Shield className="h-5 w-5 text-sky-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Create Permission</h1>
-              <p className="text-sm text-slate-500">Define IAM-style policies for this permission.</p>
+              <h1 className="text-2xl font-bold text-slate-900">{t("form.createTitle")}</h1>
+              <p className="text-sm text-slate-500">{t("form.createSubtitle")}</p>
             </div>
           </div>
 
@@ -143,12 +145,12 @@ export default function CreatePermissionPage() {
               {/* Name */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Name <span className="text-red-400">*</span>
+                  {t("form.labelName")} <span className="text-red-400">*</span>
                 </label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. View Jobs"
+                  placeholder={t("form.phName")}
                   className="border-slate-200 bg-slate-50 focus:bg-white"
                 />
               </div>
@@ -157,7 +159,7 @@ export default function CreatePermissionPage() {
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Policy Statements
+                    {t("form.labelPolicy")}
                   </label>
                   <Button 
                     type="button" 
@@ -166,7 +168,7 @@ export default function CreatePermissionPage() {
                     onClick={addStatement}
                     className="h-7 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add Statement
+                    <Plus className="h-3.5 w-3.5" /> {t("form.btnAddStatement")}
                   </Button>
                 </div>
 
@@ -183,7 +185,7 @@ export default function CreatePermissionPage() {
 
                     <div className="flex flex-wrap items-center gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Effect</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelEffect")}</label>
                         <div className="flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
                           <button
                             type="button"
@@ -192,7 +194,7 @@ export default function CreatePermissionPage() {
                               s.Effect === "Allow" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                             }`}
                           >
-                            Allow
+                            {t("form.btnAllow")}
                           </button>
                           <button
                             type="button"
@@ -201,13 +203,13 @@ export default function CreatePermissionPage() {
                               s.Effect === "Deny" ? "bg-red-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                             }`}
                           >
-                            Deny
+                            {t("form.btnDeny")}
                           </button>
                         </div>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Shortcut</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelShortcut")}</label>
                         <button
                           type="button"
                           onClick={() => toggleAction(sIdx, "*")}
@@ -217,24 +219,24 @@ export default function CreatePermissionPage() {
                               : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
                           }`}
                         >
-                          <Shield className="h-3.5 w-3.5" /> Full Access (*)
+                          <Shield className="h-3.5 w-3.5" /> {t("form.btnFullAccess")}
                         </button>
                       </div>
 
                       <div className="flex-1 min-w-[200px]">
                          <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-[11px] text-emerald-800">
-                            <strong>Note:</strong> Resource is currently fixed to <code>["*"]</code> global.
+                            <strong>Note:</strong> {t("form.resourceNote")}
                          </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold uppercase text-slate-400">Actions</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelActions")}</label>
                       <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${s.Action.includes("*") ? "opacity-30 pointer-events-none" : ""}`}>
                         {MODULE_ACTIONS.map((mod) => (
                           <div key={mod.module} className="space-y-2">
                             <h4 className="text-[11px] font-bold text-slate-600 border-b border-slate-100 pb-1 flex items-center justify-between">
-                              {mod.module}
+                              {t(`modules.${mod.module}` as any)}
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
@@ -245,7 +247,7 @@ export default function CreatePermissionPage() {
                                       : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                                   }`}
                                 >
-                                  All
+                                  {t("form.btnAll")}
                                 </button>
                                 <span className="font-normal text-slate-400">({mod.actions.filter(a => s.Action.includes(a.id)).length})</span>
                               </div>
@@ -274,7 +276,7 @@ export default function CreatePermissionPage() {
                                         {act.id}
                                       </p>
                                       <p className="text-[10px] text-slate-400 leading-tight">
-                                        {act.desc}
+                                        {t(`actions.${act.id}` as any)}
                                       </p>
                                     </div>
                                   </button>
@@ -291,18 +293,18 @@ export default function CreatePermissionPage() {
 
               {/* Description */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("form.labelDescription")}</label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description…"
+                  placeholder={t("form.phDescription")}
                   className="border-slate-200 bg-slate-50 focus:bg-white"
                 />
               </div>
 
               {/* Active status */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("form.labelStatus")}</label>
                 <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
                   <button
                     onClick={() => setActive(true)}
@@ -310,7 +312,7 @@ export default function CreatePermissionPage() {
                       active ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t("form.statusActive")}
                   </button>
                   <button
                     onClick={() => setActive(false)}
@@ -318,14 +320,14 @@ export default function CreatePermissionPage() {
                       !active ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
-                    <X className="h-3.5 w-3.5" /> Inactive
+                    <X className="h-3.5 w-3.5" /> {t("form.statusInactive")}
                   </button>
                 </div>
               </div>
 
               {/* Live JSON Preview (Optional but helpful for testing) */}
               <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-900 p-4 font-mono text-[10px] text-emerald-400 overflow-x-auto">
-                <p className="text-slate-500 mb-2 uppercase font-sans font-bold tracking-widest text-[9px]">Document Preview</p>
+                <p className="text-slate-500 mb-2 uppercase font-sans font-bold tracking-widest text-[9px]">{t("form.labelPreview")}</p>
                 <pre>{JSON.stringify({ Version: "1.0", Statement: statements }, null, 2)}</pre>
               </div>
             </div>
@@ -341,7 +343,7 @@ export default function CreatePermissionPage() {
             {/* Actions */}
             <div className="flex items-center justify-end gap-2">
               <Button variant="outline" onClick={() => router.push("/roles-permissions")} disabled={submitting}>
-                Cancel
+                {t("form.btnCancel")}
               </Button>
               <Button
                 onClick={onSubmit}
@@ -349,7 +351,7 @@ export default function CreatePermissionPage() {
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Shield className="h-4 w-4" />
-                {submitting ? "Creating…" : "Create Permission"}
+                {submitting ? t("form.btnCreating") : t("form.btnCreate")}
               </Button>
             </div>
           </div>

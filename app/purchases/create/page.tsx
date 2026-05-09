@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input"
 import {
   ArrowLeft, CheckCircle2, Plus, Trash2, Loader2, X,
   ShoppingCart, ClipboardList, Tag, Link2, Search,
-  User, Briefcase, ChevronLeft, ChevronRight, AlertCircle,
+  User, Briefcase, ChevronLeft, ChevronRight, AlertCircle, Zap,
 } from "lucide-react"
 import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
 import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -165,6 +166,7 @@ function MemberPickerModal({
   onSelect: (m: MemberRow) => void
   onClose: () => void
 }) {
+  const t = useTranslations("purchases")
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<MemberRow[]>([])
@@ -211,8 +213,8 @@ function MemberPickerModal({
               <User className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Select Selling Rep</p>
-              <p className="text-xs text-slate-400">{total} member{total !== 1 ? "s" : ""} available</p>
+              <p className="text-sm font-semibold text-slate-800">{t("createModals.memberTitle")}</p>
+              <p className="text-xs text-slate-400">{total === 1 ? t("createModals.memberCount", { count: total }) : t("createModals.memberCounts", { count: total })}</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -228,7 +230,7 @@ function MemberPickerModal({
               autoFocus
               value={q}
               onChange={e => { setQ(e.target.value) }}
-              placeholder="Search by name, role, email…"
+              placeholder={t("createModals.memberSearch")}
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30"
             />
             {q && (
@@ -249,11 +251,11 @@ function MemberPickerModal({
             <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
               <AlertCircle className="h-6 w-6 text-red-400" />
               <p className="text-xs text-slate-500">{error}</p>
-              <button onClick={() => fetchMembers(page, dq)} className="text-xs text-emerald-600 hover:underline">Retry</button>
+              <button onClick={() => fetchMembers(page, dq)} className="text-xs text-emerald-600 hover:underline">{t("createModals.retry")}</button>
             </div>
           ) : rows.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-xs text-slate-400">{q ? "No results for this search" : "No members available"}</p>
+              <p className="text-xs text-slate-400">{q ? t("createModals.memberNoSearch") : t("createModals.memberNoData")}</p>
             </div>
           ) : rows.map(m => (
             <button
@@ -266,7 +268,7 @@ function MemberPickerModal({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-slate-800 truncate group-hover:text-emerald-700">{m.Member_Name}</p>
-                <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "No role"} · {m.ID_Member}</p>
+                <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? t("createModals.memberNoRole")} · {m.ID_Member}</p>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
             </button>
@@ -319,6 +321,7 @@ function JobPickerModal({
   onClose: () => void
   onSkip: () => void
 }) {
+  const t = useTranslations("purchases")
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<JobRow[]>([])
@@ -365,8 +368,8 @@ function JobPickerModal({
               <Briefcase className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Link Job</p>
-              <p className="text-xs text-slate-400">{total} job{total !== 1 ? "s" : ""} available · Optional</p>
+              <p className="text-sm font-semibold text-slate-800">{t("createModals.jobTitle")}</p>
+              <p className="text-xs text-slate-400">{total === 1 ? t("createModals.jobCount", { count: total }) : t("createModals.jobCounts", { count: total })}</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -382,7 +385,7 @@ function JobPickerModal({
               autoFocus
               value={q}
               onChange={e => { setQ(e.target.value) }}
-              placeholder="Search by ID or project name…"
+              placeholder={t("createModals.jobSearch")}
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30"
             />
             {q && (
@@ -403,11 +406,11 @@ function JobPickerModal({
             <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
               <AlertCircle className="h-6 w-6 text-red-400" />
               <p className="text-xs text-slate-500">{error}</p>
-              <button onClick={() => fetchJobs(page, dq)} className="text-xs text-emerald-600 hover:underline">Retry</button>
+              <button onClick={() => fetchJobs(page, dq)} className="text-xs text-emerald-600 hover:underline">{t("createModals.retry")}</button>
             </div>
           ) : rows.length === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-xs text-slate-400">{q ? "No results for this search" : "No jobs available"}</p>
+              <p className="text-xs text-slate-400">{q ? t("createModals.jobNoSearch") : t("createModals.jobNoData")}</p>
             </div>
           ) : rows.map(j => (
             <button
@@ -433,7 +436,7 @@ function JobPickerModal({
                   )}
                 </div>
                 <p className="mt-0.5 text-[11px] text-slate-400 truncate">
-                  {j.Project_name ?? "Unnamed"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}
+                  {j.Project_name ?? t("createModals.jobUnnamed")}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}
                 </p>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
@@ -447,7 +450,7 @@ function JobPickerModal({
             onClick={onSkip}
             className="text-xs text-slate-500 hover:text-slate-700 underline underline-offset-2"
           >
-            Skip for now
+            {t("createModals.jobSkip")}
           </button>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
@@ -473,14 +476,15 @@ function JobPickerModal({
 // ─────────────────────────────────────────────────────────────────────────────
 // Step indicator
 // ─────────────────────────────────────────────────────────────────────────────
-const STEPS = [
-  { n: 1, label: "Purchase", icon: ShoppingCart },
-  { n: 2, label: "Order", icon: ClipboardList },
-  { n: 3, label: "Items", icon: Tag },
-  { n: 4, label: "Link Job", icon: Link2 },
-]
-
 function StepIndicator({ step, done }: { step: Step; done: Partial<Record<Step, boolean>> }) {
+  const t = useTranslations("purchases")
+  const STEPS = [
+    { n: 1, label: t("createSteps.purchase"), icon: ShoppingCart },
+    { n: 2, label: t("createSteps.order"), icon: ClipboardList },
+    { n: 3, label: t("createSteps.items"), icon: Tag },
+    { n: 4, label: t("createSteps.linkJob"), icon: Link2 },
+  ]
+
   return (
     <div className="flex items-center gap-1">
       {STEPS.map((s, i) => {
@@ -560,6 +564,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function CreatePurchasePage() {
+  const t = useTranslations("purchases")
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams?.get("returnTo") ?? null
@@ -577,6 +582,7 @@ export default function CreatePurchasePage() {
   // Step 1 state
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null)
   const [description, setDescription] = useState("")
+  const [isExtra, setIsExtra] = useState(false)
 
   // Step 2 state
   const [orderTitle, setOrderTitle] = useState("")
@@ -689,6 +695,7 @@ export default function CreatePurchasePage() {
         Description: description.trim(),
         Status: "Pending",
         ID_Member: selectedMember.ID_Member,
+        Is_extra: isExtra,
       }
       const data = await postJson<{ ID_Purchase?: string }>(API.purchases, payload)
       const id = data?.ID_Purchase
@@ -704,7 +711,7 @@ export default function CreatePurchasePage() {
       })
       setStep(2)
     } catch (e: any) {
-      setError(e?.message ?? "Error creating purchase")
+      setError(e?.message ?? t("createErrors.createPurchase"))
     } finally {
       setLoading(false)
     }
@@ -729,7 +736,7 @@ export default function CreatePurchasePage() {
       setOrderTitle("")
       setStep(3)
     } catch (e: any) {
-      setError(e?.message ?? "Error creating purchase order")
+      setError(e?.message ?? t("createErrors.createOrder"))
     } finally {
       setLoading(false)
     }
@@ -761,7 +768,7 @@ export default function CreatePurchasePage() {
       })
       setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue(""); setQuoteNotes("")
     } catch (e: any) {
-      setError(e?.message ?? "Error adding item")
+      setError(e?.message ?? t("createErrors.addItem"))
     } finally {
       setLoading(false)
     }
@@ -777,7 +784,7 @@ export default function CreatePurchasePage() {
       setSelectedJob(job)
       setJobLinked(true)
     } catch (e: any) {
-      setError(e?.message ?? "Error linking job")
+      setError(e?.message ?? t("createErrors.linkJob"))
     } finally {
       setLoading(false)
     }
@@ -837,10 +844,10 @@ export default function CreatePurchasePage() {
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50 sm:h-9 sm:w-9">
                         <ShoppingCart className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">New Purchase</h1>
+                      <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">{t("createPageTitle")}</h1>
                     </div>
                     <p className="mt-1 hidden text-xs text-slate-500 sm:block">
-                      Guided quote step by step · Purchase → Order → Items → Job
+                      {t("createPageSubtitle")}
                     </p>
                   </div>
                 </div>
@@ -849,10 +856,10 @@ export default function CreatePurchasePage() {
                 {created.ID_Purchase && (
                   <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:px-3">
-                      {totals.ordersCount} order{totals.ordersCount !== 1 ? "s" : ""}
+                      {totals.ordersCount === 1 ? t("createSummary.order", { count: totals.ordersCount }) : t("createSummary.orders", { count: totals.ordersCount })}
                     </span>
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:px-3">
-                      {totals.itemsCount} item{totals.itemsCount !== 1 ? "s" : ""}
+                      {totals.itemsCount === 1 ? t("createSummary.item", { count: totals.itemsCount }) : t("createSummary.items", { count: totals.itemsCount })}
                     </span>
                     {totals.totalQuoted > 0 && (
                       <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:px-3">
@@ -889,12 +896,12 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 1 ── */}
                   {step === 1 && (
-                    <SectionCard icon={ShoppingCart} title="Purchase Information" subtitle="Purchase is created with Pending status — awaiting review by the purchasing department" accent="emerald">
+                    <SectionCard icon={ShoppingCart} title={t("createStep1.title")} subtitle={t("createStep1.subtitle")} accent="emerald">
                       <div className="space-y-4">
 
                         {/* Selling Rep picker */}
                         <div>
-                          <FieldLabel required>Selling Rep</FieldLabel>
+                          <FieldLabel required>{t("createStep1.repLabel")}</FieldLabel>
                           {selectedMember ? (
                             <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
                               <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarColor(selectedMember.ID_Member)}`}>
@@ -902,7 +909,7 @@ export default function CreatePurchasePage() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-semibold text-slate-800">{selectedMember.Member_Name}</p>
-                                <p className="text-[11px] text-slate-500">{selectedMember.Company_Role ?? "No role"} · {selectedMember.ID_Member}</p>
+                                <p className="text-[11px] text-slate-500">{selectedMember.Company_Role ?? t("createModals.memberNoRole")} · {selectedMember.ID_Member}</p>
                               </div>
                               <button
                                 onClick={() => setSelectedMember(null)}
@@ -917,7 +924,7 @@ export default function CreatePurchasePage() {
                               className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-left text-xs text-slate-500 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-700 transition-colors"
                             >
                               <User className="h-4 w-4 flex-shrink-0" />
-                              <span>Select a GQM member as selling rep…</span>
+                              <span>{t("createStep1.repPlaceholder")}</span>
                               <Search className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-50" />
                             </button>
                           )}
@@ -925,13 +932,40 @@ export default function CreatePurchasePage() {
 
                         {/* Description */}
                         <div>
-                          <FieldLabel required>Description</FieldLabel>
+                          <FieldLabel required>{t("createStep1.descLabel")}</FieldLabel>
                           <Input
                             value={description}
                             onChange={e => setDescription(e.target.value)}
-                            placeholder="e.g. Tile 12x8 for main bathroom"
+                            placeholder={t("createStep1.descPlaceholder")}
                             className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
                           />
+                        </div>
+
+                        {/* Extra / Unplanned Purchase toggle */}
+                        <div
+                          onClick={() => setIsExtra(v => !v)}
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
+                            isExtra
+                              ? "border-orange-200 bg-orange-50"
+                              : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100/60"
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${isExtra ? "bg-orange-500" : "bg-slate-300"}`}>
+                            <div className={`h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${isExtra ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <Zap className={`h-3.5 w-3.5 flex-shrink-0 ${isExtra ? "text-orange-500" : "text-slate-400"}`} />
+                              <p className={`text-xs font-semibold ${isExtra ? "text-orange-700" : "text-slate-600"}`}>
+                                {t("createStep1.extraTitle")}
+                              </p>
+                            </div>
+                            <p className={`mt-0.5 text-[11px] ${isExtra ? "text-orange-600" : "text-slate-400"}`}>
+                              {isExtra
+                                ? t("createStep1.extraDescYes")
+                                : t("createStep1.extraDescNo")}
+                            </p>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-end pt-1">
@@ -941,7 +975,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                            Create Purchase
+                            {t("createStep1.btnCreate")}
                           </Button>
                         </div>
                       </div>
@@ -950,20 +984,20 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 2 ── */}
                   {step === 2 && (
-                    <SectionCard icon={ClipboardList} title="Purchase Order" subtitle="Confirmation and delivery date can be added later" accent="blue">
+                    <SectionCard icon={ClipboardList} title={t("createStep2.title")} subtitle={t("createStep2.subtitle")} accent="blue">
                       <div className="space-y-4">
                         <div>
-                          <FieldLabel required>Order title</FieldLabel>
+                          <FieldLabel required>{t("createStep2.orderTitleLabel")}</FieldLabel>
                           <Input
                             value={orderTitle}
                             onChange={e => setOrderTitle(e.target.value)}
-                            placeholder="e.g. First batch of Tile"
+                            placeholder={t("createStep2.orderTitlePlaceholder")}
                             className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
                           />
                         </div>
                         <div className="flex items-center justify-between pt-1">
                           <Button variant="outline" onClick={() => setStep(1)} disabled={loading} className="gap-1.5 text-xs">
-                            <ArrowLeft className="h-3.5 w-3.5" /> Back
+                            <ArrowLeft className="h-3.5 w-3.5" /> {t("createStep2.btnBack")}
                           </Button>
                           <Button
                             disabled={!canCreateOrder || loading}
@@ -971,7 +1005,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                            Create Order
+                            {t("createStep2.btnCreate")}
                           </Button>
                         </div>
                       </div>
@@ -980,13 +1014,13 @@ export default function CreatePurchasePage() {
 
                   {/* ── STEP 3 ── */}
                   {step === 3 && (
-                    <SectionCard icon={Tag} title="Quote Items" subtitle="Actual purchase fields are filled in after the order is confirmed" accent="amber">
+                    <SectionCard icon={Tag} title={t("createStep3.title")} subtitle={t("createStep3.subtitle")} accent="amber">
 
                       {/* Current order badge */}
                       <div className="mb-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                         <ClipboardList className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-slate-700 truncate">{activeOrder?.Order_title ?? "—"}</p>
+                          <p className="text-xs font-semibold text-slate-700 truncate">{activeOrder?.Order_title ?? t("createSummary.untitled")}</p>
                           <p className="text-[10px] font-mono text-slate-400">{activeOrder?.ID_PurchaseOrder}</p>
                         </div>
                       </div>
@@ -994,18 +1028,18 @@ export default function CreatePurchasePage() {
                       {/* Item form */}
                       <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
                         <div>
-                          <FieldLabel required>Item name</FieldLabel>
+                          <FieldLabel required>{t("createStep3.itemLabel")}</FieldLabel>
                           <Input value={itemName} onChange={e => setItemName(e.target.value)}
-                            placeholder="e.g. 1/4 Tile" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                            placeholder={t("createStep3.itemPlaceholder")} className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                         </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
-                            <FieldLabel required>Shop (Quote)</FieldLabel>
+                            <FieldLabel required>{t("createStep3.shopLabel")}</FieldLabel>
                             <Input value={quoteShop} onChange={e => setQuoteShop(e.target.value)}
-                              placeholder="e.g. Amazon" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                              placeholder={t("createStep3.shopPlaceholder")} className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                           </div>
                           <div>
-                            <FieldLabel required>Quoted value</FieldLabel>
+                            <FieldLabel required>{t("createStep3.valLabel")}</FieldLabel>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                               <Input value={quoteValue} onChange={e => setQuoteValue(e.target.value)}
@@ -1015,22 +1049,22 @@ export default function CreatePurchasePage() {
                           </div>
                         </div>
                         <div>
-                          <FieldLabel required>Quote link</FieldLabel>
+                          <FieldLabel required>{t("createStep3.linkLabel")}</FieldLabel>
                           <Input value={quoteLink} onChange={e => setQuoteLink(e.target.value)}
-                            placeholder="https://www.amazon.com/…" className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
+                            placeholder={t("createStep3.linkPlaceholder")} className="border-slate-200 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30" />
                         </div>
                         <div>
                           <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 mb-2">
                             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-blue-500 mt-0.5" />
                             <p className="text-[11px] text-blue-700">
-                              <strong>Quote notes are required.</strong> Document the process: why this store, comparisons made, special conditions, etc.
+                              <strong>{t("createStep3.notesAlertStr1")}</strong> {t("createStep3.notesAlertStr2")}
                             </p>
                           </div>
-                          <FieldLabel required>Quote notes</FieldLabel>
+                          <FieldLabel required>{t("createStep3.notesLabel")}</FieldLabel>
                           <textarea
                             value={quoteNotes}
                             onChange={e => setQuoteNotes(e.target.value)}
-                            placeholder="e.g. Compared with Home Depot and Lowe's. Amazon offers a better price and 2-day delivery…"
+                            placeholder={t("createStep3.notesPlaceholder")}
                             rows={3}
                             className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
                           />
@@ -1039,11 +1073,11 @@ export default function CreatePurchasePage() {
                           <Button disabled={!canAddItem || loading} onClick={handleAddItem}
                             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
                             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                            Add Item
+                            {t("createStep3.btnAdd")}
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => { setItemName(""); setQuoteShop(""); setQuoteLink(""); setQuoteValue(""); setQuoteNotes("") }}
                             className="text-xs">
-                            Clear
+                            {t("createStep3.btnClear")}
                           </Button>
                         </div>
                       </div>
@@ -1052,7 +1086,7 @@ export default function CreatePurchasePage() {
                       {(activeOrder?.items?.length ?? 0) > 0 && (
                         <div className="mt-4 space-y-2">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                            {activeOrder!.items.length} item{activeOrder!.items.length !== 1 ? "s" : ""} in this order
+                            {activeOrder!.items.length === 1 ? t("createStep3.itemsInOrder", { count: activeOrder!.items.length }) : t("createStep3.itemsInOrders", { count: activeOrder!.items.length })}
                           </p>
                           {activeOrder!.items.map((it, idx) => (
                             <div key={(it.ID_PurchaseOrderItem ?? "") + idx}
@@ -1067,7 +1101,6 @@ export default function CreatePurchasePage() {
                               <button
                                 onClick={() => removeLocalItem(created.orders.length - 1, idx)}
                                 className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
-                                title="Quitar (solo UI)"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1079,24 +1112,24 @@ export default function CreatePurchasePage() {
                       {/* Step 3 actions */}
                       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
                         <Button variant="outline" onClick={() => setStep(2)} disabled={loading} className="gap-1.5 text-xs">
-                          <ArrowLeft className="h-3.5 w-3.5" /> Back
+                          <ArrowLeft className="h-3.5 w-3.5" /> {t("createStep2.btnBack")}
                         </Button>
                         <Button variant="outline"
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => { setError(null); setOrderTitle(""); setStep(2) }}
                           className="gap-1.5 text-xs">
-                          <Plus className="h-3.5 w-3.5" /> Another order
+                          <Plus className="h-3.5 w-3.5" /> {t("createStep3.btnAnother")}
                         </Button>
                         <Button
                           disabled={loading || (activeOrder?.items?.length ?? 0) < 1}
                           onClick={() => setStep(4)}
                           className="ml-auto gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
                         >
-                          Continue <ChevronRight className="h-3.5 w-3.5" />
+                          {t("createStep3.btnContinue")} <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                       {(activeOrder?.items?.length ?? 0) < 1 && (
-                        <p className="mt-2 text-[11px] text-slate-400 text-center">Add at least 1 item to continue</p>
+                        <p className="mt-2 text-[11px] text-slate-400 text-center">{t("createStep3.addAtLeastOne")}</p>
                       )}
                     </SectionCard>
                   )}
@@ -1105,8 +1138,8 @@ export default function CreatePurchasePage() {
                   {step === 4 && (
                     <SectionCard
                       icon={Link2}
-                      title="Link Job"
-                      subtitle={presetJobId ? "Job auto-linked from the Job section" : "Optional — can be linked later from the purchase detail"}
+                      title={t("createStep4.title")}
+                      subtitle={presetJobId ? t("createStep4.subtitleAuto") : t("createStep4.subtitleOpt")}
                       accent="slate"
                     >
                       <div className="space-y-4">
@@ -1114,7 +1147,7 @@ export default function CreatePurchasePage() {
                         {presetJobId && !jobLinked && (
                           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                             <Loader2 className="h-4 w-4 animate-spin text-emerald-500 flex-shrink-0" />
-                            <p className="text-xs text-slate-500">Linking job automatically…</p>
+                            <p className="text-xs text-slate-500">{t("createStep4.linkingAuto")}</p>
                           </div>
                         )}
 
@@ -1132,7 +1165,7 @@ export default function CreatePurchasePage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-500 truncate">{selectedJob.Project_name ?? "Unnamed"}</p>
+                              <p className="text-xs text-slate-500 truncate">{selectedJob.Project_name ?? t("createModals.jobUnnamed")}</p>
                             </div>
                             {/* Only allow removing the job link when not coming from a job context */}
                             {!presetJobId && (
@@ -1144,7 +1177,7 @@ export default function CreatePurchasePage() {
                           </div>
                         ) : jobLinked && !selectedJob ? (
                           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
-                            <p className="text-xs text-slate-400">No job linked — can be added later</p>
+                            <p className="text-xs text-slate-400">{t("createStep4.noJob")}</p>
                           </div>
                         ) : !presetJobId ? (
                           <button
@@ -1152,20 +1185,20 @@ export default function CreatePurchasePage() {
                             className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3.5 text-left text-xs text-slate-500 hover:border-emerald-400 hover:bg-emerald-50/40 hover:text-emerald-700 transition-colors"
                           >
                             <Briefcase className="h-4 w-4 flex-shrink-0" />
-                            <span>Search and link a Job to this purchase…</span>
+                            <span>{t("createStep4.searchJob")}</span>
                             <Search className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-50" />
                           </button>
                         ) : null}
 
                         {!jobLinked && !presetJobId && (
                           <Button variant="outline" className="w-full text-xs text-slate-500" onClick={handleSkipJob}>
-                            Skip for now
+                            {t("createStep4.btnSkip")}
                           </Button>
                         )}
 
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                           <Button variant="outline" onClick={() => setStep(3)} disabled={loading} className="gap-1.5 text-xs">
-                            <ArrowLeft className="h-3.5 w-3.5" /> Back
+                            <ArrowLeft className="h-3.5 w-3.5" /> {t("createStep2.btnBack")}
                           </Button>
                           <Button
                             disabled={!jobLinked || loading}
@@ -1173,7 +1206,7 @@ export default function CreatePurchasePage() {
                             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Finish
+                            {t("createStep4.btnFinish")}
                           </Button>
                         </div>
                       </div>
@@ -1187,21 +1220,21 @@ export default function CreatePurchasePage() {
                   {/* Progress summary */}
                   <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Summary</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("createSummary.title")}</p>
                     </div>
                     <div className="px-5 py-4 space-y-3">
 
                       {/* Purchase ID */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Purchase ID</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{t("createSummary.id")}</span>
                         <span className="text-xs font-mono font-semibold text-slate-700 text-right">
-                          {created.ID_Purchase ?? <span className="text-slate-300 font-sans font-normal">Pending</span>}
+                          {created.ID_Purchase ?? <span className="text-slate-300 font-sans font-normal">{t("createSummary.pending")}</span>}
                         </span>
                       </div>
 
                       {/* Selling Rep */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Selling Rep</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{t("createSummary.rep")}</span>
                         <div className="flex items-center gap-1.5">
                           {selectedMember ? (
                             <>
@@ -1216,7 +1249,7 @@ export default function CreatePurchasePage() {
 
                       {/* Description */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Description</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{t("createSummary.desc")}</span>
                         <span className="text-xs text-slate-700 text-right max-w-[160px] truncate">
                           {description || <span className="text-slate-300">—</span>}
                         </span>
@@ -1224,13 +1257,13 @@ export default function CreatePurchasePage() {
 
                       {/* Status */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Status</span>
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Pending</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{t("createSummary.status")}</span>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{t("createSummary.pending")}</span>
                       </div>
 
                       {/* Job */}
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">Job</span>
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">{t("createSummary.job")}</span>
                         <span className="text-xs font-mono text-slate-700">
                           {selectedJob?.ID_Jobs ?? <span className="text-slate-300 font-sans">—</span>}
                         </span>
@@ -1241,16 +1274,16 @@ export default function CreatePurchasePage() {
                         <>
                           <div className="h-px bg-slate-100" />
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-slate-400">Orders</span>
+                            <span className="text-[11px] text-slate-400">{t("createSummary.ordersCount")}</span>
                             <span className="text-sm font-bold text-slate-700">{totals.ordersCount}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-slate-400">Total items</span>
+                            <span className="text-[11px] text-slate-400">{t("createSummary.totalItems")}</span>
                             <span className="text-sm font-bold text-slate-700">{totals.itemsCount}</span>
                           </div>
                           {totals.totalQuoted > 0 && (
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] text-slate-400">Total quoted</span>
+                              <span className="text-[11px] text-slate-400">{t("createSummary.totalQuoted")}</span>
                               <span className="text-sm font-bold text-emerald-700">{money(totals.totalQuoted)}</span>
                             </div>
                           )}
@@ -1264,16 +1297,16 @@ export default function CreatePurchasePage() {
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                       <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Orders ({created.orders.length})
+                          {t("createSummary.ordersTitle", { count: created.orders.length })}
                         </p>
                       </div>
                       <div className="divide-y divide-slate-50">
                         {created.orders.map((o, i) => (
                           <div key={(o.ID_PurchaseOrder ?? "") + i} className="px-5 py-3">
-                            <p className="text-xs font-semibold text-slate-700 truncate">{o.Order_title ?? "Untitled"}</p>
+                            <p className="text-xs font-semibold text-slate-700 truncate">{o.Order_title ?? t("createSummary.untitled")}</p>
                             <div className="mt-0.5 flex items-center gap-2">
                               <span className="font-mono text-[10px] text-slate-400">{o.ID_PurchaseOrder}</span>
-                              <span className="text-[10px] text-slate-400">· {o.items.length} item{o.items.length !== 1 ? "s" : ""}</span>
+                              <span className="text-[10px] text-slate-400">· {o.items.length === 1 ? t("createSummary.item", { count: o.items.length }) : t("createSummary.items", { count: o.items.length })}</span>
                             </div>
                           </div>
                         ))}
@@ -1287,7 +1320,7 @@ export default function CreatePurchasePage() {
                     className="w-full text-xs text-slate-500"
                     onClick={() => router.push(backUrl)}
                   >
-                    Cancel
+                    {t("createSummary.cancel")}
                   </Button>
 
                   {/* Linked Suppliers */}

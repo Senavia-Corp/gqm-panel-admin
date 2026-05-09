@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   Plus, Search, ChevronLeft, ChevronRight, Eye, Trash2,
   Building2, Hash, MapPin, Mail, Phone, ExternalLink,
@@ -157,6 +158,7 @@ function StatusBadge({ status }: { status: string | null }) {
 function PodioSyncToggle({ value, onChange, danger }: {
   value: boolean; onChange: (v: boolean) => void; danger?: boolean
 }) {
+  const t = useTranslations("clients")
   const activeColor = danger
     ? "border-red-400 bg-gradient-to-r from-red-50 to-rose-50"
     : "border-violet-400 bg-gradient-to-r from-violet-50 to-indigo-50"
@@ -184,15 +186,12 @@ function PodioSyncToggle({ value, onChange, danger }: {
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold transition-colors ${value ? textActive : "text-slate-600"}`}>
           {value
-            ? (danger ? "También eliminar de Podio: ON" : "Sincronizar con Podio: ON")
-            : (danger ? "También eliminar de Podio: OFF" : "Sincronizar con Podio: OFF")
+            ? (danger ? t("syncPodioDangerOn") : t("syncPodioOn"))
+            : (danger ? t("syncPodioDangerOff") : t("syncPodioOff"))
           }
         </p>
         <p className={`text-xs transition-colors ${value ? subActive : "text-slate-400"}`}>
-          {danger
-            ? "El item de Podio también será eliminado"
-            : "Crear este registro en Podio simultáneamente"
-          }
+          {danger ? t("syncPodioDangerDesc") : t("syncPodioDesc")}
         </p>
       </div>
       <div className={`relative flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-all duration-200 ${
@@ -209,26 +208,27 @@ function PodioSyncToggle({ value, onChange, danger }: {
 function Pagination({ page, total, limit, onChange }: {
   page: number; total: number; limit: number; onChange: (p: number) => void
 }) {
+  const t = useTranslations("clients")
   const totalPages = Math.max(1, Math.ceil(total / limit))
   const start = total === 0 ? 0 : (page - 1) * limit + 1
   const end = Math.min(page * limit, total)
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
       <p className="text-sm text-slate-500">
-        Showing <span className="font-semibold text-slate-800">{start}–{end}</span> of{" "}
-        <span className="font-semibold text-slate-800">{total}</span> records
+        {t("paginationShowing")} <span className="font-semibold text-slate-800">{start}–{end}</span> {t("paginationOf")}{" "}
+        <span className="font-semibold text-slate-800">{total}</span> {t("paginationRecords")}
       </p>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
           disabled={page === 1} onClick={() => onChange(page - 1)}>
-          <ChevronLeft className="h-3.5 w-3.5" /> Prev
+          <ChevronLeft className="h-3.5 w-3.5" /> {t("btnPrev")}
         </Button>
         <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
           {page} / {totalPages}
         </span>
         <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
           disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
-          Next <ChevronRight className="h-3.5 w-3.5" />
+          {t("btnNext")} <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>
@@ -292,6 +292,7 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
   open: boolean; onOpenChange: (v: boolean) => void
   community: CommunityRow | null; onDeleted: (id: string) => void
 }) {
+  const t = useTranslations("clients")
   const [syncPodio, setSyncPodio] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -305,9 +306,9 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
       if (!res.ok) throw new Error(await res.text())
       onDeleted(community.ID_Client)
       onOpenChange(false)
-      toast({ title: "Community deleted", description: `${community.Client_Community ?? community.ID_Client} removed` })
+      toast({ title: t("delCommSuccessTitle"), description: t("delCommSuccessDesc").replace("{name}", community.Client_Community ?? community.ID_Client) })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
+      toast({ title: t("error"), description: e?.message, variant: "destructive" })
     } finally { setDeleting(false) }
   }
 
@@ -315,12 +316,13 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Community</AlertDialogTitle>
+          <AlertDialogTitle>{t("delCommTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete{" "}
+            {t("delCommWarning").split("{name}")[0]}
             <span className="font-semibold text-slate-800">
               {community?.Client_Community ?? community?.ID_Client}
-            </span>? This action cannot be undone.
+            </span>
+            {t("delCommWarning").split("{name}")[1]}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -329,10 +331,10 @@ function DeleteCommunityDialog({ open, onOpenChange, community, onDeleted }: {
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t("delCommCancel")}</AlertDialogCancel>
           <AlertDialogAction onClick={doDelete} disabled={deleting}
             className="bg-red-600 hover:bg-red-700">
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? t("delCommDeleting") : t("delCommDeleteBtn")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -346,6 +348,7 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
   open: boolean; onOpenChange: (v: boolean) => void
   item: ParentMgmtCo | null; onDeleted: (id: string) => void
 }) {
+  const t = useTranslations("clients")
   const [syncPodio, setSyncPodio] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -365,11 +368,11 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
       onDeleted(item.ID_Community_Tracking)
       onOpenChange(false)
       toast({
-        title: "Deleted",
-        description: `${item.Property_mgmt_co ?? item.ID_Community_Tracking} removed${syncPodio ? " from Podio too" : ""}`,
+        title: t("toastDeleted"),
+        description: t(syncPodio ? "toastDeletedDescPodio" : "toastDeletedDesc", { name: item.Property_mgmt_co ?? item.ID_Community_Tracking }),
       })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setDeleting(false) }
   }
 
@@ -377,12 +380,9 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Parent Management Company</AlertDialogTitle>
+          <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-slate-800">
-              {item?.Property_mgmt_co ?? item?.ID_Community_Tracking}
-            </span>? This action cannot be undone.
+            {t("deleteConfirm", { name: item?.Property_mgmt_co ?? item?.ID_Community_Tracking })}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -394,10 +394,10 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t("cancel")}</AlertDialogCancel>
           <AlertDialogAction onClick={doDelete} disabled={deleting}
             className="bg-red-600 hover:bg-red-700">
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? t("deleting") : t("btnDelete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -427,6 +427,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 // ─── Companies Tab ────────────────────────────────────────────────────────────
 
 function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  const t = useTranslations("clients")
   const [items, setItems]               = useState<ParentMgmtCo[]>([])
   const [search, setSearch]             = useState("")
   const [page, setPage]                 = useState(1)
@@ -478,7 +479,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
       <AlertCircle className="h-8 w-8 text-red-400" />
       <p className="text-sm font-medium text-red-600">{error}</p>
       <Button variant="outline" size="sm" onClick={fetchAll} className="gap-1.5">
-        <RefreshCw className="h-3.5 w-3.5" /> Retry
+        <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
       </Button>
     </div>
   )
@@ -490,7 +491,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, ID, state…"
+            placeholder={t("searchCompanies")}
             className="pl-9 text-sm border-slate-200 focus:border-emerald-400" />
           {search && (
             <button onClick={() => setSearch("")}
@@ -502,7 +503,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         {hasPermission("parent_mgmt_co:create") && (
           <Button onClick={() => router.push("/clients/create")}
             className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto sm:flex-shrink-0">
-            <Plus className="h-4 w-4" /> Add Company
+            <Plus className="h-4 w-4" /> {t("btnAddCompany")}
           </Button>
         )}
       </div>
@@ -522,7 +523,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   <CompanyAvatar name={row.Property_mgmt_co} abbrev={row.Company_abbrev} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-800">
-                      {row.Property_mgmt_co ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                      {row.Property_mgmt_co ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       <AbbrevBadge abbrev={row.Company_abbrev} />
@@ -553,8 +554,8 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
                 {/* Email + Phone */}
                 <div className="flex flex-col gap-1">
-                  <MultiValueCell values={emails} icon={Mail} fallback="No email" linkPrefix="mailto:" />
-                  <MultiValueCell values={phones} icon={Phone} fallback="No phone" linkPrefix="tel:" />
+                  <MultiValueCell values={emails} icon={Mail} fallback={t("noEmail")} linkPrefix="mailto:" />
+                  <MultiValueCell values={phones} icon={Phone} fallback={t("noPhone")} linkPrefix="tel:" />
                 </div>
 
                 {/* Actions */}
@@ -562,13 +563,13 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   <Button variant="ghost" size="sm"
                     className="h-8 gap-1.5 rounded-lg bg-amber-500 px-3 text-xs text-white shadow-sm hover:bg-amber-600"
                     onClick={() => router.push(`/clients/${row.ID_Community_Tracking}`)}>
-                    <Eye className="h-3.5 w-3.5" /> View
+                    <Eye className="h-3.5 w-3.5" /> {t("btnView")}
                   </Button>
                   {hasPermission("parent_mgmt_co:delete") && (
                     <Button variant="ghost" size="sm"
                       className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
                       onClick={() => setDeleteTarget(row)}>
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Trash2 className="h-3.5 w-3.5" /> {t("btnDelete")}
                     </Button>
                   )}
                 </div>
@@ -579,10 +580,10 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
             <div className="py-16 text-center">
               <Building2 className="mx-auto mb-3 h-8 w-8 text-slate-300" />
               <p className="text-sm font-medium text-slate-500">
-                {search ? `No results for "${search}"` : "No companies yet"}
+                {search ? t("noResults", { query: search }) : t("noCompaniesYet")}
               </p>
               {search && (
-                <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">Clear search</button>
+                <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">{t("clearSearch")}</button>
               )}
             </div>
           )}
@@ -593,12 +594,12 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/80">
               {[
-                { icon: Hash,         label: "ID" },
-                { icon: Building2,    label: "Company" },
-                { icon: MapPin,       label: "HQ Address" },
-                { icon: Mail,         label: "Email" },
-                { icon: Phone,        label: "Phone" },
-                { icon: ExternalLink, label: "Podio" },
+                { icon: Hash,         label: t("colId") },
+                { icon: Building2,    label: t("colCompany") },
+                { icon: MapPin,       label: t("colAddress") },
+                { icon: Mail,         label: t("colEmail") },
+                { icon: Phone,        label: t("colPhone") },
+                { icon: ExternalLink, label: t("colPodio") },
               ].map(({ icon: Icon, label }) => (
                 <th key={label} className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pl-5">
                   <span className="flex items-center gap-1"><Icon className="h-3 w-3" />{label}</span>
@@ -623,7 +624,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                       <CompanyAvatar name={row.Property_mgmt_co} abbrev={row.Company_abbrev} />
                       <div className="min-w-0">
                         <p className="max-w-[150px] truncate text-sm font-semibold text-slate-800">
-                          {row.Property_mgmt_co ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                          {row.Property_mgmt_co ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
                         </p>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                           <AbbrevBadge abbrev={row.Company_abbrev} />
@@ -638,7 +639,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                         <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
                         <span className="line-clamp-2">{row.Main_office_hq}</span>
                       </span>
-                    ) : <span className="text-xs italic text-slate-300">No address</span>}
+                    ) : <span className="text-xs italic text-slate-300">{t("noAddress")}</span>}
                   </td>
                   <td className="px-3 py-3.5">
                     <MultiValueCell values={emails} icon={Mail} fallback="No email" linkPrefix="mailto:" />
@@ -676,10 +677,10 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
               <tr><td colSpan={7} className="py-16 text-center">
                 <Building2 className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                 <p className="text-sm font-medium text-slate-500">
-                  {search ? `No results for "${search}"` : "No companies yet"}
+                  {search ? t("noResults", { query: search }) : t("noCompaniesYet")}
                 </p>
                 {search && (
-                  <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">Clear search</button>
+                  <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">{t("clearSearch")}</button>
                 )}
               </td></tr>
             )}
@@ -701,6 +702,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 // ─── Communities Tab ──────────────────────────────────────────────────────────
 
 function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
+  const t = useTranslations("clients")
   const PER_PAGE = 20
   const [rows, setRows]                 = useState<CommunityRow[]>([])
   const [total, setTotal]               = useState(0)
@@ -729,7 +731,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("failedLoad"))
     } finally { setLoading(false) }
   }, [])
 
@@ -749,7 +751,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, ID, address, status…"
+            placeholder={t("searchCommunities")}
             className="pl-9 text-sm border-slate-200 focus:border-emerald-400" />
           {search && (
             <button onClick={() => setSearch("")}
@@ -761,7 +763,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         {hasPermission("client:create") && (
           <Button onClick={() => router.push("/communities/create")}
             className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto sm:flex-shrink-0">
-            <Plus className="h-4 w-4" /> New Community
+            <Plus className="h-4 w-4" /> {t("btnNewCommunity")}
           </Button>
         )}
       </div>
@@ -772,7 +774,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
           <AlertCircle className="h-7 w-7 text-red-400" />
           <p className="text-sm text-red-600">{error}</p>
           <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch)} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
+            <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
           </Button>
         </div>
       ) : (
@@ -788,7 +790,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   {/* Top: name + status */}
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-sm font-semibold text-slate-800">
-                      {row.Client_Community ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                      {row.Client_Community ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
                     </p>
                     <StatusBadge status={row.Client_Status} />
                   </div>
@@ -824,8 +826,8 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
                   {/* Email + Phone */}
                   <div className="flex flex-col gap-1">
-                    <MultiValueCell values={emails} icon={Mail} fallback="No email" linkPrefix="mailto:" />
-                    <MultiValueCell values={phones} icon={Phone} fallback="No phone" linkPrefix="tel:" />
+                    <MultiValueCell values={emails} icon={Mail} fallback={t("noEmail")} linkPrefix="mailto:" />
+                    <MultiValueCell values={phones} icon={Phone} fallback={t("noPhone")} linkPrefix="tel:" />
                   </div>
 
                   {/* Actions */}
@@ -833,12 +835,12 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                     <Button variant="ghost" size="sm"
                       className="h-8 gap-1.5 rounded-lg bg-amber-500 px-3 text-xs text-white shadow-sm hover:bg-amber-600"
                       onClick={() => router.push(`/communities/${row.ID_Client}`)}>
-                      <Eye className="h-3.5 w-3.5" /> View
+                      <Eye className="h-3.5 w-3.5" /> {t("btnView")}
                     </Button>
                     <Button variant="ghost" size="sm"
                       className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
                       onClick={() => setDeleteTarget(row)}>
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Trash2 className="h-3.5 w-3.5" /> {t("btnDelete")}
                     </Button>
                   </div>
                 </div>
@@ -848,11 +850,11 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
               <div className="py-16 text-center">
                 <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                 <p className="text-sm font-medium text-slate-500">
-                  {dSearch ? `No results for "${dSearch}"` : "No communities yet"}
+                  {dSearch ? t("noResults", { query: dSearch }) : t("tabCommunities")}
                 </p>
                 {dSearch && (
                   <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">
-                    Clear search
+                    {t("clearSearch")}
                   </button>
                 )}
               </div>
@@ -864,20 +866,20 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
                 {[
-                  { icon: Hash,        label: "ID" },
-                  { icon: Users,       label: "Community" },
-                  { icon: MapPin,      label: "Address" },
-                  { icon: ShieldCheck, label: "Status" },
-                  { icon: Tag,         label: "Compliance" },
-                  { icon: Mail,        label: "Email" },
-                  { icon: Phone,       label: "Phone" },
-                  { icon: Building2,   label: "Parent Co." },
+                  { icon: Hash,        label: t("colId") },
+                  { icon: Users,       label: t("tabCommunities") },
+                  { icon: MapPin,      label: t("colAddress") },
+                  { icon: ShieldCheck, label: t("colStatus") },
+                  { icon: Tag,         label: t("colCompliance") },
+                  { icon: Mail,        label: t("colEmail") },
+                  { icon: Phone,       label: t("colPhone") },
+                  { icon: Building2,   label: t("tabCompanies") },
                 ].map(({ icon: Icon, label }) => (
                   <th key={label} className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pl-5">
                     <span className="flex items-center gap-1"><Icon className="h-3 w-3" />{label}</span>
                   </th>
                 ))}
-                <th className="py-3 pl-3 pr-5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">Actions</th>
+                <th className="py-3 pl-3 pr-5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -893,7 +895,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                     </td>
                     <td className="px-3 py-3.5">
                       <p className="max-w-[160px] truncate text-sm font-semibold text-slate-800">
-                        {row.Client_Community ?? <span className="font-normal italic text-slate-300">Unnamed</span>}
+                        {row.Client_Community ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
                       </p>
                     </td>
                     <td className="max-w-[160px] px-3 py-3.5">
@@ -902,7 +904,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                           <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
                           <span className="line-clamp-2">{row.Address}</span>
                         </span>
-                      ) : <span className="text-xs italic text-slate-300">—</span>}
+                      ) : <span className="text-xs italic text-slate-300">{t("noAddress")}</span>}
                     </td>
                     <td className="px-3 py-3.5">
                       <StatusBadge status={row.Client_Status} />
@@ -913,10 +915,10 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                       </span>
                     </td>
                     <td className="px-3 py-3.5">
-                      <MultiValueCell values={emails} icon={Mail} fallback="—" linkPrefix="mailto:" />
+                      <MultiValueCell values={emails} icon={Mail} fallback={t("noEmail")} linkPrefix="mailto:" />
                     </td>
                     <td className="px-3 py-3.5">
-                      <MultiValueCell values={phones} icon={Phone} fallback="—" linkPrefix="tel:" />
+                      <MultiValueCell values={phones} icon={Phone} fallback={t("noPhone")} linkPrefix="tel:" />
                     </td>
                     <td className="px-3 py-3.5">
                       {row.ID_Community_Tracking ? (
@@ -946,11 +948,11 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                 <tr><td colSpan={9} className="py-16 text-center">
                   <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                   <p className="text-sm font-medium text-slate-500">
-                    {dSearch ? `No results for "${dSearch}"` : "No communities yet"}
+                    {dSearch ? t("noResults", { query: dSearch }) : t("tabCommunities")}
                   </p>
                   {dSearch && (
                     <button onClick={() => setSearch("")} className="mt-1 text-xs text-emerald-600 hover:underline">
-                      Clear search
+                      {t("clearSearch")}
                     </button>
                   )}
                 </td></tr>
@@ -975,6 +977,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ClientsPage() {
+  const t = useTranslations("clients")
   const router = useRouter()
   const [user, setUser]           = useState<any>(null)
   const { hasPermission }         = usePermissions()
@@ -1011,8 +1014,8 @@ export default function ClientsPage() {
                 <Building2 className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Client Management</h1>
-                <p className="hidden text-xs text-slate-500 sm:block">Parent management companies & communities</p>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{t("title")}</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">{t("subtitle")}</p>
               </div>
             </div>
 
@@ -1020,8 +1023,8 @@ export default function ClientsPage() {
             <div className="mt-3 flex px-4 sm:px-6">
               {(
                 [
-                  { id: "companies"   as MainTab, icon: Building2, label: "Parent Companies", visible: canSeeCompanies },
-                  { id: "communities" as MainTab, icon: Users,     label: "Communities",      visible: canSeeCommunities },
+                  { id: "companies"   as MainTab, icon: Building2, label: t("tabCompanies"), visible: canSeeCompanies },
+                  { id: "communities" as MainTab, icon: Users,     label: t("tabCommunities"),      visible: canSeeCommunities },
                 ] as const
               ).filter(t => t.visible).map(({ id, icon: Icon, label }) => {
                 const on = activeTab === id
@@ -1045,10 +1048,9 @@ export default function ClientsPage() {
             {!canSeeCompanies && !canSeeCommunities ? (
               <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white">
                 <Shield className="h-10 w-10 text-slate-200" />
-                <h2 className="text-lg font-bold text-slate-800">Access Denied</h2>
+                <h2 className="text-lg font-bold text-slate-800">{t("accessDenied")}</h2>
                 <p className="text-sm text-slate-500 text-center max-w-sm">
-                  You don't have permissions to view clients or parent management companies. 
-                  Please contact your administrator.
+                  {t("accessDeniedDesc")}
                 </p>
               </div>
             ) : (

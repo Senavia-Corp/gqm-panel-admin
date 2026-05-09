@@ -17,6 +17,7 @@ import {
   Package, DollarSign, User, MapPin, RotateCcw, X,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,8 +105,8 @@ function SkeletonRow() {
 // ─── Delete Modal ─────────────────────────────────────────────────────────────
 
 function DeletePurchaseDialog({
-  purchase, onClose, onDeleted,
-}: { purchase: PurchaseRow | null; onClose: () => void; onDeleted: () => void }) {
+  purchase, onClose, onDeleted, t,
+}: { purchase: PurchaseRow | null; onClose: () => void; onDeleted: () => void; t: (k: string, v?: Record<string, any>) => string }) {
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
@@ -119,10 +120,10 @@ function DeletePurchaseDialog({
         const err = await res.json().catch(() => ({}))
         throw new Error((err as any)?.detail ?? `Error ${res.status}`)
       }
-      toast({ title: "Purchase deleted", description: `${purchase.ID_Purchase} was removed.` })
+      toast({ title: t("toastDeleted"), description: t("toastDeletedDesc", { id: purchase.ID_Purchase }) })
       onDeleted()
     } catch (e: any) {
-      toast({ title: "Error deleting", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastErrorDelete"), description: e?.message, variant: "destructive" })
     } finally {
       setDeleting(false)
     }
@@ -133,10 +134,10 @@ function DeletePurchaseDialog({
       <DialogContent className="max-w-[95vw] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
-            <Trash2 className="h-5 w-5" /> Delete Purchase
+            <Trash2 className="h-5 w-5" /> {t("deleteTitle")}
           </DialogTitle>
           <DialogDescription>
-            This will permanently delete the purchase and all its associated orders and items. This action cannot be undone.
+            {t("deleteDesc")}
           </DialogDescription>
         </DialogHeader>
         {purchase && (
@@ -154,9 +155,9 @@ function DeletePurchaseDialog({
               <p className="text-xs text-red-600 line-clamp-2">{purchase.Description}</p>
             )}
             <div className="flex items-center gap-3 pt-1 text-[11px] font-semibold text-red-700">
-              <span>{purchase.order_count} order{purchase.order_count !== 1 ? "s" : ""}</span>
+              <span>{purchase.order_count !== 1 ? t("deleteOrders", { count: purchase.order_count }) : t("deleteOrder", { count: purchase.order_count })}</span>
               <span>·</span>
-              <span>{purchase.item_count} item{purchase.item_count !== 1 ? "s" : ""}</span>
+              <span>{purchase.item_count !== 1 ? t("deleteItems", { count: purchase.item_count }) : t("deleteItem", { count: purchase.item_count })}</span>
               {purchase.Total_spending != null && (
                 <><span>·</span><span>{fmtMoney(purchase.Total_spending)}</span></>
               )}
@@ -165,11 +166,11 @@ function DeletePurchaseDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={deleting} className="text-xs border-slate-200">
-            Cancel
+            {t("btnCancel")}
           </Button>
           <Button onClick={handleDelete} disabled={deleting} className="gap-1.5 bg-red-600 hover:bg-red-700 text-xs text-white">
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-            {deleting ? "Deleting…" : "Delete Purchase"}
+            {deleting ? t("btnDeleting") : t("btnDelete")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -180,10 +181,10 @@ function DeletePurchaseDialog({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const LIMIT = 20
-const STATUS_OPTIONS = ["All", "Pending", "In Review", "Approved", "In Progress", "Completed", "Cancelled"]
 
 export default function PurchasesPage() {
   const router = useRouter()
+  const t = useTranslations("purchases")
   const [user, setUser]   = useState<any>(null)
 
   const [rows,    setRows]    = useState<PurchaseRow[]>([])
@@ -195,6 +196,16 @@ export default function PurchasesPage() {
   const [search,       setSearch]       = useState("")
   const [statusFilter, setStatusFilter] = useState("All")
   const [toDelete,     setToDelete]     = useState<PurchaseRow | null>(null)
+
+  const STATUS_OPTIONS = [
+    { value: "All",         label: t("statusAll")        },
+    { value: "Pending",     label: t("statusPending")    },
+    { value: "In Review",   label: t("statusInReview")   },
+    { value: "Approved",    label: t("statusApproved")   },
+    { value: "In Progress", label: t("statusInProgress") },
+    { value: "Completed",   label: t("statusCompleted")  },
+    { value: "Cancelled",   label: t("statusCancelled")  },
+  ]
 
   const debouncedSearch = useDebounce(search, 350)
   const abortRef = useRef<AbortController | null>(null)
@@ -251,7 +262,7 @@ export default function PurchasesPage() {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -262,8 +273,8 @@ export default function PurchasesPage() {
                   <ShoppingCart className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Purchases</h1>
-                  <p className="mt-0.5 hidden text-sm text-slate-500 sm:block">Track purchase orders and spending across projects</p>
+                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{t("pageTitle")}</h1>
+                  <p className="mt-0.5 hidden text-sm text-slate-500 sm:block">{t("pageSubtitle")}</p>
                 </div>
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
@@ -271,7 +282,7 @@ export default function PurchasesPage() {
                   onClick={() => router.push("/purchases/create")}
                   className="hidden gap-2 bg-emerald-600 hover:bg-emerald-700 text-sm text-white shadow-sm sm:flex"
                 >
-                  <Plus className="h-4 w-4" /> New Purchase
+                  <Plus className="h-4 w-4" /> {t("btnNew")}
                 </Button>
                 <Button
                   size="icon"
@@ -292,7 +303,7 @@ export default function PurchasesPage() {
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search ID, rep, description…"
+                  placeholder={t("searchPlaceholder")}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-9 text-xs border-slate-200 bg-slate-50 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30"
@@ -309,15 +320,15 @@ export default function PurchasesPage() {
                 <div className="flex items-center gap-1.5 pb-0.5 sm:flex-wrap sm:pb-0">
                   {STATUS_OPTIONS.map(s => (
                     <button
-                      key={s}
-                      onClick={() => setStatusFilter(s)}
+                      key={s.value}
+                      onClick={() => setStatusFilter(s.value)}
                       className={`flex-shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
-                        statusFilter === s
+                        statusFilter === s.value
                           ? "border-emerald-500 bg-emerald-600 text-white"
                           : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
                       }`}
                     >
-                      {s}
+                      {s.label}
                     </button>
                   ))}
                 </div>
@@ -325,7 +336,7 @@ export default function PurchasesPage() {
 
               {/* Total */}
               <div className="hidden text-xs text-slate-500 sm:ml-auto sm:block">
-                <span className="font-semibold text-slate-800">{total}</span> purchase{total !== 1 ? "s" : ""}
+                <span className="font-semibold text-slate-800">{total}</span> {total !== 1 ? t("totalCount", { count: total }).replace(String(total), "").trim() : t("totalCountSingle", { count: total }).replace(String(total), "").trim()}
               </div>
             </div>
           </div>
@@ -354,18 +365,18 @@ export default function PurchasesPage() {
                     <AlertCircle className="h-8 w-8 text-red-400" />
                     <p className="text-sm text-slate-600">{error}</p>
                     <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
-                      <RefreshCw className="h-3.5 w-3.5" /> Retry
+                      <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                     </Button>
                   </div>
                 ) : rows.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 px-6 py-16">
                     <ShoppingCart className="h-10 w-10 text-slate-300" />
                     <p className="text-sm text-slate-500">
-                      {search || statusFilter !== "All" ? "No purchases match your filters" : "No purchases yet"}
+                      {search || statusFilter !== "All" ? t("noResultsFiltered") : t("noResults")}
                     </p>
                     {(search || statusFilter !== "All") && (
                       <Button size="sm" variant="outline" onClick={() => { setSearch(""); setStatusFilter("All") }} className="gap-1.5 text-xs">
-                        <X className="h-3.5 w-3.5" /> Clear filters
+                        <X className="h-3.5 w-3.5" /> {t("clearFilters")}
                       </Button>
                     )}
                   </div>
@@ -408,7 +419,7 @@ export default function PurchasesPage() {
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className="flex items-center gap-1 text-xs text-slate-500">
                         <Package className="h-3 w-3 text-slate-400" />
-                        {p.order_count} orders · {p.item_count} items
+                        {p.order_count} {t("orders", { count: p.order_count })} · {t("items", { count: p.item_count })}
                       </span>
                       {p.Total_spending != null && (
                         <span className="text-xs font-bold text-emerald-700">{fmtMoney(p.Total_spending)}</span>
@@ -441,14 +452,14 @@ export default function PurchasesPage() {
                     </colgroup>
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/80">
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Purchase ID</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Selling Rep</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
-                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Orders / Items</th>
-                        <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Spent</th>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Return</th>
-                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actions</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colId")}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colRep")}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colDescription")}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colStatus")}</th>
+                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colOrders")}</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colTotalSpent")}</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colReturn")}</th>
+                        <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("colActions")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -461,7 +472,7 @@ export default function PurchasesPage() {
                               <AlertCircle className="h-8 w-8 text-red-400" />
                               <p className="text-sm text-slate-600">{error}</p>
                               <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
-                                <RefreshCw className="h-3.5 w-3.5" /> Retry
+                                <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                               </Button>
                             </div>
                           </td>
@@ -472,11 +483,11 @@ export default function PurchasesPage() {
                             <div className="flex flex-col items-center gap-3">
                               <ShoppingCart className="h-10 w-10 text-slate-300" />
                               <p className="text-sm text-slate-500">
-                                {search || statusFilter !== "All" ? "No purchases match your filters" : "No purchases yet"}
+                                {search || statusFilter !== "All" ? t("noResultsFiltered") : t("noResults")}
                               </p>
                               {(search || statusFilter !== "All") && (
                                 <Button size="sm" variant="outline" onClick={() => { setSearch(""); setStatusFilter("All") }} className="gap-1.5 text-xs">
-                                  <X className="h-3.5 w-3.5" /> Clear filters
+                                  <X className="h-3.5 w-3.5" /> {t("clearFilters")}
                                 </Button>
                               )}
                             </div>
@@ -507,7 +518,7 @@ export default function PurchasesPage() {
 
                           {/* Description */}
                           <td className="px-4 py-3.5 align-middle">
-                            <p className="truncate text-xs text-slate-600">{p.Description || <span className="italic text-slate-400">No description</span>}</p>
+                            <p className="truncate text-xs text-slate-600">{p.Description || <span className="italic text-slate-400">{t("noDescription")}</span>}</p>
                             {p.Delivery_location && (
                               <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-400">
                                 <MapPin className="h-2.5 w-2.5 flex-shrink-0" />{p.Delivery_location}
@@ -528,7 +539,7 @@ export default function PurchasesPage() {
                               </div>
                               <span className="text-slate-300">/</span>
                               <div className="text-xs font-semibold text-slate-700">
-                                {p.item_count} items
+                                {t("items", { count: p.item_count })}
                               </div>
                             </div>
                           </td>
@@ -556,14 +567,14 @@ export default function PurchasesPage() {
                               <button
                                 onClick={() => router.push(`/purchases/${p.ID_Purchase}`)}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600"
-                                title="View details"
+                                title={t("titleView")}
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => setToDelete(p)}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-red-600"
-                                title="Delete purchase"
+                                title={t("titleDelete")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -580,8 +591,8 @@ export default function PurchasesPage() {
               {!loading && !error && rows.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5 sm:py-3.5">
                   <p className="text-xs text-slate-500">
-                    Showing <span className="font-semibold text-slate-800">{(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)}</span> of{" "}
-                    <span className="font-semibold text-slate-800">{total}</span> purchases
+                    {t("showing")} <span className="font-semibold text-slate-800">{(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)}</span> {t("of")}{" "}
+                    <span className="font-semibold text-slate-800">{total}</span> {total !== 1 ? t("totalCount", { count: total }).replace(String(total), "").trim() : t("totalCountSingle", { count: total }).replace(String(total), "").trim()}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
@@ -612,6 +623,7 @@ export default function PurchasesPage() {
         purchase={toDelete}
         onClose={() => setToDelete(null)}
         onDeleted={handleDeleted}
+        t={t}
       />
     </div>
   )

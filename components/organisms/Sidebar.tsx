@@ -63,8 +63,7 @@ const gqmMemberMenuItems: NavItem[] = [
 const leadTechnicianMenuItems: NavItem[] = [
   { icon: LayoutDashboard, labelKey: "dashboard",    href: "/dashboard" },
   { icon: Briefcase,       labelKey: "jobs",         href: "/jobs" },
-  { icon: Wrench,          labelKey: "technicians",  href: "/technicians" },
-  { icon: FileText,        labelKey: "reports",      href: "/reports" },
+  { icon: Users,           labelKey: "subcontractors", href: "/subcontractors" },
 ]
 
 const bottomItems: NavItem[] = [
@@ -120,7 +119,7 @@ function SidebarContent({
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           const isDisabled =
             userRole === "LEAD_TECHNICIAN" &&
-            (item.href === "/technicians" || item.href === "/reports")
+            (item.href === "/reports")
 
           return (
             <Link
@@ -151,7 +150,7 @@ function SidebarContent({
           const Icon = item.icon
           const isDisabled =
             userRole === "LEAD_TECHNICIAN" &&
-            (item.href === "/profile" || item.href === "/settings")
+            (item.href === "/settings")
           const isLogout = item.labelKey === "logout"
 
           return (

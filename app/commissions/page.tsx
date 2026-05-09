@@ -11,6 +11,7 @@ import {
   Eye, AlertCircle, RefreshCw, X, Calendar, User
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,12 +46,13 @@ function useDebounce<T>(value: T, ms: number): T {
   return dv
 }
 
-function MonthBadge({ month }: { month: string | null }) {
+function MonthBadge({ month, t }: { month: string | null, t: any }) {
   if (!month) return <span className="text-xs italic text-slate-400">—</span>
+  const mKey = month.toLowerCase()
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
       <Calendar className="h-2.5 w-2.5" />
-      {month.charAt(0) + month.slice(1).toLowerCase()}
+      {t(`month_${mKey}`)}
     </span>
   )
 }
@@ -92,6 +94,7 @@ function RepAvatar() {
 
 export default function CommissionsPage() {
   const router = useRouter()
+  const t = useTranslations("commissions")
   const [user, setUser] = useState<any>(null)
 
   const [rows, setRows] = useState<CommissionRow[]>([])
@@ -130,7 +133,7 @@ export default function CommissionsPage() {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load commissions")
+      setError(e?.message ?? t("errLoad"))
     } finally { setLoading(false) }
   }, [])
 
@@ -157,8 +160,8 @@ export default function CommissionsPage() {
                 <BadgeDollarSign className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold leading-none text-slate-900 sm:text-2xl">Commissions</h1>
-                <p className="mt-1 hidden text-sm text-slate-500 sm:block">View and manage member commission records</p>
+                <h1 className="text-xl font-bold leading-none text-slate-900 sm:text-2xl">{t("title")}</h1>
+                <p className="mt-1 hidden text-sm text-slate-500 sm:block">{t("subtitle")}</p>
               </div>
             </div>
 
@@ -168,14 +171,14 @@ export default function CommissionsPage() {
               {/* Toolbar */}
               <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-base font-semibold text-slate-800">All Commissions</h2>
+                  <h2 className="text-base font-semibold text-slate-800">{t("cardTitle")}</h2>
                   {total > 0 && (
                     <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-bold text-white">{total}</span>
                   )}
                 </div>
                 <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <Input placeholder="Search by ID, month, year…" value={search} onChange={(e) => setSearch(e.target.value)}
+                  <Input placeholder={t("phSearch")} value={search} onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors" />
                   {search && (
                     <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600">
@@ -190,7 +193,7 @@ export default function CommissionsPage() {
                 <div className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-2 text-sm text-red-700"><AlertCircle className="h-4 w-4 flex-shrink-0" />{error}</div>
                   <Button variant="outline" size="sm" onClick={() => fetchData(page, debouncedSearch)} className="gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-100">
-                    <RefreshCw className="h-3.5 w-3.5" /> Retry
+                    <RefreshCw className="h-3.5 w-3.5" /> {t("btnRetry")}
                   </Button>
                 </div>
               )}
@@ -210,8 +213,8 @@ export default function CommissionsPage() {
                 ) : rows.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 px-6 py-16">
                     <BadgeDollarSign className="h-8 w-8 text-slate-300" />
-                    <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
-                    {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">Clear search</button>}
+                    <p className="text-sm text-slate-500">{search ? t("noResultsSearch", { search }) : t("noResults")}</p>
+                    {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">{t("btnClearSearch")}</button>}
                   </div>
                 ) : rows.map((row) => (
                   <div key={row.ID_Commission} className="p-4 transition-colors hover:bg-slate-50/60">
@@ -219,7 +222,7 @@ export default function CommissionsPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">{row.ID_Commission}</span>
-                          <MonthBadge month={row.Month} />
+                          <MonthBadge month={row.Month} t={t} />
                           {row.Year && <span className="text-xs font-medium text-slate-500">{row.Year}</span>}
                         </div>
                         <div className="mt-2 flex items-center gap-2">
@@ -248,7 +251,7 @@ export default function CommissionsPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/80">
-                        {["Commission ID", "Member", "Month", "Year", "Total", "Actions"].map((label, i) => (
+                        {[t("colId"), t("colMember"), t("colMonth"), t("colYear"), t("colTotal"), t("colActions")].map((label, i) => (
                           <th key={i} className={`px-5 py-3 text-left ${i === 5 ? "text-right" : ""}`}>
                             {label && <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</span>}
                           </th>
@@ -261,8 +264,8 @@ export default function CommissionsPage() {
                           <td colSpan={6} className="py-16 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <BadgeDollarSign className="h-8 w-8 text-slate-300" />
-                              <p className="text-sm text-slate-500">{search ? `No commissions found for "${search}"` : "No commissions yet"}</p>
-                              {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">Clear search</button>}
+                              <p className="text-sm text-slate-500">{search ? t("noResultsSearch", { search }) : t("noResults")}</p>
+                              {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-emerald-600 hover:underline">{t("btnClearSearch")}</button>}
                             </div>
                           </td>
                         </tr>
@@ -280,12 +283,12 @@ export default function CommissionsPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5"><MonthBadge month={row.Month} /></td>
+                          <td className="px-5 py-3.5"><MonthBadge month={row.Month} t={t} /></td>
                           <td className="px-5 py-3.5"><span className="text-sm font-medium text-slate-700">{row.Year ?? "—"}</span></td>
                           <td className="px-5 py-3.5"><TotalBadge total={row.Total_commission} /></td>
                           <td className="px-5 py-3.5 text-right">
                             <button onClick={() => router.push(`/commissions/${row.ID_Commission}`)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600 ml-auto" title="View">
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600 ml-auto" title={t("tipView")}>
                               <Eye className="h-4 w-4" />
                             </button>
                           </td>
@@ -300,15 +303,15 @@ export default function CommissionsPage() {
               {!loading && !error && total > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
                   <p className="text-xs text-slate-500">
-                    {rangeStart}–{rangeEnd} of <span className="font-semibold text-slate-700">{total.toLocaleString()}</span> commissions
+                    {t("pagination", { start: rangeStart, end: rangeEnd, total: total.toLocaleString() })}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading}>
-                      <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                      <ChevronLeft className="h-3.5 w-3.5" /> {t("btnPrev")}
                     </Button>
                     <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{page} / {totalPages}</span>
                     <Button variant="outline" size="sm" className="h-7 gap-1 text-xs border-slate-200" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || loading}>
-                      Next <ChevronRight className="h-3.5 w-3.5" />
+                      {t("btnNext")} <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>

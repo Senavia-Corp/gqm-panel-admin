@@ -11,6 +11,7 @@ import { Send, RefreshCw, AlertCircle, BookOpen, NotebookText } from "lucide-rea
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useJobChat, type ChatMessageData } from "@/app/jobs/[id]/useJobChat"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations, useLocale } from "@/components/providers/LocaleProvider"
 import type { UserRole } from "@/lib/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,17 +23,17 @@ type Props = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
   } catch {
     return ""
   }
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleDateString([], {
+    return new Date(iso).toLocaleDateString(locale, {
       weekday: "long", month: "short", day: "numeric",
     })
   } catch {
@@ -66,10 +67,12 @@ function MessageBubble({
   msg,
   isSelf,
   showName,
+  locale,
 }: {
   msg: ChatMessageData
   isSelf: boolean
   showName: boolean
+  locale: string
 }) {
   const name = msg.member_name ?? "Unknown"
   const color = avatarColor(msg.ID_Member)
@@ -105,7 +108,7 @@ function MessageBubble({
 
         {/* Time */}
         <span className={`text-[10px] text-slate-400 ${isSelf ? "mr-1" : "ml-1"}`}>
-          {formatTime(msg.created_at)}
+          {formatTime(msg.created_at, locale)}
         </span>
       </div>
     </div>
@@ -129,6 +132,8 @@ function DateDivider({ date }: { date: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function JobChatTab({ role, jobId }: Props) {
+  const { locale } = useLocale()
+  const t = useTranslations("jobLogbook")
   const { toast } = useToast()
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState("")
@@ -151,8 +156,8 @@ export function JobChatTab({ role, jobId }: Props) {
       await sendMessage(trimmed)
     } catch {
       toast({
-        title: "Failed to send message",
-        description: "Please try again.",
+        title: t("errorFailedSend"),
+        description: t("errorTryAgain"),
         variant: "destructive",
       })
       setInput(trimmed)   // restore so the user doesn't lose their text
@@ -177,7 +182,7 @@ export function JobChatTab({ role, jobId }: Props) {
   let lastSender = ""
 
   for (const msg of messages) {
-    const dateStr = formatDate(msg.created_at)
+    const dateStr = formatDate(msg.created_at, locale)
     if (dateStr !== lastDate) {
       grouped.push({ type: "date", date: dateStr })
       lastDate = dateStr
@@ -200,9 +205,9 @@ export function JobChatTab({ role, jobId }: Props) {
           <BookOpen className="h-4 w-4 text-indigo-600" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-800">Logbook and Documentation</p>
+          <p className="text-sm font-semibold text-slate-800">{t("title")}</p>
           <p className="text-[11px] text-slate-400">
-            {isLoading ? "Loading…" : `${messages.length} message${messages.length !== 1 ? "s" : ""}`}
+            {isLoading ? t("loading") : messages.length === 1 ? t("messageCount") : t("messagesCount", { count: messages.length })}
           </p>
         </div>
         {isLoading && (
@@ -214,7 +219,7 @@ export function JobChatTab({ role, jobId }: Props) {
       {error && (
         <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-2.5">
           <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
-          <p className="text-xs text-red-700">{error}</p>
+          <p className="text-xs text-red-700">{error === "Failed to load messages" ? t("errorLoad") : error}</p>
         </div>
       )}
 
@@ -225,8 +230,8 @@ export function JobChatTab({ role, jobId }: Props) {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
               <NotebookText className="h-7 w-7 text-indigo-300" />
             </div>
-            <p className="text-sm font-medium text-slate-500">No entries yet</p>
-            <p className="text-xs text-slate-400">Start documenting events, notes, and updates for this job.</p>
+            <p className="text-sm font-medium text-slate-500">{t("noEntries")}</p>
+            <p className="text-xs text-slate-400">{t("noEntriesHint")}</p>
           </div>
         )}
 
@@ -239,6 +244,7 @@ export function JobChatTab({ role, jobId }: Props) {
               msg={entry.msg}
               isSelf={entry.isSelf}
               showName={entry.showName}
+              locale={locale}
             />
           ),
         )}
@@ -249,7 +255,7 @@ export function JobChatTab({ role, jobId }: Props) {
         <div className="flex items-end gap-3">
           <textarea
             rows={1}
-            placeholder="Add a log entry… (Enter to save, Shift+Enter for new line)"
+            placeholder={t("inputPlaceholder")}
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
@@ -266,7 +272,7 @@ export function JobChatTab({ role, jobId }: Props) {
             onClick={handleSend}
             disabled={!input.trim() || isSending}
             className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Send message (Enter)"
+            title={t("sendTitle")}
           >
             {isSending
               ? <RefreshCw className="h-4 w-4 animate-spin" />
@@ -275,7 +281,7 @@ export function JobChatTab({ role, jobId }: Props) {
           </button>
         </div>
         <p className="mt-1.5 text-[10px] text-slate-400">
-          Shift+Enter for a new line · entries update every 10 s
+          {t("inputHint")}
         </p>
       </div>
     </div>

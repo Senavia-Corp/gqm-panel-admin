@@ -11,9 +11,11 @@ function jsonError(message: string, status = 500, extra?: Record<string, unknown
     return NextResponse.json({ error: message, ...(extra ?? {}) }, { status })
 }
 
-async function proxyFetch(url: string, init?: RequestInit) {
+async function proxyFetch(url: string, init?: RequestInit, incomingRequest?: NextRequest) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+    const authHeader = incomingRequest?.headers.get("Authorization") ?? ""
 
     try {
         const res = await fetch(url, {
@@ -21,6 +23,7 @@ async function proxyFetch(url: string, init?: RequestInit) {
             cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
+                ...(authHeader ? { Authorization: authHeader } : {}),
                 ...(init?.headers ?? {}),
             },
             signal: controller.signal,
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
     if (id) {
         const url = `${COMMISSION_BASE}/${encodeURIComponent(id)}`
         console.log("[commission proxy] GET by id ->", url)
-        const result = await proxyFetch(url, { method: "GET" })
+        const result = await proxyFetch(url, { method: "GET" }, request)
         if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
         return NextResponse.json(result.data)
     }
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
     if (memberId) {
         const url = `${COMMISSION_BASE}/member/${encodeURIComponent(memberId)}`
         console.log("[commission proxy] GET by member ->", url)
-        const result = await proxyFetch(url, { method: "GET" })
+        const result = await proxyFetch(url, { method: "GET" }, request)
         if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
         return NextResponse.json(result.data)
     }
@@ -99,7 +102,7 @@ export async function GET(request: NextRequest) {
         if (q) params.set("q", q)
         const url = `${COMMISSION_BASE}/commission_table?${params.toString()}`
         console.log("[commission proxy] GET table ->", url)
-        const result = await proxyFetch(url, { method: "GET" })
+        const result = await proxyFetch(url, { method: "GET" }, request)
         if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
         return NextResponse.json(result.data)
     }
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams({ page, limit })
     const url = `${COMMISSION_BASE}/?${params.toString()}`
     console.log("[commission proxy] GET list ->", url)
-    const result = await proxyFetch(url, { method: "GET" })
+    const result = await proxyFetch(url, { method: "GET" }, request)
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
 }

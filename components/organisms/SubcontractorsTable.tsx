@@ -20,6 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface SubcontractorsTableProps {
   jobId: string
@@ -55,6 +56,7 @@ export function SubcontractorsTable({
   onLinkClick,
   onUnlink,
 }: SubcontractorsTableProps) {
+  const t = useTranslations("jobs")
   const [searchTerm, setSearchTerm] = useState("")
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false)
   const [subcontractorToUnlink, setSubcontractorToUnlink] = useState<any>(null)
@@ -149,7 +151,7 @@ export function SubcontractorsTable({
               <Users className="h-4 w-4" />
             </div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Linked Subcontractors</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("subTableTitle")}</h3>
               <Badge variant="secondary" className="rounded-full bg-slate-200 text-slate-600 border-none px-2 py-0">
                 {subcontractors.length}
               </Badge>
@@ -160,7 +162,7 @@ export function SubcontractorsTable({
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <Input
-                placeholder="Search..."
+                placeholder={t("subTableSearch")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9 text-sm border-slate-200 bg-white focus:ring-gqm-green/20 rounded-xl"
@@ -172,8 +174,8 @@ export function SubcontractorsTable({
                 className="h-9 rounded-xl bg-gqm-green text-white hover:bg-gqm-green/90 shadow-sm px-3 sm:px-4 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
               >
                 <LinkIcon className="h-3.5 w-3.5 sm:mr-2" />
-                <span className="hidden sm:inline">Link Subcontractor</span>
-                <span className="sm:hidden ml-1.5">Link</span>
+                <span className="hidden sm:inline">{t("subTableLinkBtn")}</span>
+                <span className="sm:hidden ml-1.5">{t("subTableLinkBtnShort")}</span>
               </Button>
             )}
           </div>
@@ -184,7 +186,7 @@ export function SubcontractorsTable({
           {filteredSubcontractors.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12">
               <Users className="h-8 w-8 text-slate-200" />
-              <p className="text-sm text-slate-400 font-medium">No subcontractors linked to this job</p>
+              <p className="text-sm text-slate-400 font-medium">{t("subTableEmpty")}</p>
             </div>
           ) : (
             filteredSubcontractors.map((sub) => {
@@ -204,7 +206,7 @@ export function SubcontractorsTable({
                         <p className="font-bold text-slate-700 truncate">{sub.Name}</p>
                         <div className="flex items-center gap-1 mt-0.5 text-slate-400 text-xs">
                           <Building2 className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{orgText || "Individual"}</span>
+                          <span className="truncate">{orgText || t("subTableIndividual")}</span>
                         </div>
                         <p className="font-mono text-[10px] font-bold text-slate-400 mt-0.5">{sub.ID_Subcontractor}</p>
                       </div>
@@ -215,7 +217,7 @@ export function SubcontractorsTable({
                         variant="ghost"
                         className="h-8 w-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-gqm-yellow hover:text-gqm-green-dark"
                         onClick={() => onViewDetails(sub)}
-                        title="View Details"
+                        title={t("subTableViewDetails")}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -225,7 +227,7 @@ export function SubcontractorsTable({
                           variant="ghost"
                           className="h-8 w-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600"
                           onClick={() => handleUnlinkClick(sub)}
-                          title="Unlink"
+                          title={t("subTableUnlinkTitle2")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -237,14 +239,14 @@ export function SubcontractorsTable({
                     <div className="flex items-center gap-2 rounded-xl bg-blue-50/50 border border-blue-100 px-3 py-2">
                       <Calculator className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400">Formula</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-blue-400">{t("subTableFormulaLabel")}</p>
                         <p className="font-semibold text-slate-700 tabular-nums text-xs truncate">${totals.formula.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 rounded-xl bg-emerald-50/50 border border-emerald-100 px-3 py-2">
                       <Tag className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Adj. Formula</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t("subTableAdjFormulaLabel")}</p>
                         <p className="font-bold text-emerald-700 tabular-nums text-xs truncate">${totals.adjFormula.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                       </div>
                     </div>
@@ -260,11 +262,11 @@ export function SubcontractorsTable({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-50 hover:bg-transparent">
-                <TableHead className="px-6 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">ID</TableHead>
-                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Subcontractor</TableHead>
-                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Formula Total</TableHead>
-                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Adj Formula Total</TableHead>
-                <TableHead className="px-6 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</TableHead>
+                <TableHead className="px-6 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("subTableColId")}</TableHead>
+                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("subTableColSubcontractor")}</TableHead>
+                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("subTableColFormulaTotal")}</TableHead>
+                <TableHead className="px-4 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("subTableColAdjFormulaTotal")}</TableHead>
+                <TableHead className="px-6 h-11 text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-right">{t("subTableColActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -273,7 +275,7 @@ export function SubcontractorsTable({
                   <TableCell colSpan={5} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
                       <Users className="h-8 w-8 text-slate-200" />
-                      <p className="text-sm text-slate-400 font-medium">No subcontractors linked to this job</p>
+                      <p className="text-sm text-slate-400 font-medium">{t("subTableEmpty")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -299,7 +301,7 @@ export function SubcontractorsTable({
                             <span className="font-bold text-slate-700 truncate">{sub.Name}</span>
                             <div className="flex items-center gap-1.5 mt-0.5 text-slate-400 text-xs">
                               <Building2 className="h-3 w-3" />
-                              <span className="truncate max-w-[150px]">{orgText || "Individual"}</span>
+                              <span className="truncate max-w-[150px]">{orgText || t("subTableIndividual")}</span>
                             </div>
                           </div>
                         </div>
@@ -334,7 +336,7 @@ export function SubcontractorsTable({
                             variant="ghost"
                             className="h-8 w-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-gqm-yellow hover:text-gqm-green-dark"
                             onClick={() => onViewDetails(sub)}
-                            title="View Details"
+                            title={t("subTableViewDetails")}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -345,7 +347,7 @@ export function SubcontractorsTable({
                               variant="ghost"
                               className="h-8 w-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600"
                               onClick={() => handleUnlinkClick(sub)}
-                              title="Unlink"
+                              title={t("subTableUnlinkTitle2")}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -364,34 +366,34 @@ export function SubcontractorsTable({
       <AlertDialog open={unlinkDialogOpen} onOpenChange={setUnlinkDialogOpen}>
         <AlertDialogContent className="sm:max-w-xl rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlink Subcontractor</AlertDialogTitle>
+            <AlertDialogTitle>{t("subTableUnlinkDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to unlink <span className="font-bold text-slate-700">{subcontractorToUnlink?.Name}</span> from this job? This action cannot be undone.
+              {t("subTableUnlinkDescPrefix")} <span className="font-bold text-slate-700">{subcontractorToUnlink?.Name}</span> {t("subTableUnlinkDescSuffix")}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <div className="leading-tight">
-              <Label className="text-sm font-semibold text-slate-700">Sync Podio</Label>
-              <p className="text-[11px] text-slate-400 mt-0.5">{syncPodioUnlink ? "Remote data will be updated" : "Only local change will occur"}</p>
+              <Label className="text-sm font-semibold text-slate-700">{t("subTableSyncPodio")}</Label>
+              <p className="text-[11px] text-slate-400 mt-0.5">{syncPodioUnlink ? t("subTableSyncPodioOn") : t("subTableSyncPodioOff")}</p>
             </div>
             <Switch checked={syncPodioUnlink} onCheckedChange={setSyncPodioUnlink} disabled={unlinking} />
           </div>
 
           <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel disabled={unlinking} className="rounded-xl border-slate-200">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmUnlink} 
-              disabled={unlinking} 
+            <AlertDialogCancel disabled={unlinking} className="rounded-xl border-slate-200">{t("subTableCancelBtn")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmUnlink}
+              disabled={unlinking}
               className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
             >
               {unlinking ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Unlinking...
+                  {t("subTableUnlinkingBtn")}
                 </>
               ) : (
-                "Unlink Subcontractor"
+                t("subTableUnlinkConfirmBtn")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -154,18 +154,18 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
-                {(hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
+                {(userRole === "LEAD_TECHNICIAN" || hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
                   <Link href={`/jobs/${job.ID_Jobs}`}>
                     <Button
                       size="sm"
                       className={`h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold ${
-                        hasPermission("job:update")
+                        userRole === "GQM_MEMBER" && hasPermission("job:update")
                           ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }`}
                       onClick={() => onEdit?.(job.ID_Jobs ?? "")}
                     >
-                      {hasPermission("job:update") ? (
+                      {userRole === "GQM_MEMBER" && hasPermission("job:update") ? (
                         <><Pencil className="h-3.5 w-3.5" />{tCommon("edit")}</>
                       ) : (
                         <><Eye className="h-3.5 w-3.5" />{tCommon("view")}</>
@@ -197,8 +197,8 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
               <TableHead className="px-4">{t("colClient")}</TableHead>
               <TableHead className="px-4">{t("colRepresentative")}</TableHead>
               {!isPar && <TableHead className="px-4">{mid.key === "project" ? t("colProjectName") : t("colLocation")}</TableHead>}
-              {canReadFull && <TableHead className="px-4">{t("colTargetPricing")}</TableHead>}
-              {canReadFull && <TableHead className="px-4">{t("colTargetPct")}</TableHead>}
+              {canReadFull && userRole !== "LEAD_TECHNICIAN" && <TableHead className="px-4">{t("colTargetPricing")}</TableHead>}
+              {canReadFull && userRole !== "LEAD_TECHNICIAN" && <TableHead className="px-4">{t("colTargetPct")}</TableHead>}
               <TableHead className="px-4">{t("colStatus")}</TableHead>
               <TableHead className="px-6 text-right">{t("colActions")}</TableHead>
             </TableRow>
@@ -264,24 +264,32 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     {repName ? (
                       <div className="flex items-center gap-3">
                         <RepAvatar />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{repName}</span>
-                          <span className="text-xs text-muted-foreground">{repId ?? "-"}</span>
+                        <div>
+                          <p className="text-sm font-semibold leading-tight text-slate-800">{repName}</p>
+                          <p className="mt-0.5 text-xs text-slate-400 font-mono uppercase tracking-wider">{repId ?? "-"}</p>
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-400 italic">{t("repNotAvailable")}</span>
+                      <span className="text-sm italic text-slate-400">-</span>
                     )}
                   </TableCell>
 
                   {/* Project Name / Mid Value */}
                   {!isPar && <TableCell className="px-4 py-4 font-medium">{midValue || "-"}</TableCell>}
 
-                  {/* Target Sold Pricing */}
-                  {canReadFull && <TableCell className="px-6 py-4 font-medium text-sm">${job.Gqm_target_sold_pricing ?? "-"}</TableCell>}
-
-                  {/* Target Return */}
-                  {canReadFull && <TableCell className="px-6 py-4 font-medium text-sm">{ConvertToPercentage(job.Gqm_target_return) ?? "-"}</TableCell>}
+                  {/* GQM Pricing (full access only) */}
+                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && (
+                    <TableCell className="px-4 py-4 font-medium text-slate-900">
+                      {typeof job.Gqm_target_sold_pricing === "number"
+                        ? `$${job.Gqm_target_sold_pricing.toLocaleString()}`
+                        : job.Gqm_target_sold_pricing ?? "-"}
+                    </TableCell>
+                  )}
+                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && (
+                    <TableCell className="px-4 py-4 font-medium text-slate-900">
+                      {ConvertToPercentage(job.Gqm_target_return)}
+                    </TableCell>
+                  )}
 
                   <TableCell className="px-4 py-4">
                     <StatusBadge status={job.Job_status as any} />
@@ -289,15 +297,15 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
 
                   <TableCell className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      {(hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
+                      {(userRole === "LEAD_TECHNICIAN" || hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
                         <Link href={`/jobs/${job.ID_Jobs}`}>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className={`h-8 w-8 ${hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                            className={`h-8 w-8 ${userRole === "GQM_MEMBER" && hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                             onClick={() => onEdit?.(job.ID_Jobs ?? "")}
                           >
-                            {hasPermission("job:update") ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {userRole === "GQM_MEMBER" && hasPermission("job:update") ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </Link>
                       )}

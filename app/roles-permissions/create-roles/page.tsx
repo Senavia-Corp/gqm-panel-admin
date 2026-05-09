@@ -11,6 +11,7 @@ import { Search, Plus, X, ArrowLeft, Users, Shield, CheckCircle2, AlertCircle, C
 
 import type { Permission, IAMDocument, IAMStatement } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type PermissionLite = {
   ID_Permission: string
@@ -77,9 +78,10 @@ const ITEMS_PER_PAGE = 20
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
 function PolicySummary({ document }: { document?: IAMDocument | null }) {
+  const t = useTranslations("roles_permissions")
   if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
   const allActions = document.Statement.flatMap(s => s.Action)
-  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">Full Access</span>
+  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">{t("roles.btnFullAccess")}</span>
   const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
   return (
     <div className="flex flex-wrap gap-1">
@@ -94,6 +96,7 @@ function PolicySummary({ document }: { document?: IAMDocument | null }) {
 
 export default function CreateRolePage() {
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
   const [user, setUser] = useState<any>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -212,7 +215,7 @@ export default function CreateRolePage() {
       setSelectedIds((prev) => new Set(prev).add(perm.ID_Permission))
       setQName(""); setQDesc(""); setQActive(true); setQStatements([{ Effect: "Allow", Action: [], Resource: ["*"] }]); setQuickOpen(false)
     } catch (e: any) {
-      setQuickError(e?.message ?? "Failed to create permission")
+      setQuickError(e?.message ?? t("form.errFailed"))
     } finally { setQuickSubmitting(false) }
   }
 
@@ -257,7 +260,7 @@ export default function CreateRolePage() {
             onClick={() => router.push("/roles-permissions")}
             className="mb-5 flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-700 transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Roles & Permissions
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("form.backTo")}
           </button>
 
           {/* Page header */}
@@ -266,39 +269,39 @@ export default function CreateRolePage() {
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Create Role</h1>
-              <p className="hidden sm:block text-sm text-slate-500">A role must include at least one permission.</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t("roles.createTitle")}</h1>
+              <p className="hidden sm:block text-sm text-slate-500">{t("roles.createSubtitle")}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* ── Role info card ───────────────────────────────────────── */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Role Information</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelInfo")}</h2>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Name <span className="text-red-400">*</span>
+                    {t("roles.labelName")} <span className="text-red-400">*</span>
                   </label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Project Manager" className="border-slate-200 bg-slate-50 focus:bg-white" />
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("roles.phName")} className="border-slate-200 bg-slate-50 focus:bg-white" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelStatus")}</label>
                   <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
                     <button onClick={() => setActive(true)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${active ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {t("detail.statusActive")}
                     </button>
                     <button onClick={() => setActive(false)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${!active ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-                      <X className="h-3.5 w-3.5" /> Inactive
+                      <X className="h-3.5 w-3.5" /> {t("detail.statusInactive")}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
-                  <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description…" className="border-slate-200 bg-slate-50 focus:bg-white" />
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelDescription")}</label>
+                  <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("roles.phDescription")} className="border-slate-200 bg-slate-50 focus:bg-white" />
                 </div>
               </div>
             </div>
@@ -311,8 +314,8 @@ export default function CreateRolePage() {
                     <Shield className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-800">Select Permissions <span className="text-red-400">*</span></h2>
-                    <p className="text-xs text-slate-400">Choose one or more permissions for this role.</p>
+                    <h2 className="text-sm font-bold text-slate-800">{t("roles.labelSelectPermissions")} <span className="text-red-400">*</span></h2>
+                    <p className="text-xs text-slate-400">{t("roles.subtitleSelectPermissions")}</p>
                   </div>
                 </div>
 
@@ -321,7 +324,7 @@ export default function CreateRolePage() {
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Quick create permission
+                  {t("roles.btnQuickCreate")}
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${quickOpen ? "rotate-180" : ""}`} />
                 </button>
               </div>
@@ -330,7 +333,7 @@ export default function CreateRolePage() {
               {quickOpen && (
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-emerald-800">New Permission</p>
+                    <p className="text-xs font-bold text-emerald-800">{t("roles.quickTitle")}</p>
                     <button onClick={() => setQuickOpen(false)} className="text-slate-400 hover:text-slate-600">
                       <X className="h-4 w-4" />
                     </button>
@@ -339,12 +342,12 @@ export default function CreateRolePage() {
                   <div className="grid gap-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</label>
-                          <Input value={qName} onChange={(e) => setQName(e.target.value)} placeholder="e.g. View Jobs" className="h-8 text-xs border-slate-200 bg-white" />
+                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelName")}</label>
+                          <Input value={qName} onChange={(e) => setQName(e.target.value)} placeholder={t("form.phName")} className="h-8 text-xs border-slate-200 bg-white" />
                        </div>
                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</label>
-                          <Input value={qDesc} onChange={(e) => setQDesc(e.target.value)} placeholder="Optional…" className="h-8 text-xs border-slate-200 bg-white" />
+                          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelDescription")}</label>
+                          <Input value={qDesc} onChange={(e) => setQDesc(e.target.value)} placeholder={t("common.optional")} className="h-8 text-xs border-slate-200 bg-white" />
                        </div>
                     </div>
 
@@ -358,7 +361,7 @@ export default function CreateRolePage() {
                            )}
                            <div className="flex flex-wrap items-center gap-3">
                               <div className="flex items-center gap-2">
-                                 <span className="text-[10px] font-bold uppercase text-slate-400">Effect:</span>
+                                 <span className="text-[10px] font-bold uppercase text-slate-400">{t("roles.labelEffect")}</span>
                                  <div className="flex rounded border border-slate-100 bg-slate-50 p-0.5">
                                     {["Allow", "Deny"].map(ef => (
                                       <button 
@@ -366,7 +369,7 @@ export default function CreateRolePage() {
                                         onClick={() => setQStatements(qStatements.map((stmt, i) => i === qsIdx ? { ...stmt, Effect: ef as any } : stmt))}
                                         className={`px-2 py-0.5 text-[10px] font-bold rounded ${qs.Effect === ef ? (ef === "Allow" ? "bg-emerald-600 text-white" : "bg-red-600 text-white") : "text-slate-400"}`}
                                       >
-                                        {ef}
+                                        {ef === "Allow" ? t("form.btnAllow") : t("form.btnDeny")}
                                       </button>
                                     ))}
                                  </div>
@@ -381,7 +384,7 @@ export default function CreateRolePage() {
                                     : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
                                 }`}
                               >
-                                <Shield className="h-3.5 w-3.5" /> Full Access (*)
+                                <Shield className="h-3.5 w-3.5" /> {t("roles.btnFullAccess")}
                               </button>
                            </div>
 
@@ -389,7 +392,7 @@ export default function CreateRolePage() {
                               {MODULE_ACTIONS.map(mod => (
                                 <div key={mod.module} className="space-y-1.5 min-w-0">
                                    <div className="flex items-center justify-between border-b border-slate-50 pb-0.5">
-                                      <p className="text-[9px] font-bold uppercase text-slate-600 truncate mr-2">{mod.module}</p>
+                                      <p className="text-[9px] font-bold uppercase text-slate-600 truncate mr-2">{t(`modules.${mod.module}` as any)}</p>
                                       <button
                                         type="button"
                                         onClick={() => toggleQuickAction(qsIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
@@ -399,7 +402,7 @@ export default function CreateRolePage() {
                                             : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                                         }`}
                                       >
-                                        All
+                                        {t("roles.btnAll")}
                                       </button>
                                    </div>
                                    <div className="flex flex-wrap gap-1">
@@ -427,7 +430,7 @@ export default function CreateRolePage() {
                         onClick={() => setQStatements([...qStatements, { Effect: "Allow", Action: [], Resource: ["*"] }])}
                         className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                       >
-                        <Plus className="h-3 w-3" /> Add statement
+                        <Plus className="h-3 w-3" /> {t("roles.btnAddStatement")}
                       </button>
                     </div>
                   </div>
@@ -435,14 +438,14 @@ export default function CreateRolePage() {
                   {quickError && <p className="text-xs text-red-600">{quickError}</p>}
 
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setQuickOpen(false)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button onClick={() => setQuickOpen(false)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">{t("form.btnCancel")}</button>
                     <button
                       onClick={quickCreatePermission}
                       disabled={quickSubmitting || !qName.trim()}
                       className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                     >
                       <Plus className="h-3 w-3" />
-                      {quickSubmitting ? "Creating…" : "Create & Select"}
+                      {quickSubmitting ? t("form.btnCreating") : t("roles.btnCreateAndSelect")}
                     </button>
                   </div>
                 </div>
@@ -453,7 +456,7 @@ export default function CreateRolePage() {
                 <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   <Input
-                    placeholder="Search permissions…"
+                    placeholder={t("roles.phSearch")}
                     value={permSearch}
                     onChange={(e) => setPermSearch(e.target.value)}
                     className="pl-9 h-9 text-sm border-slate-200 bg-slate-50 focus:bg-white"
@@ -464,22 +467,22 @@ export default function CreateRolePage() {
                     </button>
                   )}
                 </div>
-                <span className="text-xs text-slate-400">{permissions.length} of {permTotal} loaded</span>
+                <span className="text-xs text-slate-400">{t("roles.labelLoaded", { count: permissions.length, total: permTotal })}</span>
               </div>
 
               {/* Table */}
               {permLoading ? (
                 <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-                  <p className="text-sm text-slate-400">Loading permissions…</p>
+                  <p className="text-sm text-slate-400">{t("roles.loading")}</p>
                 </div>
               ) : permError ? (
                 <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-center">
                   <p className="text-sm text-red-600">{permError}</p>
-                  <button onClick={() => fetchPermissions(1, "replace")} className="mt-2 text-xs text-emerald-600 hover:underline">Retry</button>
+                  <button onClick={() => fetchPermissions(1, "replace")} className="mt-2 text-xs text-emerald-600 hover:underline">{t("retry")}</button>
                 </div>
               ) : permissions.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                  <p className="text-sm text-slate-400">No permissions available. Use "Quick create permission".</p>
+                  <p className="text-sm text-slate-400">{t("roles.noPermissions")}</p>
                 </div>
               ) : (
                 <>
@@ -503,10 +506,10 @@ export default function CreateRolePage() {
                               <PolicySummary document={p.Document} />
                               {p.Active ? (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("detail.statusActive")}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">Inactive</span>
+                                <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">{t("detail.statusInactive")}</span>
                               )}
                             </div>
                           </div>
@@ -521,9 +524,9 @@ export default function CreateRolePage() {
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="w-10 px-4 py-2.5" />
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Permission</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
-                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.thPermission")}</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.thPolicy")}</th>
+                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelStatus")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -550,10 +553,10 @@ export default function CreateRolePage() {
                               <td className="px-4 py-2.5 text-center">
                                 {p.Active ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("detail.statusActive")}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">Inactive</span>
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">{t("detail.statusInactive")}</span>
                                 )}
                               </td>
                             </tr>
@@ -570,7 +573,7 @@ export default function CreateRolePage() {
                         disabled={permLoading}
                         className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
                       >
-                        <ChevronDown className="h-3.5 w-3.5" /> Load more
+                        <ChevronDown className="h-3.5 w-3.5" /> {t("roles.btnLoadMore")}
                       </button>
                     </div>
                   )}
@@ -580,7 +583,9 @@ export default function CreateRolePage() {
               {/* Selected summary */}
               {selectedPermissions.length > 0 && (
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
-                  <p className="mb-2 text-xs font-semibold text-emerald-800">{selectedIds.size} permission{selectedIds.size !== 1 ? "s" : ""} selected</p>
+                  <p className="mb-2 text-xs font-semibold text-emerald-800">
+                    {t(selectedIds.size === 1 ? "roles.selectedCount" : "roles.selectedCountPlural", { count: selectedIds.size })}
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedPermissions.map((p) => (
                       <span
@@ -609,8 +614,7 @@ export default function CreateRolePage() {
             {/* Actions */}
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" onClick={() => router.push("/roles-permissions")} disabled={submitting}>
-                <span className="hidden sm:inline">Cancel</span>
-                <span className="sm:hidden">Cancel</span>
+                {t("form.btnCancel")}
               </Button>
               <Button
                 onClick={createRoleAndLink}
@@ -618,7 +622,7 @@ export default function CreateRolePage() {
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Users className="h-4 w-4" />
-                {submitting ? "Creating…" : <><span className="sm:hidden">Create</span><span className="hidden sm:inline">Create Role</span></>}
+                {submitting ? t("form.btnCreating") : t("roles.btnCreate")}
               </Button>
             </div>
           </div>

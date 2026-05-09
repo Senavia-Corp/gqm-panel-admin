@@ -21,11 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ChangeOrdersSection } from "@/components/organisms/ChangeOrdersSection"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
-const TechnicianJobSidebar = dynamic(
-  () => import("@/components/organisms/TechnicianJobSidebar").then((m) => m.TechnicianJobSidebar),
-  { ssr: false },
-)
+
 const LeadTechnicianPricingView = dynamic(
   () => import("@/components/organisms/LeadTechnicianPricingView").then((m) => m.LeadTechnicianPricingView),
   { ssr: false },
@@ -205,6 +203,7 @@ function ReadonlyField({
   value: number | null
   hint?: string
 }) {
+  const t = useTranslations("jobs")
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
@@ -212,7 +211,7 @@ function ReadonlyField({
         <span className="flex-1 text-sm font-semibold text-slate-700 tabular-nums">
           {value != null ? fmtMoney(value) : "—"}
         </span>
-        <span title="Calculated automatically — edit the source data to update this value">
+        <span title={t("pricingCalcAutoEdit")}>
           <Lock className="h-3 w-3 text-slate-400 flex-shrink-0" />
         </span>
       </div>
@@ -230,6 +229,7 @@ function ReadonlyPercentField({
   value: number | null  // stored as decimal, e.g. 0.15 → displayed as 15.00%
   hint?: string
 }) {
+  const t = useTranslations("jobs")
   const display = value != null
     ? `${(value * 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
     : "—"
@@ -238,7 +238,7 @@ function ReadonlyPercentField({
       <FieldLabel>{label}</FieldLabel>
       <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 min-h-[38px]">
         <span className="flex-1 text-sm font-semibold text-slate-700 tabular-nums">{display}</span>
-        <span title="Calculated automatically">
+        <span title={t("pricingCalcAuto")}>
           <Lock className="h-3 w-3 text-slate-400 flex-shrink-0" />
         </span>
       </div>
@@ -252,13 +252,14 @@ function ReadonlyPercentField({
 // To add/remove values, edit the Estimate Costs in the Estimate tab.
 
 function BldgDeptFeesDisplay({ chips }: { chips: string[] }) {
+  const t = useTranslations("jobs")
   return (
     <div>
-      <FieldLabel>Building Dept Fees</FieldLabel>
+      <FieldLabel>{t("pricingBldgDeptFees")}</FieldLabel>
       <div className="min-h-[42px] rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 flex flex-wrap gap-1.5 items-center">
         {chips.length === 0 ? (
           <span className="text-sm text-slate-400 italic">
-            No BDF estimate costs — add them in the Estimate tab
+            {t("pricingBldgDeptNoItems")}
           </span>
         ) : (
           chips.map((chip, i) => (
@@ -272,15 +273,14 @@ function BldgDeptFeesDisplay({ chips }: { chips: string[] }) {
         )}
         <span
           className="ml-auto flex-shrink-0"
-          title="Synced from Estimate Costs with type BDF — edit in the Estimate tab"
+          title={t("pricingBldgDeptLockTitle")}
         >
           <Lock className="h-3 w-3 text-slate-400" />
         </span>
       </div>
       <p className="mt-1.5 text-[11px] text-slate-400">
-        Synced from Estimate Costs with type <span className="font-semibold">BDF</span>.
-        To add or remove values, edit the Estimate Costs in the{" "}
-        <span className="font-semibold">Estimate</span> tab.
+        {t("pricingBldgDeptSyncLine1")}{" "}
+        {t("pricingBldgDeptSyncLine2")}
       </p>
     </div>
   )
@@ -354,6 +354,7 @@ function FinancialDocItem({ item }: { item: any }) {
 }
 
 function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
+  const t = useTranslations("jobs")
   const isInv = type === "invoice"
   const accent = isInv
     ? { bg: "bg-emerald-50/50", icon: "bg-emerald-100", iconColor: "text-emerald-600", badge: "bg-emerald-100 border-emerald-200 text-emerald-700", balance: "text-emerald-700" }
@@ -370,6 +371,18 @@ function DocCard({ doc, type }: { doc: any; type: "invoice" | "bill" }) {
           </div>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
+          {doc?.order && (
+            <div className="text-right px-3 border-r border-slate-100">
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t("pricingLinkedOrder")}</div>
+              <div className="text-xs font-bold text-slate-700 truncate max-w-[140px]">
+                {doc.order.Title || "Unnamed Order"}
+              </div>
+              <div className="flex gap-2 justify-end mt-0.5">
+                <span className="text-[9px] text-slate-400 tabular-nums">F: ${Number(doc.order.Formula || 0).toFixed(2)}</span>
+                <span className="text-[9px] font-bold text-slate-500 tabular-nums">A: ${Number(doc.order.Adj_formula || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-1 text-xs text-slate-400"><Calendar className="h-3 w-3" /> {fmtDate(doc?.Due_Date)}</div>
           <div className="text-right"><div className="text-[10px] text-slate-400">Total</div><div className="text-sm font-semibold text-slate-800">{fmtMoney(Number(doc?.Total_Amount || 0))}</div></div>
           <div className="text-right"><div className="text-[10px] text-slate-400">Balance</div><div className={`text-sm font-semibold ${accent.balance}`}>{fmtMoney(Number(doc?.Balance_Amount || 0))}</div></div>
@@ -525,6 +538,7 @@ export function JobPricingTab({
   onPricingTargetChange, onPermitChange,
   isReloading = false,
 }: Props) {
+  const t = useTranslations("jobs")
   const src = [job?.pricingData ?? job, job]
 
   // ── Calculated (read-only) fields ─────────────────────────────────────────
@@ -611,14 +625,7 @@ export function JobPricingTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
-  if (role === "LEAD_TECHNICIAN") {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2"><LeadTechnicianPricingView jobId={jobId} job={job} /></div>
-        <div className="lg:col-span-1"><TechnicianJobSidebar job={job} subcontractor={job?.subcontractors?.[0]} /></div>
-      </div>
-    )
-  }
+
 
   const formula = gqmFormula ?? null
   const applicableMultiplier = formula != null ? findApplicableMultiplier(formula, job?.multipliers || []) : null
@@ -640,16 +647,16 @@ export function JobPricingTab({
       <div className="mb-5">
         <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1 gap-0.5">
           <TabPill active={activeTab === "analysis"} onClick={() => setActiveTab("analysis")}>
-            <BarChart3 className="h-3.5 w-3.5" /> Analysis
+            <BarChart3 className="h-3.5 w-3.5" /> {t("pricingTabAnalysis")}
           </TabPill>
           <TabPill active={activeTab === "invoices"} onClick={() => setActiveTab("invoices")}>
-            <Receipt className="h-3.5 w-3.5" /> Invoices
+            <Receipt className="h-3.5 w-3.5" /> {t("pricingTabInvoices")}
             {invoices.length > 0 && (
               <span className="ml-0.5 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[10px] font-bold">{invoices.length}</span>
             )}
           </TabPill>
           <TabPill active={activeTab === "bills"} onClick={() => setActiveTab("bills")}>
-            <DollarSign className="h-3.5 w-3.5" /> Bills
+            <DollarSign className="h-3.5 w-3.5" /> {t("pricingTabBills")}
             {bills.length > 0 && (
               <span className="ml-0.5 rounded-full bg-orange-100 text-orange-700 px-1.5 py-0.5 text-[10px] font-bold">{bills.length}</span>
             )}
@@ -666,7 +673,7 @@ export function JobPricingTab({
             <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
               <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-500 flex-shrink-0" />
               <span className="text-xs font-medium text-blue-700">
-                Recalculating pricing fields…
+                {t("pricingRecalculating")}
               </span>
             </div>
           )}
@@ -675,7 +682,7 @@ export function JobPricingTab({
           <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
             <Lock className="h-3 w-3 text-slate-400 flex-shrink-0" />
             <span className="text-[11px] text-slate-400">
-              Fields marked with a lock are calculated automatically by the server. Edit the source data (Estimate Costs, Orders, Purchases, Change Orders) to update them.
+              {t("pricingReadonlyLegend")}
             </span>
           </div>
 
@@ -691,49 +698,49 @@ export function JobPricingTab({
           )}
 
           {/* 1. Initial Proposal */}
-          <SectionCard icon={Layers} iconBg="bg-sky-100" iconColor="text-sky-600" title="Initial Proposal Pricing">
+          <SectionCard icon={Layers} iconBg="bg-sky-100" iconColor="text-sky-600" title={t("pricingInitialProposalTitle")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <ReadonlyField
-                label="Estimated Rent"
+                label={t("pricingEstimatedRent")}
                 value={estimatedRent}
-                hint="Sum of Estimate Costs with type Rent"
+                hint={t("pricingHintRent")}
               />
               <ReadonlyField
-                label="Estimated Materials"
+                label={t("pricingEstimatedMaterials")}
                 value={estimatedMaterial}
-                hint="Sum of Estimate Costs with type Material"
+                hint={t("pricingHintMaterial")}
               />
               <ReadonlyField
-                label="Estimated City"
+                label={t("pricingEstimatedCity")}
                 value={estimatedCity}
-                hint="Sum of Estimate Costs with type Permit"
+                hint={t("pricingHintCity")}
               />
               <ReadonlyField
-                label="Tech Formula Pricing"
+                label={t("pricingTechFormula")}
                 value={techFormulaPricing}
-                hint="Sum of Adj Formula from all linked Orders"
+                hint={t("pricingHintTechFormula")}
               />
             </div>
           </SectionCard>
 
           {/* 2. Pricing Analysis */}
-          <SectionCard icon={TrendingUp} iconBg="bg-violet-100" iconColor="text-violet-600" title="Pricing Analysis">
+          <SectionCard icon={TrendingUp} iconBg="bg-violet-100" iconColor="text-violet-600" title={t("pricingAnalysisTitle")}>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Base Project Costs</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">{t("pricingBaseProjectCosts")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <ReadonlyField
-                  label="GQM (Formula) Pricing"
+                  label={t("pricingGqmFormula")}
                   value={gqmFormula}
-                  hint="Orders Adj Formula + Estimated Material + Rent + City"
+                  hint={t("pricingHintGqmFormula")}
                 />
                 <ReadonlyField
-                  label="GQM (Adj Formula) Pricing"
+                  label={t("pricingGqmAdjFormula")}
                   value={gqmAdjFormula}
                   hint={
                     recommendedAdj != null
-                      ? `Formula × multiplier = ${fmtMoney(recommendedAdj)}`
+                      ? `${t("pricingHintAdjFormulaPrefix")} ${fmtMoney(recommendedAdj)}`
                       : applicableMultiplier == null
-                        ? "No multiplier in range — using default factor"
+                        ? t("pricingNoMultiplierInRange")
                         : undefined
                   }
                 />
@@ -741,53 +748,53 @@ export function JobPricingTab({
             </div>
 
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Target Pricing & Returns</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">{t("pricingTargetPricingReturns")}</p>
               <div className="grid gap-4 sm:grid-cols-3">
                 <ReadonlyPercentField
-                  label="GQM Target Return %"
+                  label={t("pricingGqmTargetReturn")}
                   value={gqmTargetReturnRaw}
-                  hint="(Final Sold − Adj Formula) / Final Sold"
+                  hint={t("pricingHintTargetReturn")}
                 />
                 {/* ← Only manually editable pricing numeric field */}
                 <EditableNumericField
-                  label="GQM Target Sold Pricing"
+                  label={t("pricingGqmTargetSold")}
                   text={gqmTargetSoldText}
                   setText={setGqmTargetSoldText}
                   fieldKey="pricing.gqmTargetSoldPricing"
                   isFieldChanged={isFieldChanged}
-                  onCommit={(t) => commit("gqmTargetSoldPricing", t)}
+                  onCommit={(val) => commit("gqmTargetSoldPricing", val)}
                 />
                 <ReadonlyField
-                  label="GQM Premium in $"
+                  label={t("pricingGqmPremium")}
                   value={gqmPremium}
-                  hint="Final Sold − Adj Formula"
+                  hint={t("pricingHintPremium")}
                 />
               </div>
             </div>
 
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Final Pricing & Returns</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">{t("pricingFinalPricingReturns")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <ReadonlyField
-                  label="GQM Final Sold Pricing"
+                  label={t("pricingGqmFinalSold")}
                   value={gqmFinalSold}
-                  hint="Target Sold + Total Change Orders + PTL GC Fee"
+                  hint={t("pricingHintFinalSold")}
                 />
                 <ReadonlyPercentField
-                  label="GQM Final %"
+                  label={t("pricingGqmFinalPct")}
                   value={gqmFinalPercentageRaw}
-                  hint="(AR − Final Adj Form) / AR"
+                  hint={t("pricingHintFinalPct")}
                 />
               </div>
             </div>
 
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">Target</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-3">{t("pricingTargetSection")}</p>
               <div className="max-w-xs">
-                <FieldLabel>Pricing Target</FieldLabel>
+                <FieldLabel>{t("pricingPricingTarget")}</FieldLabel>
                 <Select value={pricingTarget ?? ""} onValueChange={(v) => onPricingTargetChange?.(v || null)}>
                   <SelectTrigger className={`text-sm transition-all ${isFieldChanged("pricingTarget") ? CHANGED : NORMAL}`}>
-                    <SelectValue placeholder="Select…" />
+                    <SelectValue placeholder={t("pricingSelectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {PRICING_TARGET_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -807,14 +814,14 @@ export function JobPricingTab({
           />
 
           {/* 4. Fees Paid */}
-          <SectionCard icon={ShieldCheck} iconBg="bg-teal-100" iconColor="text-teal-600" title="Fees Paid">
+          <SectionCard icon={ShieldCheck} iconBg="bg-teal-100" iconColor="text-teal-600" title={t("pricingFeesPaidTitle")}>
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Permit — manually editable */}
               <div>
-                <FieldLabel>Permit</FieldLabel>
+                <FieldLabel>{t("pricingPermit")}</FieldLabel>
                 <Select value={permit ?? ""} onValueChange={(v) => onPermitChange?.(v || null)}>
                   <SelectTrigger className={`text-sm transition-all ${isFieldChanged("permit") ? CHANGED : NORMAL}`}>
-                    <SelectValue placeholder="Select…" />
+                    <SelectValue placeholder={t("pricingSelectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {PERMIT_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -823,9 +830,9 @@ export function JobPricingTab({
               </div>
 
               <ReadonlyField
-                label="Total Materials Fees"
+                label={t("pricingTotalMaterialsFees")}
                 value={gqmTotalMaterialsFees}
-                hint="Sum of Total Spending from all Purchases"
+                hint={t("pricingHintTotalMaterialsFees")}
               />
             </div>
 
@@ -833,9 +840,9 @@ export function JobPricingTab({
             {jobType === "PTL" && (
               <div className="max-w-xs">
                 <ReadonlyField
-                  label="PTL GC Fee"
+                  label={t("pricingPtlGcFee")}
                   value={ptlGcFee}
-                  hint="Sum of Estimate Costs with type PTLGCF"
+                  hint={t("pricingHintPtlGcFee")}
                 />
               </div>
             )}
@@ -843,9 +850,9 @@ export function JobPricingTab({
             {/* GQM Paid Fees — calculated from Bldg_dept_fees */}
             <div className="max-w-xs">
               <ReadonlyField
-                label="GQM Paid Fees"
+                label={t("pricingGqmPaidFees")}
                 value={gqmPaidFees}
-                hint="Sum of all Building Dept Fee values below"
+                hint={t("pricingHintPaidFees")}
               />
             </div>
 
@@ -854,32 +861,32 @@ export function JobPricingTab({
           </SectionCard>
 
           {/* 5. Accounts Receivable */}
-          <SectionCard icon={CreditCard} iconBg="bg-indigo-100" iconColor="text-indigo-600" title="Accounts Receivable">
+          <SectionCard icon={CreditCard} iconBg="bg-indigo-100" iconColor="text-indigo-600" title={t("pricingARTitle")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <ReadonlyField
-                label="Accounts Receivable"
+                label={t("pricingAccountsReceivable")}
                 value={accReceivable}
-                hint="Target Sold + Change Orders + PTL GC Fee"
+                hint={t("pricingHintAR")}
               />
               <ReadonlyField
-                label="GQM Final Form Pricing"
+                label={t("pricingGqmFinalFormPricing")}
                 value={gqmFinalFormPricing}
-                hint="Orders Adj Formula + Materials Fees + Paid Fees"
+                hint={t("pricingHintFinalFormPricing")}
               />
               <ReadonlyField
-                label="GQM Final Adj. Form Pricing"
+                label={t("pricingGqmFinalAdjForm")}
                 value={gqmFinalAdjForm}
-                hint="Final Form × 1.027"
+                hint={t("pricingHintFinalAdjForm")}
               />
               <ReadonlyPercentField
-                label="GQM Final Target Return"
+                label={t("pricingGqmFinalTargetReturn")}
                 value={gqmFinalTargetReturn}
-                hint="(AR − Final Adj Form) / AR"
+                hint={t("pricingHintFinalPct")}
               />
               <ReadonlyField
-                label="GQM Final Premium in $"
+                label={t("pricingGqmFinalPremium")}
                 value={gqmFinalPremInMoney}
-                hint="Final Sold − Final Adj Form"
+                hint={t("pricingHintFinalPremium")}
               />
             </div>
           </SectionCard>

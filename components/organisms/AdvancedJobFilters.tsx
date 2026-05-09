@@ -74,6 +74,7 @@ interface AdvancedJobFiltersProps {
   // Opcional
   onAddNew?: () => void
   onExportClick?: () => void
+  isTechnician?: boolean
 }
 
 export function AdvancedJobFilters({
@@ -102,6 +103,7 @@ export function AdvancedJobFilters({
   onResetFilters,
   onAddNew,
   onExportClick,
+  isTechnician,
 }: AdvancedJobFiltersProps) {
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
@@ -278,21 +280,23 @@ export function AdvancedJobFilters({
               </FilterSelect>
 
               {/* Miembro / Asociado */}
-              <FilterSelect
-                label={t("filterRep")}
-                icon={<Users className="h-3.5 w-3.5" />}
-                value={memberId || "all"}
-                onValueChange={onMemberChange}
-                disabled={loading}
-                placeholder={loading ? t("filterLoading") : t("filterRepPlaceholder")}
-              >
-                <SelectItem value="all">{t("filterAllMembers")}</SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.ID_Member} value={m.ID_Member}>
-                    {m.Member_Name ?? m.ID_Member}
-                  </SelectItem>
-                ))}
-              </FilterSelect>
+              {!isTechnician && (
+                <FilterSelect
+                  label={t("filterRep")}
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  value={memberId || "all"}
+                  onValueChange={onMemberChange}
+                  disabled={loading}
+                  placeholder={loading ? t("filterLoading") : t("filterRepPlaceholder")}
+                >
+                  <SelectItem value="all">{t("filterAllMembers")}</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.ID_Member} value={m.ID_Member}>
+                      {m.Member_Name ?? m.ID_Member}
+                    </SelectItem>
+                  ))}
+                </FilterSelect>
+              )}
 
               {/* Cliente */}
               <FilterSelect

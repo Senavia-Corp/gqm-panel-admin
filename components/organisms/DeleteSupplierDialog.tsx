@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Loader2, Store } from "lucide-react"
 import { useState } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface Props {
   open: boolean
@@ -22,6 +23,7 @@ export function DeleteSupplierDialog({
   open, onOpenChange, supplierId, companyName, syncPodio, onSyncPodioChange, onConfirm,
 }: Props) {
   const [loading, setLoading] = useState(false)
+  const t = useTranslations("suppliers")
 
   const handleConfirm = async () => {
     setLoading(true)
@@ -41,23 +43,19 @@ export function DeleteSupplierDialog({
               <Store className="h-5 w-5 text-red-600" />
             </div>
             <AlertDialogTitle className="text-lg font-bold text-slate-900">
-              Delete Supplier
+              {t("del_title")}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-slate-500 text-sm">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-slate-800">
-              {companyName || supplierId}
-            </span>
-            ? This action cannot be undone.
+            {t("del_description", { name: companyName || supplierId })}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {/* Podio toggle */}
         <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
           <div>
-            <p className="text-xs font-semibold text-slate-700">Sync with Podio</p>
-            <p className="text-[11px] text-slate-400">Also delete from Podio if enabled</p>
+            <p className="text-xs font-semibold text-slate-700">{t("del_syncPodio")}</p>
+            <p className="text-[11px] text-slate-400">{t("del_syncPodioDesc")}</p>
           </div>
           <button
             type="button"
@@ -69,13 +67,13 @@ export function DeleteSupplierDialog({
             }`}
           >
             <span className={`h-2 w-2 rounded-full ${syncPodio ? "bg-blue-500" : "bg-slate-400"}`} />
-            {syncPodio ? "ON" : "OFF"}
+            {syncPodio ? t("del_on") : t("del_off")}
           </button>
         </div>
 
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel disabled={loading} className="rounded-xl border-slate-200 text-slate-600">
-            Cancel
+            {t("del_btnCancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={loading}
@@ -83,7 +81,7 @@ export function DeleteSupplierDialog({
             className="rounded-xl bg-red-600 hover:bg-red-700 text-white gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Delete
+            {t("del_btnDelete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical, Calendar, Clock, User, Building2, Wrench, ArrowRight } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Task } from "@/lib/types"
 
 interface TaskCardProps {
@@ -33,11 +34,11 @@ function extractDateParts(d: string | null | undefined): [number, number, number
   return [dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()]
 }
 
-function formatDate(d: string | null | undefined): string {
+function formatDate(d: string | null | undefined, locale: string = "en-US"): string {
   const parts = extractDateParts(d)
   if (!parts) return ""
   const dt = new Date(parts[0], parts[1], parts[2], 12, 0, 0)
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return dt.toLocaleDateString(locale, { month: "short", day: "numeric" })
 }
 
 function isOverdue(d: string | null | undefined): boolean {
@@ -52,7 +53,7 @@ function nameInitials(name: string): string {
   return name.split(" ").map(w => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?"
 }
 
-function AssigneeChip({ task, namesMap = {} }: { task: Task; namesMap?: Record<string, string> }) {
+function AssigneeChip({ task, namesMap = {}, t }: { task: Task; namesMap?: Record<string, string>; t: any }) {
   if (task.ID_Member) {
     const name = namesMap[task.ID_Member] || task.ID_Member
     return (
@@ -117,7 +118,7 @@ function AssigneeChip({ task, namesMap = {} }: { task: Task; namesMap?: Record<s
       }}>
         <User size={10} color="#D1D5DB" />
       </div>
-      <span style={{ fontSize: "10px", color: "#D1D5DB", fontStyle: "italic" }}>Unassigned</span>
+      <span style={{ fontSize: "10px", color: "#D1D5DB", fontStyle: "italic" }}>{t("unassignedLabel")}</span>
     </div>
   )
 }
@@ -125,6 +126,7 @@ function AssigneeChip({ task, namesMap = {} }: { task: Task; namesMap?: Record<s
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
+  const t = useTranslations("jobTasks")
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.ID_Tasks })
 
@@ -137,8 +139,9 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
   const priority  = task.Priority as keyof typeof PRIORITY_META | undefined
   const pMeta     = priority ? PRIORITY_META[priority] : null
   const overdue   = isOverdue(task.Delivery_date as any)
-  const startLabel = formatDate(task.Designation_date as any)
-  const dueLabel   = formatDate(task.Delivery_date as any)
+  const locale    = t("locale") === "es" ? "es-ES" : "en-US"
+  const startLabel = formatDate(task.Designation_date as any, locale)
+  const dueLabel   = formatDate(task.Delivery_date as any, locale)
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -191,7 +194,7 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
             flex: 1, fontSize: "13px", fontWeight: 600,
             color: "#111827", lineHeight: 1.35,
           }}>
-            {task.Name ?? "Untitled task"}
+            {task.Name ?? t("untitledTask")}
           </span>
 
           {pMeta && (
@@ -202,7 +205,7 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
               borderRadius: "5px", padding: "2px 7px", whiteSpace: "nowrap", flexShrink: 0,
             }}>
               <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: pMeta.dot, flexShrink: 0 }} />
-              {task.Priority}
+              {priority === "High" ? t("high") : (priority === "Medium" ? t("medium") : t("low"))}
             </span>
           )}
         </div>
@@ -245,7 +248,7 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
                 fontWeight: overdue ? 600 : 400,
               }}>
                 <Clock size={10} color={overdue ? "#DC2626" : "#9CA3AF"} />
-                <span>{dueLabel}{overdue ? " · Overdue" : ""}</span>
+                <span>{dueLabel}{overdue ? ` · ${t("overdueLabel")}` : ""}</span>
               </div>
             )}
           </div>
@@ -253,7 +256,7 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
 
         {/* Assignee row */}
         <div style={{ paddingLeft: "20px" }}>
-          <AssigneeChip task={task} namesMap={namesMap} />
+          <AssigneeChip task={task} namesMap={namesMap} t={t} />
         </div>
       </div>
     </div>

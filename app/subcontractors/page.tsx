@@ -30,7 +30,9 @@ export default function SubcontractorsPage() {
 
   if (!user) return null
 
-  if (!hasPermission("subcontractor:read")) {
+  const isTech = user.role === "LEAD_TECHNICIAN"
+
+  if (!hasPermission("subcontractor:read") && !isTech) {
     return (
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
@@ -86,7 +88,7 @@ export default function SubcontractorsPage() {
                       : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
                   }`}
                 >
-                  <Wrench className="h-4 w-4" /> Subcontractors
+                  <Wrench className="h-4 w-4" /> {t("tabSubcontractors")}
                 </button>
                 <button
                   onClick={() => setActiveTab("technicians")}
@@ -96,7 +98,7 @@ export default function SubcontractorsPage() {
                       : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
                   }`}
                 >
-                  <Users className="h-4 w-4" /> Technicians
+                  <Users className="h-4 w-4" /> {t("tabTechnicians")}
                 </button>
               </div>
             </div>

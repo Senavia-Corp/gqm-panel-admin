@@ -16,6 +16,7 @@ import {
   Eye, Trash2, CheckCircle2, XCircle, RefreshCw,
   AlertCircle, Filter, X,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,12 +58,13 @@ function SuppliersTable({
   rows: SupplierRow[]
   onDelete: (row: SupplierRow) => void
 }) {
+  const t = useTranslations("suppliers")
   if (rows.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white">
         <Store className="h-10 w-10 text-slate-200" />
-        <p className="text-sm font-medium text-slate-400">No suppliers found</p>
-        <p className="text-xs text-slate-300">Try adjusting your search</p>
+        <p className="text-sm font-medium text-slate-400">{t("sup_noResults")}</p>
+        <p className="text-xs text-slate-300">{t("sup_adjustSearch")}</p>
       </div>
     )
   }
@@ -80,11 +82,11 @@ function SuppliersTable({
                   <span className="font-mono text-[11px] text-slate-400">{row.ID_Supplier}</span>
                   {row.Acc_Status === "Active" ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                      <CheckCircle2 className="h-3 w-3" /> Active
+                      <CheckCircle2 className="h-3 w-3" /> {t("sup_active")}
                     </span>
                   ) : row.Acc_Status === "Inactive" ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                      <XCircle className="h-3 w-3" /> Inactive
+                      <XCircle className="h-3 w-3" /> {t("sup_inactive")}
                     </span>
                   ) : null}
                 </div>
@@ -139,11 +141,23 @@ function SuppliersTable({
                   { label: "Email", w: "" },
                   { label: "Phone", w: "w-[140px]" },
                   { label: "Actions", w: "w-[80px] text-right" },
-                ].map(({ label, w }) => (
-                  <th key={label} className={`px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${w}`}>
-                    {label}
-                  </th>
-                ))}
+                ].map(({ label, w }, idx) => {
+                  const keys: Record<string, string> = {
+                    "ID": "sup_colId",
+                    "Company": "sup_colCompany",
+                    "Specialty": "sup_colSpecialty",
+                    "Coverage Area": "sup_colCoverage",
+                    "Status": "sup_colStatus",
+                    "Email": "sup_colEmail",
+                    "Phone": "sup_colPhone",
+                    "Actions": "sup_colActions"
+                  };
+                  return (
+                    <th key={idx} className={`px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${w}`}>
+                      {t(keys[label] || label)}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -170,11 +184,11 @@ function SuppliersTable({
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     {row.Acc_Status === "Active" ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        <CheckCircle2 className="h-3 w-3" /> Active
+                        <CheckCircle2 className="h-3 w-3" /> {t("sup_active")}
                       </span>
                     ) : row.Acc_Status === "Inactive" ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
-                        <XCircle className="h-3 w-3" /> Inactive
+                        <XCircle className="h-3 w-3" /> {t("sup_inactive")}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-300">—</span>
@@ -216,6 +230,7 @@ const PER_PAGE = 10
 
 export default function SuppliersPage() {
   const router = useRouter()
+  const t = useTranslations("suppliers")
 
   const [rows, setRows]       = useState<SupplierRow[]>([])
   const [total, setTotal]     = useState(0)
@@ -254,7 +269,7 @@ export default function SuppliersPage() {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("sup_loadError"))
     } finally {
       setLoading(false)
     }
@@ -281,12 +296,12 @@ export default function SuppliersPage() {
         { method: "DELETE" }
       )
       if (!res.ok) throw new Error(`Delete failed (${res.status})`)
-      toast({ title: "Deleted", description: `${deleteTarget.Company_Name ?? deleteTarget.ID_Supplier} removed.` })
+      toast({ title: t("sup_toastDeleted"), description: t("sup_toastDeletedDesc", { name: deleteTarget.Company_Name ?? deleteTarget.ID_Supplier }) })
       setDeleteOpen(false)
       setDeleteTarget(null)
       fetchPage(page, dSearch)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to delete.", variant: "destructive" })
+      toast({ title: t("sup_toastError"), description: e?.message ?? t("sup_toastDeleteError"), variant: "destructive" })
     }
   }
 
@@ -304,8 +319,8 @@ export default function SuppliersPage() {
                 <Store className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900">Suppliers</h1>
-                <p className="hidden sm:block text-xs text-slate-500">Material and construction supply companies</p>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900">{t("sup_title")}</h1>
+                <p className="hidden sm:block text-xs text-slate-500">{t("sup_subtitle")}</p>
               </div>
             </div>
           </div>
@@ -317,21 +332,21 @@ export default function SuppliersPage() {
               {/* Card header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-base font-bold text-slate-800">All Suppliers</h2>
+                  <h2 className="text-base font-bold text-slate-800">{t("sup_allSuppliers")}</h2>
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {hasFilters && (
                     <span className="hidden sm:flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      <Filter className="h-2.5 w-2.5" /> 1 filter
+                      <Filter className="h-2.5 w-2.5" /> {t("sup_filter")}
                     </span>
                   )}
                 </div>
                 <Link href="/suppliers/create">
                   <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm">
                     <Plus className="h-4 w-4" />
-                    <span className="sm:hidden">New</span>
-                    <span className="hidden sm:inline">New Supplier</span>
+                    <span className="sm:hidden">{t("sup_newShort")}</span>
+                    <span className="hidden sm:inline">{t("sup_newSupplier")}</span>
                   </Button>
                 </Link>
               </div>
@@ -343,7 +358,7 @@ export default function SuppliersPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by company, specialty, coverage area, email…"
+                    placeholder={t("sup_phSearch")}
                     className="pl-9 text-sm border-slate-200 focus:border-violet-400"
                   />
                   {search && (
@@ -362,7 +377,7 @@ export default function SuppliersPage() {
                     onClick={() => setSearch("")}
                     className="gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600"
                   >
-                    <X className="h-3.5 w-3.5" /> Reset
+                    <X className="h-3.5 w-3.5" /> {t("sup_reset")}
                   </Button>
                 )}
               </div>
@@ -381,7 +396,7 @@ export default function SuppliersPage() {
                   onClick={() => fetchPage(page, dSearch)}
                   className="gap-1.5"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5" /> {t("sup_retry")}
                 </Button>
               </div>
             ) : (
@@ -392,9 +407,9 @@ export default function SuppliersPage() {
             {!loading && !error && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:px-5 shadow-sm">
                 <p className="text-sm text-slate-500">
-                  Showing{" "}
-                  <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
-                  of <span className="font-semibold text-slate-800">{total}</span> supplier{total !== 1 ? "s" : ""}
+                  {total === 1 
+                    ? t("sup_showingSingle", { from: showFrom, to: showTo, total }) 
+                    : t("sup_showing", { from: showFrom, to: showTo, total })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -405,7 +420,7 @@ export default function SuppliersPage() {
                     onClick={() => setPage((p) => p - 1)}
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Previous</span>
+                    <span className="hidden sm:inline">{t("sup_prev")}</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
@@ -417,7 +432,7 @@ export default function SuppliersPage() {
                     disabled={page >= totalPages || loading}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    <span className="hidden sm:inline">Next</span>
+                    <span className="hidden sm:inline">{t("sup_next")}</span>
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>

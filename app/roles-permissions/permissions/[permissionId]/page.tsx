@@ -20,12 +20,14 @@ import {
 import type { Permission, IAMDocument, IAMStatement, Role } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
 import { MODULE_ACTIONS } from "@/lib/permissions-modules"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
 
 
 function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations("roles_permissions")
   return (
     <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1">
       <button
@@ -34,7 +36,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boo
           active ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
         }`}
       >
-        <CheckCircle2 className="h-3.5 w-3.5" /> Active
+        <CheckCircle2 className="h-3.5 w-3.5" /> {t("detail.statusActive")}
       </button>
       <button
         onClick={() => onChange(false)}
@@ -42,7 +44,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boo
           !active ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
         }`}
       >
-        <X className="h-3.5 w-3.5" /> Inactive
+        <X className="h-3.5 w-3.5" /> {t("detail.statusInactive")}
       </button>
     </div>
   )
@@ -54,6 +56,7 @@ export default function PermissionDetailPage() {
   const params = useParams() as { permissionId?: string }
   const permissionId = params?.permissionId ?? ""
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
 
   const [user, setUser] = useState<any>(null)
   const [permission, setPermission] = useState<Permission | null>(null)
@@ -173,7 +176,7 @@ export default function PermissionDetailPage() {
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-700 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Roles & Permissions
+            {t("form.backTo")}
           </button>
 
           {/* ── Page header ──────────────────────────────────────────────── */}
@@ -183,8 +186,8 @@ export default function PermissionDetailPage() {
                 <Shield className="h-5 w-5 text-sky-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Permission Detail</h1>
-                <p className="text-sm text-slate-500">Edit permission fields and review linked roles.</p>
+                <h1 className="text-2xl font-bold text-slate-900">{t("detail.title")}</h1>
+                <p className="text-sm text-slate-500">{t("detail.subtitle")}</p>
               </div>
             </div>
 
@@ -195,27 +198,27 @@ export default function PermissionDetailPage() {
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Save className="h-4 w-4" />
-                {saving ? "Saving…" : "Save Changes"}
+                {saving ? t("detail.btnSaving") : t("detail.btnSave")}
               </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" disabled={deleting || loading || !permission} className="gap-2">
                     <Trash2 className="h-4 w-4" />
-                    {deleting ? "Deleting…" : "Delete"}
+                    {deleting ? t("detail.btnDeleting") : t("detail.btnDelete")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this permission?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("detail.delTitle")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will unlink it from all roles first, then permanently delete it. This action cannot be undone.
+                      {t("detail.delDesc")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={deleting}>{t("form.btnCancel")}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-red-600 hover:bg-red-700">
-                      {deleting ? "Deleting…" : "Confirm Delete"}
+                      {deleting ? t("detail.btnDeleting") : t("detail.btnConfirmDelete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -227,27 +230,27 @@ export default function PermissionDetailPage() {
           {loading ? (
             <div className="flex h-52 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
               <div className="flex items-center gap-2 text-sm text-slate-400">
-                <RefreshCcw className="h-4 w-4 animate-spin" /> Loading permission…
+                <RefreshCcw className="h-4 w-4 animate-spin" /> {t("detail.loading")}
               </div>
             </div>
           ) : loadError ? (
             <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
               <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
-              <p className="text-sm font-semibold text-slate-700">Could not load permission</p>
+              <p className="text-sm font-semibold text-slate-700">{t("detail.errLoad")}</p>
               <p className="mt-1 text-xs text-red-500">{loadError}</p>
-              <Button onClick={fetchPermission} className="mt-3 h-8 text-xs bg-emerald-600 hover:bg-emerald-700">Retry</Button>
+              <Button onClick={fetchPermission} className="mt-3 h-8 text-xs bg-emerald-600 hover:bg-emerald-700">{t("retry")}</Button>
             </div>
           ) : !permission ? (
-            <div className="py-12 text-center text-sm text-slate-400">Permission not found</div>
+            <div className="py-12 text-center text-sm text-slate-400">{t("detail.notFound")}</div>
           ) : (
             <>
               {/* Permission info card */}
               <div className="max-w-5xl mx-auto space-y-5">
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
                 {/* ID + active status row */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Permission ID</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{t("detail.labelId")}</p>
                     <span className="font-mono text-sm font-bold text-slate-700">{permission.ID_Permission}</span>
                   </div>
                   <ActiveToggle
@@ -261,11 +264,11 @@ export default function PermissionDetailPage() {
                 {/* Form grid */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="space-y-1.5 lg:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("form.labelDescription")}</label>
                     <Textarea
                       value={asString(permission.Description)}
                       onChange={(e) => setPermission({ ...permission, Description: e.target.value })}
-                      placeholder="Permission description"
+                      placeholder={t("detail.phDescription")}
                       className="min-h-[64px] resize-y border-slate-200 bg-slate-50 focus:bg-white"
                     />
                   </div>
@@ -276,7 +279,7 @@ export default function PermissionDetailPage() {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Policy Statements
+                    {t("form.labelPolicy")}
                   </label>
                     <Button 
                       type="button" 
@@ -285,7 +288,7 @@ export default function PermissionDetailPage() {
                       onClick={addStatement}
                       className="h-7 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                     >
-                      <Plus className="h-3.5 w-3.5" /> Add Statement
+                      <Plus className="h-3.5 w-3.5" /> {t("form.btnAddStatement")}
                     </Button>
                   </div>
 
@@ -302,7 +305,7 @@ export default function PermissionDetailPage() {
 
                       <div className="flex flex-wrap items-center gap-4">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase text-slate-400">Effect</label>
+                          <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelEffect")}</label>
                           <div className="flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
                             <button
                               type="button"
@@ -311,7 +314,7 @@ export default function PermissionDetailPage() {
                                 s.Effect === "Allow" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                               }`}
                             >
-                              Allow
+                              {t("form.btnAllow")}
                             </button>
                             <button
                               type="button"
@@ -320,13 +323,13 @@ export default function PermissionDetailPage() {
                                 s.Effect === "Deny" ? "bg-red-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                               }`}
                             >
-                              Deny
+                              {t("form.btnDeny")}
                             </button>
                           </div>
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase text-slate-400">Shortcut</label>
+                          <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelShortcut")}</label>
                           <button
                             type="button"
                             onClick={() => toggleAction(sIdx, "*")}
@@ -336,39 +339,39 @@ export default function PermissionDetailPage() {
                                 : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
                             }`}
                           >
-                            <Shield className="h-3.5 w-3.5" /> Full Access (*)
+                            <Shield className="h-3.5 w-3.5" /> {t("form.btnFullAccess")}
                           </button>
                         </div>
 
                         <div className="flex-1 min-w-[200px]">
                           <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-[11px] text-emerald-800">
-                              <strong>Resource:</strong> Global <code>["*"]</code>
+                              <strong>{t("detail.labelResource")}</strong> {t("detail.global")} <code>["*"]</code>
                           </div>
                         </div>
                       </div>
 
                       <div className="space-y-4">
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Actions</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400">{t("form.labelActions")}</label>
                         <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${s.Action.includes("*") ? "opacity-30 pointer-events-none" : ""}`}>
                           {MODULE_ACTIONS.map((mod) => (
                             <div key={mod.module} className="space-y-2">
-                              <h4 className="text-[11px] font-bold text-slate-600 border-b border-slate-100 pb-1 flex items-center justify-between">
-                                {mod.module}
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleAction(sIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
-                                    className={`rounded px-1.5 py-0.5 text-[9px] font-bold transition-all ${
-                                      s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`)
-                                        ? "bg-amber-100 text-amber-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-                                    }`}
-                                  >
-                                    All
-                                  </button>
-                                  <span className="font-normal text-slate-400">({mod.actions.filter(a => s.Action.includes(a.id)).length})</span>
-                                </div>
-                              </h4>
+                            <h4 className="text-[11px] font-bold text-slate-600 border-b border-slate-100 pb-1 flex items-center justify-between">
+                              {t(`modules.${mod.module}` as any)}
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAction(sIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
+                                  className={`rounded px-1.5 py-0.5 text-[9px] font-bold transition-all ${
+                                    s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`)
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                                  }`}
+                                >
+                                  {t("form.btnAll")}
+                                </button>
+                                <span className="font-normal text-slate-400">({mod.actions.filter(a => s.Action.includes(a.id)).length})</span>
+                              </div>
+                            </h4>
                               <div className="space-y-1.5">
                                 {mod.actions.map((act) => {
                                   const isChecked = s.Action.includes(act.id)
@@ -390,10 +393,10 @@ export default function PermissionDetailPage() {
                                       </div>
                                       <div className="min-w-0">
                                         <p className={`text-[11px] font-bold leading-tight ${isChecked ? "text-emerald-900" : "text-slate-700"}`}>
-                                          {act.id}
+                                        {act.id}
                                         </p>
                                         <p className="text-[10px] text-slate-400 leading-tight">
-                                          {act.desc}
+                                          {t(`actions.${act.id}` as any)}
                                         </p>
                                       </div>
                                     </button>
@@ -410,7 +413,7 @@ export default function PermissionDetailPage() {
 
                   {/* JSON Preview */}
                   <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-900 p-4 font-mono text-[10px] text-emerald-400 overflow-x-auto">
-                    <p className="text-slate-500 mb-2 uppercase font-sans font-bold tracking-widest text-[9px] font-sans">Document Preview</p>
+                    <p className="text-slate-500 mb-2 uppercase font-sans font-bold tracking-widest text-[9px] font-sans">{t("form.labelPreview")}</p>
                     <pre>{JSON.stringify({ Version: "1.0", Statement: statements }, null, 2)}</pre>
                   </div>
 
@@ -421,8 +424,8 @@ export default function PermissionDetailPage() {
                       <Users className="h-4 w-4 text-violet-600" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-800">Linked Roles ({linkedRoles.length})</h2>
-                      <p className="text-xs text-slate-400">Roles that currently include this permission.</p>
+                      <h2 className="text-sm font-bold text-slate-800">{t("detail.labelLinkedRoles", { count: linkedRoles.length })}</h2>
+                      <p className="text-xs text-slate-400">{t("detail.subtitleLinkedRoles")}</p>
                     </div>
                   </div>
 
@@ -446,7 +449,7 @@ export default function PermissionDetailPage() {
                                 : "bg-slate-100 border-slate-200 text-slate-400"
                             }`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${r.Active ? "bg-emerald-500" : "bg-slate-400"}`} />
-                              {r.Active ? "Active" : "Inactive"}
+                              {r.Active ? t("detail.statusActive") : t("detail.statusInactive")}
                             </span>
                           </div>
                           {r.Description && (
@@ -458,7 +461,7 @@ export default function PermissionDetailPage() {
                   ) : (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-center">
                       <Users className="mx-auto mb-1.5 h-6 w-6 text-slate-200" />
-                      <p className="text-xs text-slate-400">No roles linked to this permission</p>
+                      <p className="text-xs text-slate-400">{t("detail.noLinkedRoles")}</p>
                     </div>
                   )}
                 </div>

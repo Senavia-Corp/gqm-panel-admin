@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { SubcontractorOrder } from "@/lib/types"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface DeleteOrderDialogProps {
   order: SubcontractorOrder | null
@@ -20,22 +21,22 @@ interface DeleteOrderDialogProps {
 }
 
 export function DeleteOrderDialog({ order, open, onOpenChange, onConfirm }: DeleteOrderDialogProps) {
+  const t = useTranslations("jobs")
   if (!order) return null
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Order</AlertDialogTitle>
+          <AlertDialogTitle>{t("orderDeleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete the order "{order.Order_Name}" (ID: {order.ID_Order})? This action cannot be
-            undone and will remove all {order.Items.length} items from this order.
+            {t("orderDeleteDescPre")} "{order.Order_Name}" (ID: {order.ID_Order}){t("orderDeleteDescPost")} {order.Items.length} {t("orderDeleteDescEnd")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("orderDeleteCancelBtn")}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
-            Delete Order
+            {t("orderDeleteConfirmBtn")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { Users, Search, X, Loader2, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Subcontractor } from "@/lib/types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ interface SelectSubcontractorModalProps {
 }
 
 export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }: SelectSubcontractorModalProps) {
+  const t = useTranslations("subcontractors")
   const LIMIT = 10
   const [query, setQuery] = useState("")
   const dQ = useDebounce(query, 300)
@@ -92,9 +94,9 @@ export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }
               <Users className="h-5 w-5 text-slate-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Select Subcontractor</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("modalSelectTitle")}</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Choose a subcontractor to associate{total > 0 && ` · ${total} total`}
+                {t("modalSelectSubtitle")}{total > 0 && ` · ${total} ${t("modalTotalSuffix")}`}
               </p>
             </div>
           </div>
@@ -110,7 +112,7 @@ export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, org, email…"
+              placeholder={t("modalSearchPlaceholder")}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
@@ -120,7 +122,7 @@ export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }
           {loading ? (
             <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-300" /></div>
           ) : rows.length === 0 ? (
-            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">No subcontractors found</p></div>
+            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">{t("noSubsFound")}</p></div>
           ) : (
             <ul className="divide-y divide-slate-50">
               {rows.map((sub) => {
@@ -152,7 +154,7 @@ export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }
                           : "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                       }`}
                     >
-                      {isSelected ? "Selected" : "Select"}
+                      {isSelected ? t("modalSelected") : t("modalSelectBtn")}
                     </button>
                   </li>
                 )
@@ -163,8 +165,7 @@ export function SelectSubcontractorModal({ open, onClose, onSelect, selectedId }
 
         <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
           <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{total}</span>
+            {t("modalShowing", { count: rows.length, total })}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">

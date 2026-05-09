@@ -77,7 +77,8 @@ export async function GET(request: NextRequest) {
   
   // legacy or specific filters
   const memberId        = searchParams.get("memberId")          ?? searchParams.get("member_id")
-  const subcontractorId   = searchParams.get("subcontractorId")
+  const technicianId    = searchParams.get("technicianId")      ?? searchParams.get("technician_id")
+  const subcontractorId = searchParams.get("subcontractorId")    ?? searchParams.get("subcontractor_id")
 
   const params = new URLSearchParams()
   params.set("page",           page)
@@ -88,10 +89,11 @@ export async function GET(request: NextRequest) {
   if (search)          params.set("search",            search)
   if (clientId)        params.set("client_id",         clientId)
   if (memberId)        params.set("member_id",         memberId)
+  if (technicianId)    params.set("technician_id",     technicianId)
   if (parentMgmtCoId)  params.set("parent_mgmt_co_id", parentMgmtCoId)
   if (dateFrom)        params.set("date_from",         dateFrom)
   if (dateTo)          params.set("date_to",           dateTo)
-  if (subcontractorId) params.set("subcontractorId",   subcontractorId)
+  if (subcontractorId) params.set("subcontractor_id",  subcontractorId)
 
   const url = `${JOBS_BASE}/jobs_table?${params.toString()}`
   console.log("[jobs proxy] GET jobs_table ->", url)

@@ -22,12 +22,28 @@ async function proxyFetch(url: string, authHeader?: string | null) {
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("Authorization")
-  // Fetch all skills (no pagination in proxy for select usage)
   const result = await proxyFetch(SKILLS_ENDPOINT, authHeader)
-  
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
-  }
-  
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
   return NextResponse.json(result.data)
+}
+
+export async function POST(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization")
+  try {
+    const body = await request.json()
+    const res = await fetch(SKILLS_ENDPOINT, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) return NextResponse.json({ error: data.detail || "Internal Server Error" }, { status: res.status })
+    return NextResponse.json(data)
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Failed to reach backend" }, { status: 502 })
+  }
 }

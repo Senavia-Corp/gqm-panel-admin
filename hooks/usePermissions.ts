@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 export function usePermissions() {
   const [policies, setPolicies] = useState<any[]>([])
 
   useEffect(() => {
-    // Load policies from localStorage
     const savedPolicies = localStorage.getItem("user_policies")
     if (savedPolicies) {
       try {
@@ -17,19 +16,17 @@ export function usePermissions() {
     }
   }, [])
 
-  const hasPermission = (action: string, resource: string = "*"): boolean => {
-    // If no policies exist, default to false
+  const hasPermission = useCallback((action: string, resource: string = "*"): boolean => {
     if (!policies || policies.length === 0) return false
 
     let allowed = false
 
-    // helper function to match wildcards e.g., "job:*"
     const matchWildcard = (pattern: string, text: string) => {
       if (pattern === text) return true
       if (pattern === "*") return true
       if (pattern.endsWith("*")) {
         const prefix = pattern.slice(0, -1)
-        return text.startsWith(prefix) // e.g., text="job:create", prefix="job:"
+        return text.startsWith(prefix)
       }
       return false
     }
@@ -48,7 +45,7 @@ export function usePermissions() {
 
         if (actionMatch && resourceMatch) {
           if (Effect === "Deny") {
-            return false // Deny overrules everything
+            return false
           } else if (Effect === "Allow") {
             allowed = true
           }
@@ -57,7 +54,7 @@ export function usePermissions() {
     }
 
     return allowed
-  }
+  }, [policies])
 
   return { hasPermission, policies }
 }

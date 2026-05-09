@@ -4,22 +4,31 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, Briefcase, MapPin, ChevronRight, AlertCircle } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
-export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
+export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
+  const t = useTranslations()
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!memberId) return
+    // Para técnicos necesitamos el subcontractorId, para miembros el memberId
+    const targetId = isTechnician ? subcontractorId : memberId
+    if (!targetId) {
+      if (isTechnician) setError(t("profile.tabs.noSub"))
+      setLoading(false)
+      return
+    }
 
     const fetchJobs = async () => {
       try {
         setLoading(true)
         // Pedimos los estados de pipeline
         const statuses = encodeURIComponent("Assigned/P. Quote,Scheduled / Work in Progress,In Progress")
-        const res = await apiFetch(`/api/jobs?member_id=${memberId}&status=${statuses}&limit=50`)
-        if (!res.ok) throw new Error("Failed to fetch pipeline jobs")
+        const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
+        const res = await apiFetch(`/api/jobs?${idParam}&status=${statuses}&limit=50`)
+        if (!res.ok) throw new Error(t("detail.errLoad"))
         const data = await res.json()
         setJobs(data.results || [])
       } catch (err: any) {
@@ -30,7 +39,7 @@ export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
     }
 
     fetchJobs()
-  }, [memberId])
+  }, [memberId, subcontractorId, isTechnician, t])
 
   if (loading) {
     return (
@@ -44,7 +53,7 @@ export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
     return (
       <div className="rounded-xl bg-red-50 p-4 flex items-center gap-3 text-red-600">
         <AlertCircle className="h-5 w-5" />
-        <p className="text-sm font-medium">Error loading jobs: {error}</p>
+        <p className="text-sm font-medium">{t("common.error")}: {error}</p>
       </div>
     )
   }
@@ -53,8 +62,8 @@ export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
         <Briefcase className="h-12 w-12 mb-3 text-slate-200" />
-        <p className="font-medium text-slate-600">No active jobs in pipeline</p>
-        <p className="text-sm">You don't have any jobs assigned in pipeline statuses.</p>
+        <p className="font-medium text-slate-600">{t("profile.tabs.noJobs")}</p>
+        <p className="text-sm">{t("profile.tabs.noJobsDesc")}</p>
       </div>
     )
   }
@@ -74,16 +83,16 @@ export function ProfilePipelineJobs({ memberId }: { memberId: string }) {
                 </span>
               </div>
               <h3 className="text-base font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
-                {job.ID_Jobs} - {job.Project_name || "No name"}
+                {job.ID_Jobs} - {job.Project_name || t("profile.tabs.noName")}
               </h3>
               <p className="text-sm text-slate-500 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                {job.client?.Client_Community || "Unknown Client"}
+                {job.client?.Client_Community || t("profile.tabs.unknownClient")}
               </p>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-xs text-slate-400 font-medium">Assigned</p>
+                <p className="text-xs text-slate-400 font-medium">{t("profile.tabs.labelAssigned")}</p>
                 <p className="text-sm font-semibold text-slate-700">
                   {job.Date_assigned ? new Date(job.Date_assigned).toLocaleDateString() : "—"}
                 </p>

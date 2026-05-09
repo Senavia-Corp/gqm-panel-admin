@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Eye, Trash2, Landmark, Mail, Phone } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { BuildingDeptRow } from "@/lib/types"
 
 interface Props {
@@ -21,14 +22,15 @@ function toArr(val: string | string[] | null | undefined): string[] {
 }
 
 export function BuildingDeptTable({ rows, onDelete }: Props) {
+  const t = useTranslations("buildingDepartments")
   if (rows.length === 0) {
     return (
       <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
           <Landmark className="h-6 w-6 text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-slate-500">No building departments found</p>
-        <p className="text-xs text-slate-400">Try adjusting your search or add a new one</p>
+        <p className="text-sm font-medium text-slate-500">{t("bd_noResults")}</p>
+        <p className="text-xs text-slate-400">{t("bd_noResultsDesc")}</p>
       </div>
     )
   }
@@ -80,13 +82,13 @@ export function BuildingDeptTable({ rows, onDelete }: Props) {
                   <Link href={`/building-departments/${row.ID_BldgDept}`}>
                     <Button variant="ghost" size="icon"
                       className="h-8 w-8 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                      title="View details">
+                      title={t("bd_viewDetails")}>
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
                   <Button variant="ghost" size="icon"
                     className="h-8 w-8 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-500"
-                    title="Delete" onClick={() => onDelete(row)}>
+                    title={t("bd_delete")} onClick={() => onDelete(row)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -101,12 +103,12 @@ export function BuildingDeptTable({ rows, onDelete }: Props) {
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">ID</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">City</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Location</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Email</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Phone</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-right w-24">Actions</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">{t("bd_colId")}</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("bd_colCity")}</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("bd_colLocation")}</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("bd_colEmail")}</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("bd_colPhone")}</TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-right w-24">{t("bd_colActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -183,7 +185,7 @@ export function BuildingDeptTable({ rows, onDelete }: Props) {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                          title="View details"
+                          title={t("bd_viewDetails")}
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
@@ -192,7 +194,7 @@ export function BuildingDeptTable({ rows, onDelete }: Props) {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-500"
-                        title="Delete"
+                        title={t("bd_delete")}
                         onClick={() => onDelete(row)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

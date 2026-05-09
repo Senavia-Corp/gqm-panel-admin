@@ -10,12 +10,13 @@ import {
   ArrowLeft, ExternalLink, RefreshCcw, AlertTriangle, Pencil, Check, X,
   ShoppingCart, ClipboardList, Tag, Plus, Trash2, Loader2, Search,
   User, Briefcase, ChevronLeft, ChevronRight, AlertCircle, MapPin,
-  Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp,
+  Package, DollarSign, FileText, RotateCcw, Save, ChevronDown, ChevronUp, Zap,
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/apiFetch"
 import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
 import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -67,6 +68,7 @@ type Purchase = {
   Return_status?: string | null
   Purchase_note?: string | null
   Total_spending?: number | null
+  Is_extra?: boolean | null
   // Scalar FKs (normalized from nested objects on fetch)
   ID_Member?: string | null
   ID_Jobs?: string | null
@@ -201,6 +203,7 @@ function InlineField({
   const [draft, setDraft] = useState(value)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const t = useTranslations("purchaseDetail")
 
   const handleSave = async () => {
     if (draft === value) { setEditing(false); return }
@@ -209,7 +212,7 @@ function InlineField({
       await onSave(draft)
       setEditing(false)
     } catch (e: any) {
-      setErr(e?.message ?? "Error saving")
+      setErr(e?.message ?? t("inlineField.errorSaving"))
     } finally {
       setSaving(false)
     }
@@ -247,18 +250,18 @@ function InlineField({
           <div className="flex gap-1.5">
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} {t("btnSave")}
             </button>
             <button onClick={handleCancel} disabled={saving}
               className="rounded-md border border-slate-200 px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-50">
-              Cancel
+              {t("btnCancel")}
             </button>
           </div>
         </div>
       ) : (
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm text-slate-800 min-h-[1.5rem]">
-            {value || <span className="italic text-slate-400">{placeholder ?? "—"}</span>}
+            {value || <span className="italic text-slate-400">{placeholder ?? t("inlineField.placeholder")}</span>}
           </p>
           <button onClick={() => setEditing(true)}
             className="mt-0.5 flex-shrink-0 rounded p-1 text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-600 transition-all">
@@ -274,6 +277,7 @@ function InlineField({
 // Member Picker Modal
 // ─────────────────────────────────────────────────────────────────────────────
 function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => void; onClose: () => void }) {
+  const t = useTranslations("purchaseDetail")
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<MemberRow[]>([])
@@ -315,8 +319,10 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
               <User className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Change Selling Rep</p>
-              <p className="text-xs text-slate-400">{total} member{total !== 1 ? "s" : ""}</p>
+              <p className="text-sm font-semibold text-slate-800">{t("modals.changeRep")}</p>
+              <p className="text-xs text-slate-400">
+                {total === 1 ? t("modals.member", { count: total }) : t("modals.members", { count: total })}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition-colors"><X className="h-4 w-4" /></button>
@@ -324,7 +330,7 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
         <div className="px-5 py-3 border-b border-slate-50">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, role, email…"
+            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("modals.searchRep")}
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30" />
             {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"><X className="h-3.5 w-3.5" /></button>}
           </div>
@@ -332,7 +338,7 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-emerald-500" /></div>
             : error ? <div className="flex flex-col items-center gap-2 py-10"><AlertCircle className="h-6 w-6 text-red-400" /><p className="text-xs text-slate-500">{error}</p></div>
-              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
+              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">{t("modals.noResults")}</p></div>
                 : rows.map(m => (
                   <button key={m.ID_Member} onClick={() => onSelect(m)}
                     className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
@@ -341,7 +347,7 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-800 truncate group-hover:text-emerald-700">{m.Member_Name}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? "No role"} · {m.ID_Member}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{m.Company_Role ?? t("modals.noRole")} · {m.ID_Member}</p>
                     </div>
                     <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
                   </button>
@@ -365,6 +371,7 @@ function MemberPickerModal({ onSelect, onClose }: { onSelect: (m: MemberRow) => 
 // Job Picker Modal
 // ─────────────────────────────────────────────────────────────────────────────
 function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; onClose: () => void }) {
+  const t = useTranslations("purchaseDetail")
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<JobRow[]>([])
@@ -406,8 +413,10 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
               <Briefcase className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Link Job</p>
-              <p className="text-xs text-slate-400">{total} job{total !== 1 ? "s" : ""} available</p>
+              <p className="text-sm font-semibold text-slate-800">{t("modals.linkJob")}</p>
+              <p className="text-xs text-slate-400">
+                {total === 1 ? t("modals.jobAvailable", { count: total }) : t("modals.jobsAvailable", { count: total })}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition-colors"><X className="h-4 w-4" /></button>
@@ -415,7 +424,7 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
         <div className="px-5 py-3 border-b border-slate-50">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search by ID or project name…"
+            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("modals.searchJob")}
               className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30" />
             {q && <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"><X className="h-3.5 w-3.5" /></button>}
           </div>
@@ -423,7 +432,7 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {loading ? <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-emerald-500" /></div>
             : error ? <div className="flex flex-col items-center gap-2 py-10"><AlertCircle className="h-6 w-6 text-red-400" /><p className="text-xs text-slate-500">{error}</p></div>
-              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">No results</p></div>
+              : rows.length === 0 ? <div className="py-10 text-center"><p className="text-xs text-slate-400">{t("modals.noResults")}</p></div>
                 : rows.map(j => (
                   <button key={j.ID_Jobs} onClick={() => onSelect(j)}
                     className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-emerald-50/60 transition-colors group">
@@ -436,7 +445,7 @@ function JobPickerModal({ onSelect, onClose }: { onSelect: (j: JobRow) => void; 
                         {j.Job_type && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${JOB_TYPE_COLORS[j.Job_type] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_type}</span>}
                         {j.Job_status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${JOB_STATUS_COLORS[j.Job_status] ?? "bg-slate-100 text-slate-600"}`}>{j.Job_status}</span>}
                       </div>
-                      <p className="mt-0.5 text-[11px] text-slate-400 truncate">{j.Project_name ?? "Unnamed"}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-400 truncate">{j.Project_name ?? t("modals.unnamed")}{j.client?.Client_Community ? ` · ${j.client.Client_Community}` : ""}</p>
                     </div>
                     <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-500 flex-shrink-0" />
                   </button>
@@ -463,11 +472,14 @@ function ItemRow({
   item,
   onUpdate,
   onDelete,
+  isRequestOnly,
 }: {
   item: PurchaseOrderItem
   onUpdate: (id: string, patch: Partial<PurchaseOrderItem>) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  isRequestOnly?: boolean
 }) {
+  const t = useTranslations("purchaseDetail")
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -486,10 +498,12 @@ function ItemRow({
       if (draft.Quote_link !== item.Quote_link) patch.Quote_link = draft.Quote_link
       if (draft.Quote_value !== item.Quote_value) patch.Quote_value = asNumber(draft.Quote_value)
       if (draft.Quote_notes !== item.Quote_notes) patch.Quote_notes = draft.Quote_notes
-      if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
-      if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
-      if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
-      if (draft.Purchase_notes !== item.Purchase_notes) patch.Purchase_notes = draft.Purchase_notes
+      if (!isRequestOnly) {
+        if (draft.Purchase_shop !== item.Purchase_shop) patch.Purchase_shop = draft.Purchase_shop
+        if (draft.Purchase_link !== item.Purchase_link) patch.Purchase_link = draft.Purchase_link
+        if (draft.Purchase_value !== item.Purchase_value) patch.Purchase_value = asNumber(draft.Purchase_value)
+        if (draft.Purchase_notes !== item.Purchase_notes) patch.Purchase_notes = draft.Purchase_notes
+      }
       await onUpdate(item.ID_PurchaseOrderItem, patch)
       setEditing(false)
     } catch (e: any) {
@@ -516,17 +530,17 @@ function ItemRow({
       <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Name</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.nameLabel")}</label>
             <Input value={draft.Name ?? ""} onChange={e => setDraft(p => ({ ...p, Name: e.target.value }))}
               className="text-sm border-slate-200 focus:border-emerald-400" />
           </div>
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Quote Shop</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.quoteShop")}</label>
             <Input value={draft.Quote_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Quote_shop: e.target.value }))}
               className="text-sm border-slate-200 focus:border-emerald-400" />
           </div>
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Quote Value</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.quoteValue")}</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
               <Input value={draft.Quote_value ?? ""} onChange={e => setDraft(p => ({ ...p, Quote_value: e.target.value as any }))}
@@ -534,58 +548,66 @@ function ItemRow({
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Quote Link</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.quoteLink")}</label>
             <Input value={draft.Quote_link ?? ""} onChange={e => setDraft(p => ({ ...p, Quote_link: e.target.value }))}
               className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Quote Notes</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.quoteNotes")}</label>
             <textarea
               value={draft.Quote_notes ?? ""}
               onChange={e => setDraft(p => ({ ...p, Quote_notes: e.target.value }))}
-              placeholder="Document the quoting process…"
+              placeholder={t("itemForm.quoteNotesDesc")}
               rows={2}
               className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
             />
           </div>
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Shop</label>
-            <Input value={draft.Purchase_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_shop: e.target.value }))}
-              className="text-sm border-slate-200 focus:border-emerald-400" />
-          </div>
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Value</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
-              <Input value={draft.Purchase_value ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_value: e.target.value as any }))}
-                className="pl-6 text-sm border-slate-200 focus:border-emerald-400" inputMode="decimal" />
+          {isRequestOnly ? (
+            <div className="sm:col-span-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-700">
+              {t("itemForm.purchasingDataWarning")}
             </div>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Link</label>
-            <Input value={draft.Purchase_link ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_link: e.target.value }))}
-              className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">Purchase Notes</label>
-            <textarea
-              value={draft.Purchase_notes ?? ""}
-              onChange={e => setDraft(p => ({ ...p, Purchase_notes: e.target.value }))}
-              placeholder="Notes on the actual purchase made…"
-              rows={2}
-              className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
-            />
-          </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.purchaseShop")}</label>
+                <Input value={draft.Purchase_shop ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_shop: e.target.value }))}
+                  className="text-sm border-slate-200 focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.purchaseValue")}</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
+                  <Input value={draft.Purchase_value ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_value: e.target.value as any }))}
+                    className="pl-6 text-sm border-slate-200 focus:border-emerald-400" inputMode="decimal" />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.purchaseLink")}</label>
+                <Input value={draft.Purchase_link ?? ""} onChange={e => setDraft(p => ({ ...p, Purchase_link: e.target.value }))}
+                  className="text-sm border-slate-200 focus:border-emerald-400" placeholder="https://..." />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block">{t("itemForm.purchaseNotes")}</label>
+                <textarea
+                  value={draft.Purchase_notes ?? ""}
+                  onChange={e => setDraft(p => ({ ...p, Purchase_notes: e.target.value }))}
+                  placeholder={t("itemForm.purchaseNotesDesc")}
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
+                />
+              </div>
+            </>
+          )}
         </div>
         {err && <p className="text-[11px] text-red-500">{err}</p>}
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSave} disabled={saving}
             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} {t("btnSave")}
           </Button>
           <Button size="sm" variant="outline" onClick={() => { setDraft({ ...item }); setEditing(false); setErr(null) }}
             disabled={saving} className="text-xs">
-            Cancel
+            {t("btnCancel")}
           </Button>
         </div>
       </div>
@@ -602,38 +624,38 @@ function ItemRow({
         </div>
         {/* Quote */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Quote</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{t("itemForm.quoteLabel")}</p>
           <p className="text-sm font-bold text-slate-700">{money(asNumber(item.Quote_value))}</p>
           <p className="text-[11px] text-slate-500">{item.Quote_shop || "—"}</p>
           {qLink && (
             <a href={qLink} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:underline mt-0.5">
-              View link <ExternalLink className="h-2.5 w-2.5" />
+              {t("itemForm.viewLink")} <ExternalLink className="h-2.5 w-2.5" />
             </a>
           )}
           {item.Quote_notes && (
             <div className="mt-2 rounded-md bg-amber-50 border border-amber-100 px-2.5 py-1.5">
-              <p className="text-[10px] font-semibold uppercase text-amber-600 mb-0.5">Quote notes</p>
+              <p className="text-[10px] font-semibold uppercase text-amber-600 mb-0.5">{t("itemForm.quoteNotes")}</p>
               <p className="text-[11px] text-slate-700 whitespace-pre-wrap">{item.Quote_notes}</p>
             </div>
           )}
         </div>
         {/* Purchase */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Actual Purchase</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{t("itemForm.actualPurchaseLabel")}</p>
           <p className={`text-sm font-bold ${asNumber(item.Purchase_value) > 0 ? "text-emerald-700" : "text-slate-300 italic text-xs font-normal"}`}>
-            {asNumber(item.Purchase_value) > 0 ? money(asNumber(item.Purchase_value)) : "Pending"}
+            {asNumber(item.Purchase_value) > 0 ? money(asNumber(item.Purchase_value)) : t("itemForm.pending")}
           </p>
           <p className="text-[11px] text-slate-500">{item.Purchase_shop || "—"}</p>
           {pLink && (
             <a href={pLink} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:underline mt-0.5">
-              View link <ExternalLink className="h-2.5 w-2.5" />
+              {t("itemForm.viewLink")} <ExternalLink className="h-2.5 w-2.5" />
             </a>
           )}
           {item.Purchase_notes && (
             <div className="mt-2 rounded-md bg-blue-50 border border-blue-100 px-2.5 py-1.5">
-              <p className="text-[10px] font-semibold uppercase text-blue-600 mb-0.5">Purchase notes</p>
+              <p className="text-[10px] font-semibold uppercase text-blue-600 mb-0.5">{t("itemForm.purchaseNotes")}</p>
               <p className="text-[11px] text-slate-700 whitespace-pre-wrap">{item.Purchase_notes}</p>
             </div>
           )}
@@ -670,6 +692,7 @@ function ItemRow({
 // Add Item inline form
 // ─────────────────────────────────────────────────────────────────────────────
 function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: PurchaseOrderItem) => void }) {
+  const t = useTranslations("purchaseDetail")
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -710,20 +733,20 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
     return (
       <button onClick={() => setOpen(true)}
         className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-4 py-2.5 text-xs text-slate-400 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/40 transition-colors">
-        <Plus className="h-3.5 w-3.5" /> Add item
+        <Plus className="h-3.5 w-3.5" /> {t("addItem.btnAddItem")}
       </button>
     )
   }
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 space-y-3">
-      <p className="text-xs font-semibold text-emerald-700">New item</p>
+      <p className="text-xs font-semibold text-emerald-700">{t("addItem.newItem")}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Item name *"
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder={t("addItem.namePlaceholder")}
             className="text-sm border-slate-200 focus:border-emerald-400" />
         </div>
-        <Input value={shop} onChange={e => setShop(e.target.value)} placeholder="Shop *"
+        <Input value={shop} onChange={e => setShop(e.target.value)} placeholder={t("addItem.shopPlaceholder")}
           className="text-sm border-slate-200 focus:border-emerald-400" />
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
@@ -731,18 +754,18 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
             className="pl-6 text-sm border-slate-200 focus:border-emerald-400" />
         </div>
         <div className="sm:col-span-2">
-          <Input value={link} onChange={e => setLink(e.target.value)} placeholder="Quote link"
+          <Input value={link} onChange={e => setLink(e.target.value)} placeholder={t("addItem.quoteLinkPlaceholder")}
             className="text-sm border-slate-200 focus:border-emerald-400" />
         </div>
         <div className="sm:col-span-2">
           <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 mb-1.5">
             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-blue-500 mt-0.5" />
-            <p className="text-[11px] text-blue-700"><strong>Required:</strong> document the quoting process for this item.</p>
+            <p className="text-[11px] text-blue-700"><strong>Required:</strong> {t("addItem.requiredNotes")}</p>
           </div>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Quote notes: comparisons, selection reason, special conditions… *"
+            placeholder={t("addItem.notesPlaceholder")}
             rows={2}
             className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
           />
@@ -752,9 +775,9 @@ function AddItemForm({ orderId, onAdded }: { orderId: string; onAdded: (item: Pu
       <div className="flex gap-2">
         <Button size="sm" disabled={!valid || loading} onClick={handleAdd}
           className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Add
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {t("addItem.btnAdd")}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => { setOpen(false); setErr(null) }} className="text-xs">Cancel</Button>
+        <Button size="sm" variant="outline" onClick={() => { setOpen(false); setErr(null) }} className="text-xs">{t("btnCancel")}</Button>
       </div>
     </div>
   )
@@ -770,6 +793,7 @@ function OrderBlock({
   onUpdateItem,
   onDeleteItem,
   onAddItem,
+  isRequestOnly,
 }: {
   order: PurchaseOrder
   onUpdateOrder: (id: string, patch: Partial<PurchaseOrder>) => Promise<void>
@@ -777,7 +801,9 @@ function OrderBlock({
   onUpdateItem: (id: string, patch: Partial<PurchaseOrderItem>) => Promise<void>
   onDeleteItem: (orderId: string, itemId: string) => Promise<void>
   onAddItem: (orderId: string, item: PurchaseOrderItem) => void
+  isRequestOnly?: boolean
 }) {
+  const t = useTranslations("purchaseDetail")
   const [collapsed, setCollapsed] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(order.Order_title ?? "")
@@ -828,7 +854,7 @@ function OrderBlock({
             </div>
           ) : (
             <div className="flex items-center gap-2 group/title">
-              <p className="text-sm font-semibold text-slate-800 truncate">{order.Order_title || "Untitled"}</p>
+              <p className="text-sm font-semibold text-slate-800 truncate">{order.Order_title || t("orderBlock.untitled")}</p>
               <button onClick={() => setEditingTitle(true)}
                 className="opacity-0 group-hover/title:opacity-100 rounded p-0.5 text-slate-400 hover:text-slate-600 transition-opacity">
                 <Pencil className="h-3 w-3" />
@@ -837,12 +863,14 @@ function OrderBlock({
           )}
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             <span className="font-mono text-[10px] text-slate-400">{order.ID_PurchaseOrder}</span>
-            <span className="text-[10px] text-slate-400">{items.length} item{items.length !== 1 ? "s" : ""}</span>
-            <span className="text-[10px] text-emerald-600 font-semibold">Quoted: {money(totalQuoted)}</span>
-            {totalPurchased > 0 && <span className="text-[10px] text-slate-600 font-semibold">Purchased: {money(totalPurchased)}</span>}
-            {order.Est_delivery_date && <span className="text-[10px] text-slate-400">Delivery: {fmtDate(order.Est_delivery_date)}</span>}
+            <span className="text-[10px] text-slate-400">
+              {items.length === 1 ? t("orderBlock.item", { count: items.length }) : t("orderBlock.items", { count: items.length })}
+            </span>
+            <span className="text-[10px] text-emerald-600 font-semibold">{t("orderBlock.quoted")} {money(totalQuoted)}</span>
+            {totalPurchased > 0 && <span className="text-[10px] text-slate-600 font-semibold">{t("orderBlock.purchased")} {money(totalPurchased)}</span>}
+            {order.Est_delivery_date && <span className="text-[10px] text-slate-400">{t("orderBlock.delivery")} {fmtDate(order.Est_delivery_date)}</span>}
             <span className={`text-[10px] font-semibold ${order.Order_confirmation ? "text-emerald-600" : "text-amber-600"}`}>
-              {order.Order_confirmation ? "✓ Confirmed" : "Pending confirmation"}
+              {order.Order_confirmation ? t("orderBlock.confirmed") : t("orderBlock.pendingConfirmation")}
             </span>
           </div>
         </div>
@@ -851,11 +879,11 @@ function OrderBlock({
             <>
               <button onClick={deleteOrder} disabled={deletingOrder}
                 className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-red-500 text-white hover:bg-red-600">
-                {deletingOrder ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                {deletingOrder ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("btnDelete")}
               </button>
               <button onClick={() => setConfirmDeleteOrder(false)}
                 className="rounded-lg px-2.5 py-1 text-[11px] border border-slate-200 text-slate-500 hover:bg-slate-50">
-                Cancel
+                {t("btnCancel")}
               </button>
             </>
           ) : (
@@ -881,7 +909,7 @@ function OrderBlock({
       {!collapsed && (
         <div className="p-4 space-y-2">
           {items.length === 0 && (
-            <p className="text-xs text-slate-400 italic text-center py-2">No items in this order</p>
+            <p className="text-xs text-slate-400 italic text-center py-2">{t("orderBlock.noItems")}</p>
           )}
           {items.map(it => (
             <ItemRow
@@ -889,6 +917,7 @@ function OrderBlock({
               item={it}
               onUpdate={onUpdateItem}
               onDelete={(itemId) => onDeleteItem(order.ID_PurchaseOrder!, itemId)}
+              isRequestOnly={isRequestOnly}
             />
           ))}
           <AddItemForm
@@ -905,6 +934,7 @@ function OrderBlock({
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PurchaseDetailsPage() {
+  const t = useTranslations("purchaseDetail")
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params?.id
@@ -927,6 +957,9 @@ export default function PurchaseDetailsPage() {
   const [editingStatus, setEditingStatus] = useState(false)
   const [statusDraft, setStatusDraft] = useState("")
   const [statusSaving, setStatusSaving] = useState(false)
+
+  // Permission context
+  const [isRequestOnly, setIsRequestOnly] = useState(false)
 
   // New order form
   const [showAddOrder, setShowAddOrder] = useState(false)
@@ -960,6 +993,13 @@ export default function PurchaseDetailsPage() {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
     setUser(JSON.parse(u))
+    apiFetch("/api/auth/can?actions=purchase:update,purchase:request_only", { cache: "no-store" })
+      .then(r => r.json())
+      .then(data => {
+        const r = data?.results ?? {}
+        setIsRequestOnly(!!r["purchase:request_only"] && !r["purchase:update"])
+      })
+      .catch(() => {})
   }, [router])
 
   const fetchPurchase = useCallback(async (pid: string) => {
@@ -978,7 +1018,7 @@ export default function PurchaseDetailsPage() {
       setPurchase(normalizedData)
       if (Array.isArray(raw.suppliers)) setLinkedSuppliers(raw.suppliers)
     } catch (e: any) {
-      setLoadError(e?.message ?? "Error loading purchase")
+      setLoadError(e?.message ?? t("couldNotLoad"))
     } finally {
       setLoading(false)
     }
@@ -1071,7 +1111,7 @@ export default function PurchaseDetailsPage() {
       setNewOrderTitle("")
       setShowAddOrder(false)
     } catch (e: any) {
-      setAddOrderErr(e?.message ?? "Error creating order")
+      setAddOrderErr(e?.message ?? "Error")
     } finally {
       setAddingOrder(false)
     }
@@ -1148,8 +1188,8 @@ export default function PurchaseDetailsPage() {
   if (!id) return (
     <Shell user={user}>
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-        <p className="text-sm text-slate-500">Invalid purchase ID.</p>
-        <Button onClick={() => router.push("/purchases")} variant="outline" className="mt-4 text-xs">← Back</Button>
+        <p className="text-sm text-slate-500">{t("invalidId")}</p>
+        <Button onClick={() => router.push("/purchases")} variant="outline" className="mt-4 text-xs">← {t("btnBack")}</Button>
       </div>
     </Shell>
   )
@@ -1166,10 +1206,10 @@ export default function PurchaseDetailsPage() {
     <Shell user={user}>
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
         <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
-        <p className="text-sm font-semibold text-slate-700">Could not load purchase</p>
+        <p className="text-sm font-semibold text-slate-700">{t("couldNotLoad")}</p>
         <p className="mt-1 text-xs text-red-500">{loadError}</p>
         <Button onClick={() => fetchPurchase(id)} className="mt-4 gap-1.5 text-xs">
-          <RefreshCcw className="h-3.5 w-3.5" /> Retry
+          <RefreshCcw className="h-3.5 w-3.5" /> {t("btnRetry")}
         </Button>
       </div>
     </Shell>
@@ -1206,14 +1246,19 @@ export default function PurchaseDetailsPage() {
                       <span className={`flex-shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold sm:px-3 ${statusColor}`}>
                         {purchase.Status ?? "—"}
                       </span>
+                      {purchase.Is_extra && (
+                        <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-600 sm:px-3">
+                          <Zap className="h-3 w-3" />{t("sections.extra")}
+                        </span>
+                      )}
                       {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />}
                     </div>
-                    <p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:block">{purchase.Description || "No description"}</p>
+                    <p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:block">{purchase.Description || t("noDescription")}</p>
                   </div>
                 </div>
                 <div className="flex flex-shrink-0 gap-2">
                   <Button variant="outline" size="sm" onClick={() => fetchPurchase(id)} className="gap-1.5 text-xs">
-                    <RefreshCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Refresh</span>
+                    <RefreshCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("btnRefresh")}</span>
                   </Button>
                 </div>
               </div>
@@ -1235,7 +1280,7 @@ export default function PurchaseDetailsPage() {
               <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 sm:items-center sm:px-6">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-600 sm:mt-0" />
                 <p className="text-xs text-amber-800">
-                  The <strong>Total_spending</strong> stored ({money(computed.totalSpendingDb)}) does not match the sum of item Purchase_value ({money(computed.totalPurchased)}).
+                  {t("mismatchWarning", { spending: money(computed.totalSpendingDb), purchased: money(computed.totalPurchased) })}
                 </p>
               </div>
             )}
@@ -1253,28 +1298,28 @@ export default function PurchaseDetailsPage() {
                       <div className="flex items-center gap-2">
                         <ClipboardList className="h-4 w-4 text-slate-400" />
                         <p className="text-sm font-semibold text-slate-700">
-                          Purchase Orders <span className="text-slate-400 font-normal">({computed.ordersCount})</span>
+                          {t("sections.purchaseOrders")} <span className="text-slate-400 font-normal">({computed.ordersCount})</span>
                         </p>
                       </div>
                       <button onClick={() => setShowAddOrder(a => !a)}
                         className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
-                        <Plus className="h-3.5 w-3.5" /> New order
+                        <Plus className="h-3.5 w-3.5" /> {t("sections.btnNewOrder")}
                       </button>
                     </div>
 
                     {/* Add order form */}
                     {showAddOrder && (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 space-y-3">
-                        <p className="text-xs font-semibold text-emerald-700">New purchase order</p>
+                        <p className="text-xs font-semibold text-emerald-700">{t("sections.newOrderTitle")}</p>
                         <Input value={newOrderTitle} onChange={e => setNewOrderTitle(e.target.value)}
-                          placeholder="Order title *" className="text-sm border-slate-200 focus:border-emerald-400" />
+                          placeholder={t("sections.orderTitlePlaceholder")} className="text-sm border-slate-200 focus:border-emerald-400" />
                         {addOrderErr && <p className="text-[11px] text-red-500">{addOrderErr}</p>}
                         <div className="flex gap-2">
                           <Button size="sm" disabled={!newOrderTitle.trim() || addingOrder} onClick={handleAddOrder}
                             className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
-                            {addingOrder ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Create
+                            {addingOrder ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {t("sections.btnCreate")}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => { setShowAddOrder(false); setAddOrderErr(null) }} className="text-xs">Cancel</Button>
+                          <Button size="sm" variant="outline" onClick={() => { setShowAddOrder(false); setAddOrderErr(null) }} className="text-xs">{t("btnCancel")}</Button>
                         </div>
                       </div>
                     )}
@@ -1283,7 +1328,7 @@ export default function PurchaseDetailsPage() {
                     {(purchase.purchase_orders ?? []).length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
                         <Package className="mx-auto mb-2 h-7 w-7 text-slate-200" />
-                        <p className="text-sm text-slate-400">No purchase orders</p>
+                        <p className="text-sm text-slate-400">{t("sections.noPurchaseOrders")}</p>
                       </div>
                     ) : (
                       (purchase.purchase_orders ?? []).map(o => (
@@ -1295,6 +1340,7 @@ export default function PurchaseDetailsPage() {
                           onUpdateItem={handleUpdateItem}
                           onDeleteItem={handleDeleteItem}
                           onAddItem={handleAddItem}
+                          isRequestOnly={isRequestOnly}
                         />
                       ))
                     )}
@@ -1308,18 +1354,18 @@ export default function PurchaseDetailsPage() {
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5 sm:py-3.5">
                       <ShoppingCart className="h-3.5 w-3.5 text-slate-400" />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Purchase Details</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("sections.purchaseDetails")}</p>
                     </div>
                     <div className="space-y-4 px-4 py-3.5 sm:px-5 sm:py-4">
                       <InlineField
-                        label="Description"
+                        label={t("sections.desc")}
                         value={purchase.Description ?? ""}
-                        placeholder="No description"
+                        placeholder={t("noDescription")}
                         onSave={v => patchPurchase({ Description: v })}
                       />
                       {/* Status */}
                       <div className="group">
-                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</p>
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("sections.status")}</p>
                         {editingStatus ? (
                           <div className="space-y-1.5">
                             <select
@@ -1328,8 +1374,11 @@ export default function PurchaseDetailsPage() {
                               autoFocus
                               className="w-full rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
                             >
-                              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                              {(isRequestOnly ? ["Pending", "In Review"] : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
+                            {isRequestOnly && (
+                              <p className="text-[10px] text-amber-600">{t("sections.permissionsWarning")}</p>
+                            )}
                             <div className="flex gap-1.5">
                               <button
                                 disabled={statusSaving}
@@ -1342,13 +1391,13 @@ export default function PurchaseDetailsPage() {
                                   finally { setStatusSaving(false) }
                                 }}
                                 className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
-                                {statusSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                                {statusSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} {t("btnSave")}
                               </button>
                               <button
                                 disabled={statusSaving}
                                 onClick={() => { setEditingStatus(false) }}
                                 className="rounded-md border border-slate-200 px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-50">
-                                Cancel
+                                {t("btnCancel")}
                               </button>
                             </div>
                           </div>
@@ -1365,13 +1414,13 @@ export default function PurchaseDetailsPage() {
                           </div>
                         )}
                       </div>
-                      <InlineField label="Pick Up Person" value={purchase.PickUp_person ?? ""} placeholder="—"
+                      <InlineField label={t("sections.pickUpPerson")} value={purchase.PickUp_person ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ PickUp_person: v })} />
-                      <InlineField label="Delivery Location" value={purchase.Delivery_location ?? ""} placeholder="—"
+                      <InlineField label={t("sections.deliveryLocation")} value={purchase.Delivery_location ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ Delivery_location: v })} />
-                      <InlineField label="Return Request" value={purchase.Return_request ?? ""} placeholder="—"
+                      <InlineField label={t("sections.returnRequest")} value={purchase.Return_request ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ Return_request: v })} />
-                      <InlineField label="Return Status" value={purchase.Return_status ?? ""} placeholder="—"
+                      <InlineField label={t("sections.returnStatus")} value={purchase.Return_status ?? ""} placeholder="—"
                         onSave={v => patchPurchase({ Return_status: v })} />
                     </div>
                   </div>
@@ -1381,7 +1430,7 @@ export default function PurchaseDetailsPage() {
                     <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5 sm:py-3.5">
                       <div className="flex items-center gap-2">
                         <User className="h-3.5 w-3.5 text-slate-400" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Selling Rep</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("sections.sellingRep")}</p>
                       </div>
                       <button onClick={() => setShowMemberPicker(true)}
                         className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -1402,7 +1451,7 @@ export default function PurchaseDetailsPage() {
                       ) : (
                         <button onClick={() => setShowMemberPicker(true)}
                           className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs text-slate-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors">
-                          <User className="h-3.5 w-3.5" /> Assign member
+                          <User className="h-3.5 w-3.5" /> {t("sections.assignMember")}
                         </button>
                       )}
                     </div>
@@ -1413,7 +1462,7 @@ export default function PurchaseDetailsPage() {
                     <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5 sm:py-3.5">
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-3.5 w-3.5 text-slate-400" />
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Linked Job</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("sections.linkedJob")}</p>
                       </div>
                       <button onClick={() => setShowJobPicker(true)}
                         className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -1433,7 +1482,7 @@ export default function PurchaseDetailsPage() {
                       ) : (
                         <button onClick={() => setShowJobPicker(true)}
                           className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs text-slate-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors">
-                          <Briefcase className="h-3.5 w-3.5" /> Link job
+                          <Briefcase className="h-3.5 w-3.5" /> {t("sections.linkJob")}
                         </button>
                       )}
                     </div>
@@ -1443,37 +1492,37 @@ export default function PurchaseDetailsPage() {
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 sm:px-5 sm:py-3.5">
                       <DollarSign className="h-3.5 w-3.5 text-slate-400" />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Financial Summary</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("sections.financialSummary")}</p>
                     </div>
                     <div className="space-y-3 px-4 py-3.5 sm:px-5 sm:py-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Orders</span>
+                        <span className="text-xs text-slate-500">{t("sections.orders")}</span>
                         <span className="text-sm font-bold text-slate-700">{computed.ordersCount}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Total items</span>
+                        <span className="text-xs text-slate-500">{t("sections.totalItems")}</span>
                         <span className="text-sm font-bold text-slate-700">{computed.itemsCount}</span>
                       </div>
                       <div className="h-px bg-slate-100" />
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Total quoted</span>
+                        <span className="text-xs text-slate-500">{t("sections.totalQuoted")}</span>
                         <span className="text-sm font-bold text-slate-700">{money(computed.totalQuoted)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Total purchased</span>
+                        <span className="text-xs text-slate-500">{t("sections.totalPurchased")}</span>
                         <span className={`text-sm font-bold ${computed.totalPurchased > 0 ? "text-emerald-700" : "text-slate-300"}`}>
                           {money(computed.totalPurchased)}
                         </span>
                       </div>
                       {computed.totalSpendingDb > 0 && (
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">Total spending (DB)</span>
+                          <span className="text-xs text-slate-500">{t("sections.totalSpendingDb")}</span>
                           <span className="text-sm font-bold text-slate-700">{money(computed.totalSpendingDb)}</span>
                         </div>
                       )}
                       {computed.totalPurchased > 0 && (
                         <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2">
-                          <span className="text-xs font-semibold text-emerald-700">Savings</span>
+                          <span className="text-xs font-semibold text-emerald-700">{t("sections.savings")}</span>
                           <span className="text-sm font-bold text-emerald-700">{money(computed.totalSaved)}</span>
                         </div>
                       )}

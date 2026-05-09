@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { AlertTriangle, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type Props = {
     open: boolean
@@ -33,6 +34,7 @@ export function DeleteOrderDialog({
     jobPodioId,
     subcontractorId
 }: Props) {
+    const t = useTranslations("jobs")
     const [syncPodio, setSyncPodio] = useState<boolean>(defaultSyncPodio)
     const [submitting, setSubmitting] = useState(false)
     const [step, setStep] = useState<"idle" | "detaching" | "deleting">("idle")
@@ -94,7 +96,7 @@ export function DeleteOrderDialog({
                     if (!res.ok) {
                         const msg =
                             (typeof body === "object" && (body.detail || body.error || body.message)) ||
-                            (typeof body === "string" ? body : "Failed to detach estimate costs")
+                            (typeof body === "string" ? body : t("orderDetachError"))
                         throw new Error(msg)
                     }
                 }
@@ -118,15 +120,15 @@ export function DeleteOrderDialog({
             if (!delRes.ok) {
                 const msg =
                     (typeof delBody === "object" && (delBody.detail || delBody.message)) ||
-                    (typeof delBody === "string" ? delBody : "Failed to delete order")
+                    (typeof delBody === "string" ? delBody : t("orderDeleteError"))
                 throw new Error(msg)
             }
 
-            toast.success("Order deleted")
+            toast.success(t("orderDeletedSuccess"))
             onOpenChange(false)
             onDeleted?.()
         } catch (e: any) {
-            toast.error(e?.message ?? "Failed to delete order")
+            toast.error(e?.message ?? t("orderDeleteError"))
         } finally {
             setSubmitting(false)
             setStep("idle")
@@ -141,13 +143,13 @@ export function DeleteOrderDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Trash2 className="h-5 w-5 text-red-600" />
-                        Delete Order
+                        {t("orderDeleteTitle")}
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="rounded-md border p-3 bg-muted/40">
-                        <div className="font-semibold">{order.Title || "Order"}</div>
+                        <div className="font-semibold">{order.Title || t("orderDeleteOrderFallback")}</div>
                         <div className="text-sm text-muted-foreground">{order.ID_Order}</div>
                     </div>
 
@@ -156,9 +158,9 @@ export function DeleteOrderDialog({
                             <div className="flex items-start gap-2">
                                 <AlertTriangle className="h-5 w-5 mt-0.5" />
                                 <div>
-                                    <div className="font-semibold">You can’t delete this order yet</div>
+                                    <div className="font-semibold">{t("orderDeleteCannotYet")}</div>
                                     <div className="text-sm mt-1">
-                                        This order has <b>{changeOrdersCount}</b> change order(s). Please delete the change orders first.
+                                        {t("orderDeleteHasCOsPre")} <b>{changeOrdersCount}</b> {t("orderDeleteHasCOsSuffix")}
                                     </div>
                                 </div>
                             </div>
@@ -167,13 +169,13 @@ export function DeleteOrderDialog({
 
                     <div className="flex items-center justify-between rounded-md border p-3">
                         <div>
-                            <Label className="text-sm font-semibold">Sync Podio</Label>
+                            <Label className="text-sm font-semibold">{t("subTableSyncPodio")}</Label>
                             <div className="text-xs text-muted-foreground">
-                                If enabled, the delete will be synced to Podio (requires year).
+                                {t("orderDeleteSyncDesc")}
                             </div>
                             {syncPodio && (
                                 <div className="text-xs text-muted-foreground mt-1">
-                                    Year: <b>{jobYearForPodioSync ?? "—"}</b>
+                                    {t("orderDeleteSyncYear")} <b>{jobYearForPodioSync ?? "—"}</b>
                                 </div>
                             )}
                         </div>
@@ -181,20 +183,20 @@ export function DeleteOrderDialog({
                     </div>
 
                     <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-900 text-sm">
-                        This action is permanent. The order will be removed from the database.
+                        {t("orderDeletePermanent")}
                     </div>
                 </div>
 
                 <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-                        Cancel
+                        {t("orderDeleteCancelBtn")}
                     </Button>
                     <Button
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={submitting || !canDelete || (syncPodio && !jobYearForPodioSync)}
                     >
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("orderDeleteBtn")}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Pencil, Trash2, FileText, Loader2, Link2 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -121,20 +122,21 @@ function PodioSyncToggle({
   jobYear?: number
   disabled?: boolean
 }) {
+  const t = useTranslations("jobs")
   return (
     <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Link2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <p className="text-sm font-medium leading-tight">Sync to Podio</p>
+            <p className="text-sm font-medium leading-tight">{t("pricingCOSyncToPodio")}</p>
             {value && !jobYear && (
               <p className="text-xs text-red-500 mt-0.5">
-                Year not resolved — sync may fail
+                {t("docPodioYearNotResolved")}
               </p>
             )}
             {value && jobYear && (
-              <p className="text-xs text-muted-foreground mt-0.5">Year: {jobYear}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("pricingCOSyncYear")} {jobYear}</p>
             )}
           </div>
         </div>
@@ -161,6 +163,7 @@ export function ChangeOrdersSection({
   onPatchJob,
 }: Props) {
   const { toast } = useToast()
+  const t = useTranslations("jobs")
 
   // Derived: only general change orders (not linked to an Order)
   const allChangeOrders: ChangeOrder[] = Array.isArray(job?.change_orders)
@@ -206,9 +209,8 @@ export function ChangeOrdersSection({
   function validateSync(sync: boolean): boolean {
     if (sync && !jobYear) {
       toast({
-        title: "Missing year",
-        description:
-          "Year is required when Podio Sync is enabled. Disable sync or ensure the job has a valid date.",
+        title: t("pricingCOMissingYearTitle"),
+        description: t("pricingCOMissingYearDesc"),
         variant: "destructive",
       })
       return false
@@ -248,7 +250,7 @@ export function ChangeOrdersSection({
 
   async function handleCreate() {
     if (!job?.ID_Jobs) {
-      toast({ title: "Error", description: "Job ID not found.", variant: "destructive" })
+      toast({ title: "Error", description: t("pricingCOJobIdNotFound"), variant: "destructive" })
       return
     }
     if (!validateSync(createSync)) return
@@ -284,16 +286,16 @@ export function ChangeOrdersSection({
       await onPatchJob({ Gqm_final_sold_pricing: currentFinal + formula })
 
       toast({
-        title: "Change Order created",
-        description: `${fmtMoney(formula)} added to final sold pricing.`,
+        title: t("pricingCOCreatedTitle"),
+        description: `${fmtMoney(formula)} ${t("pricingCOCreatedDescSuffix")}`,
       })
       setCreateOpen(false)
       await onReload()
     } catch (err: any) {
       console.error("[change-order] create:", err)
       toast({
-        title: "Error creating Change Order",
-        description: err?.message ?? "Unexpected error",
+        title: t("pricingCOCreateErrorTitle"),
+        description: err?.message ?? t("pricingCOUnexpectedError"),
         variant: "destructive",
       })
     } finally {
@@ -347,11 +349,11 @@ export function ChangeOrdersSection({
       const deltaLabel =
         delta > 0 ? `+${fmtMoney(delta)}` :
         delta < 0 ? fmtMoney(delta) :
-        "no change in amount"
+        t("pricingCONoChangeInAmount")
 
       toast({
-        title: "Change Order updated",
-        description: `Final sold pricing adjusted: ${deltaLabel}.`,
+        title: t("pricingCOUpdatedTitle"),
+        description: `${t("pricingCOUpdatedDescPre")} ${deltaLabel}.`,
       })
       setEditOpen(false)
       setEditTarget(null)
@@ -359,8 +361,8 @@ export function ChangeOrdersSection({
     } catch (err: any) {
       console.error("[change-order] edit:", err)
       toast({
-        title: "Error updating Change Order",
-        description: err?.message ?? "Unexpected error",
+        title: t("pricingCOUpdateErrorTitle"),
+        description: err?.message ?? t("pricingCOUnexpectedError"),
         variant: "destructive",
       })
     } finally {
@@ -396,8 +398,8 @@ export function ChangeOrdersSection({
       await onPatchJob({ Gqm_final_sold_pricing: currentFinal - formula })
 
       toast({
-        title: "Change Order deleted",
-        description: `${fmtMoney(formula)} subtracted from final sold pricing.`,
+        title: t("pricingCODeletedTitle"),
+        description: `${fmtMoney(formula)} ${t("pricingCODeletedDescSuffix")}`,
       })
       setDeleteOpen(false)
       setDeleteTarget(null)
@@ -405,8 +407,8 @@ export function ChangeOrdersSection({
     } catch (err: any) {
       console.error("[change-order] delete:", err)
       toast({
-        title: "Error deleting Change Order",
-        description: err?.message ?? "Unexpected error",
+        title: t("pricingCODeleteErrorTitle"),
+        description: err?.message ?? t("pricingCOUnexpectedError"),
         variant: "destructive",
       })
     } finally {
@@ -426,11 +428,11 @@ export function ChangeOrdersSection({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
             <div className="flex items-center gap-3 min-w-0">
               <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <CardTitle className="truncate">Job Change Orders (General)</CardTitle>
+              <CardTitle className="truncate">{t("pricingCOSectionTitle")}</CardTitle>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                Total:{" "}
+                {t("pricingCOTotal")}{" "}
                 <span className="font-semibold text-foreground">{fmtMoney(total)}</span>
               </span>
               <Button
@@ -439,7 +441,7 @@ export function ChangeOrdersSection({
                 className="bg-gqm-green-dark hover:bg-gqm-green"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
-                New
+                {t("pricingCONewBtn")}
               </Button>
             </div>
           </div>
@@ -450,10 +452,10 @@ export function ChangeOrdersSection({
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 py-10 gap-2">
               <FileText className="h-8 w-8 text-muted-foreground/25" />
               <p className="text-sm text-muted-foreground">
-                No general change orders for this job
+                {t("pricingCOEmpty")}
               </p>
               <Button variant="outline" size="sm" onClick={openCreate} className="mt-1">
-                <Plus className="mr-1.5 h-4 w-4" /> Add Change Order
+                <Plus className="mr-1.5 h-4 w-4" /> {t("pricingCOAddBtn")}
               </Button>
             </div>
           ) : (
@@ -480,7 +482,7 @@ export function ChangeOrdersSection({
                         <span
                           className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${stateStyle}`}
                         >
-                          {co.State}
+                          {t(`coState${co.State as COState}` as any)}
                         </span>
                       )}
                     </div>
@@ -501,7 +503,7 @@ export function ChangeOrdersSection({
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => openEdit(co)}
-                      title="Edit"
+                      title={t("pricingCOEditBtnTitle")}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -510,7 +512,7 @@ export function ChangeOrdersSection({
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-red-600"
                       onClick={() => openDelete(co)}
-                      title="Delete"
+                      title={t("pricingCODeleteBtnTitle")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -526,7 +528,7 @@ export function ChangeOrdersSection({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New Change Order</DialogTitle>
+            <DialogTitle>{t("pricingCOCreateTitle")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-1">
@@ -541,12 +543,12 @@ export function ChangeOrdersSection({
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
-              Cancel
+              {t("pricingCOCancelBtn")}
             </Button>
             <Button onClick={handleCreate} disabled={saving} className="bg-gqm-green-dark hover:bg-gqm-green">
               {saving
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
-                : "Create"
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("pricingCOCreating")}</>
+                : t("pricingCOCreate")
               }
             </Button>
           </DialogFooter>
@@ -557,7 +559,7 @@ export function ChangeOrdersSection({
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Change Order</DialogTitle>
+            <DialogTitle>{t("pricingCOEditTitle")}</DialogTitle>
           </DialogHeader>
           {editTarget && (
             <p className="text-xs text-muted-foreground -mt-2 font-mono">
@@ -581,12 +583,12 @@ export function ChangeOrdersSection({
               onClick={() => { setEditOpen(false); setEditTarget(null) }}
               disabled={saving}
             >
-              Cancel
+              {t("pricingCOCancelBtn")}
             </Button>
             <Button onClick={handleEdit} disabled={saving} className="bg-gqm-green-dark hover:bg-gqm-green">
               {saving
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
-                : "Save Changes"
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("pricingCOSaving")}</>
+                : t("pricingCOSaveChanges")
               }
             </Button>
           </DialogFooter>
@@ -597,11 +599,11 @@ export function ChangeOrdersSection({
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Change Order?</AlertDialogTitle>
+            <AlertDialogTitle>{t("pricingCODeleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  You are about to delete{" "}
+                  {t("pricingCODeleteDescPre")}{" "}
                   <span className="font-mono font-medium text-foreground">
                     {deleteTarget?.ID_ChangeOrder}
                   </span>
@@ -609,11 +611,11 @@ export function ChangeOrdersSection({
                 </p>
                 {deleteTarget?.ChangeOrderFormula != null && (
                   <p>
-                    This will subtract{" "}
+                    {t("pricingCODeleteSubtractPre")}{" "}
                     <strong className="text-foreground">
                       {fmtMoney(deleteTarget.ChangeOrderFormula)}
                     </strong>{" "}
-                    from the job's final sold pricing.
+                    {t("pricingCODeleteSubtractPost")}
                   </p>
                 )}
                 <PodioSyncToggle
@@ -626,15 +628,15 @@ export function ChangeOrdersSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("pricingCOCancelBtn")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {deleting
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</>
-                : "Delete"
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("pricingCODeleting")}</>
+                : t("pricingCODelete")
               }
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -655,23 +657,24 @@ function ChangeOrderForm({
   form: FormState
   setField: (key: keyof FormState, value: string) => void
 }) {
+  const t = useTranslations("jobs")
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="co-name" className="mb-2 block">Name</Label>
+        <Label htmlFor="co-name" className="mb-2 block">{t("pricingCOFormName")}</Label>
         <Input
           id="co-name"
-          placeholder="e.g., Additional scope — Roof"
+          placeholder={t("pricingCOFormNamePlaceholder")}
           value={form.Name}
           onChange={(e) => setField("Name", e.target.value)}
         />
       </div>
 
       <div>
-        <Label htmlFor="co-desc" className="mb-2 block">Description</Label>
+        <Label htmlFor="co-desc" className="mb-2 block">{t("pricingCOFormDesc")}</Label>
         <Textarea
           id="co-desc"
-          placeholder="Describe the change order…"
+          placeholder={t("pricingCOFormDescPlaceholder")}
           rows={2}
           className="sm:rows-3"
           value={form.Description}
@@ -681,7 +684,7 @@ function ChangeOrderForm({
 
       <div>
         <Label htmlFor="co-formula" className="mb-2 block">
-          Amount ($) <span className="text-red-500">*</span>
+          {t("pricingCOFormAmount")} <span className="text-red-500">*</span>
         </Label>
         <Input
           id="co-formula"
@@ -693,19 +696,19 @@ function ChangeOrderForm({
           onChange={(e) => setField("ChangeOrderFormula", e.target.value)}
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Added to / subtracted from the job's final sold pricing.
+          {t("pricingCOFormAmountHint")}
         </p>
       </div>
 
       <div>
-        <Label htmlFor="co-state" className="mb-2 block">State</Label>
+        <Label htmlFor="co-state" className="mb-2 block">{t("pricingCOFormState")}</Label>
         <Select value={form.State} onValueChange={(v) => setField("State", v)}>
           <SelectTrigger id="co-state">
-            <SelectValue placeholder="Select state" />
+            <SelectValue placeholder={t("pricingCOFormStatePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {STATE_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
+              <SelectItem key={s} value={s}>{t(`coState${s}` as any)}</SelectItem>
             ))}
           </SelectContent>
         </Select>

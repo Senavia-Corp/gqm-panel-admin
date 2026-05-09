@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "sonner"
 import { LocaleProvider } from "@/components/providers/LocaleProvider"
 import { SidebarProvider } from "@/components/providers/SidebarContext"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -48,9 +49,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         <LocaleProvider>
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
+          <TooltipProvider>
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
+          </TooltipProvider>
           <Analytics />
           <Toaster richColors position="top-right" />
         </LocaleProvider>

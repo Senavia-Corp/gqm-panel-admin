@@ -15,6 +15,8 @@ import {
   AlertCircle,
   ExternalLink,
   Plus,
+  MapPin,
+  DollarSign,
 } from "lucide-react"
 import { SectionCard } from "./components/SectionCard"
 import { EmptyState } from "./components/EmptyState"
@@ -47,14 +49,26 @@ interface Opportunity {
   Start_Date: string | null
   State: boolean | null
   ID_Jobs: string | null
+  ID_Order: string | null
   skills: OpportunitySkill[]
   subcontractors: Array<{ ID_Subcontractor: string }>
   applicants_count: number
+  job?: {
+    ID_Jobs: string
+    Project_location: string | null
+  } | null
+  order?: {
+    ID_Order: string
+    Title: string | null
+    Formula: number | null
+    Adj_formula: number | null
+  } | null
 }
 
 interface Props {
   subcontractorId?: string | null
   isTechnician?: boolean
+  onlyApplied?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,7 +92,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Props) {
+export default function OpportunitiesPanel({ subcontractorId, isTechnician, onlyApplied = false }: Props) {
   const t = useTranslations("opportunities")
   const [loading, setLoading] = useState(true)
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
@@ -97,14 +111,16 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
 
   // ── Debounce search ──────────────────────────────────────────────────────
   useEffect(() => {
+    if (onlyApplied) return
     const t = setTimeout(() => {
       setDebouncedSearch(search.trim())
     }, 400)
     return () => clearTimeout(t)
-  }, [search])
+  }, [search, onlyApplied])
 
   // ── Fetch skills for filter ───────────────────────────────────────────────
   useEffect(() => {
+    if (onlyApplied) return
     const fetchSkills = async () => {
       try {
         const res = await apiFetch("/api/skills")
@@ -116,13 +132,16 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
       }
     }
     fetchSkills()
-  }, [])
+  }, [onlyApplied])
 
   // ── Fetch opportunities ───────────────────────────────────────────────────
   const fetchOpportunities = useCallback(async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({ state: "active", limit: "100" })
+      const params = new URLSearchParams({ limit: "100" })
+      if (!onlyApplied) params.set("state", "active")
+      if (onlyApplied && subcontractorId) params.set("subcontractor_id", subcontractorId)
+
       if (debouncedSearch) params.set("q", debouncedSearch)
       if (priorityFilter !== "ALL") params.set("priority", priorityFilter)
       if (skillFilter !== "ALL") params.set("skill_id", skillFilter)
@@ -147,7 +166,7 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, priorityFilter, skillFilter])
+  }, [debouncedSearch, priorityFilter, skillFilter, onlyApplied, subcontractorId])
 
   useEffect(() => {
     fetchOpportunities()
@@ -234,85 +253,87 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border-2 border-black bg-gradient-to-br from-gqm-green-dark via-[#064e3b] to-emerald-950 shadow-sm overflow-hidden">
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-4">
+      <div className={`rounded-xl border-2 border-black ${onlyApplied ? 'bg-white' : 'bg-gradient-to-br from-gqm-green-dark via-[#064e3b] to-emerald-950'} shadow-sm overflow-hidden`}>
+        <div className={`flex items-start justify-between gap-4 border-b ${onlyApplied ? 'border-slate-100 bg-slate-50/50' : 'border-white/10'} px-6 py-4`}>
           <div>
-            <h2 className="text-base font-bold text-white">{t("boardTitle")}</h2>
-            <p className="mt-0.5 text-sm text-emerald-100/70">{t("boardSubtitle")}</p>
+            <h2 className={`text-base font-bold ${onlyApplied ? 'text-slate-800' : 'text-white'}`}>{onlyApplied ? t("myAppliedTitle") : t("boardTitle")}</h2>
+            <p className={`mt-0.5 text-sm ${onlyApplied ? 'text-slate-500' : 'text-emerald-100/70'}`}>{onlyApplied ? t("myAppliedSubtitle") : t("boardSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-emerald-400/20 px-2 text-xs font-bold text-emerald-400 border border-emerald-400/30">
+            <span className={`flex h-6 min-w-[24px] items-center justify-center rounded-full ${onlyApplied ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-400/20 text-emerald-400 border-emerald-400/30'} px-2 text-xs font-bold border`}>
               {Array.isArray(opportunities) ? opportunities.length : 0}
             </span>
-            <span className="text-[10px] text-emerald-400/60 font-bold uppercase tracking-wider">{t("active")}</span>
+            <span className={`text-[10px] ${onlyApplied ? 'text-slate-400' : 'text-emerald-400/60'} font-bold uppercase tracking-wider`}>{onlyApplied ? t("applied") : t("active")}</span>
           </div>
         </div>
 
         <div className="p-6">
-          <div className="space-y-4 mb-8">
-            <div className="relative">
-              <Search className="h-4 w-4 text-emerald-100/50 absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="pl-9 bg-white/10 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500 rounded-xl h-11"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="min-w-[180px]">
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="bg-white/10 border-white/10 text-white h-9 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-3.5 w-3.5 text-emerald-400/50" />
-                      <SelectValue placeholder={t("priority")} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">{t("allPriorities")}</SelectItem>
-                    <SelectItem value="Low">{t("low")}</SelectItem>
-                    <SelectItem value="Medium">{t("medium")}</SelectItem>
-                    <SelectItem value="High">{t("high")}</SelectItem>
-                    <SelectItem value="Critical">{t("critical")}</SelectItem>
-                  </SelectContent>
-                </Select>
+          {!onlyApplied && (
+            <div className="space-y-4 mb-8">
+              <div className="relative">
+                <Search className="h-4 w-4 text-emerald-100/50 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  className="pl-9 bg-white/10 border-white/10 text-white placeholder:text-white/30 focus:ring-emerald-500 rounded-xl h-11"
+                />
               </div>
 
-              <div className="min-w-[220px]">
-                <Select value={skillFilter} onValueChange={setSkillFilter}>
-                  <SelectTrigger className="bg-white/10 border-white/10 text-white h-9 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-3.5 w-3.5 text-emerald-400/50" />
-                      <SelectValue placeholder={t("skills")} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">{t("allSkills")}</SelectItem>
-                    {availableSkills.map((skill) => (
-                      <SelectItem key={skill.ID_Skill} value={skill.ID_Skill}>
-                        {skill.Division_trade || skill.Skill_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-[180px]">
+                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                    <SelectTrigger className="bg-white/10 border-white/10 text-white h-9 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-emerald-400/50" />
+                        <SelectValue placeholder={t("priority")} />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">{t("allPriorities")}</SelectItem>
+                      <SelectItem value="Low">{t("low")}</SelectItem>
+                      <SelectItem value="Medium">{t("medium")}</SelectItem>
+                      <SelectItem value="High">{t("high")}</SelectItem>
+                      <SelectItem value="Critical">{t("critical")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {(priorityFilter !== "ALL" || skillFilter !== "ALL") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPriorityFilter("ALL")
-                    setSkillFilter("ALL")
-                  }}
-                  className="border-white/20 bg-white/10 text-white hover:bg-white/20 h-9 px-4 rounded-lg text-xs font-bold transition-all"
-                >
-                  {t("clearFilters")}
-                </Button>
-              )}
+                <div className="min-w-[220px]">
+                  <Select value={skillFilter} onValueChange={setSkillFilter}>
+                    <SelectTrigger className="bg-white/10 border-white/10 text-white h-9 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-3.5 w-3.5 text-emerald-400/50" />
+                        <SelectValue placeholder={t("skills")} />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">{t("allSkills")}</SelectItem>
+                      {availableSkills.map((skill) => (
+                        <SelectItem key={skill.ID_Skill} value={skill.ID_Skill}>
+                          {skill.Division_trade || skill.Skill_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(priorityFilter !== "ALL" || skillFilter !== "ALL") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPriorityFilter("ALL")
+                      setSkillFilter("ALL")
+                    }}
+                    className="border-white/20 bg-white/10 text-white hover:bg-white/20 h-9 px-4 rounded-lg text-xs font-bold transition-all"
+                  >
+                    {t("clearFilters")}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -321,7 +342,7 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
             ))}
           </div>
         ) : (!Array.isArray(opportunities) || opportunities.length === 0) ? (
-          <EmptyState message="No active opportunities found at the moment." />
+          <EmptyState message={t("noAppliedFound")} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {opportunities.map((opp) => {
@@ -350,9 +371,26 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician }: Pr
                     <p className="text-xs font-mono text-gray-500">{opp.ID_Opportunities}</p>
                   </div>
 
-                  <p className="mb-4 line-clamp-2 text-xs text-gray-600 min-h-[32px]">
+                  <p className="mb-2 line-clamp-2 text-xs text-gray-600 min-h-[32px]">
                     {opp.Description || t("noDescription")}
                   </p>
+
+                  {opp.job?.Project_location && (
+                    <div className="flex items-center gap-1.5 mb-2 text-[11px] text-emerald-700 font-semibold bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="line-clamp-1">{opp.job.Project_location}</span>
+                    </div>
+                  )}
+
+                  {/* Linked order formula */}
+                  {opp.order?.Formula != null && (
+                    <div className="flex items-center gap-1.5 mb-4 text-[11px] text-white font-bold bg-emerald-600 p-1.5 rounded-lg">
+                      <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        {opp.order.Formula.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-1.5 mb-4 min-h-[24px]">
                     {opp.skills?.slice(0, 3).map((skill, idx) => (
