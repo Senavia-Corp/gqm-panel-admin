@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 
-const API_BASE_URL = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"}/member`
+import { getBackendUrl } from "@/lib/api-utils"
+
+export const dynamic = "force-dynamic"
+
+const API_BASE_URL = `${getBackendUrl()}/member`
 
 export async function GET(request: Request) {
   try {
