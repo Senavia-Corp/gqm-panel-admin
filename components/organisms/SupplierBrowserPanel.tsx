@@ -6,6 +6,7 @@ import {
   Store, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Globe, Mail, Phone, ExternalLink, Loader2, AlertCircle, X, Link2, Link2Off,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export const SPECIALTIES = [
   "Doors", "Windows/Glazing", "Plumbing Materials", "Fencing",
@@ -52,6 +53,7 @@ export function safeUrl(url?: string | null) {
 const LIMIT = 5
 
 export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContext }) {
+  const t = useTranslations("supplierBrowser")
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState("")
   const [specialty, setSpecialty] = useState("")
@@ -84,7 +86,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError("Failed to load suppliers")
+      setError(t("failedToLoad"))
     } finally {
       setLoading(false)
     }
@@ -123,11 +125,11 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
           <Store className="h-3.5 w-3.5 text-violet-600" />
         </div>
         <p className="flex-1 text-xs font-bold uppercase tracking-wide text-violet-700">
-          Supplier Directory
+          {t("directoryTitle")}
         </p>
         {linkContext && (
           <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
-            {linkContext.linkedIds.size} linked
+            {t("linkedCount", { count: linkContext.linkedIds.size })}
           </span>
         )}
         {open
@@ -145,7 +147,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
               <input
                 value={q}
                 onChange={e => { setQ(e.target.value); setSpecialty("") }}
-                placeholder="Search name, email, coverage…"
+                placeholder={t("searchPlaceholder")}
                 className="w-full pl-8 pr-7 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-violet-400 focus:bg-white"
               />
               {q && (
@@ -160,7 +162,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
               onChange={e => { setSpecialty(e.target.value); setQ("") }}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:border-violet-400 focus:bg-white"
             >
-              <option value="">All specialties</option>
+              <option value="">{t("allSpecialties")}</option>
               {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -177,7 +179,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
             </div>
           ) : rows.length === 0 ? (
             <div className="py-6 text-center">
-              <p className="text-[11px] text-slate-400">No suppliers found</p>
+              <p className="text-[11px] text-slate-400">{t("noSuppliersFound")}</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-50">
@@ -194,16 +196,16 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
                       </p>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {s.Acc_Status === "Active" && (
-                          <span className="text-[10px] font-semibold text-emerald-600">Active</span>
+                          <span className="text-[10px] font-semibold text-emerald-600">{t("active")}</span>
                         )}
                         {s.Acc_Status === "Inactive" && (
-                          <span className="text-[10px] font-semibold text-slate-400">Inactive</span>
+                          <span className="text-[10px] font-semibold text-slate-400">{t("inactive")}</span>
                         )}
                         {linkContext && (
                           <button
                             onClick={() => handleLinkToggle(s)}
                             disabled={isPending}
-                            title={isLinked ? "Unlink" : "Link to purchase"}
+                            title={isLinked ? t("unlink") : t("linkToPurchase")}
                             className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:opacity-50 ${
                               isLinked
                                 ? "border-violet-200 bg-violet-50 text-violet-700 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
@@ -213,9 +215,9 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
                             {isPending ? (
                               <Loader2 className="h-2.5 w-2.5 animate-spin" />
                             ) : isLinked ? (
-                              <><Link2Off className="h-2.5 w-2.5" />Unlink</>
+                              <><Link2Off className="h-2.5 w-2.5" />{t("unlink")}</>
                             ) : (
-                              <><Link2 className="h-2.5 w-2.5" />Link</>
+                              <><Link2 className="h-2.5 w-2.5" />{t("link")}</>
                             )}
                           </button>
                         )}
@@ -254,7 +256,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
                         <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-[11px] text-violet-600 hover:underline">
                           <Globe className="h-2.5 w-2.5 flex-shrink-0" />
-                          Website
+                          {t("website")}
                           <ExternalLink className="h-2 w-2 flex-shrink-0" />
                         </a>
                       )}
@@ -269,7 +271,7 @@ export function SupplierBrowserPanel({ linkContext }: { linkContext?: LinkContex
           {!loading && !error && total > 0 && (
             <div className="flex items-center justify-between border-t border-slate-50 px-4 py-2.5">
               <span className="text-[10px] text-slate-400">
-                {total} supplier{total !== 1 ? "s" : ""}
+                {total === 1 ? t("supplierCount", { count: total }) : t("suppliersCount", { count: total })}
               </span>
               <div className="flex items-center gap-1">
                 <button disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}

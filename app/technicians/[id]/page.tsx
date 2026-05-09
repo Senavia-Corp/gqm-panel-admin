@@ -25,6 +25,7 @@ import {
   ExternalLink, Wrench, Shield, Users
 } from "lucide-react"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -192,6 +193,7 @@ function PageSkeleton({ user }: { user: any }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TechnicianDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = useTranslations("subcontractors")
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { id }       = use(params)
@@ -205,7 +207,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const [subcontractors, setSubcontractors] = useState<any[]>([])
 
   const { hasPermission } = usePermissions()
-  const canUpdate = hasPermission("technician:update")
+  const canUpdate = user?.role === "LEAD_TECHNICIAN" || hasPermission("technician:update")
 
   // ── Edit state ─────────────────────────────────────────────────────────────
   const [editing, setEditing]   = useState(false)
@@ -254,14 +256,17 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       .catch(console.error)
   }, [router])
 
-  const initForm = (t: TechnicianFull) => setForm({
-    Name:               t.Name               ?? "",
-    Location:           t.Location           ?? "",
-    Email_Address:      t.Email_Address      ?? "",
-    Phone_Number:       t.Phone_Number       ?? "",
-    Type_of_technician: t.Type_of_technician ?? "Worker",
-    ID_Subcontractor:   t.ID_Subcontractor   ?? "none",
-  })
+  const initForm = (t: TechnicianFull) => {
+    const sId = t.ID_Subcontractor || t.subcontractor?.ID_Subcontractor || "none"
+    setForm({
+      Name:               t.Name               ?? "",
+      Location:           t.Location           ?? "",
+      Email_Address:      t.Email_Address      ?? "",
+      Phone_Number:       t.Phone_Number       ?? "",
+      Type_of_technician: t.Type_of_technician ?? "Worker",
+      ID_Subcontractor:   String(sId),
+    })
+  }
 
   // ── Fetch technician ───────────────────────────────────────────────────────────
   const fetchTechnician = useCallback(async () => {
@@ -274,7 +279,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       initForm(data)
       setChangedFields(new Set())
     } catch (e: any) {
-      setLoadError(e?.message ?? "Failed to load technician")
+      setLoadError(e?.message ?? t("techLoadError"))
     } finally { setLoading(false) }
   }, [id])
 
@@ -309,9 +314,9 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       // refetch to get updated relations (e.g. subcontractor name)
       await fetchTechnician()
       setEditing(false); setChangedFields(new Set())
-      toast({ title: "Saved", description: "Technician updated successfully." })
+      toast({ title: t("toastSaved"), description: t("techUpdateSuccess") })
     } catch (e: any) {
-      toast({ title: "Error saving", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setSaving(false) }
   }
 
@@ -322,10 +327,10 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
 
   // ── Save password ──────────────────────────────────────────────────────────
   const handleSavePassword = async () => {
-    if (!pwForm.new || !pwForm.confirm) { toast({ title: "Fill all password fields", variant: "destructive" }); return }
-    if (pwForm.new !== pwForm.confirm)  { toast({ title: "Passwords do not match", variant: "destructive" }); return }
+    if (!pwForm.new || !pwForm.confirm) { toast({ title: t("toastPwdFill"), variant: "destructive" }); return }
+    if (pwForm.new !== pwForm.confirm)  { toast({ title: t("techPwdNoMatch"), variant: "destructive" }); return }
     if (pwForm.new.length < 8 || !/[A-Z]/.test(pwForm.new) || !/[0-9]/.test(pwForm.new)) {
-      toast({ title: "Weak password", description: "Min 8 chars, one uppercase, one number.", variant: "destructive" }); return
+      toast({ title: t("toastPwdWeak"), description: t("toastPwdWeakDesc"), variant: "destructive" }); return
     }
     setPwSaving(true)
     try {
@@ -336,7 +341,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
         cache: "no-store",
       })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      toast({ title: "Password updated" })
+      toast({ title: t("toastPwdUpdated") })
       setPwForm({ old: "", new: "", confirm: "" }); setPwSection(false)
     } catch (e: any) {
       toast({ title: "Error", description: e?.message, variant: "destructive" })
@@ -353,7 +358,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       const items = Array.isArray(data) ? data : (data.results ?? [])
       setAllPerms(items)
     } catch (e: any) {
-      toast({ title: "Error loading", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setRpLoading(false) }
   }
 
@@ -363,9 +368,9 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       const res = await apiFetch(`/api/technician/${id}/permissions/${permId}`, { method: "POST", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchTechnician()
-      toast({ title: "Permission linked" })
+      toast({ title: t("toastPermLinked") })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setLinkingId(null) }
   }
 
@@ -375,9 +380,9 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       const res = await apiFetch(`/api/technician/${id}/permissions/${permId}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       await fetchTechnician()
-      toast({ title: "Permission removed" })
+      toast({ title: t("toastPermRemoved") })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setUnlinkingId(null) }
   }
 
@@ -404,12 +409,12 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
         <TopBar user={user} />
         <main className="flex-1 p-6">
           <button onClick={() => router.push("/subcontractors")} className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Back to Subcontractors
+            <ArrowLeft className="h-4 w-4" /> {t("backToSubs")}
           </button>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
-            <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">Could not load technician</h2></div>
+            <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">{t("techLoadError")}</h2></div>
             <p className="mt-2 text-sm text-red-600">{loadError}</p>
-            <Button onClick={fetchTechnician} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> Retry</Button>
+            <Button onClick={fetchTechnician} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> {t("retry")}</Button>
           </div>
         </main>
       </div>
@@ -439,13 +444,13 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                     {initials}
                   </div>
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{technician.Name ?? "Unnamed"}</h1>
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{technician.Name ?? t("unnamed")}</h1>
                     <p className="mt-0.5 hidden font-mono text-xs text-slate-400 sm:block">{technician.ID_Technician}</p>
                   </div>
                 </div>
                 {technician.Type_of_technician && (
                   <span className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600 md:inline-flex">
-                    <Wrench className="h-3 w-3 text-slate-400" />{technician.Type_of_technician}
+                    <Wrench className="h-3 w-3 text-slate-400" />{technician.Type_of_technician === "Leader" ? t("leader") : t("worker")}
                   </span>
                 )}
               </div>
@@ -454,16 +459,16 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                 {canUpdate && editing ? (
                   <>
                     <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("cancel")}</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
+                      <span className="hidden sm:inline">{saving ? t("saving") : t("saveChanges")}</span>
                     </Button>
                   </>
                 ) : canUpdate ? (
                   <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
-                    ✎<span className="hidden sm:inline"> Edit</span>
+                    ✎<span className="hidden sm:inline"> {t("edit")}</span>
                   </Button>
                 ) : null}
               </div>
@@ -482,8 +487,8 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                   <div className="mb-4 overflow-x-auto sm:mb-5">
                     <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {[
-                        { value: "details",  labelFull: "Details",             labelShort: "Details",  count: null },
-                        { value: "permissions", labelFull: "Permissions",      labelShort: "Permissions",    count: technician.permissions?.length ?? 0 },
+                        { value: "details",  labelFull: t("tabDetails"),             labelShort: t("tabDetails"),  count: null },
+                        ...(user?.role !== "LEAD_TECHNICIAN" ? [{ value: "permissions", labelFull: t("tabPermissions"),      labelShort: t("tabPermissions"),    count: technician.permissions?.length ?? 0 }] : []),
                       ].map(({ value, labelFull, labelShort, count }) => (
                         <TabsTrigger key={value} value={value}
                           className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-500 transition-colors data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:px-4">
@@ -502,17 +507,17 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                   {/* ── DETAILS tab ─────────────────────────────────────── */}
                   <TabsContent value="details" className="space-y-4">
 
-                    <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Technician Information">
+                    <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("personalInfo")}>
                       <div className="grid min-w-0 gap-5 md:grid-cols-2">
                         <div className="min-w-0 md:col-span-2">
-                          <FieldLabel>Full Name</FieldLabel>
+                          <FieldLabel>{t("techFullName")}</FieldLabel>
                           {editing
-                            ? <Input value={form.Name} onChange={e => setField("Name", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Name"))}`} placeholder="Full name" />
+                            ? <Input value={form.Name} onChange={e => setField("Name", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Name"))}`} placeholder={t("techFullName")} />
                             : <p className="text-sm text-slate-800">{technician.Name || <span className="italic text-slate-400">—</span>}</p>
                           }
                         </div>
                         <div className="min-w-0">
-                          <FieldLabel>Email Address</FieldLabel>
+                          <FieldLabel>{t("techEmailAddress")}</FieldLabel>
                           {editing
                             ? <Input type="email" value={form.Email_Address} onChange={e => setField("Email_Address", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Email_Address"))}`} placeholder="email@example.com" />
                             : technician.Email_Address
@@ -521,7 +526,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                           }
                         </div>
                         <div className="min-w-0">
-                          <FieldLabel>Phone Number</FieldLabel>
+                          <FieldLabel>{t("techPhoneNumber")}</FieldLabel>
                           {editing
                             ? <Input value={form.Phone_Number} onChange={e => setField("Phone_Number", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Phone_Number"))}`} placeholder="(555) 000-0000" />
                             : technician.Phone_Number
@@ -530,136 +535,139 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                           }
                         </div>
                         <div className="min-w-0">
-                          <FieldLabel>Location</FieldLabel>
+                          <FieldLabel>{t("techLocation")}</FieldLabel>
                           {editing
-                            ? <Input value={form.Location} onChange={e => setField("Location", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Location"))}`} placeholder="e.g. Orlando, FL" />
+                            ? <Input value={form.Location} onChange={e => setField("Location", e.target.value)} className={`${inputCls} ${changedCls(changedFields.has("Location"))}`} placeholder={t("techLocation")} />
                             : technician.Location
                               ? <p className="flex items-start gap-1.5 text-sm text-slate-800"><MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400" />{technician.Location}</p>
                               : <span className="text-sm italic text-slate-400">—</span>
                           }
                         </div>
                         <div className="min-w-0">
-                          <FieldLabel>Role Type</FieldLabel>
+                          <FieldLabel>{t("techRoleType")}</FieldLabel>
                           {editing
                             ? (
                                <Select value={form.Type_of_technician} onValueChange={v => setField("Type_of_technician", v)}>
                                  <SelectTrigger className={`${inputCls} ${changedCls(changedFields.has("Type_of_technician"))}`}>
-                                   <SelectValue placeholder="Select type" />
+                                   <SelectValue placeholder={t("techSelectType")} />
                                  </SelectTrigger>
                                  <SelectContent>
-                                   <SelectItem value="Worker">Worker</SelectItem>
-                                   <SelectItem value="Leader">Leader</SelectItem>
+                                   <SelectItem value="Worker">{t("worker")}</SelectItem>
+                                   <SelectItem value="Leader">{t("leader")}</SelectItem>
                                  </SelectContent>
                                </Select>
                             )
-                            : <p className="text-sm text-slate-800">{technician.Type_of_technician || <span className="italic text-slate-400">—</span>}</p>
+                            : <p className="text-sm text-slate-800">{technician.Type_of_technician === "Leader" ? t("leader") : t("worker")}</p>
                           }
                         </div>
                         <div className="min-w-0 md:col-span-2">
-                          <FieldLabel>Subcontractor Association</FieldLabel>
+                          <FieldLabel>{t("techColSub")}</FieldLabel>
                           {editing
                             ? (
                                <div className="flex items-center gap-3">
                                  <Button
                                    variant="outline"
                                    onClick={() => setSubModalOpen(true)}
+                                   disabled={user?.role === "LEAD_TECHNICIAN"}
                                    className={`flex-1 justify-between bg-slate-50 border-slate-200 hover:bg-slate-100 ${form.ID_Subcontractor !== "none" ? "text-slate-900" : "text-slate-400"}`}
                                  >
                                    <span className="truncate">
                                      {form.ID_Subcontractor !== "none" 
                                        ? (subcontractors.find(s => s.ID_Subcontractor === form.ID_Subcontractor)?.Name || technician.subcontractor?.Name || form.ID_Subcontractor)
-                                       : "Select a Subcontractor"}
+                                       : t("techSelectSub")}
                                    </span>
-                                   <Users className="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />
+                                   {user?.role !== "LEAD_TECHNICIAN" && <Users className="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />}
                                  </Button>
-                                 {form.ID_Subcontractor !== "none" && (
+                                 {form.ID_Subcontractor !== "none" && user?.role !== "LEAD_TECHNICIAN" && (
                                    <Button variant="ghost" onClick={() => setField("ID_Subcontractor", "none")} className="text-slate-400 hover:text-red-500">
-                                     Clear
+                                     {t("techClear")}
                                    </Button>
                                  )}
                                </div>
                             )
                             : technician.subcontractor
                               ? <p className="flex items-center gap-1.5 text-sm text-slate-800"><Users className="h-4 w-4 text-slate-400" />{technician.subcontractor.Name}</p>
-                              : <p className="text-sm italic text-slate-400">Independent</p>
+                              : <p className="text-sm italic text-slate-400">{t("techIndependent")}</p>
                           }
                         </div>
                       </div>
                     </SectionCard>
 
                     {/* Password */}
-                    <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500" title="Password Management"
+                    <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500" title={t("authentication")}
                       action={
                         <Button variant="outline" size="sm" onClick={() => setPwSection(v => !v)} className="text-xs border-slate-200">
-                          {pwSection ? "Cancel" : "Change Password"}
+                          {pwSection ? t("cancel") : t("btnChangePassword")}
                         </Button>
                       }>
                       {pwSection ? (
                         <div className="space-y-4">
                           <div>
-                            <FieldLabel>New Password</FieldLabel>
-                            <PasswordInput value={pwForm.new} onChange={v => setPwForm(p => ({ ...p, new: v }))} placeholder="New password" />
-                            <p className="mt-1 text-[11px] text-slate-400">Min 8 characters, one uppercase letter, one number</p>
+                            <FieldLabel>{t("newPassword")}</FieldLabel>
+                            <PasswordInput value={pwForm.new} onChange={v => setPwForm(p => ({ ...p, new: v }))} placeholder={t("newPassword")} />
+                            <p className="mt-1 text-[11px] text-slate-400">{t("passwordHelp")}</p>
                           </div>
                           <div>
-                            <FieldLabel>Confirm Password</FieldLabel>
-                            <PasswordInput value={pwForm.confirm} onChange={v => setPwForm(p => ({ ...p, confirm: v }))} placeholder="Confirm new password" />
+                            <FieldLabel>{t("techConfirmPassword")}</FieldLabel>
+                            <PasswordInput value={pwForm.confirm} onChange={v => setPwForm(p => ({ ...p, confirm: v }))} placeholder={t("techRepeatPassword")} />
                           </div>
                           <Button onClick={handleSavePassword} disabled={pwSaving} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
                             {pwSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            {pwSaving ? "Saving…" : "Update Password"}
+                            {pwSaving ? t("saving") : t("btnUpdatePassword")}
                           </Button>
                         </div>
                       ) : (
-                        <p className="text-sm italic text-slate-400">Click "Change Password" to update credentials</p>
+                        <p className="text-sm italic text-slate-400">{t("clickChangePwd")}</p>
                       )}
                     </SectionCard>
                   </TabsContent>
 
                   {/* ── PERMISSIONS tab ───────────────────────────── */}
-                  <TabsContent value="permissions" className="space-y-4">
-                    <SectionCard icon={CheckCircle} iconBg="bg-blue-50" iconColor="text-blue-600" title="Permissions"
-                      action={
-                        <Button size="sm" onClick={() => openModal("permission")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                          <Plus className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Link Permission</span>
-                        </Button>
-                      }>
-                      {(technician.permissions ?? []).length > 0 ? (
-                        <div className="space-y-2">
-                          {[...(technician.permissions ?? [])].sort((a, b) => asStr(a.Name).localeCompare(asStr(b.Name))).map(perm => {
-                            const busy = unlinkingId === perm.ID_Permission
-                            return (
-                              <div key={perm.ID_Permission} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm font-medium text-slate-800">{perm.Name ?? "Unnamed"}</span>
-                                    <PermActionBadge action={perm.Action} />
-                                    <ServiceBadge service={perm.Service_Associated} />
-                                  </div>
-                                  {perm.Description && <p className="mt-0.5 truncate text-xs text-slate-500">{perm.Description}</p>}
-                                  <p className="mt-0.5 font-mono text-[11px] text-slate-400">{perm.ID_Permission}</p>
-                                </div>
-                                <Button variant="outline" size="sm" onClick={() => unlinkPermission(perm.ID_Permission)} disabled={busy}
-                                  className="flex-shrink-0 gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50">
-                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
-                                  <span className="hidden sm:inline">Unlink</span>
-                                </Button>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-3 py-10">
-                          <CheckCircle className="h-8 w-8 text-slate-300" />
-                          <p className="text-sm text-slate-500">No permissions linked yet</p>
+                  {user?.role !== "LEAD_TECHNICIAN" && (
+                    <TabsContent value="permissions" className="space-y-4">
+                      <SectionCard icon={CheckCircle} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("tabPermissions")}
+                        action={
                           <Button size="sm" onClick={() => openModal("permission")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
-                            <Plus className="h-3.5 w-3.5" /> Link first permission
+                            <Plus className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">{t("btnLinkPermission")}</span>
                           </Button>
-                        </div>
-                      )}
-                    </SectionCard>
-                  </TabsContent>
+                        }>
+                        {(technician.permissions ?? []).length > 0 ? (
+                          <div className="space-y-2">
+                            {[...(technician.permissions ?? [])].sort((a, b) => asStr(a.Name).localeCompare(asStr(b.Name))).map(perm => {
+                              const busy = unlinkingId === perm.ID_Permission
+                              return (
+                                <div key={perm.ID_Permission} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-sm font-medium text-slate-800">{perm.Name ?? "Unnamed"}</span>
+                                      <PermActionBadge action={perm.Action} />
+                                      <ServiceBadge service={perm.Service_Associated} />
+                                    </div>
+                                    {perm.Description && <p className="mt-0.5 truncate text-xs text-slate-500">{perm.Description}</p>}
+                                    <p className="mt-0.5 font-mono text-[11px] text-slate-400">{perm.ID_Permission}</p>
+                                  </div>
+                                  <Button variant="outline" size="sm" onClick={() => unlinkPermission(perm.ID_Permission)} disabled={busy}
+                                    className="flex-shrink-0 gap-1.5 border-slate-200 text-xs text-red-500 hover:border-red-200 hover:bg-red-50">
+                                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                                    <span className="hidden sm:inline">{t("btnUnlink")}</span>
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-3 py-10">
+                            <CheckCircle className="h-8 w-8 text-slate-300" />
+                            <p className="text-sm text-slate-500">{t("noPermsLinked")}</p>
+                            <Button size="sm" onClick={() => openModal("permission")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                              <Plus className="h-3.5 w-3.5" /> {t("btnLinkFirst")}
+                            </Button>
+                          </div>
+                        )}
+                      </SectionCard>
+                    </TabsContent>
+                  )}
 
 
                 </Tabs>
@@ -671,15 +679,15 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                 {/* Quick summary */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Summary</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("quickSummary")}</p>
                   </div>
                   <div className="divide-y divide-slate-50 px-5">
                     {[
-                      { label: "ID",      value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{technician.ID_Technician}</span> },
-                      { label: "Permissions",value: <span className="text-sm font-semibold text-slate-800">{technician.permissions?.length ?? 0}</span> },
-                      { label: "Subcontractor",   value: technician.subcontractor
-                          ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"><CheckCircle className="h-3 w-3" />Linked</span>
-                          : <span className="text-[11px] italic text-slate-400">Independent</span>
+                      { label: t("techColId"),      value: <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{technician.ID_Technician}</span> },
+                      { label: t("tabPermissions"),value: <span className="text-sm font-semibold text-slate-800">{technician.permissions?.length ?? 0}</span> },
+                      { label: t("techColSub"),   value: technician.subcontractor
+                          ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"><CheckCircle className="h-3 w-3" />{t("linked")}</span>
+                          : <span className="text-[11px] italic text-slate-400">{t("techIndependent")}</span>
                       },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between py-2.5">
@@ -693,12 +701,12 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                 {/* Contact */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Contact</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("contactInfo")}</p>
                   </div>
                   <div className="space-y-3 p-5">
                     {technician.Email_Address
                       ? <a href={`mailto:${technician.Email_Address}`} className="flex items-center gap-2 text-sm text-slate-700 hover:text-emerald-700 transition-colors"><Mail className="h-3.5 w-3.5 text-slate-400" />{technician.Email_Address}</a>
-                      : <p className="text-sm italic text-slate-400">No email</p>
+                      : <p className="text-sm italic text-slate-400">{t("noEmail")}</p>
                     }
                     {technician.Phone_Number
                       ? <a href={`tel:${technician.Phone_Number}`} className="flex items-center gap-2 text-sm text-slate-700 hover:text-emerald-700 transition-colors"><Phone className="h-3.5 w-3.5 text-slate-400" />{technician.Phone_Number}</a>
@@ -718,21 +726,21 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       <Dialog open={modalMode === "permission"} onOpenChange={o => !o && setModalMode(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-blue-600" /> Link Permission</DialogTitle>
-            <DialogDescription>Search and link permissions. Already linked ones are disabled.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-blue-600" /> {t("modalPermTitle")}</DialogTitle>
+            <DialogDescription>{t("modalPermDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <Input value={rpSearch} onChange={e => setRpSearch(e.target.value)} placeholder="Search by name, action, service…" className={`pl-9 ${inputCls}`} />
+              <Input value={rpSearch} onChange={e => setRpSearch(e.target.value)} placeholder={t("modalPermSearch")} className={`pl-9 ${inputCls}`} />
             </div>
 
             {/* Mobile cards */}
             <div className="max-h-[55vh] overflow-y-auto sm:hidden">
               {rpLoading ? (
-                <p className="py-10 text-center text-sm italic text-slate-400">Loading permissions…</p>
+                <p className="py-10 text-center text-sm italic text-slate-400">{t("modalPermLoading")}</p>
               ) : filteredPerms.length === 0 ? (
-                <p className="py-10 text-center text-sm italic text-slate-400">No permissions found</p>
+                <p className="py-10 text-center text-sm italic text-slate-400">{t("modalPermEmpty")}</p>
               ) : (
                 <div className="space-y-2">
                   {filteredPerms.map(perm => {
@@ -752,7 +760,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                           variant={already ? "outline" : "default"}
                           className={`flex-shrink-0 gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
                           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                          {already ? "Linked" : "Link"}
+                          {already ? t("modalSelected") : t("modalPermColLink")}
                         </Button>
                       </div>
                     )
@@ -767,18 +775,18 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 sticky top-0 z-10">
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32 py-3">ID</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 py-3">Name</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-24 py-3">Action</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32 py-3">Service</TableHead>
-                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28 text-right py-3">Link</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32 py-3">{t("techColId")}</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 py-3">{t("techColName")}</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-24 py-3">{t("modalPermColAction")}</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-32 py-3">{t("modalPermColService")}</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28 text-right py-3">{t("modalPermColLink")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rpLoading
-                    ? <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm italic text-slate-400">Loading permissions…</TableCell></TableRow>
+                    ? <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm italic text-slate-400">{t("modalPermLoading")}</TableCell></TableRow>
                     : filteredPerms.length === 0
-                      ? <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm italic text-slate-400">No permissions found</TableCell></TableRow>
+                      ? <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm italic text-slate-400">{t("modalPermEmpty")}</TableCell></TableRow>
                       : filteredPerms.map(perm => {
                           const already = linkedPermIds.has(perm.ID_Permission)
                           const busy    = linkingId === perm.ID_Permission
@@ -793,7 +801,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                                   variant={already ? "outline" : "default"}
                                   className={`gap-1.5 text-xs ${!already ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
                                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                                  {already ? "Linked" : "Link"}
+                                  {already ? t("modalSelected") : t("modalPermColLink")}
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -805,7 +813,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
               </div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setModalMode(null)} className="text-xs border-slate-200">Close</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setModalMode(null)} className="text-xs border-slate-200">{t("cancel")}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(xargs grep *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Usuario\\Documents\\Laboral\\Senavia Corp\\GQM\\Development\\gqm-api\\src\\services\\metrics"
     ]
   }
 }

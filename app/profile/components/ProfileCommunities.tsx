@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, Building2, MapPin, DollarSign, Target, AlertCircle } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export function ProfileCommunities({ memberId }: { memberId: string }) {
+  const t = useTranslations()
   const [communities, setCommunities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -16,7 +18,7 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
       try {
         setLoading(true)
         const res = await apiFetch(`/api/metrics/clients?member_id=${memberId}&limit=50&order_by=revenue`)
-        if (!res.ok) throw new Error("Failed to fetch communities")
+        if (!res.ok) throw new Error(t("detail.errLoad"))
         const data = await res.json()
         setCommunities(data.clients || [])
       } catch (err: any) {
@@ -27,7 +29,7 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
     }
 
     fetchCommunities()
-  }, [memberId])
+  }, [memberId, t])
 
   if (loading) {
     return (
@@ -41,7 +43,7 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
     return (
       <div className="rounded-xl bg-red-50 p-4 flex items-center gap-3 text-red-600">
         <AlertCircle className="h-5 w-5" />
-        <p className="text-sm font-medium">Error loading communities: {error}</p>
+        <p className="text-sm font-medium">{t("common.error")}: {error}</p>
       </div>
     )
   }
@@ -50,8 +52,8 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
         <Building2 className="h-12 w-12 mb-3 text-slate-200" />
-        <p className="font-medium text-slate-600">No communities assigned</p>
-        <p className="text-sm">You are not currently managing any communities.</p>
+        <p className="font-medium text-slate-600">{t("profile.tabs.noComms")}</p>
+        <p className="text-sm">{t("profile.tabs.noCommsDesc")}</p>
       </div>
     )
   }
@@ -73,11 +75,11 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
                   <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
                     <Building2 className="h-4 w-4" />
                   </div>
-                  {c.name || "Unknown Community"}
+                  {c.name || t("profile.tabs.unknownComm")}
                 </h3>
                 <p className="text-sm text-slate-500 flex items-start gap-1 mt-2">
                   <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                  <span className="leading-tight">{c.address || "No address provided"}</span>
+                  <span className="leading-tight">{c.address || t("profile.tabs.noAddress")}</span>
                 </p>
                 {c.pmc_name && (
                   <p className="text-sm text-slate-500 flex items-start gap-1 mt-1.5">

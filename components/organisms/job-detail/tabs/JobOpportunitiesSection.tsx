@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Megaphone, Plus, RefreshCcw, Loader2, AlertCircle, Search, X, Users,
-  CheckCircle2, XCircle, ExternalLink, Calendar
+  CheckCircle2, XCircle, ExternalLink, Calendar, DollarSign, ShoppingCart,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 import type { Opportunity } from "@/lib/types"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 function useDebounce<T>(value: T, ms: number): T {
   const [d, setD] = useState(value)
@@ -37,6 +38,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; userRole?: string }) {
   const router = useRouter()
+  const t = useTranslations("jobs")
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [total, setTotal] = useState(0)
@@ -63,7 +65,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
       setTotal(typeof data.total === "number" ? data.total : results.length)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError("Could not load opportunities for this job.")
+      setError(t("oppErrorDesc"))
     } finally {
       setLoading(false)
     }
@@ -90,15 +92,15 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
             <Megaphone className="h-4 w-4 text-violet-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800">Job Opportunities</h2>
-            <p className="text-xs text-slate-400">{total} opportunit{total !== 1 ? "ies" : "y"} linked to this job</p>
+            <h2 className="text-base font-bold text-slate-800">{t("oppTitle")}</h2>
+            <p className="text-xs text-slate-400">{total} {total !== 1 ? t("oppCountPlural") : t("oppCountSingular")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => load(dq)}
             className="rounded-lg border border-slate-200 p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
-            title="Refresh"
+            title={t("oppRefreshTitle")}
           >
             <RefreshCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -107,7 +109,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
               onClick={handleCreateNew}
               className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-violet-700 transition-colors shadow-sm"
             >
-              <Plus className="h-3.5 w-3.5" /> New Opportunity
+              <Plus className="h-3.5 w-3.5" /> {t("oppNewBtn")}
             </button>
           )}
         </div>
@@ -119,7 +121,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="Search opportunities…"
+          placeholder={t("oppSearch")}
           className="w-full pl-9 pr-8 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/30"
         />
         {q && (
@@ -137,28 +139,28 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
       ) : error ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
           <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
-          <p className="text-sm font-semibold text-slate-700">Could not load opportunities</p>
+          <p className="text-sm font-semibold text-slate-700">{t("oppErrorTitle")}</p>
           <p className="mt-1 text-xs text-red-500">{error}</p>
           <button
             onClick={() => load(dq)}
             className="mt-3 flex items-center gap-1.5 mx-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
           >
-            <RefreshCcw className="h-3.5 w-3.5" /> Retry
+            <RefreshCcw className="h-3.5 w-3.5" /> {t("oppRetryBtn")}
           </button>
         </div>
       ) : total === 0 && !loading ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
           <Megaphone className="mx-auto mb-3 h-9 w-9 text-slate-200" />
-          <p className="text-sm font-semibold text-slate-600">No opportunities linked to this job</p>
+          <p className="text-sm font-semibold text-slate-600">{t("oppEmpty")}</p>
           <p className="mt-1 text-xs text-slate-400">
-            {q ? "Try adjusting your search" : "Create a new opportunity to attract subcontractors"}
+            {q ? t("oppEmptySearchHint") : t("oppEmptyCreateHint")}
           </p>
           {!q && userRole !== "LEAD_TECHNICIAN" && (
             <button
               onClick={handleCreateNew}
               className="mt-4 flex items-center gap-1.5 mx-auto rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-700 transition-colors"
             >
-              <Plus className="h-3.5 w-3.5" /> New Opportunity
+              <Plus className="h-3.5 w-3.5" /> {t("oppNewBtn")}
             </button>
           )}
         </div>
@@ -166,7 +168,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
         <div className="space-y-3">
           {loading && (
             <div className="flex items-center gap-2 text-xs text-slate-400 pb-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Refreshing…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("oppRefreshing")}
             </div>
           )}
           {opportunities.map(opp => (
@@ -176,11 +178,11 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2.5 flex-wrap mb-1">
-                  <span className="text-sm font-bold text-slate-800 truncate">{opp.Project_name || "Untitled Opportunity"}</span>
+                  <span className="text-sm font-bold text-slate-800 truncate">{opp.Project_name || t("oppUntitled")}</span>
                   {opp.State === true
-                    ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Active</span>
+                    ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"><CheckCircle2 className="h-3 w-3" /> {t("oppActive")}</span>
                     : opp.State === false
-                    ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500"><XCircle className="h-3 w-3" /> Inactive</span>
+                    ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500"><XCircle className="h-3 w-3" /> {t("oppInactive")}</span>
                     : null
                   }
                   {opp.Priority && (
@@ -193,14 +195,29 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
                   <span className="font-mono text-slate-400">{opp.ID_Opportunities}</span>
                   {opp.Start_Date && (
                     <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> Starts: {formatDate(opp.Start_Date)}
+                      <Calendar className="h-3 w-3" /> {t("oppStartsPrefix")} {formatDate(opp.Start_Date)}
                     </span>
                   )}
                 </div>
+
+                {/* Linked Order Formula */}
+                {opp.order?.Formula != null && (
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      <span>{opp.order.Formula.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    {opp.order.Title && (
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-50 border border-slate-100 rounded-md px-2 py-0.5 max-w-[200px] truncate">
+                        {opp.order.Title}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
                 <div className="text-center bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                  <p className="text-[10px] uppercase font-semibold text-slate-400 mb-0.5">Applicants</p>
+                  <p className="text-[10px] uppercase font-semibold text-slate-400 mb-0.5">{t("oppApplicants")}</p>
                   <div className="flex items-center justify-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-slate-400" />
                     <span className="text-sm font-bold text-slate-700">{opp.applicants_count ?? 0}</span>
@@ -211,7 +228,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
                 <button
                   onClick={() => handleOpenOpp(opp.ID_Opportunities)}
                   className="rounded-lg p-2 text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
-                  title="Open opportunity"
+                  title={t("oppOpenTitle")}
                 >
                   <ExternalLink className="h-4 w-4" />
                 </button>

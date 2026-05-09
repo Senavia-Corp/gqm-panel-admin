@@ -22,6 +22,7 @@ import {
   AlertCircle, RefreshCw, Briefcase, X, Plus, Link2,
   Eye, EyeOff,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { BuildingDept, BuildingDeptJob } from "@/lib/types"
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ function JobStatusBadge({ status }: { status: string | null }) {
 export default function BuildingDeptDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const t = useTranslations("buildingDepartments")
   const { hasPermission } = usePermissions()
 
   const [user, setUser]         = useState<any>(null)
@@ -192,7 +194,7 @@ export default function BuildingDeptDetailPage() {
         Notes_Inspectors: asStr(data.Notes_Inspectors),
       })
     } catch (e: any) {
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("det_loading").replace("...", ""))
     } finally { setLoading(false) }
   }
 
@@ -225,11 +227,11 @@ export default function BuildingDeptDetailPage() {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.detail || body?.error || `Error ${res.status}`)
       }
-      toast({ title: "Saved", description: "Building department updated." })
+      toast({ title: t("det_toastSaved"), description: t("det_toastSavedDesc") })
       setEditing(false)
       fetchDept()
     } catch (err: any) {
-      toast({ title: "Error", description: err?.message ?? "Failed to save", variant: "destructive" })
+      toast({ title: t("form_toastError"), description: err?.message ?? t("det_toastSaveError"), variant: "destructive" })
     } finally { setSaving(false) }
   }
 
@@ -238,7 +240,7 @@ export default function BuildingDeptDetailPage() {
       method: "DELETE", cache: "no-store",
     })
     if (!res.ok) throw new Error(`Delete failed (${res.status})`)
-    toast({ title: "Deleted", description: "Building department removed." })
+    toast({ title: t("bd_toastDeleted"), description: t("bd_toastDeletedDesc") })
     router.push("/building-departments")
   }
 
@@ -257,7 +259,7 @@ export default function BuildingDeptDetailPage() {
           <main className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-sm text-slate-500">Loading building department…</p>
+              <p className="text-sm text-slate-500">{t("det_loading")}</p>
             </div>
           </main>
         </div>
@@ -273,9 +275,9 @@ export default function BuildingDeptDetailPage() {
           <TopBar />
           <main className="flex flex-1 flex-col items-center justify-center gap-3">
             <AlertCircle className="h-10 w-10 text-red-400" />
-            <p className="text-sm font-medium text-red-600">{error ?? "Not found"}</p>
+            <p className="text-sm font-medium text-red-600">{error ?? t("det_notFound")}</p>
             <Button variant="outline" size="sm" onClick={fetchDept} className="gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5" /> Retry
+              <RefreshCw className="h-3.5 w-3.5" /> {t("bd_btnRetry")}
             </Button>
           </main>
         </div>
@@ -332,7 +334,7 @@ export default function BuildingDeptDetailPage() {
                     >
                       <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </div>
-                    <span className="hidden sm:inline">Sync Podio</span>
+                    <span className="hidden sm:inline">{t("form_syncPodio")}</span>
                   </label>
                 )}
 
@@ -342,7 +344,7 @@ export default function BuildingDeptDetailPage() {
                     onClick={() => setDeleteOpen(true)}
                     className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
+                    <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnDelete")}</span>
                   </Button>
                 )}
 
@@ -352,14 +354,14 @@ export default function BuildingDeptDetailPage() {
                       onClick={() => { setEditing(false); fetchDept() }}
                       disabled={saving}
                       className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnCancel")}</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving}
                       className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-xs">
                       {saving ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /><span className="hidden sm:inline">Saving…</span></>
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /><span className="hidden sm:inline">{t("det_saving")}</span></>
                       ) : (
-                        <><Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Save Changes</span><span className="sm:hidden">Save</span></>
+                        <><Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnSave")}</span><span className="sm:hidden">{t("det_btnSaveShort")}</span></>
                       )}
                     </Button>
                   </>
@@ -367,7 +369,7 @@ export default function BuildingDeptDetailPage() {
                   hasPermission("bldg_dept:update") && (
                     <Button size="sm" onClick={() => setEditing(true)}
                       className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-xs">
-                      <Edit2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
+                      <Edit2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnEdit")}</span>
                     </Button>
                   )
                 )}
@@ -377,7 +379,7 @@ export default function BuildingDeptDetailPage() {
             {editing && (
               <div className="flex items-center gap-2 border-t border-blue-100 bg-blue-50 px-4 py-2 sm:px-6">
                 <div className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500 animate-pulse" />
-                <p className="text-xs font-medium text-blue-700">Editing mode — changes won't be saved until you click Save Changes</p>
+                <p className="text-xs font-medium text-blue-700">{t("det_editingMode")}</p>
               </div>
             )}
           </div>
@@ -386,10 +388,10 @@ export default function BuildingDeptDetailPage() {
           <div className="mx-auto max-w-5xl space-y-4 p-4 pb-10 sm:space-y-5 sm:p-6 sm:pb-12">
 
             {/* Location */}
-            <SectionCard icon={Landmark} iconBg="bg-blue-50" iconColor="text-blue-600" title="Location Information">
+            <SectionCard icon={Landmark} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("form_secLocation")}>
               <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                 <div>
-                  <FieldLabel htmlFor="City_BldgDept">City</FieldLabel>
+                  <FieldLabel htmlFor="City_BldgDept">{t("form_labelCity")}</FieldLabel>
                   <div className="relative">
                     <Landmark className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -402,7 +404,7 @@ export default function BuildingDeptDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <FieldLabel htmlFor="Location">Location / Jurisdiction</FieldLabel>
+                  <FieldLabel htmlFor="Location">{t("form_labelLocation")}</FieldLabel>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -418,15 +420,15 @@ export default function BuildingDeptDetailPage() {
             </SectionCard>
 
             {/* Contact */}
-            <SectionCard icon={Mail} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Contact Information">
+            <SectionCard icon={Mail} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("form_secContact")}>
               <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                 <div>
-                  <FieldLabel>Office Email</FieldLabel>
+                  <FieldLabel>{t("form_labelEmail")}</FieldLabel>
                   {editing ? (
                     <ArrayEditField
                       values={form.Office_Email}
                       icon={Mail}
-                      placeholder="permits@city.gov"
+                      placeholder={t("form_phEmail")}
                       type="email"
                       onChange={(v) => setField("Office_Email", v)}
                     />
@@ -437,17 +439,17 @@ export default function BuildingDeptDetailPage() {
                           <Mail className="h-3.5 w-3.5 text-slate-400" />
                           <a href={`mailto:${e}`} className="text-sm text-blue-600 hover:underline">{e}</a>
                         </div>
-                      )) : <p className="text-sm text-slate-400 italic">No email registered</p>}
+                      )) : <p className="text-sm text-slate-400 italic">{t("det_noEmail")}</p>}
                     </div>
                   )}
                 </div>
                 <div>
-                  <FieldLabel>Phone Number</FieldLabel>
+                  <FieldLabel>{t("form_labelPhone")}</FieldLabel>
                   {editing ? (
                     <ArrayEditField
                       values={form.Phone}
                       icon={PhoneIcon}
-                      placeholder="(305) 000-0000"
+                      placeholder={t("form_phPhone")}
                       type="tel"
                       onChange={(v) => setField("Phone", v)}
                     />
@@ -458,7 +460,7 @@ export default function BuildingDeptDetailPage() {
                           <PhoneIcon className="h-3.5 w-3.5 text-slate-400" />
                           <span className="text-sm text-slate-700">{p}</span>
                         </div>
-                      )) : <p className="text-sm text-slate-400 italic">No phone registered</p>}
+                      )) : <p className="text-sm text-slate-400 italic">{t("det_noPhone")}</p>}
                     </div>
                   )}
                 </div>
@@ -470,7 +472,7 @@ export default function BuildingDeptDetailPage() {
               icon={Globe}
               iconBg="bg-violet-50"
               iconColor="text-violet-600"
-              title="Portal Access"
+              title={t("form_secPortal")}
               action={
                 !editing && dept.Link ? (
                   <a
@@ -479,14 +481,14 @@ export default function BuildingDeptDetailPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
                   >
-                    <Link2 className="h-3.5 w-3.5" /> Open Portal <ExternalLink className="h-3 w-3" />
+                    <Link2 className="h-3.5 w-3.5" /> {t("det_btnOpenPortal")} <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : undefined
               }
             >
               <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 md:grid-cols-3">
                 <div className="sm:col-span-2 md:col-span-3">
-                  <FieldLabel htmlFor="Link">Portal URL</FieldLabel>
+                  <FieldLabel htmlFor="Link">{t("form_labelPortalUrl")}</FieldLabel>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -500,7 +502,7 @@ export default function BuildingDeptDetailPage() {
                 </div>
 
                 <div>
-                  <FieldLabel htmlFor="Portal_Log_In">Username / Login</FieldLabel>
+                  <FieldLabel htmlFor="Portal_Log_In">{t("form_labelUsername")}</FieldLabel>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
                     <Textarea
@@ -509,7 +511,7 @@ export default function BuildingDeptDetailPage() {
                       onChange={(e) => setField("Portal_Log_In", e.target.value)}
                       readOnly={!editing}
                       rows={3}
-                      placeholder="Login credentials…"
+                      placeholder={t("form_phUsername")}
                       className={`pl-9 resize-none ${editing ? inputCls : readonlyCls}`}
                     />
                   </div>
@@ -517,13 +519,13 @@ export default function BuildingDeptDetailPage() {
 
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <FieldLabel htmlFor="PW">Password</FieldLabel>
+                    <FieldLabel htmlFor="PW">{t("form_labelPassword")}</FieldLabel>
                     <button
                       type="button"
                       onClick={() => setShowPW((v) => !v)}
                       className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                     >
-                      {showPW ? <><EyeOff className="h-3 w-3" /> Hide</> : <><Eye className="h-3 w-3" /> Show</>}
+                      {showPW ? <><EyeOff className="h-3 w-3" /> {t("det_hidePW")}</> : <><Eye className="h-3 w-3" /> {t("det_showPW")}</>}
                     </button>
                   </div>
                   <div className="relative">
@@ -534,7 +536,7 @@ export default function BuildingDeptDetailPage() {
                       onChange={(e) => setField("PW", e.target.value)}
                       readOnly={!editing}
                       rows={3}
-                      placeholder="Password…"
+                      placeholder={t("form_phPassword")}
                       className={`pl-9 resize-none transition-all ${editing ? inputCls : readonlyCls} ${!showPW ? "blur-sm select-none" : ""}`}
                     />
                   </div>
@@ -543,18 +545,18 @@ export default function BuildingDeptDetailPage() {
             </SectionCard>
 
             {/* Notes */}
-            <SectionCard icon={ClipboardList} iconBg="bg-slate-100" iconColor="text-slate-500" title="Notes & Inspector Info">
+            <SectionCard icon={ClipboardList} iconBg="bg-slate-100" iconColor="text-slate-500" title={t("form_secNotes")}>
               {editing ? (
                 <Textarea
                   value={form.Notes_Inspectors}
                   onChange={(e) => setField("Notes_Inspectors", e.target.value)}
-                  placeholder="Inspector names, schedules, special requirements…"
+                  placeholder={t("form_phNotes")}
                   rows={4}
                   className={`resize-none ${inputCls}`}
                 />
               ) : (
                 <p className={`whitespace-pre-wrap text-sm ${dept.Notes_Inspectors ? "text-slate-700" : "italic text-slate-400"}`}>
-                  {dept.Notes_Inspectors || "No notes added"}
+                  {dept.Notes_Inspectors || t("det_noNotes")}
                 </p>
               )}
             </SectionCard>
@@ -564,7 +566,7 @@ export default function BuildingDeptDetailPage() {
               icon={Briefcase}
               iconBg="bg-amber-50"
               iconColor="text-amber-600"
-              title="Linked Jobs"
+              title={t("det_secJobs")}
               action={
                 <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${jobs.length > 0 ? "bg-amber-500 text-white" : "bg-slate-200 text-slate-500"}`}>
                   {jobs.length}
@@ -576,9 +578,9 @@ export default function BuildingDeptDetailPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
                     <Briefcase className="h-5 w-5 text-slate-400" />
                   </div>
-                  <p className="text-sm text-slate-500">No jobs linked to this department</p>
+                  <p className="text-sm text-slate-500">{t("det_noJobs")}</p>
                   <p className="text-xs text-slate-400">
-                    Jobs referencing this department will appear here automatically
+                    {t("det_noJobsDesc")}
                   </p>
                 </div>
               ) : (
@@ -586,13 +588,13 @@ export default function BuildingDeptDetailPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">Job ID</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-16">Type</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Project</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Location</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">Assigned</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-right w-16">Link</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">{t("det_colJobId")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-16">{t("det_colType")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_colProject")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_colLocation")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_colStatus")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 w-28">{t("det_colAssigned")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-right w-16">{t("det_colLink")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -632,7 +634,7 @@ export default function BuildingDeptDetailPage() {
                             <a
                               href={`/jobs/${job.ID_Jobs}`}
                               className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                              title="Open job"
+                              title={t("det_openJob")}
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>

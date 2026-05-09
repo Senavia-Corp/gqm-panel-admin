@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { Save, RefreshCcw, Zap, ZapOff, Calendar, Hash } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -58,10 +59,7 @@ import { useSearchParams } from "next/navigation"
 import { usePermissions } from "@/hooks/usePermissions"
 
 
-const TechnicianJobSidebar = dynamic(
-  () => import("@/components/organisms/TechnicianJobSidebar").then((mod) => mod.TechnicianJobSidebar),
-  { ssr: false },
-)
+
 const LeadTechnicianPricingView = dynamic(
   () => import("@/components/organisms/LeadTechnicianPricingView").then((mod) => mod.LeadTechnicianPricingView),
   { ssr: false },
@@ -173,6 +171,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const searchParams = useSearchParams()
 
   const { hasPermission } = usePermissions()
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
+  const tTasks = useTranslations("jobTasks")
 
   const [user, setUser] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
@@ -329,7 +330,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const { minDate, maxDate } = getBusinessDateRange(5)
 
     setTaskPrefill({
-      name: `Send Proposal for ${jobId}`,
+      name: tTasks("taskPrefillProposal", { jobId }),
       priority: "High",
       minDate,
       maxDate,
@@ -455,8 +456,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[tasks] status change error:", error)
       jobDetail.setJob({ ...(job as any), tasks: prevTasks } as any)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update task status",
+        title: tCommon("error"),
+        description: error instanceof Error ? error.message : tTasks("toastTaskStatusFailed"),
         variant: "destructive",
       })
     }
@@ -511,8 +512,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const handleAdjPricingCalculated = async (_adjPricing: number) => {
     toast({
-      title: "Multiplier applied",
-      description: "Adjusted Formula Pricing will update after saving. Save Changes to persist.",
+      title: t("toastMultiplierTitle"),
+      description: t("toastMultiplierDesc"),
     })
   }
 
@@ -524,7 +525,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const anyDetail = jobDetail as any
     if (typeof anyDetail.save === "function") {
       await anyDetail.save({ sync_podio: syncPodio })
-      toast({ title: "Saved", description: "Changes saved successfully." })
+      toast({ title: t("toastSaved"), description: t("toastSavedDesc") })
       await jobDetail.reload()
     } else {
       toast({
@@ -562,7 +563,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       if (isScheduledTransition) {
         pendingSaveRef.current = true
         setTaskPrefill({
-          name: `Schedule/Manage ${jobId}`,
+          name: tTasks("taskPrefillSchedule", { jobId }),
           priority: "Medium",
         })
         setCreateTaskOpen(true)
@@ -578,7 +579,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         pendingSaveRef.current = true
         const { minDate, maxDate } = getBusinessDateRange(3)
         setTaskPrefill({
-          name: `Upload Invoice for ${jobId}`,
+          name: tTasks("taskPrefillInvoice", { jobId }),
           priority: "High",
           minDate,
           maxDate,
@@ -591,7 +592,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       await executeSave()
     } catch (error) {
       console.error("[job] save error:", error)
-      toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+      toast({ title: tCommon("error"), description: t("toastSaveErrorDesc"), variant: "destructive" })
     }
   }
 
@@ -608,7 +609,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         await executeSave()
       } catch (error) {
         console.error("[job] save error after task complete:", error)
-        toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+        toast({ title: tCommon("error"), description: t("toastSaveErrorDesc"), variant: "destructive" })
       }
     }
   }
@@ -623,7 +624,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           await executeSave()
         } catch (error) {
           console.error("[job] save error after task dialog close:", error)
-          toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+          toast({ title: tCommon("error"), description: t("toastSaveErrorDesc"), variant: "destructive" })
         }
       }
     }
@@ -637,7 +638,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         await executeSave()
       } catch (error) {
         console.error("[job] save error after skip:", error)
-        toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
+        toast({ title: tCommon("error"), description: t("toastSaveErrorDesc"), variant: "destructive" })
       }
     }
   }
@@ -797,7 +798,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const handleSaveEstimates = async () => {
     if (!estimateItems?.length) {
-      toast({ title: "Nothing to save", description: "No estimate items found." })
+      toast({ title: t("toastNothingToSave"), description: t("toastNoEstimateItems") })
       return
     }
 
@@ -822,14 +823,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     if (!toCreate.length) {
       toast({
-        title: "Nothing new to save",
-        description: `All items already exist in this job. Skipped: ${skippedExisting}.`,
+        title: t("toastNothingNewToSave"),
+        description: `${t("toastAllExistPrefix")} ${skippedExisting}.`,
       })
       return
     }
 
     toast({
-      title: "Saving estimates...",
+      title: t("toastSavingEstimates"),
       description: `Creating ${toCreate.length} items (pool=${ESTIMATE_POOL_LIMIT}, retry=${ESTIMATE_RETRY_MAX})`,
     })
 
@@ -851,8 +852,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     if (!failed.length) {
       toast({
-        title: "Estimates saved",
-        description: `Created ${succeeded}/${toCreate.length}. Skipped ${skipped} (duplicates/existing).`,
+        title: t("toastEstimatesSaved"),
+        description: `${t("toastEstimatesSavedPrefix")} ${succeeded}/${toCreate.length}. ${t("toastEstimatesSavedSkipped")} ${skipped} ${t("toastEstimatesSavedDupes")}`,
       })
       const bdfSaved = toCreate.filter(i => String(i.Cost_Type) === "BDF").length
       const ptlgcfSaved = toCreate.filter(i => String(i.Cost_Type) === "PTLGCF").length
@@ -865,8 +866,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     toast({
-      title: "Partial save",
-      description: `Created ${succeeded}/${toCreate.length}. Failed ${failed.length}. Skipped ${skipped}. See console for details.`,
+      title: t("toastPartialSave"),
+      description: `${t("toastEstimatesSavedPrefix")} ${succeeded}/${toCreate.length}. Failed ${failed.length}. ${t("toastEstimatesSavedSkipped")} ${skipped}. See console for details.`,
       variant: "destructive",
     })
     const bdfSaved = toCreate.filter(i => String(i.Cost_Type) === "BDF").length
@@ -882,7 +883,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const costs = Array.isArray((job as any)?.estimate_costs) ? (job as any).estimate_costs : []
 
     if (!costs.length) {
-      toast({ title: "Nothing to delete", description: "This job has no saved estimate costs." })
+      toast({ title: t("toastNothingToDelete"), description: t("toastNoSavedCosts") })
       return
     }
 
@@ -904,7 +905,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setHasSavedEstimates(false)
     await jobDetail.reload()
 
-    toast({ title: "Deleted", description: `Deleted ${ids.length} estimate costs.` })
+    toast({ title: t("toastDeleted"), description: `${t("toastDeletedPrefix")} ${ids.length} ${t("toastDeletedSuffix")}` })
   }
 
   const handleDeleteEstimateItem = async (item: EstimateItem) => {
@@ -942,7 +943,13 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setEstimateItems([])
   }
 
-  const handleCreateOrder = async (orderName: string, subcontractorId: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
+  const handleCreateOrder = async (
+    orderName: string,
+    subcontractorId: string,
+    selectedItemIds: string[],
+    syncPodioOverride: boolean,
+    billId?: string
+  ) => {
     try {
       const getItemId = (i: any) => String(i?.ID_EstimateItem || i?.ID_EstimateCost || i?.ID_Estimate_Cost || i?.id || i?.ID || "")
       const selectedItems = estimateItems.filter((item) => selectedItemIds.includes(getItemId(item)))
@@ -958,7 +965,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           : `?sync_podio=false`
 
       if (syncPodioOverride && !year) {
-        toast({ title: "Missing year", description: "Year is required when Sync Podio is enabled.", variant: "destructive" })
+        toast({ title: t("toastMissingYear"), description: t("toastMissingYearDesc"), variant: "destructive" })
         return
       }
 
@@ -968,7 +975,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         Adj_formula: formula,
         ID_Subcontractor: subcontractorId,
         job_podio_id: (job as any)?.podio_item_id ?? null,
-        estimate_cost_ids: selectedItemIds, // Added this field for the new backend logic!
+        estimate_cost_ids: selectedItemIds,
+        ID_FinancialDoc: billId && billId !== "none" ? billId : null,
       }
 
       const orderResponse = await apiFetch(`/api/order${qsCreate}`, {
@@ -985,7 +993,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       // Backend now handles attaching items, formulas, and syncing atomically!
       await jobDetail.reload()
 
-      toast({ title: "Success", description: `Order "${orderName}" created successfully.` })
+      toast({ title: tCommon("success"), description: `Order "${orderName}" created successfully.` })
 
       setTaskPrefill({
         name: `Schedule a visit to the community for ${orderName}`,
@@ -996,7 +1004,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[order] create error:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create order",
+        description: error instanceof Error ? error.message : t("toastOrderFailed"),
         variant: "destructive",
       })
     }
@@ -1008,50 +1016,57 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const tabs = useMemo(() => {
     if (!user) return []
 
-    // 1. Details — accessible to anyone who can see the job (basics or full read)
+    // For LEAD_TECHNICIAN, we only show specific tabs: Details, Subcontractors, Documents, Pricing, Tasks, Timeline
+    if (user.role === "LEAD_TECHNICIAN") {
+      return [
+        { id: "details", label: t("tabDetails") },
+        { id: "subcontractors", label: t("tabSubcontractors") },
+        { id: "documents", label: t("tabDocuments") },
+        { id: "pricing", label: t("tabPricing") },
+        { id: "tasks", label: t("tabTasks") },
+        { id: "timeline", label: t("tabTimeline") },
+      ]
+    }
+
+    // Standard logic for GQM_MEMBER and others
     const canReadDocs = hasPermission("job:read")
     const canViewSubcontractors = hasPermission("subcontractor:read")
     const canViewMembers = hasPermission("member:read")
 
     const items = [
-      { id: "details", label: "Details" },
+      { id: "details", label: t("tabDetails") },
     ]
 
     // 2. Conditional tabs
     if (canViewSubcontractors) {
-      items.push({ id: "subcontractors", label: "Subcontractors" })
+      items.push({ id: "subcontractors", label: t("tabSubcontractors") })
     }
-    
+
     // Documents/Chat/Pricing/Estimate usually require full read
     if (canReadDocs) {
-      items.push({ id: "documents", label: "Documents" })
-      items.push({ id: "pricing", label: "Pricing" })
+      items.push({ id: "documents", label: t("tabDocuments") })
+      items.push({ id: "pricing", label: t("tabPricing") })
     }
 
     if (canViewMembers) {
-      items.push({ id: "members", label: "Members" })
+      items.push({ id: "members", label: t("tabMembers") })
     }
 
     if (canReadDocs) {
-      items.push({ id: "chat", label: "Logbook" })
-      items.push({ id: "tasks", label: "Tasks" })
-      items.push({ id: "estimate", label: "Estimate" })
+      items.push({ id: "chat", label: t("tabLogbook") })
+      items.push({ id: "tasks", label: t("tabTasks") })
+      items.push({ id: "estimate", label: t("tabEstimate") })
     }
 
-    // Technicians tab for Lead Techs usually depends on subcontractor permission
-    if (user.role === "LEAD_TECHNICIAN") {
-      items.push({ id: "technicians", label: "Technicians" })
-    }
-
-    // Purchases & Commissions - user asked to prepare ground, defaulting to job:read for now
+    // Purchases & Commissions
     if (canReadDocs) {
-      items.push({ id: "purchases", label: "Purchases" })
-      items.push({ id: "commissions", label: "Commissions" })
-      items.push({ id: "timeline", label: "Timeline" })
+      items.push({ id: "purchases", label: t("tabPurchases") })
+      items.push({ id: "commissions", label: t("tabCommissions") })
+      items.push({ id: "timeline", label: t("tabTimeline") })
     }
 
     return items
-  }, [user, hasPermission])
+  }, [user, hasPermission, t])
 
   useEffect(() => {
     if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
@@ -1064,10 +1079,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     return <JobRightSidebar role={user.role} job={job as any} />
   }, [user, job])
 
-  const technicianSidebar = useMemo(() => {
-    if (!job) return null
-    return <TechnicianJobSidebar job={job as any} subcontractor={(job as any)?.subcontractors?.[0]} />
-  }, [job])
+
 
   // ---------------------------
   // renderTab
@@ -1125,7 +1137,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       )
     }
 
-    if (activeTab === "subcontractors" && user.role === "GQM_MEMBER") {
+    if (activeTab === "subcontractors") {
       return (
         <JobTabLayout sidebar={rightSidebar}>
           <Subcontractors
@@ -1147,12 +1159,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (activeTab === "pricing") {
       if (user.role === "LEAD_TECHNICIAN") {
         return (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
-              <LeadTechnicianPricingView jobId={jobId} job={job as any} />
-            </div>
-            <div className="space-y-6">{technicianSidebar}</div>
-          </div>
+          <JobTabLayout sidebar={rightSidebar}>
+            <LeadTechnicianPricingView jobId={jobId} job={job as any} />
+          </JobTabLayout>
         )
       }
 
@@ -1295,8 +1304,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     return (
       <div className="rounded-lg border bg-white p-8 text-center text-muted-foreground">
-        <div className="text-lg font-medium">{tabs.find((t) => t.id === activeTab)?.label} Section</div>
-        <div className="text-sm">This section is not yet implemented</div>
+        <div className="text-lg font-medium">{tabs.find((tab) => tab.id === activeTab)?.label} {t("sectionFallbackSuffix")}</div>
+        <div className="text-sm">{t("sectionNotImplemented")}</div>
       </div>
     )
   }
@@ -1320,11 +1329,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           <TopBar />
           <main className="flex flex-1 items-center justify-center">
             <div className="rounded-lg border bg-white p-8 text-center">
-              <h2 className="text-lg font-semibold mb-2">Error loading job</h2>
+              <h2 className="text-lg font-semibold mb-2">{t("detailErrorTitle")}</h2>
               <p className="mb-4 text-sm text-muted-foreground">{loadError}</p>
               <div className="flex justify-center gap-2">
-                <Button onClick={handleRetry} className="bg-gqm-green">Retry</Button>
-                <Button variant="ghost" onClick={() => router.push("/jobs")}>Back to jobs</Button>
+                <Button onClick={handleRetry} className="bg-gqm-green">{tCommon("retry")}</Button>
+                <Button variant="ghost" onClick={() => router.push("/jobs")}>{t("detailBackToJobs")}</Button>
               </div>
             </div>
           </main>
@@ -1342,7 +1351,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           <main className="flex flex-1 items-center justify-center">
             <div className="flex items-center gap-2 text-slate-400">
               <RefreshCcw className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading job details…</span>
+              <span className="text-sm">{t("detailLoading")}</span>
             </div>
           </main>
         </div>
@@ -1372,7 +1381,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
 
                 <div>
-                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Job Detail</h1>
+                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{t("detailTitle")}</h1>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
                     {/* ID */}
                     <span className="flex items-center gap-1 font-mono text-xs text-slate-500 sm:text-sm">
@@ -1411,14 +1420,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                       ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                       : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
                       }`}
-                    title={syncPodio ? "Podio sync enabled — click to disable" : "Podio sync disabled — click to enable"}
+                    title={syncPodio ? t("podioSyncEnabledTitle") : t("podioSyncDisabledTitle")}
                   >
                     {syncPodio
                       ? <Zap className="h-3.5 w-3.5 fill-emerald-400 text-emerald-500 sm:h-4 sm:w-4" />
                       : <ZapOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     }
                     <span className="font-semibold">
-                      Podio {syncPodio ? "ON" : "OFF"}
+                      {t("podioToggleLabel")} {syncPodio ? t("syncOn") : t("syncOff")}
                     </span>
                     {syncPodio && resolvedYear && (
                       <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -1437,7 +1446,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                       ? <RefreshCcw className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
                       : <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     }
-                    {jobDetail.isSaving ? "Saving…" : "Save"}
+                    {jobDetail.isSaving ? t("savingChanges") : tCommon("save")}
                   </button>
                 </div>
               )}
@@ -1476,6 +1485,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         jobYearForPodioSync={resolveJobYearForPodioSync(job)}
         jobId={String((job as any)?.ID_Jobs ?? "")}
         existingOrdersCount={(job as any)?.subcontractors?.flatMap((s: any) => s.orders ?? []).length ?? 0}
+        bills={(job as any)?.financial_docs || []}
         onSubcontractorLinked={() => jobDetail.reload()}
         onCreateOrder={handleCreateOrder}
       />

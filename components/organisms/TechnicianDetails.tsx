@@ -110,8 +110,23 @@ export function TechnicianDetails({
             <CardTitle>{t("timeline")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {timelineEvents.map((event) => (
-              <TimelineItem key={event.id} activity={event.activity} date={new Date(event.date).toLocaleDateString()} />
+            {timelineEvents.map((event, idx) => (
+              <TimelineItem
+                key={event.id}
+                entry={{
+                  ID_TLActivity: event.id,
+                  Action: event.activity,
+                  Action_datetime: event.date,
+                  Description: `Action by system`,
+                  ID_Jobs: null,
+                  ID_Member: null,
+                  member: {
+                    ID_Member: "mock",
+                    Member_Name: "System"
+                  }
+                }}
+                isLast={idx === timelineEvents.length - 1}
+              />
             ))}
           </CardContent>
         </Card>

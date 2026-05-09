@@ -10,6 +10,7 @@ import {
   Mail, Building2, Star, AlertCircle,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -172,6 +173,7 @@ function EmailList({ raw }: { raw: any }) {
 export function LinkSubcontractorDialog({
   open, onClose, jobId, onSubcontractorLinked, defaultSyncPodio = true, jobYear,
 }: Props) {
+  const t = useTranslations("jobs")
   const [loading, setLoading]   = useState(false)
   const [linking, setLinking]   = useState<string | null>(null)
   const [page, setPage]         = useState(1)
@@ -328,9 +330,9 @@ export function LinkSubcontractorDialog({
               <Users className="h-4 w-4 text-slate-500 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-900 leading-tight sm:text-lg">Link Subcontractor</h2>
+              <h2 className="text-base font-bold text-slate-900 leading-tight sm:text-lg">{t("linkSubTitle")}</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Select a subcontractor to link to this job
+                {t("linkSubSubtitle")}
                 {total > 0 && <span className="ml-1.5 font-semibold text-slate-500">· {total} total</span>}
               </p>
             </div>
@@ -346,14 +348,14 @@ export function LinkSubcontractorDialog({
                   ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
               }`}
-              title={syncPodio ? "Podio sync ON — click to disable" : "Podio sync OFF — click to enable"}
+              title={syncPodio ? t("linkSubPodioOnTitle") : t("linkSubPodioOffTitle")}
             >
               {syncPodio
                 ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500" />
                 : <ZapOff className="h-4 w-4" />
               }
               <span className="text-xs font-semibold hidden sm:inline">
-                Podio {syncPodio ? "ON" : "OFF"}
+                {syncPodio ? t("linkSubPodioOn") : t("linkSubPodioOff")}
               </span>
               {syncPodio && jobYear && (
                 <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -380,7 +382,7 @@ export function LinkSubcontractorDialog({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by name, org, email…"
+              placeholder={t("linkSubSearch")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 transition-all"
@@ -400,7 +402,7 @@ export function LinkSubcontractorDialog({
                   }`}
                 >
                   <Star className={`h-4 w-4 flex-shrink-0 ${selectedSkillIds.length > 0 ? "fill-violet-400" : ""}`} />
-                  <span className="whitespace-nowrap">{selectedSkillIds.length > 0 ? `${selectedSkillIds.length} Skills` : "Filter by Skill"}</span>
+                  <span className="whitespace-nowrap">{selectedSkillIds.length > 0 ? `${selectedSkillIds.length} ${t("linkSubSkillsUnit")}` : t("linkSubFilterSkill")}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent 
@@ -412,7 +414,7 @@ export function LinkSubcontractorDialog({
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search skills..."
+                      placeholder={t("linkSubSkillSearch")}
                       className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border-none bg-slate-100 focus:ring-1 focus:ring-violet-200 focus:outline-none"
                       value={skillSearch}
                       onChange={(e) => setSkillSearch(e.target.value)}
@@ -424,7 +426,7 @@ export function LinkSubcontractorDialog({
                     {isLoadingSkills ? (
                       <div className="flex flex-col items-center justify-center py-10 gap-2">
                         <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
-                        <span className="text-[10px] text-slate-400 font-medium">Loading skills...</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{t("linkSubSkillLoading")}</span>
                       </div>
                     ) : filteredAvailableSkills.map(skill => (
                       <div
@@ -444,7 +446,7 @@ export function LinkSubcontractorDialog({
                       </div>
                     ))}
                     {!isLoadingSkills && filteredAvailableSkills.length === 0 && (
-                      <p className="text-[11px] text-slate-400 text-center py-8">No skills found</p>
+                      <p className="text-[11px] text-slate-400 text-center py-8">{t("linkSubSkillNone")}</p>
                     )}
                   </div>
                 </ScrollArea>
@@ -454,7 +456,7 @@ export function LinkSubcontractorDialog({
                       onClick={() => setSelectedSkillIds([])}
                       className="text-[10px] font-bold text-violet-600 uppercase tracking-widest hover:text-violet-700"
                     >
-                      Clear all skills
+                      {t("linkSubSkillClearAll")}
                     </button>
                   </div>
                 )}
@@ -472,7 +474,7 @@ export function LinkSubcontractorDialog({
               }`}
             >
               {statusFilter === "Active" && <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />}
-              <span className="whitespace-nowrap">Active only</span>
+              <span className="whitespace-nowrap">{t("linkSubActiveOnly")}</span>
             </button>
 
             {/* Pagination */}
@@ -505,7 +507,7 @@ export function LinkSubcontractorDialog({
           <div className="flex items-center gap-2 px-5 py-2 bg-indigo-50 border-y border-indigo-100/50">
             <Zap className="h-3 w-3 text-indigo-500 fill-indigo-500" />
             <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest leading-none">
-              Highlighting subcontractors with <span className="underline decoration-indigo-300 underline-offset-2">all</span> selected skills
+              {t("linkSubSkillsInfoPre")} <span className="underline decoration-indigo-300 underline-offset-2">{t("linkSubSkillsInfoAll")}</span> {t("linkSubSkillsInfoPost")}
             </p>
           </div>
         )}
@@ -519,13 +521,13 @@ export function LinkSubcontractorDialog({
           ) : displayRows.length === 0 ? (
             <div className="flex flex-col h-48 items-center justify-center gap-3">
               <AlertCircle className="h-8 w-8 text-slate-200" />
-              <p className="text-sm text-slate-400">No subcontractors found</p>
+              <p className="text-sm text-slate-400">{t("linkSubEmpty")}</p>
             </div>
           ) : (
             <table className="w-full min-w-[680px] border-collapse">
               <thead className="sticky top-0 z-10 bg-white border-b border-slate-100">
                 <tr>
-                  {["ID", "Name", "Organization", "Email", "Score", "Status", ""].map((h) => (
+                  {[t("linkSubColId"), t("linkSubColName"), t("linkSubColOrg"), t("linkSubColEmail"), t("linkSubColScore"), t("linkSubColStatus"), ""].map((h) => (
                     <th key={h} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
                       {h}
                     </th>
@@ -605,9 +607,9 @@ export function LinkSubcontractorDialog({
                           }`}
                         >
                           {isLinking ? (
-                            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Linking…</>
+                            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("linkSubLinking")}</>
                           ) : (
-                            <><Link2 className="h-3.5 w-3.5" /> Link</>
+                            <><Link2 className="h-3.5 w-3.5" /> {t("linkSubLinkBtn")}</>
                           )}
                         </button>
                       </td>
@@ -622,7 +624,7 @@ export function LinkSubcontractorDialog({
         {/* ── Footer ──────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 py-3 border-t border-slate-100 bg-slate-50/50 sm:px-5">
           <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{displayRows.length}</span> of <span className="font-semibold text-slate-600">{total}</span> subcontractors
+            {t("linkSubFooterShowing")} <span className="font-semibold text-slate-600">{displayRows.length}</span> {t("linkSubFooterOf")} <span className="font-semibold text-slate-600">{total}</span> {t("linkSubFooterUnit")}
           </p>
           <div className="flex items-center gap-2">
             <button

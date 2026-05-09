@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MultiplierSelector } from "./MultiplierSelector"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface JobMultipliersManagerProps {
   jobId: string
@@ -38,6 +39,7 @@ export function JobMultipliersManager({
   onMultipliersChanged,
   onAdjPricingCalculated,
 }: JobMultipliersManagerProps) {
+  const t = useTranslations("jobs")
   const [pendingMultiplier, setPendingMultiplier]   = useState<Multiplier | null>(null)
   const [actionLoading, setActionLoading]           = useState(false)
   const [showAddMultiplier, setShowAddMultiplier]   = useState(false)
@@ -48,13 +50,13 @@ export function JobMultipliersManager({
     setActionLoading(true)
     try {
       await unlinkMultiplierFromJob(jobId, pendingMultiplier.ID_MultiplierR)
-      toast.success("Multiplier unlinked", {
-        description: "The multiplier range still exists and can be used in other jobs.",
+      toast.success(t("pricingMulUnlinkedTitle"), {
+        description: t("pricingMulUnlinkedDesc"),
       })
       onMultipliersChanged()   // triggers reload → pricing fields update from server
     } catch (error) {
       console.error("[v0] Error unlinking multiplier:", error)
-      toast.error("Failed to unlink multiplier")
+      toast.error(t("pricingMulUnlinkError"))
     } finally {
       setActionLoading(false)
       setPendingMultiplier(null)
@@ -78,14 +80,14 @@ export function JobMultipliersManager({
         throw new Error(err?.error ?? `Error ${res.status}`)
       }
 
-      toast.success("Multiplier deleted", {
-        description: "The multiplier range has been removed from the system.",
+      toast.success(t("pricingMulDeletedTitle"), {
+        description: t("pricingMulDeletedDesc"),
       })
       onMultipliersChanged()
     } catch (error: any) {
       console.error("[v0] Error deleting multiplier:", error)
-      toast.error("Failed to delete multiplier", {
-        description: error?.message ?? "Unknown error",
+      toast.error(t("pricingMulDeleteError"), {
+        description: error?.message,
       })
     } finally {
       setActionLoading(false)
@@ -104,7 +106,7 @@ export function JobMultipliersManager({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Pricing Multipliers</CardTitle>
+        <CardTitle>{t("pricingMulTitle")}</CardTitle>
         <Button
           type="button"
           variant="outline"
@@ -112,7 +114,7 @@ export function JobMultipliersManager({
           onClick={() => setShowAddMultiplier(!showAddMultiplier)}
         >
           <Plus className="mr-2 h-4 w-4" />
-          Add Multiplier
+          {t("pricingMulAddBtn")}
         </Button>
       </CardHeader>
 
@@ -131,11 +133,10 @@ export function JobMultipliersManager({
         {multipliers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-5 text-center">
             <p className="text-sm text-muted-foreground">
-              No multipliers linked to this job.
+              {t("pricingMulEmpty")}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              When no multiplier is linked, the default ranges are used automatically
-              (0–$27k × 1.027 · $27k–$63k × 1.023 · &gt;$63k × 1.018).
+              {t("pricingMulEmptyHint")}
             </p>
           </div>
         ) : (
@@ -159,12 +160,12 @@ export function JobMultipliersManager({
                       </span>
                       <Badge variant="secondary">×{multiplier.Multiplier}</Badge>
                       {isApplicable && (
-                        <Badge className="bg-gqm-green text-white">Currently Applied</Badge>
+                        <Badge className="bg-gqm-green text-white">{t("pricingMulApplied")}</Badge>
                       )}
                     </div>
                     {isApplicable && (
                       <p className="text-xs text-muted-foreground">
-                        Adj Formula Pricing: ${adjPricing.toFixed(2)}
+                        {t("pricingMulAdjLabel")} ${adjPricing.toFixed(2)}
                       </p>
                     )}
                   </div>
@@ -189,24 +190,24 @@ export function JobMultipliersManager({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove Multiplier</AlertDialogTitle>
+              <AlertDialogTitle>{t("pricingMulRemoveTitle")}</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3">
                   <p>
-                    You're removing the multiplier{" "}
+                    {t("pricingMulRemoveDescPre")}{" "}
                     <span className="font-semibold">
                       ${pendingMultiplier?.Start_value.toFixed(2)} – ${pendingMultiplier?.End_value.toFixed(2)}{" "}
                       ×{pendingMultiplier?.Multiplier}
                     </span>{" "}
-                    from this job.
+                    {t("pricingMulRemoveDescPost")}
                   </p>
                   <p>
-                    Do you want to <span className="font-semibold">keep it</span> in the system
-                    (so it can be used in other jobs) or{" "}
-                    <span className="font-semibold text-red-600">delete it permanently</span>?
+                    {t("pricingMulRemoveKeepPre")} <span className="font-semibold">{t("pricingMulRemoveKeepText")}</span>{" "}
+                    {t("pricingMulRemoveKeepMid")}{" "}
+                    <span className="font-semibold text-red-600">{t("pricingMulRemoveDeleteText")}</span>?
                   </p>
                   <p className="text-xs text-slate-400">
-                    Either way, pricing will be recalculated using the default multiplier ranges.
+                    {t("pricingMulRemoveNote")}
                   </p>
                 </div>
               </AlertDialogDescription>
@@ -214,7 +215,7 @@ export function JobMultipliersManager({
 
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel disabled={actionLoading}>
-                Cancel
+                {t("pricingMulCancelBtn")}
               </AlertDialogCancel>
               {/* Unlink only — keep the record */}
               <Button
@@ -224,7 +225,7 @@ export function JobMultipliersManager({
                 className="flex items-center gap-1.5"
               >
                 <Unlink className="h-3.5 w-3.5" />
-                {actionLoading ? "Removing…" : "Unlink (keep in system)"}
+                {actionLoading ? t("pricingMulRemoving") : t("pricingMulUnlinkBtn")}
               </Button>
               {/* Unlink + delete */}
               <Button
@@ -234,7 +235,7 @@ export function JobMultipliersManager({
                 className="flex items-center gap-1.5"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                {actionLoading ? "Deleting…" : "Delete permanently"}
+                {actionLoading ? t("pricingMulDeleting") : t("pricingMulDeleteBtn")}
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

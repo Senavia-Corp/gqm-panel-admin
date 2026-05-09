@@ -19,20 +19,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 const ITEMS_PER_PAGE = 10
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
 function ActivePill({ active }: { active?: boolean | null }) {
+  const t = useTranslations("roles_permissions")
   return active ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-      Active
+      {t("active")}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
       <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-      Inactive
+      {t("inactive")}
     </span>
   )
 }
@@ -41,6 +43,7 @@ type RoleListResponse = PaginatedResponse<Role> | Role[]
 
 export default function RolesTable() {
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -68,7 +71,7 @@ export default function RolesTable() {
     } catch (e: any) {
       setRoles([])
       setTotal(0)
-      setLoadError(e?.message ?? "Failed to load roles")
+      setLoadError(e?.message ?? t("loadErrorRoles"))
     } finally {
       setLoading(false)
     }
@@ -94,7 +97,7 @@ export default function RolesTable() {
       setRoleToDelete(null)
       await fetchRoles(page)
     } catch (e: any) {
-      setLoadError(e?.message ?? "Failed to delete role")
+      setLoadError(e?.message ?? t("loadErrorRoles"))
     } finally {
       setDeleting(false)
     }
@@ -126,7 +129,7 @@ export default function RolesTable() {
           <div className="relative w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search roles…"
+              placeholder={t("searchRolesPh")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 text-sm border-slate-200 bg-slate-50 focus:bg-white"
@@ -140,12 +143,12 @@ export default function RolesTable() {
 
           <Select value={activeFilter} onValueChange={(v: any) => setActiveFilter(v)}>
             <SelectTrigger className="w-32 text-sm border-slate-200 bg-slate-50">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("filterStatus")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">{t("filterAll")}</SelectItem>
+              <SelectItem value="active">{t("filterActive")}</SelectItem>
+              <SelectItem value="inactive">{t("filterInactive")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -154,13 +157,13 @@ export default function RolesTable() {
               onClick={() => { setSearchQuery(""); setActiveFilter("all") }}
               className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-100 transition-colors"
             >
-              <X className="h-3.5 w-3.5" /> Clear
+              <X className="h-3.5 w-3.5" /> {t("clearFilters")}
             </button>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-slate-400">{total} total</span>
+          <span className="text-xs text-slate-400">{total} {t("totalSuffix")}</span>
           <button
             onClick={() => fetchRoles(page)}
             className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
@@ -174,23 +177,23 @@ export default function RolesTable() {
       {loading ? (
         <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <RefreshCcw className="h-4 w-4 animate-spin" /> Loading roles…
+            <RefreshCcw className="h-4 w-4 animate-spin" /> {t("loadingRoles")}
           </div>
         </div>
       ) : loadError ? (
         <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center">
           <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
-          <p className="text-sm font-semibold text-slate-700">Could not load roles</p>
+          <p className="text-sm font-semibold text-slate-700">{t("loadErrorRoles")}</p>
           <p className="mt-1 text-xs text-red-500">{loadError}</p>
           <Button onClick={() => fetchRoles(page)} className="mt-3 h-8 text-xs bg-emerald-600 hover:bg-emerald-700">
-            <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> Retry
+            <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> {t("retry")}
           </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200">
           <Users className="mb-2 h-8 w-8 text-slate-200" />
-          <p className="text-sm font-semibold text-slate-500">No roles found</p>
-          {hasActiveFilters && <p className="mt-1 text-xs text-slate-400">Try adjusting your filters</p>}
+          <p className="text-sm font-semibold text-slate-500">{t("noRoles")}</p>
+          {hasActiveFilters && <p className="mt-1 text-xs text-slate-400">{t("noResultsDesc")}</p>}
         </div>
       ) : (
         <>
@@ -211,7 +214,7 @@ export default function RolesTable() {
                         <p className="mt-0.5 truncate text-xs text-slate-400">{asString(r.Description)}</p>
                       )}
                       <div className="mt-2 flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-400">Permissions:</span>
+                        <span className="text-[11px] text-slate-400">{t("thPermissions")}:</span>
                         <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-slate-100 px-1 text-xs font-bold text-slate-600">{permsCount}</span>
                       </div>
                     </div>
@@ -236,15 +239,15 @@ export default function RolesTable() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete role?</AlertDialogTitle>
+                            <AlertDialogTitle>{t("delTitleRole")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will unlink all permissions from the role first, then permanently delete it. Permissions will NOT be deleted.
+                              {t("delDescRole")}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
                             <AlertDialogAction onClick={(e) => { e.preventDefault(); deleteRole() }} disabled={deleting} className="bg-red-600 hover:bg-red-700">
-                              {deleting ? "Deleting…" : "Delete"}
+                              {deleting ? t("btnDeleting") : t("btnDelete")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -261,11 +264,11 @@ export default function RolesTable() {
             <table className="w-full min-w-[480px]">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Status</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Permissions</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actions</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("thID")}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("thNameOnly")}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("thStatus")}</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("thPermissions")}</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -293,7 +296,7 @@ export default function RolesTable() {
                           <button
                             onClick={() => router.push(`/roles-permissions/roles/${r.ID_Role}`)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400 text-amber-900 hover:bg-amber-500 transition-colors"
-                            title="View"
+                            title={t("det_btnEdit")}
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
@@ -305,26 +308,26 @@ export default function RolesTable() {
                               <button
                                 onClick={() => { setRoleToDelete(r); setDeleteOpen(true) }}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors"
-                                title="Delete"
+                                title={t("det_btnDelete")}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete role?</AlertDialogTitle>
+                                <AlertDialogTitle>{t("delTitleRole")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will unlink all permissions from the role first, then permanently delete it. Permissions will NOT be deleted.
+                                  {t("delDescRole")}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={(e) => { e.preventDefault(); deleteRole() }}
                                   disabled={deleting}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  {deleting ? "Deleting…" : "Delete"}
+                                  {deleting ? t("btnDeleting") : t("btnDelete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -340,15 +343,15 @@ export default function RolesTable() {
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
-              Page <span className="font-semibold text-slate-600">{page}</span> of{" "}
+              {t("paginationPage")} <span className="font-semibold text-slate-600">{page}</span> {t("paginationOf")}{" "}
               <span className="font-semibold text-slate-600">{totalPages}</span>
             </p>
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" onClick={() => fetchRoles(Math.max(1, page - 1))} disabled={page === 1} className="h-8 text-xs">
-                <ChevronLeft className="mr-1 h-3.5 w-3.5" /><span className="hidden sm:inline">Prev</span>
+                <ChevronLeft className="mr-1 h-3.5 w-3.5" /><span className="hidden sm:inline">{t("paginationPrev")}</span>
               </Button>
               <Button variant="outline" size="sm" onClick={() => fetchRoles(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="h-8 text-xs">
-                <span className="hidden sm:inline">Next</span><ChevronRight className="ml-1 h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("paginationNext")}</span><ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </div>
           </div>

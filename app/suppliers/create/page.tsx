@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "@/components/ui/use-toast"
 import { Store, ArrowLeft, Save, Loader2, Info, Phone, Zap, Globe } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,14 +32,16 @@ const COVERAGE_AREAS = [
 // ─── ComboSelect ──────────────────────────────────────────────────────────────
 
 function ComboSelect({
-  value, onChange, options, placeholder = "Select an option", allowCustom,
+  value, onChange, options, placeholder = "Select an option", allowCustom, prefix,
 }: {
   value: string
   onChange: (v: string) => void
   options: string[]
   placeholder?: string
   allowCustom: boolean
+  prefix?: "spec_" | "area_"
 }) {
+  const t = useTranslations("suppliers")
   const isCurrentlyCustom = value !== "" && !options.includes(value)
   const [customMode, setCustomMode] = useState(isCurrentlyCustom)
 
@@ -67,14 +70,17 @@ function ComboSelect({
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-        {allowCustom && <option value="__custom__">Other (type manually)…</option>}
+        {options.map((o) => {
+          const key = prefix ? (prefix + o.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) : o
+          return <option key={o} value={o}>{prefix ? t(key as any) : o}</option>
+        })}
+        {allowCustom && <option value="__custom__">{t("form_comboOther")}</option>}
       </select>
       {customMode && (
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Type custom value…"
+          placeholder={t("form_comboCustomPh")}
           className="rounded-xl border-slate-200"
         />
       )}
@@ -113,6 +119,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 // ─── Podio Toggle ─────────────────────────────────────────────────────────────
 
 function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations("suppliers")
   return (
     <button
       type="button"
@@ -124,8 +131,8 @@ function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${value ? "bg-blue-500" : "bg-slate-400"}`} />
-      <span className="sm:hidden">Podio: {value ? "ON" : "OFF"}</span>
-      <span className="hidden sm:inline">Sync Podio: {value ? "ON" : "OFF"}</span>
+      <span className="sm:hidden">{t("form_syncPodioLabel")}: {value ? t("form_on") : t("form_off")}</span>
+      <span className="hidden sm:inline">{t("form_syncPodioLabel")}: {value ? t("form_on") : t("form_off")}</span>
     </button>
   )
 }
@@ -134,6 +141,7 @@ function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 
 export default function CreateSupplierPage() {
   const router = useRouter()
+  const t = useTranslations("suppliers")
 
   const [saving, setSaving] = useState(false)
   const [syncPodio, setSyncPodio] = useState(true)
@@ -157,7 +165,7 @@ export default function CreateSupplierPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!companyName.trim()) {
-      toast({ title: "Validation", description: "Company name is required.", variant: "destructive" })
+      toast({ title: t("form_toastValidation"), description: t("form_errNameRequired"), variant: "destructive" })
       return
     }
 
@@ -188,10 +196,10 @@ export default function CreateSupplierPage() {
       }
 
       const created = await res.json()
-      toast({ title: "Created", description: "Supplier created successfully." })
+      toast({ title: t("form_toastCreated"), description: t("form_toastCreatedDesc") })
       router.push(`/suppliers/${created.ID_Supplier ?? ""}`)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to create supplier.", variant: "destructive" })
+      toast({ title: t("form_toastError"), description: e?.message ?? t("form_toastCreateError"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -219,8 +227,8 @@ export default function CreateSupplierPage() {
                       <Store className="h-4.5 w-4.5 text-white" />
                     </div>
                     <div className="min-w-0">
-                      <h1 className="truncate text-base sm:text-lg font-bold text-slate-900">New Supplier</h1>
-                      <p className="hidden sm:block text-xs text-slate-500">Fill in the details below</p>
+                      <h1 className="truncate text-base sm:text-lg font-bold text-slate-900">{t("form_title")}</h1>
+                      <p className="hidden sm:block text-xs text-slate-500">{t("form_subtitle")}</p>
                     </div>
                   </div>
                 </div>
@@ -233,40 +241,40 @@ export default function CreateSupplierPage() {
                     className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs"
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Supplier</span></>}
+                    {saving ? t("form_saving") : <><span className="sm:hidden">{t("form_btnSaveShort")}</span><span className="hidden sm:inline">{t("form_btnSave")}</span></>}
                   </Button>
                 </div>
               </div>
 
               {/* Basic Info */}
-              <SectionCard icon={Info} title="Basic Info">
+              <SectionCard icon={Info} title={t("form_secBasic")}>
                 <div>
-                  <FieldLabel required>Company Name</FieldLabel>
+                  <FieldLabel required>{t("form_labelCompanyName")}</FieldLabel>
                   <Input
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Florida Tile & Stone Inc."
+                    placeholder={t("form_phCompanyName")}
                     className="rounded-xl border-slate-200"
                   />
                 </div>
                 <div>
-                  <FieldLabel>Website</FieldLabel>
+                  <FieldLabel>{t("form_labelWebsite")}</FieldLabel>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <Input
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
-                      placeholder="https://example.com"
+                      placeholder={t("form_phWebsite")}
                       className="rounded-xl border-slate-200 pl-9"
                     />
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>Description</FieldLabel>
+                  <FieldLabel>{t("form_labelDescription")}</FieldLabel>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Brief description of this supplier…"
+                    placeholder={t("form_phDescription")}
                     rows={3}
                     className="rounded-xl border-slate-200 resize-none"
                   />
@@ -274,10 +282,10 @@ export default function CreateSupplierPage() {
               </SectionCard>
 
               {/* Account */}
-              <SectionCard icon={Zap} title="Account">
+              <SectionCard icon={Zap} title={t("form_secAccount")}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel>Account Status</FieldLabel>
+                    <FieldLabel>{t("form_labelStatus")}</FieldLabel>
                     <div className="flex gap-2">
                       {(["Active", "Inactive"] as const).map((s) => (
                         <button
@@ -298,78 +306,80 @@ export default function CreateSupplierPage() {
                     </div>
                   </div>
                   <div>
-                    <FieldLabel>Account Rep</FieldLabel>
+                    <FieldLabel>{t("form_labelRep")}</FieldLabel>
                     <Input
                       value={accRep}
                       onChange={(e) => setAccRep(e.target.value)}
-                      placeholder="Rep name"
+                      placeholder={t("form_phRep")}
                       className="rounded-xl border-slate-200"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <FieldLabel>Specialty</FieldLabel>
+                  <FieldLabel>{t("form_labelSpecialty")}</FieldLabel>
                   <ComboSelect
                     value={speciality}
                     onChange={setSpeciality}
                     options={SPECIALTIES}
-                    placeholder="Select a specialty…"
+                    placeholder={t("form_phSpecialty")}
                     allowCustom={!syncPodio}
+                    prefix="spec_"
                   />
                   {syncPodio && (
                     <p className="mt-1.5 text-[11px] text-blue-600">
-                      Custom values are disabled when Sync Podio is ON.
+                      {t("form_syncPodioMsg")}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <FieldLabel>Coverage Area</FieldLabel>
+                  <FieldLabel>{t("form_labelCoverage")}</FieldLabel>
                   <ComboSelect
                     value={coverageArea}
                     onChange={setCoverageArea}
                     options={COVERAGE_AREAS}
-                    placeholder="Select a coverage area…"
+                    placeholder={t("form_phCoverage")}
                     allowCustom={!syncPodio}
+                    prefix="area_"
                   />
                   {syncPodio && (
                     <p className="mt-1.5 text-[11px] text-blue-600">
-                      Custom values are disabled when Sync Podio is ON.
+                      {t("form_syncPodioMsg")}
                     </p>
                   )}
                 </div>
               </SectionCard>
 
               {/* Contact */}
-              <SectionCard icon={Phone} title="Contact">
+              <SectionCard icon={Phone} title={t("form_secContact")}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel>Email Address</FieldLabel>
+                    <FieldLabel>{t("form_labelEmail")}</FieldLabel>
                     <Input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="contact@company.com"
+                      placeholder={t("form_phEmail")}
                       className="rounded-xl border-slate-200"
                     />
                   </div>
                   <div>
-                    <FieldLabel>Phone Number</FieldLabel>
+                    <FieldLabel>{t("form_labelPhone")}</FieldLabel>
                     <Input
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (305) 000-0000"
+                      placeholder={t("form_phPhone")}
                       className="rounded-xl border-slate-200"
                     />
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>Address</FieldLabel>
+                  <FieldLabel>{t("form_labelAddress")}</FieldLabel>
                   <Input
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Street address, city, state, ZIP"
+                    placeholder={t("form_phAddress")}
                     className="rounded-xl border-slate-200"
                   />
                 </div>

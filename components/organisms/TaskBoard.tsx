@@ -18,6 +18,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import type { Task, TaskStatus } from "@/lib/types"
 import { TaskCard } from "@/components/molecules/TaskCard"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface TaskBoardProps {
   tasks: Task[]
@@ -26,18 +27,7 @@ interface TaskBoardProps {
   namesMap?: Record<string, string>
 }
 
-const STATUS_COLUMNS: {
-  id: TaskStatus
-  label: string
-  accent: string
-  bg: string
-  dot: string
-  emptyMsg: string
-}[] = [
-  { id: "Not started",      label: "Not Started", accent: "#6B7280", bg: "#F9FAFB", dot: "#D1D5DB", emptyMsg: "No tasks queued"        },
-  { id: "Work-in-progress", label: "In Progress",  accent: "#D97706", bg: "#FFFBEB", dot: "#F59E0B", emptyMsg: "Nothing in progress"    },
-  { id: "Completed",        label: "Completed",    accent: "#059669", bg: "#F0FDF4", dot: "#34D399", emptyMsg: "No completed tasks yet"  },
-]
+// Columns are now defined inside TaskBoard to use translations
 
 // ── Droppable Column ──────────────────────────────────────────────────────────
 // Each column registers itself as a droppable zone with its status string as id.
@@ -49,12 +39,14 @@ function Column({
   onTaskOpen,
   isOver,
   namesMap = {},
+  t,
 }: {
-  col: (typeof STATUS_COLUMNS)[number]
+  col: any
   tasks: Task[]
   onTaskOpen: (t: Task) => void
   isOver: boolean
   namesMap?: Record<string, string>
+  t: (key: string, params?: any) => string
 }) {
   const { setNodeRef } = useDroppable({ id: col.id })
 
@@ -121,7 +113,7 @@ function Column({
               <div style={{ fontSize: "20px", marginBottom: "6px" }}>
                 {isOver ? "↓" : "○"}
               </div>
-              {isOver ? "Drop here" : col.emptyMsg}
+              {isOver ? t("dropHere") : col.emptyMsg}
             </div>
           )}
         </div>
@@ -133,6 +125,7 @@ function Column({
 // ── Board ─────────────────────────────────────────────────────────────────────
 
 export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {} }: TaskBoardProps) {
+  const t = useTranslations("jobTasks")
   const [activeTask,   setActiveTask]   = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<TaskStatus | null>(null)
 
@@ -151,7 +144,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {}
   function handleDragOver({ over }: DragOverEvent) {
     // Track which column the card is currently hovering over
     if (!over) { setOverColumnId(null); return }
-    const colIds = STATUS_COLUMNS.map(c => c.id as string)
+    const colIds = ["Not started", "Work-in-progress", "Completed"]
     // over.id is a column id when hovering the droppable zone directly,
     // or a task id when hovering another task — resolve to column in both cases
     if (colIds.includes(over.id as string)) {
@@ -170,7 +163,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {}
 
     if (!over) return
 
-    const colIds = STATUS_COLUMNS.map(c => c.id as string)
+    const colIds = ["Not started", "Work-in-progress", "Completed"]
 
     // Resolve target column:
     // - If dropped directly on a column droppable → use that column id
@@ -204,7 +197,11 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {}
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:overflow-x-auto sm:pb-3">
-        {STATUS_COLUMNS.map(col => (
+        {[
+          { id: "Not started" as TaskStatus,      label: t("notStarted"), accent: "#6B7280", bg: "#F9FAFB", dot: "#D1D5DB", emptyMsg: t("noTasksQueued")        },
+          { id: "Work-in-progress" as TaskStatus, label: t("inProgress"),  accent: "#D97706", bg: "#FFFBEB", dot: "#F59E0B", emptyMsg: t("nothingInProgress")    },
+          { id: "Completed" as TaskStatus,        label: t("completed"),    accent: "#059669", bg: "#F0FDF4", dot: "#34D399", emptyMsg: t("noCompletedTasks")  },
+        ].map(col => (
           <Column
             key={col.id}
             col={col}
@@ -212,6 +209,7 @@ export function TaskBoard({ tasks, onTaskOpen, onTaskStatusChange, namesMap = {}
             onTaskOpen={onTaskOpen}
             isOver={overColumnId === col.id}
             namesMap={namesMap}
+            t={t}
           />
         ))}
       </div>

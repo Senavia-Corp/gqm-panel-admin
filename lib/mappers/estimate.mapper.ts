@@ -1,4 +1,4 @@
-import type { EstimateItem, JobDTO } from "@/lib/types"
+import type { BDFStatus, EstimateItem, JobDTO } from "@/lib/types"
 
 export function mapEstimateCostsFromJob(job: JobDTO): { items: EstimateItem[]; hasSaved: boolean } {
   const costs = job.estimate_costs ?? []
@@ -27,6 +27,7 @@ export function mapEstimateCostsFromJob(job: JobDTO): { items: EstimateItem[]; h
     Unit_Cost: cost.Unit_cost || 0,
 
     Cost_Type: cost.Cost_type || "Subcontractor",
+    Status: (cost.Status as BDFStatus) || null,
 
     Marked_As: "",
     Builder_Cost: cost.Builder_cost || 0,
@@ -66,7 +67,7 @@ export function mapEstimateItemToCreatePayload(item: EstimateItem, jobId: string
     Markup: item.Markup,
     Margin: item.Margin,
     Percent_invoiced: item.Percent_Invoiced,
-    Status: "",
+    Status: item.Status ?? null,
     ID_Jobs: jobId,
   }
 }

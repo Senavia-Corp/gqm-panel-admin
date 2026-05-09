@@ -6,6 +6,7 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import type { BuildingDeptRow } from "@/lib/types"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   Landmark, Search, X, ExternalLink, Mail, Phone, Link2,
   Unlink, Loader2, ArrowUpRight, ChevronLeft, ChevronRight,
@@ -19,6 +20,7 @@ interface Props {
   isReadOnly: boolean
   patch: (updates: Record<string, any>, opts?: { sync_podio?: boolean }) => Promise<void>
   isSaving: boolean
+  role?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -53,6 +55,8 @@ function LinkBldgDeptModal({
   onClose: () => void
   onSelect: (row: BuildingDeptRow) => Promise<void>
 }) {
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
   const LIMIT = 10
   const [query, setQuery] = useState("")
   const debouncedQ = useDebounce(query, 300)
@@ -129,9 +133,9 @@ function LinkBldgDeptModal({
               <Landmark className="h-5 w-5 text-blue-600" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">Link Building Department</h2>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">{t("bldgModalTitle")}</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Select a department to link to this job
+                {t("bldgModalSubtitle")}
                 {total > 0 && (
                   <span className="ml-1.5 font-semibold text-slate-500">· {total} total</span>
                 )}
@@ -154,7 +158,7 @@ function LinkBldgDeptModal({
             <input
               autoFocus
               type="text"
-              placeholder="Search by city, location, ID…"
+              placeholder={t("bldgSearchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all"
@@ -171,7 +175,7 @@ function LinkBldgDeptModal({
           ) : rows.length === 0 ? (
             <div className="flex flex-col h-48 items-center justify-center gap-3">
               <AlertCircle className="h-8 w-8 text-slate-200" />
-              <p className="text-sm text-slate-400">No building departments found</p>
+              <p className="text-sm text-slate-400">{t("bldgNoResults")}</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-50">
@@ -224,9 +228,9 @@ function LinkBldgDeptModal({
                       }`}
                     >
                       {isLinking ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Linking…</>
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("bldgLinking")}</>
                       ) : (
-                        <><Link2 className="h-3.5 w-3.5" /> Link</>
+                        <><Link2 className="h-3.5 w-3.5" /> {t("bldgLink")}</>
                       )}
                     </button>
                   </li>
@@ -239,9 +243,9 @@ function LinkBldgDeptModal({
         {/* Footer */}
         <div className="flex-shrink-0 flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
           <p className="text-xs text-slate-400">
-            Showing{" "}
-            <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{total}</span> departments
+            {tCommon("showing")}{" "}
+            <span className="font-semibold text-slate-600">{rows.length}</span> {tCommon("of")}{" "}
+            <span className="font-semibold text-slate-600">{total}</span> {t("bldgDepartments")}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -273,7 +277,9 @@ function LinkBldgDeptModal({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props) {
+export function BuildingDeptSection({ job, isReadOnly, patch, isSaving, role }: Props) {
+  const t = useTranslations("jobs")
+  const isTech = role === "LEAD_TECHNICIAN"
   const dept = job?.building_dept ?? null
   const linkedId: string | null = job?.ID_BldgDept ?? dept?.ID_BldgDept ?? null
 
@@ -315,20 +321,22 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
               <Landmark className="h-3.5 w-3.5 text-white" />
             </div>
             <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700">
-              Building Department
+              {t("bldgSectionTitle")}
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
-            <Link href={`/building-departments/${dept.ID_BldgDept}`} target="_blank">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
-              >
-                <ArrowUpRight className="h-3.5 w-3.5" />
-                View dept
-              </Button>
-            </Link>
+            {!isTech && (
+              <Link href={`/building-departments/${dept.ID_BldgDept}`} target="_blank">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  {t("bldgViewDept")}
+                </Button>
+              </Link>
+            )}
             {dept.Link && (
               <a href={dept.Link} target="_blank" rel="noopener noreferrer">
                 <Button
@@ -337,7 +345,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
                   className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-white"
                 >
                   <Link2 className="h-3.5 w-3.5" />
-                  Portal
+                  {t("bldgPortal")}
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               </a>
@@ -355,7 +363,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
                 ) : (
                   <Unlink className="h-3.5 w-3.5" />
                 )}
-                Unlink
+                {t("bldgUnlink")}
               </Button>
             )}
           </div>
@@ -391,7 +399,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
                   )}
                 </a>
               )}
-              {phones.length > 0 && (
+              {phones.length > 0 && !isTech && (
                 <span className="flex items-center gap-1.5 text-xs text-slate-600">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
                   {phones[0]}
@@ -403,9 +411,9 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
             </div>
           )}
 
-          {dept.Portal_Log_In && (
+          {dept.Portal_Log_In && !isTech && (
             <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Login:</span>{" "}
+              <span className="font-medium text-slate-600">{t("bldgLogin")}</span>{" "}
               {dept.Portal_Log_In}
             </p>
           )}
@@ -425,23 +433,25 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
-                Building Department
+                {t("bldgSectionTitle")}
               </p>
               <p className="mt-0.5 font-mono text-sm font-semibold text-slate-700">
                 {linkedId}
               </p>
             </div>
           </div>
-          <Link href={`/building-departments/${linkedId}`} target="_blank">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" />
-              View dept
-            </Button>
-          </Link>
+          {!isTech && (
+            <Link href={`/building-departments/${linkedId}`} target="_blank">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-blue-600 hover:bg-blue-100"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                {t("bldgViewDept")}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     )
@@ -457,7 +467,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
               <Landmark className="h-3.5 w-3.5 text-slate-400" />
             </div>
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-              Building Department
+              {t("bldgSectionTitle")}
             </h3>
           </div>
           {!isReadOnly && (
@@ -468,7 +478,7 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
               className="h-7 gap-1.5 rounded-lg border-slate-200 px-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-600"
             >
               <Search className="h-3.5 w-3.5" />
-              Link department
+              {t("bldgLinkDept")}
             </Button>
           )}
         </div>
@@ -478,9 +488,9 @@ export function BuildingDeptSection({ job, isReadOnly, patch, isSaving }: Props)
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
               <Landmark className="h-5 w-5 text-slate-300" />
             </div>
-            <p className="text-sm text-slate-400">No building department linked</p>
+            <p className="text-sm text-slate-400">{t("bldgNoLinked")}</p>
             {isReadOnly && (
-              <p className="text-xs text-slate-300">Edit the job to link a building department</p>
+              <p className="text-xs text-slate-300">{t("bldgNoLinkedHint")}</p>
             )}
           </div>
         </div>

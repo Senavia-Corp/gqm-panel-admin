@@ -52,6 +52,16 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
   const t = useTranslations("subcontractors")
   const router = useRouter()
 
+  const [user, setUser] = useState<any>(null)
+  useEffect(() => {
+    const u = localStorage.getItem("user_data")
+    if (u) setUser(JSON.parse(u))
+  }, [])
+
+  const isTech = user?.role === "LEAD_TECHNICIAN"
+  const [techSubId, setTechSubId] = useState<string | null>(null)
+
+
   const [rows, setRows]         = useState<Technician[]>([])
   const [total, setTotal]       = useState(0)
   const [page, setPage]         = useState(1)
@@ -72,6 +82,10 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
     try {
       const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
       if (q) params.set("q", q)
+      if (isTech) {
+        if (techSubId) params.set("subcontractor_id", techSubId)
+        else if (user?.id) params.set("ID_Technician", user.id)
+      }
 
       const res = await apiFetch(`/api/technician?${params}`, {
         cache: "no-store",
@@ -85,12 +99,29 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
       if (e?.name === "AbortError") return
       setError(e?.message ?? t("errorLoad"))
     } finally { setLoading(false) }
-  }, [t])
+  }, [t, isTech, techSubId])
 
   useEffect(() => {
+    if (isTech && user?.id) {
+      const fetchTechSub = async () => {
+        try {
+          const res = await apiFetch(`/api/technician/${user.id}`)
+          if (res.ok) {
+            const data = await res.json()
+            setTechSubId(data?.subcontractor?.ID_Subcontractor ? String(data.subcontractor.ID_Subcontractor) : null)
+          }
+        } catch (err) {
+          console.error("Failed to fetch tech sub ID:", err)
+        }
+      }
+      fetchTechSub()
+    }
+  }, [isTech, user?.id])
+
+  useEffect(() => {
+    if (isTech && !user?.id) return
     fetchPage(page, dSearch)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, dSearch])
+  }, [page, dSearch, techSubId, isTech, user?.id, fetchPage])
 
   useEffect(() => { setPage(1) }, [dSearch])
 
@@ -103,10 +134,10 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.detail || `HTTP Error ${res.status}`)
       }
-      toast({ title: "Deleted", description: `Technician ${id} has been removed.` })
+      toast({ title: t("techToastDeleted"), description: t("techToastDeletedDesc", { id }) })
       fetchPage(page, dSearch)
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" })
+      toast({ title: t("techToastError"), description: err.message, variant: "destructive" })
     } finally {
       setDeleteDialog({ open: false, technician: null })
     }
@@ -123,7 +154,7 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search technicians by name, ID, email..."
+            placeholder={t("techSearchPlaceholder")}
             className="pl-9 text-sm border-slate-200 focus:border-emerald-400" />
           {search && (
             <button onClick={() => setSearch("")}
@@ -132,10 +163,10 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
             </button>
           )}
         </div>
-        {hasPermission("technician:create") && (
-          <Button onClick={() => router.push("/technicians/create")}
+        {(hasPermission("technician:create") || isTech) && (
+          <Button onClick={() => router.push(isTech && techSubId ? `/technicians/create?subId=${techSubId}` : "/technicians/create")}
             className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:w-auto sm:flex-shrink-0">
-            <Plus className="h-4 w-4" /> New Technician
+            <Plus className="h-4 w-4" /> {t("techNewBtn")}
           </Button>
         )}
       </div>
@@ -156,12 +187,12 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">ID</th>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Name</th>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Type</th>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Contact</th>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Subcontractor</th>
-                <th className="py-3 px-4 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">{t("techColId")}</th>
+                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">{t("techColName")}</th>
+                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">{t("techColType")}</th>
+                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">{t("techColContact")}</th>
+                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase">{t("techColSub")}</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-slate-500 uppercase">{t("techColActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -186,7 +217,7 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
                         ? "bg-amber-50 text-amber-700 border-amber-200"
                         : "bg-blue-50 text-blue-700 border-blue-200"
                     }>
-                      {tech.Type_of_technician || tech.Type || "Worker"}
+                      {(tech.Type_of_technician || tech.Type) === "Leader" ? t("leader") : t("worker")}
                     </Badge>
                   </td>
                   <td className="py-3 px-4">
@@ -208,7 +239,7 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
                         </span>
                       </p>
                     ) : (
-                      <span className="text-xs italic text-slate-400">Independent</span>
+                      <span className="text-xs italic text-slate-400">{t("techIndependent")}</span>
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -216,13 +247,13 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
                        <Button variant="ghost" size="sm" 
                           onClick={() => router.push(`/technicians/${tech.ID_Technician}`)}
                           className="h-8 gap-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100">
-                          <Eye className="h-3.5 w-3.5" /> View
+                          <Eye className="h-3.5 w-3.5" /> {t("techView")}
                        </Button>
-                       {hasPermission("technician:delete") && (
+                       {(hasPermission("technician:delete") || isTech) && (
                           <Button variant="ghost" size="sm"
                              onClick={() => setDeleteDialog({ open: true, technician: tech })}
                              className="h-8 gap-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
-                             <Trash2 className="h-3.5 w-3.5" /> Delete
+                             <Trash2 className="h-3.5 w-3.5" /> {t("techDelete")}
                           </Button>
                        )}
                     </div>
@@ -232,7 +263,7 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500 text-sm">
-                    No technicians found
+                    {t("techEmpty")}
                   </td>
                 </tr>
               )}
@@ -245,20 +276,19 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
       {!loading && !error && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
           <p className="text-sm text-slate-500">
-            Showing <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span> of{" "}
-            <span className="font-semibold text-slate-800">{total}</span> records
+            {t("techPaginationRange", { from: showFrom, to: showTo, total })}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
               disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-              <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              <ChevronLeft className="h-3.5 w-3.5" /> {t("techPaginationPrev")}
             </Button>
             <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
               {page} / {totalPages}
             </span>
             <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
               disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-              Next <ChevronRight className="h-3.5 w-3.5" />
+              {t("techPaginationNext")} <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>

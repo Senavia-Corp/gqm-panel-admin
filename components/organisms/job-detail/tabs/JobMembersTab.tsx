@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Mail, Phone, MapPin, Trash2, Link2, Users, UserCheck, Building2 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { UserRole } from "@/lib/types"
 
 type Props = {
@@ -31,7 +32,7 @@ function colorFor(name: string) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-function initialsOf(name?: string) {
+function initials(name?: string) {
   if (!name) return "?"
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -76,12 +77,14 @@ function MemberCard({
   index,
   role,
   onUnlink,
+  t,
 }: {
   member: any
   projectRole: string | null
   index: number
   role: UserRole
   onUnlink: () => void
+  t: (key: string, params?: any) => string
 }) {
   const name        = member.Member_Name || member.Acc_Rep || "Unknown"
   const memberId    = member.ID_Member || `member-${index}`
@@ -105,7 +108,7 @@ function MemberCard({
           <div
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ring-2 ${color.bg} ${color.ring}`}
           >
-            {initialsOf(name)}
+            {initials(name)}
           </div>
 
           {/* Name + roles */}
@@ -123,7 +126,7 @@ function MemberCard({
             <button
               onClick={onUnlink}
               className="shrink-0 rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-400 transition-all hover:bg-red-100 hover:text-red-600"
-              title={`Remove ${name}`}
+              title={t("removeMember", { name })}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -163,14 +166,14 @@ function MemberCard({
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────
-function EmptyState({ onAdd, canAdd }: { onAdd?: () => void; canAdd: boolean }) {
+function EmptyState({ onAdd, canAdd, t }: { onAdd?: () => void; canAdd: boolean; t: (key: string, params?: any) => string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 py-16 text-center">
       <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
         <Users className="h-7 w-7" />
       </div>
-      <p className="text-sm font-medium text-slate-600">No members assigned yet</p>
-      <p className="mt-1 text-xs text-slate-400">Link a team member to get started</p>
+      <p className="text-sm font-medium text-slate-600">{t("noMembersAssigned")}</p>
+      <p className="mt-1 text-xs text-slate-400">{t("linkMemberToStart")}</p>
       {canAdd && (
         <Button
           onClick={onAdd}
@@ -178,7 +181,7 @@ function EmptyState({ onAdd, canAdd }: { onAdd?: () => void; canAdd: boolean }) 
           className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           <Link2 className="mr-1.5 h-3.5 w-3.5" />
-          Link Member
+          {t("linkMember")}
         </Button>
       )}
     </div>
@@ -201,6 +204,7 @@ function expandMembers(members: any[]): MemberRow[] {
 
 // ── Main component ────────────────────────────────────────────────────────
 export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMember }: Props) {
+  const t = useTranslations("jobMembers")
   const members = Array.isArray(job?.members) ? job.members : []
   const rows = expandMembers(members)
   const canManage = role === "GQM_MEMBER"
@@ -214,11 +218,13 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
             <Users className="h-4 w-4 text-emerald-600" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Team Members</h3>
+            <h3 className="text-base font-semibold text-slate-900">{t("teamMembers")}</h3>
             <p className="text-xs text-slate-500">
               {rows.length === 0
-                ? "No members assigned"
-                : `${rows.length} role${rows.length !== 1 ? "s" : ""} assigned`}
+                ? t("noMembers")
+                : rows.length === 1
+                  ? t("roleAssigned")
+                  : t("rolesAssigned", { count: rows.length })}
             </p>
           </div>
         </div>
@@ -230,14 +236,14 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
             className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
           >
             <Link2 className="mr-1.5 h-3.5 w-3.5" />
-            Link Member
+            {t("linkMember")}
           </Button>
         )}
       </div>
 
       {/* Grid or empty */}
       {rows.length === 0 ? (
-        <EmptyState onAdd={onOpenLinkMember} canAdd={canManage} />
+        <EmptyState onAdd={onOpenLinkMember} canAdd={canManage} t={t} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map(({ member, rol }, index) => {
@@ -251,6 +257,7 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
                 index={index}
                 role={role}
                 onUnlink={() => onRequestUnlinkMember?.({ memberId, rol: rol ?? undefined, name })}
+                t={t}
               />
             )
           })}

@@ -53,17 +53,19 @@ export const MODULE_ACTIONS = [
   {
     module: "Purchases",
     actions: [
-      { id: "purchase:read",   label: "Read",   desc: "View purchase orders and financial spending." },
-      { id: "purchase:create", label: "Create", desc: "Create new purchase records." },
-      { id: "purchase:update", label: "Update", desc: "Edit existing purchases." },
-      { id: "purchase:delete", label: "Delete", desc: "Remove purchase records." },
+      { id: "purchase:read",         label: "Read",         desc: "View purchase orders and financial spending." },
+      { id: "purchase:create",       label: "Create",       desc: "Create new purchase records." },
+      { id: "purchase:update",       label: "Update",       desc: "Edit existing purchases (all fields and all statuses)." },
+      { id: "purchase:delete",       label: "Delete",       desc: "Remove purchase records." },
+      { id: "purchase:request_only", label: "Request Only", desc: "Can create and submit purchases, but limited to Pending / In Review statuses only, and cannot fill in actual purchasing data (shop, value, link)." },
     ],
   },
   {
     module: "Commissions",
     actions: [
-      { id: "commission:read",   label: "Read",   desc: "View job commissions and breakdown." },
-      { id: "commission:update", label: "Update", desc: "Edit commission types or rates." },
+      { id: "commission:read",     label: "Read",     desc: "View all member commissions and breakdown." },
+      { id: "commission:read_own", label: "Read Own", desc: "View only the commissions of the logged-in member. Overrides full read when commission:read is not granted." },
+      { id: "commission:update",   label: "Update",   desc: "Edit commission types or rates." },
     ],
   },
   {

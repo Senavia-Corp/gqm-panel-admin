@@ -2,14 +2,18 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface OrderDetailsDialogProps {
   order: any
   open: boolean
   onOpenChange: (open: boolean) => void
+  role: string
 }
 
-export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDialogProps) {
+export function OrderDetailsDialog({ order, open, onOpenChange, role }: OrderDetailsDialogProps) {
+  const t = useTranslations("jobs")
+  const isTech = role === "LEAD_TECHNICIAN"
   if (!order) return null
 
   const items = order.Items ?? []
@@ -33,11 +37,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
         {/* Header fijo */}
         <div className="border-b bg-white px-4 py-4 sm:px-8 sm:py-6">
           <DialogHeader className="space-y-1">
-            <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Order Details</DialogTitle>
+            <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">{t("orderDetailsHeader")}</DialogTitle>
           </DialogHeader>
 
           <div className="mt-3 sm:mt-4">
-            <h3 className="text-xl font-black text-slate-800 tracking-tight sm:text-3xl">{order.Title || "Standard Order"}</h3>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight sm:text-3xl">{order.Title || t("orderDetailsFallback")}</h3>
           </div>
         </div>
 
@@ -48,21 +52,21 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               <div className="p-4 sm:p-6 rounded-2xl bg-violet-50/50 border border-violet-100 relative overflow-hidden group">
                 <div className="relative z-10">
-                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-violet-400">Formula</Label>
+                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-violet-400">{t("orderDetailsFormulaLabel")}</Label>
                   <div className="text-2xl font-black text-violet-700 tabular-nums sm:text-3xl">
                     ${Number(order.Formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-xs text-violet-400 font-medium mt-1">Sum of builder costs</p>
+                  <p className="text-xs text-violet-400 font-medium mt-1">{isTech ? "Sum of final costs" : t("orderDetailsFormulaSub")}</p>
                 </div>
               </div>
 
               <div className="p-4 sm:p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden group">
                 <div className="relative z-10">
-                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-emerald-400">Adj. Formula</Label>
+                  <Label className="mb-2 block text-[11px] font-black uppercase tracking-widest text-emerald-400">{t("orderDetailsAdjLabel")}</Label>
                   <div className="text-2xl font-black text-emerald-700 tabular-nums sm:text-3xl">
                     ${Number(order.Adj_formula || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-xs text-emerald-400 font-medium mt-1">Adjusted formula (COs included)</p>
+                  <p className="text-xs text-emerald-400 font-medium mt-1">{t("orderDetailsAdjSub")}</p>
                 </div>
               </div>
             </div>
@@ -71,7 +75,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
             <div>
               <div className="flex items-center gap-2 mb-4 px-1">
                 <div className="h-5 w-1 rounded-full bg-slate-300" />
-                <h4 className="font-black text-slate-700 uppercase tracking-wider text-xs">Estimate Costs</h4>
+                <h4 className="font-black text-slate-700 uppercase tracking-wider text-xs">{t("orderDetailsEstCosts")}</h4>
               </div>
 
               {items.length > 0 ? (
@@ -80,13 +84,13 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                     <table className="min-w-max w-full">
                       <thead className="bg-slate-50/50 border-b border-slate-100">
                         <tr>
-                          <th className="px-6 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Title</th>
-                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Cost Code</th>
-                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">Category</th>
-                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Qty</th>
-                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Unit Cost</th>
-                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Builder Cost</th>
-                          <th className="px-6 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">Client Price</th>
+                          <th className="px-6 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColTitle")}</th>
+                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColCostCode")}</th>
+                          <th className="px-4 py-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColCategory")}</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColQty")}</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColUnitCost")}</th>
+                          <th className="px-4 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{isTech ? "Final Cost" : t("orderDetailsColBuilderCost")}</th>
+                          {!isTech && <th className="px-6 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">{t("orderDetailsColClientPrice")}</th>}
                         </tr>
                       </thead>
 
@@ -103,9 +107,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                             <td className="px-4 py-4 text-right font-bold text-violet-600 tabular-nums whitespace-nowrap">
                               ${Number(item.Builder_cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums whitespace-nowrap">
-                              ${Number(item.Client_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            </td>
+                            {!isTech && (
+                              <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                                ${Number(item.Client_price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -113,21 +119,23 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsDi
                       <tfoot className="bg-slate-50/50 border-t border-slate-100">
                         <tr>
                           <td colSpan={5} className="px-6 py-5 text-right font-black text-slate-400 uppercase tracking-widest text-[11px] whitespace-nowrap">
-                            Totals
+                            {t("orderDetailsTotals")}
                           </td>
                           <td className="px-4 py-5 text-right font-black text-violet-700 text-lg tabular-nums whitespace-nowrap">
                             ${totalBuilder.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-6 py-5 text-right font-black text-emerald-700 text-lg tabular-nums whitespace-nowrap">
-                            ${totalClient.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                          </td>
+                          {!isTech && (
+                            <td className="px-6 py-5 text-right font-black text-emerald-700 text-lg tabular-nums whitespace-nowrap">
+                              ${totalClient.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </td>
+                          )}
                         </tr>
                       </tfoot>
                     </table>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">No estimate costs found for this order</div>
+                <div className="text-center py-8 text-muted-foreground">{t("orderDetailsNoItems")}</div>
               )}
             </div>
           </div>

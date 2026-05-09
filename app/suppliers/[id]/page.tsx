@@ -17,6 +17,7 @@ import {
   Info, Phone, Zap, Globe, CheckCircle2, XCircle,
   ShoppingCart, ExternalLink,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,14 +38,16 @@ const COVERAGE_AREAS = [
 // ─── ComboSelect ──────────────────────────────────────────────────────────────
 
 function ComboSelect({
-  value, onChange, options, placeholder = "Select an option", allowCustom,
+  value, onChange, options, placeholder = "Select an option", allowCustom, prefix,
 }: {
   value: string
   onChange: (v: string) => void
   options: string[]
   placeholder?: string
   allowCustom: boolean
+  prefix?: "spec_" | "area_"
 }) {
+  const t = useTranslations("suppliers")
   const isCurrentlyCustom = value !== "" && !options.includes(value)
   const [customMode, setCustomMode] = useState(isCurrentlyCustom)
 
@@ -79,14 +82,17 @@ function ComboSelect({
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-        {allowCustom && <option value="__custom__">Other (type manually)…</option>}
+        {options.map((o) => {
+          const key = prefix ? (prefix + o.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) : o
+          return <option key={o} value={o}>{prefix ? t(key as any) : o}</option>
+        })}
+        {allowCustom && <option value="__custom__">{t("form_comboOther")}</option>}
       </select>
       {customMode && (
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Type custom value…"
+          placeholder={t("form_comboCustomPh")}
           className="rounded-xl border-slate-200"
         />
       )}
@@ -127,6 +133,7 @@ function ReadonlyField({ value }: { value: string | null | undefined }) {
 }
 
 function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations("suppliers")
   return (
     <button
       type="button"
@@ -138,8 +145,8 @@ function PodioToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
       }`}
     >
       <span className={`h-2 w-2 rounded-full ${value ? "bg-blue-500" : "bg-slate-400"}`} />
-      <span className="sm:hidden">Podio: {value ? "ON" : "OFF"}</span>
-      <span className="hidden sm:inline">Sync Podio: {value ? "ON" : "OFF"}</span>
+      <span className="sm:hidden">{t("form_syncPodioLabel")}: {value ? t("form_on") : t("form_off")}</span>
+      <span className="hidden sm:inline">{t("form_syncPodioLabel")}: {value ? t("form_on") : t("form_off")}</span>
     </button>
   )
 }
@@ -163,6 +170,7 @@ type LinkedPurchase = {
 }
 
 function LinkedPurchasesSection({ supplierId }: { supplierId: string }) {
+  const t = useTranslations("suppliers")
   const [rows, setRows] = useState<LinkedPurchase[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -182,18 +190,18 @@ function LinkedPurchasesSection({ supplierId }: { supplierId: string }) {
   }, [supplierId])
 
   return (
-    <SectionCard icon={ShoppingCart} title="Linked Purchases">
+    <SectionCard icon={ShoppingCart} title={t("det_secLinkedPurchases")}>
       {loading ? (
         <div className="flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
         </div>
       ) : error ? (
-        <p className="text-xs text-slate-400 text-center py-4">Could not load purchases.</p>
+        <p className="text-xs text-slate-400 text-center py-4">{t("det_loadPurchasesError")}</p>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <ShoppingCart className="h-8 w-8 text-slate-200" />
-          <p className="text-sm text-slate-400">No purchases linked yet</p>
-          <p className="text-xs text-slate-300">Purchases that reference this supplier will appear here</p>
+          <p className="text-sm text-slate-400">{t("det_noPurchases")}</p>
+          <p className="text-xs text-slate-300">{t("det_noPurchasesDesc")}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -232,6 +240,7 @@ export default function SupplierDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const t = useTranslations("suppliers")
 
   const [supplier, setSupplier] = useState<Supplier | null>(null)
   const [loading, setLoading] = useState(true)
@@ -274,7 +283,7 @@ export default function SupplierDetailPage() {
       setSupplier(data)
       loadFormFromSupplier(data)
     } catch {
-      toast({ title: "Error", description: "Failed to load supplier.", variant: "destructive" })
+      toast({ title: t("det_toastError"), description: t("det_toastLoadError"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -297,7 +306,7 @@ export default function SupplierDetailPage() {
 
   const handleSave = async () => {
     if (!companyName.trim()) {
-      toast({ title: "Validation", description: "Company name is required.", variant: "destructive" })
+      toast({ title: t("form_toastValidation"), description: t("form_errNameRequired"), variant: "destructive" })
       return
     }
     setSaving(true)
@@ -324,10 +333,10 @@ export default function SupplierDetailPage() {
         throw new Error(errData?.detail ?? errData?.error ?? `Error ${res.status}`)
       }
       setEditing(false)
-      toast({ title: "Saved", description: "Supplier updated." })
+      toast({ title: t("det_toastSaved"), description: t("det_toastSavedDesc") })
       await fetchSupplier()
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to save.", variant: "destructive" })
+      toast({ title: t("det_toastError"), description: e?.message ?? t("det_toastSaveError"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -336,10 +345,10 @@ export default function SupplierDetailPage() {
   const confirmDelete = async () => {
     const res = await apiFetch(`/api/supplier/${id}?sync_podio=${syncPodio}`, { method: "DELETE" })
     if (!res.ok) {
-      toast({ title: "Error", description: "Failed to delete.", variant: "destructive" })
+      toast({ title: t("det_toastError"), description: t("sup_toastDeleteError"), variant: "destructive" })
       return
     }
-    toast({ title: "Deleted", description: "Supplier removed." })
+    toast({ title: t("det_toastDeleted"), description: t("det_toastDeletedDesc") })
     router.push("/suppliers")
   }
 
@@ -364,8 +373,8 @@ export default function SupplierDetailPage() {
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
           <main className="flex-1 flex flex-col items-center justify-center gap-4">
-            <p className="text-slate-500">Supplier not found.</p>
-            <Button onClick={() => router.push("/suppliers")}>Back to list</Button>
+            <p className="text-slate-500">{t("det_notFound")}</p>
+            <Button onClick={() => router.push("/suppliers")}>{t("det_backToList")}</Button>
           </main>
         </div>
       </div>
@@ -406,17 +415,17 @@ export default function SupplierDetailPage() {
                   <>
                     <PodioToggle value={syncPodio} onChange={setSyncPodio} />
                     <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
+                      <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnCancel")}</span>
                     </Button>
                     <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
                       {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Changes</span></>}
+                      {saving ? t("form_saving") : <><span className="sm:hidden">{t("form_btnSaveShort")}</span><span className="hidden sm:inline">{t("det_btnSave")}</span></>}
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button variant="outline" size="sm" onClick={handleEdit} className="gap-1.5 text-xs border-slate-200">
-                      <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
+                      <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnEdit")}</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -424,7 +433,7 @@ export default function SupplierDetailPage() {
                       onClick={() => setDeleteOpen(true)}
                       className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
+                      <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnDelete")}</span>
                     </Button>
                   </>
                 )}
@@ -432,20 +441,20 @@ export default function SupplierDetailPage() {
             </div>
 
             {/* Basic Info */}
-            <SectionCard icon={Info} title="Basic Info">
+            <SectionCard icon={Info} title={t("form_secBasic")}>
               <div>
-                <FieldLabel>Company Name</FieldLabel>
+                <FieldLabel>{t("form_labelCompanyName")}</FieldLabel>
                 {editing
                   ? <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="rounded-xl border-slate-200" />
                   : <ReadonlyField value={supplier.Company_Name} />
                 }
               </div>
               <div>
-                <FieldLabel>Website</FieldLabel>
+                <FieldLabel>{t("form_labelWebsite")}</FieldLabel>
                 {editing ? (
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    <Input value={website} onChange={(e) => setWebsite(e.target.value)} className="rounded-xl border-slate-200 pl-9" placeholder="https://example.com" />
+                    <Input value={website} onChange={(e) => setWebsite(e.target.value)} className="rounded-xl border-slate-200 pl-9" placeholder={t("form_phWebsite")} />
                   </div>
                 ) : (
                   supplier.Company_Website
@@ -456,19 +465,19 @@ export default function SupplierDetailPage() {
                 )}
               </div>
               <div>
-                <FieldLabel>Description</FieldLabel>
+                <FieldLabel>{t("form_labelDescription")}</FieldLabel>
                 {editing
-                  ? <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="rounded-xl border-slate-200 resize-none" placeholder="Brief description…" />
+                  ? <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="rounded-xl border-slate-200 resize-none" placeholder={t("form_phDescription")} />
                   : <ReadonlyField value={supplier.Description} />
                 }
               </div>
             </SectionCard>
 
             {/* Account */}
-            <SectionCard icon={Zap} title="Account">
+            <SectionCard icon={Zap} title={t("form_secAccount")}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel>Account Status</FieldLabel>
+                  <FieldLabel>{t("form_labelStatus")}</FieldLabel>
                   {editing ? (
                     <div className="flex gap-2">
                       {(["Active", "Inactive"] as const).map((s) => (
@@ -484,7 +493,7 @@ export default function SupplierDetailPage() {
                               : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"
                           }`}
                         >
-                          {s}
+                          {s === "Active" ? t("sup_active") : t("sup_inactive")}
                         </button>
                       ))}
                     </div>
@@ -492,11 +501,11 @@ export default function SupplierDetailPage() {
                     <div>
                       {supplier.Acc_Status === "Active" ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {t("sup_active")}
                         </span>
                       ) : supplier.Acc_Status === "Inactive" ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500">
-                          <XCircle className="h-3.5 w-3.5" /> Inactive
+                          <XCircle className="h-3.5 w-3.5" /> {t("sup_inactive")}
                         </span>
                       ) : (
                         <ReadonlyField value={null} />
@@ -505,79 +514,81 @@ export default function SupplierDetailPage() {
                   )}
                 </div>
                 <div>
-                  <FieldLabel>Account Rep</FieldLabel>
+                  <FieldLabel>{t("form_labelRep")}</FieldLabel>
                   {editing
-                    ? <Input value={accRep} onChange={(e) => setAccRep(e.target.value)} className="rounded-xl border-slate-200" placeholder="Rep name" />
+                    ? <Input value={accRep} onChange={(e) => setAccRep(e.target.value)} className="rounded-xl border-slate-200" placeholder={t("form_phRep")} />
                     : <ReadonlyField value={supplier.Acc_Rep} />
                   }
                 </div>
               </div>
 
               <div>
-                <FieldLabel>Specialty</FieldLabel>
+                <FieldLabel>{t("form_labelSpecialty")}</FieldLabel>
                 {editing ? (
                   <>
                     <ComboSelect
                       value={speciality}
                       onChange={setSpeciality}
                       options={SPECIALTIES}
-                      placeholder="Select a specialty…"
+                      placeholder={t("form_phSpecialty")}
                       allowCustom={!syncPodio}
+                      prefix="spec_"
                     />
                     {syncPodio && (
-                      <p className="mt-1.5 text-[11px] text-blue-600">Custom values are disabled when Sync Podio is ON.</p>
+                      <p className="mt-1.5 text-[11px] text-blue-600">{t("form_syncPodioMsg")}</p>
                     )}
                   </>
                 ) : (
-                  <ReadonlyField value={supplier.Speciality} />
+                  <ReadonlyField value={supplier.Speciality ? t(("spec_" + supplier.Speciality.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) as any) : null} />
                 )}
               </div>
 
               <div>
-                <FieldLabel>Coverage Area</FieldLabel>
+                <FieldLabel>{t("form_labelCoverage")}</FieldLabel>
                 {editing ? (
                   <>
                     <ComboSelect
                       value={coverageArea}
                       onChange={setCoverageArea}
                       options={COVERAGE_AREAS}
-                      placeholder="Select a coverage area…"
+                      placeholder={t("form_phCoverage")}
                       allowCustom={!syncPodio}
+                      prefix="area_"
                     />
                     {syncPodio && (
-                      <p className="mt-1.5 text-[11px] text-blue-600">Custom values are disabled when Sync Podio is ON.</p>
+                      <p className="mt-1.5 text-[11px] text-blue-600">{t("form_syncPodioMsg")}</p>
                     )}
                   </>
                 ) : (
-                  <ReadonlyField value={supplier.Coverage_Area} />
+                  <ReadonlyField value={supplier.Coverage_Area ? t(("area_" + supplier.Coverage_Area.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) as any) : null} />
                 )}
               </div>
             </SectionCard>
 
             {/* Contact */}
-            <SectionCard icon={Phone} title="Contact">
+            <SectionCard icon={Phone} title={t("form_secContact")}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel>Email Address</FieldLabel>
+                  <FieldLabel>{t("form_labelEmail")}</FieldLabel>
                   {editing
-                    ? <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl border-slate-200" placeholder="contact@company.com" />
+                    ? <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl border-slate-200" placeholder={t("form_phEmail")} />
                     : supplier.Email_Address
                       ? <a href={`mailto:${supplier.Email_Address}`} className="text-sm text-blue-600 hover:underline">{supplier.Email_Address}</a>
                       : <ReadonlyField value={null} />
                   }
                 </div>
                 <div>
-                  <FieldLabel>Phone Number</FieldLabel>
+                  <FieldLabel>{t("form_labelPhone")}</FieldLabel>
                   {editing
-                    ? <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-xl border-slate-200" placeholder="+1 (305) 000-0000" />
+                    ? <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-xl border-slate-200" placeholder={t("form_phPhone")} />
                     : <ReadonlyField value={supplier.Phone_Number} />
                   }
                 </div>
               </div>
               <div>
-                <FieldLabel>Address</FieldLabel>
+                <FieldLabel>{t("form_labelAddress")}</FieldLabel>
                 {editing
-                  ? <Input value={address} onChange={(e) => setAddress(e.target.value)} className="rounded-xl border-slate-200" placeholder="Street address, city, state, ZIP" />
+                  ? <Input value={address} onChange={(e) => setAddress(e.target.value)} className="rounded-xl border-slate-200" placeholder={t("form_phAddress")} />
                   : <ReadonlyField value={supplier.Address} />
                 }
               </div>

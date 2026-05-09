@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { CheckCircle2, Circle, Clock, ClipboardList, X } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Task } from "@/lib/types"
 
 interface CompleteTaskOnStatusChangeDialogProps {
@@ -35,6 +36,7 @@ export function CompleteTaskOnStatusChangeDialog({
   onConfirm,
   onSkip,
 }: CompleteTaskOnStatusChangeDialogProps) {
+  const t = useTranslations("jobTasks")
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const pending = tasks.filter(t => t.Task_status !== "Completed")
@@ -69,7 +71,7 @@ export function CompleteTaskOnStatusChangeDialog({
         className="p-0 overflow-hidden gap-0 flex flex-col"
         style={{ maxWidth: "520px", width: "95vw", borderRadius: "16px", maxHeight: "86vh", border: "none" }}
       >
-        <VisuallyHidden><DialogTitle>Mark Proposal Task as Completed</DialogTitle></VisuallyHidden>
+        <VisuallyHidden><DialogTitle>{t("markProposalCompletedTitle")}</DialogTitle></VisuallyHidden>
 
         {/* Header */}
         <div style={{
@@ -92,7 +94,7 @@ export function CompleteTaskOnStatusChangeDialog({
             </div>
             <div>
               <h2 style={{ color: "#fff", fontSize: "16px", fontWeight: 700, margin: 0, lineHeight: 1.3 }}>
-                Mark proposal task as completed?
+                {t("markProposalCompletedTitle")}
               </h2>
               <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", margin: "2px 0 0" }}>
                 {jobId} → Waiting for Approval
@@ -119,8 +121,7 @@ export function CompleteTaskOnStatusChangeDialog({
         {/* Body */}
         <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1, minHeight: 0 }}>
           <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px", lineHeight: 1.5 }}>
-            This job is moving to <strong style={{ color: "#374151" }}>Waiting for Approval</strong>.
-            Select the task related to sending the proposal to mark it as completed, or skip if it doesn't apply.
+            {t("markProposalCompletedDesc")}
           </p>
 
           {pending.length === 0 ? (
@@ -136,7 +137,7 @@ export function CompleteTaskOnStatusChangeDialog({
               gap: "8px",
             }}>
               <CheckCircle2 size={14} color="#16A34A" />
-              All tasks are already completed.
+              {t("allTasksCompleted")}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -196,7 +197,7 @@ export function CompleteTaskOnStatusChangeDialog({
                                 display: "inline-block",
                                 flexShrink: 0,
                               }} />
-                              {task.Priority}
+                              {task.Priority === "High" ? t("high") : (task.Priority === "Medium" ? t("medium") : t("low"))}
                             </span>
                           )}
                           <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
@@ -247,7 +248,7 @@ export function CompleteTaskOnStatusChangeDialog({
               cursor: "pointer",
             }}
           >
-            Skip
+            {t("skip")}
           </button>
           <button
             onClick={handleConfirm}
@@ -271,7 +272,7 @@ export function CompleteTaskOnStatusChangeDialog({
             }}
           >
             <ClipboardList size={13} />
-            Mark as Completed
+            {t("markAsCompleted")}
           </button>
         </div>
       </DialogContent>

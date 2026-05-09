@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layers, ClipboardList, Wrench, Briefcase } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useJobFilters } from "@/hooks/useJobFilters"
+import { apiFetch } from "@/lib/apiFetch"
 import { AdvancedJobFilters } from "@/components/organisms/AdvancedJobFilters"
 import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
 
@@ -118,19 +119,33 @@ export default function JobsPage() {
       const currentFilters = toServiceFilters()
       
       if (isTechnician) {
-        const techRes = await fetch(`/api/technician/${user.id}`, { cache: "no-store" })
+        const techRes = await apiFetch(`/api/technician/${user.id}`, { cache: "no-store" })
         if (!techRes.ok) throw new Error("Failed to fetch technician data")
         const techData = await techRes.json()
-        const assignedIds: string[] = techData?.subcontractor?.jobs?.map((j: any) => j.ID_Jobs) ?? []
+        const subId = techData?.subcontractor?.ID_Subcontractor
+        
+        if (!subId) {
+          setTechnicianAllJobs([])
+          setTechnicianFilteredJobs([])
+          setTotalJobs(0)
+          setTotalPages(1)
+          setIsLoading(false)
+          return
+        }
 
-        // Fetch enough to filter client-side for technicians as requested
-        const { jobs: allJobs } = await fetchJobs(1, 1000, currentFilters)
-        const sorted = sortArchivedLast(allJobs.filter((j) => j.ID_Jobs != null && assignedIds.includes(j.ID_Jobs)))
-
+        // Fetch paginated jobs for this subcontractor directly from backend
+        const { jobs: subJobs, total } = await fetchJobs(
+          filters.page,
+          itemsPerPage,
+          { ...currentFilters, subcontractorId: subId }
+        )
+        const sorted = sortArchivedLast(subJobs)
+        
         setTechnicianAllJobs(sorted)
         setTechnicianFilteredJobs(sorted)
-        setTotalJobs(sorted.length)
-        setTotalPages(Math.max(1, Math.ceil(sorted.length / itemsPerPage)))
+        setTotalJobs(total)
+        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)))
+        setIsLoading(false)
         return
       }
 
@@ -204,12 +219,7 @@ export default function JobsPage() {
     if (filters.page < totalPages) handlers.setPage(filters.page + 1)
   }
 
-  const technicianPageSlice = useMemo(() => {
-    const start = (filters.page - 1) * itemsPerPage
-    return technicianFilteredJobs.slice(start, start + itemsPerPage)
-  }, [technicianFilteredJobs, filters.page])
-
-  const displayedJobs = isTechnician ? technicianPageSlice : filteredJobs
+  const displayedJobs = isTechnician ? technicianFilteredJobs : filteredJobs
   const yearSuffix = filters.year === "ALL" ? "" : ` ${filters.year}`
   const headerTitle = `${tabTitles[filters.tab]}${yearSuffix}`
 
@@ -286,13 +296,14 @@ export default function JobsPage() {
                 onDateFromChange={handlers.setDateFrom}
                 onDateToChange={handlers.setDateTo}
                 onResetFilters={handlers.resetFilters}
+                isTechnician={isTechnician}
 
                 onAddNew={
                   user?.role === "GQM_MEMBER" && hasPermission("job:create")
                     ? () => router.push("/jobs/create")
                     : undefined
                 }
-                onExportClick={() => setIsExportOpen(true)}
+                onExportClick={user?.role === "GQM_MEMBER" ? () => setIsExportOpen(true) : undefined}
               />
 
               {displayedJobs.length === 0 ? (

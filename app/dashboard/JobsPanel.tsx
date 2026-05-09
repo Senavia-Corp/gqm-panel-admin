@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +15,11 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  ShoppingCart,
 } from "lucide-react"
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { KpiCard } from "./components/KpiCard"
 import { SectionCard } from "./components/SectionCard"
@@ -111,6 +116,11 @@ interface InProgressJob {
   service:           string
   date:              string
   amount:            number
+  final_sold:        number
+  final_pct:         number
+  collected_amount:  number
+  bills_paid:        number
+  bills_total:       number
   quoted_target_sold:number
   premium_in_money:  number
 }
@@ -174,6 +184,77 @@ interface MemberPipelineItem {
   job_count:   number
   total_quoted:number
   jobs:        Array<{ job_id: string; client: string; status: string; date: string; amount: number }>
+}
+
+// ─── Sub-Components ─────────────────────────────────────────────────────────
+
+function PurchaseList({ purchases, t }: { purchases: RecentPurchase[], t: any }) {
+  return (
+    <>
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-2">
+        {purchases.map((p) => (
+          <div key={p.purchase_id} className="rounded-lg border bg-white p-3 text-[10px] space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Link href={`/purchases/${p.purchase_id}`} className="font-mono font-bold hover:underline">
+                {p.purchase_id}
+              </Link>
+              <StatusBadge status={p.status} />
+            </div>
+            <p className="font-medium truncate">{p.description}</p>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">{t("colJob")}</span>
+              <Link href={`/jobs/${p.job?.job_id}`} className="font-mono text-gqm-green-dark font-semibold hover:underline">
+                {p.job?.job_id ?? "—"}
+              </Link>
+            </div>
+            <div className="flex items-center justify-between border-t pt-1">
+              <span className="text-muted-foreground truncate max-w-[60%]">{p.rep}</span>
+              <span className="font-semibold">{fmtK(p.amount)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full min-w-[500px] text-[11px]">
+          <thead>
+            <tr className="border-b bg-gray-50 text-left text-muted-foreground">
+              <th className="px-2 py-1.5 font-medium">{t("colPoId")}</th>
+              <th className="px-2 py-1.5 font-medium">{t("colDescription")}</th>
+              <th className="px-2 py-1.5 font-medium">{t("colJob")}</th>
+              <th className="px-2 py-1.5 font-medium">{t("colClient")}</th>
+              <th className="px-2 py-1.5 font-medium">{t("colRep")}</th>
+              <th className="px-2 py-1.5 font-medium">{t("colStatus")}</th>
+              <th className="px-2 py-1.5 font-medium text-right">{t("colAmount")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {purchases.map((p) => (
+              <tr key={p.purchase_id} className="border-b hover:bg-gray-50 transition">
+                <td className="px-2 py-1 font-mono">
+                  <Link href={`/purchases/${p.purchase_id}`} className="hover:underline">
+                    {p.purchase_id}
+                  </Link>
+                </td>
+                <td className="px-2 py-1 max-w-[150px] truncate">{p.description}</td>
+                <td className="px-2 py-1 font-mono text-gqm-green-dark font-semibold">
+                  <Link href={`/jobs/${p.job?.job_id}`} className="hover:underline">
+                    {p.job?.job_id ?? "—"}
+                  </Link>
+                </td>
+                <td className="px-2 py-1 truncate max-w-[120px]">{p.job?.client ?? "—"}</td>
+                <td className="px-2 py-1 truncate max-w-[100px]">{p.rep}</td>
+                <td className="px-2 py-1"><StatusBadge status={p.status} /></td>
+                <td className="px-2 py-1 text-right tabular-nums font-semibold">{fmtK(p.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -348,6 +429,19 @@ export default function JobsPanel({
     [data]
   )
 
+  const { pendingPurchases, completedPurchases } = useMemo(() => {
+    const all = data?.recent_purchases ?? []
+    const pending = all.filter(p => {
+      const s = p.status.toUpperCase()
+      return s !== "COMPLETED" && s !== "CANCELLED" && (p.amount === 0)
+    })
+    const completed = all.filter(p => {
+      const s = p.status.toUpperCase()
+      return s === "COMPLETED" || p.amount > 0
+    })
+    return { pendingPurchases: pending, completedPurchases: completed }
+  }, [data])
+
   const detailTotalPages = Math.max(1, Math.ceil(detailTotal / PAGE_SIZE))
 
   if (loading) {
@@ -378,8 +472,8 @@ export default function JobsPanel({
 
         <KpiCard title={t("kpiAvgFinalPct")}      value={fmtPct(kpi.avg_final_pct)}   subtitle={t("kpiAvgFinalPctSub")}    Icon={Percent}      accentClass="bg-violet-100 text-violet-700" />
         <KpiCard title={t("kpiJobsPaid")}         value={`${kpi.paid_count} / ${kpi.job_count}`} subtitle={t("kpiJobsPaidSub")} Icon={CheckCircle2} accentClass="bg-emerald-100 text-emerald-700" />
-        <KpiCard title={t("kpiPipeline")}         value={fmtK(data.pipeline ?? 0)}    subtitle={t("kpiPipelineSub")}       Icon={Target}       accentClass="bg-orange-100 text-orange-700" valueClass="text-orange-700" />
-        <KpiCard title={t("kpiAvgTargetReturn")}  value={fmtPct(kpi.avg_target_ret)}  subtitle={t("kpiAvgTargetReturnSub")} Icon={AlertCircle}  accentClass="bg-rose-100 text-rose-700" />
+        <KpiCard title={t("kpiPipeline")}         value={fmtK(data.pipeline ?? 0)}    subtitle={t("kpiPipelineSub")}       Icon={Target}       accentClass="bg-orange-100 text-orange-700" valueClass="text-orange-700" tooltip={t("kpiPipelineTooltip")} />
+        <KpiCard title={t("kpiAvgTargetReturn")}  value={fmtPct(kpi.avg_target_ret)}  subtitle={t("kpiAvgTargetReturnSub")} Icon={AlertCircle}  accentClass="bg-rose-100 text-rose-700" tooltip={t("kpiAvgTargetReturnTooltip")} />
       </div>
 
       {/* ── 2. Monthly / Quarterly Evolution ─────────────────────────────── */}
@@ -592,7 +686,9 @@ export default function JobsPanel({
               {data.in_progress_jobs.map((j) => (
                 <div key={j.job_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-semibold text-gqm-green-dark">{j.job_id}</span>
+                    <Link href={`/jobs/${j.job_id}`} className="font-mono font-semibold text-gqm-green-dark hover:underline">
+                      {j.job_id}
+                    </Link>
                     <StatusBadge status={j.status} />
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -603,9 +699,23 @@ export default function JobsPanel({
                     <span className="text-muted-foreground">{j.service}</span>
                     <span className="tabular-nums text-muted-foreground">{j.date}</span>
                   </div>
-                  <div className="flex items-center justify-between border-t pt-1.5">
-                    <span className="text-muted-foreground">{t("colAmount")}</span>
-                    <span className="font-semibold text-sky-700">{fmtK(j.amount)}</span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-1.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-muted-foreground">{t("colFinalSold")}</span>
+                      <span className="font-semibold text-sky-700">{fmtK(j.final_sold)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-muted-foreground">{t("colFinalPct")}</span>
+                      <span className="font-semibold">{fmtPct(j.final_pct)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-muted-foreground">{t("colCollected")}</span>
+                      <span className="font-semibold text-emerald-700">{fmtK(j.collected_amount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-muted-foreground">{t("colPaidBills")}</span>
+                      <span className="font-semibold">{j.bills_paid}/{j.bills_total}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -613,7 +723,7 @@ export default function JobsPanel({
 
             {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full min-w-[560px] text-xs">
+              <table className="w-full min-w-[760px] text-xs">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">{t("colJobId")}</th>
@@ -622,21 +732,29 @@ export default function JobsPanel({
                     <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
                     <th className="px-3 py-2 font-medium">{t("colService")}</th>
                     <th className="px-3 py-2 font-medium">{t("colDate")}</th>
-                    <th className="px-3 py-2 font-medium text-right">{t("colQuoted")}</th>
-                    <th className="px-3 py-2 font-medium text-right">{t("colAmount")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFinalSold")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colFinalPct")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colCollected")}</th>
+                    <th className="px-3 py-2 font-medium text-right">{t("colPaidBills")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.in_progress_jobs.map((j) => (
                     <tr key={j.job_id} className="border-b hover:bg-gray-50 transition">
-                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">{j.job_id}</td>
+                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">
+                        <Link href={`/jobs/${j.job_id}`} className="hover:underline">
+                          {j.job_id}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2">{j.client}</td>
                       <td className="px-3 py-2">{j.rep}</td>
                       <td className="px-3 py-2"><StatusBadge status={j.status} /></td>
                       <td className="px-3 py-2">{j.service}</td>
                       <td className="px-3 py-2 tabular-nums">{j.date}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtK(j.quoted_target_sold)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-sky-700">{fmtK(j.amount)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-sky-700">{fmtK(j.final_sold)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtPct(j.final_pct)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700">{fmtK(j.collected_amount)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">{j.bills_paid}/{j.bills_total}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -660,7 +778,9 @@ export default function JobsPanel({
               {data.ready_to_invoice.map((j) => (
                 <div key={j.job_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-semibold text-gqm-green-dark">{j.job_id}</span>
+                    <Link href={`/jobs/${j.job_id}`} className="font-mono font-semibold text-gqm-green-dark hover:underline">
+                      {j.job_id}
+                    </Link>
                     <StatusBadge status={j.status} />
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -696,7 +816,11 @@ export default function JobsPanel({
                 <tbody>
                   {data.ready_to_invoice.map((j) => (
                     <tr key={j.job_id} className="border-b hover:bg-emerald-50 transition">
-                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">{j.job_id}</td>
+                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">
+                        <Link href={`/jobs/${j.job_id}`} className="hover:underline">
+                          {j.job_id}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2">{j.client}</td>
                       <td className="px-3 py-2">{j.rep}</td>
                       <td className="px-3 py-2"><StatusBadge status={j.status} /></td>
@@ -966,7 +1090,9 @@ export default function JobsPanel({
                       {m.jobs.map((j, ji) => (
                         <div key={`${m.id}-${j.job_id}-${ji}`} className="rounded border bg-white p-2 text-xs space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono font-semibold text-gqm-green-dark">{j.job_id}</span>
+                            <Link href={`/jobs/${j.job_id}`} className="font-mono font-semibold text-gqm-green-dark hover:underline">
+                      {j.job_id}
+                    </Link>
                             <StatusBadge status={j.status} />
                           </div>
                           <div className="flex items-center justify-between gap-2">
@@ -993,7 +1119,11 @@ export default function JobsPanel({
                         <tbody>
                           {m.jobs.map((j, ji) => (
                             <tr key={`${m.id}-${j.job_id}-${ji}`} className="border-b last:border-0">
-                              <td className="py-1 font-mono text-gqm-green-dark font-semibold">{j.job_id}</td>
+                              <td className="py-1 font-mono text-gqm-green-dark font-semibold">
+                                <Link href={`/jobs/${j.job_id}`} className="hover:underline">
+                                  {j.job_id}
+                                </Link>
+                              </td>
                               <td className="py-1">{j.client}</td>
                               <td className="py-1"><StatusBadge status={j.status} /></td>
                               <td className="py-1 tabular-nums">{j.date}</td>
@@ -1015,69 +1145,38 @@ export default function JobsPanel({
       <SectionCard
         title={t("sectionMaterialPurchase")}
         subtitle={t("sectionMaterialPurchaseSub")}
+        Icon={ShoppingCart}
       >
-        {data.recent_purchases.length === 0 ? (
-          <EmptyState message={t("errorNoRecentPurchases")} />
-        ) : (
-          <>
-            {/* Mobile cards */}
-            <div className="sm:hidden space-y-2">
-              {data.recent_purchases.map((p) => (
-                <div key={p.purchase_id} className="rounded-lg border bg-white p-3 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono">{p.purchase_id}</span>
-                    <StatusBadge status={p.status} />
-                  </div>
-                  <p className="font-medium truncate">{p.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{t("colJob")}</span>
-                    <span className="font-mono text-gqm-green-dark font-semibold">{p.job?.job_id ?? "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{t("colClient")}</span>
-                    <span className="truncate max-w-[55%] text-right">{p.job?.client ?? "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-1.5">
-                    <span className="text-muted-foreground">{p.rep} · {p.date}</span>
-                    <span className="font-semibold">{fmtK(p.amount)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="pending" className="text-xs">
+              {t("tabPendingPurchases")} ({pendingPurchases.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs">
+              {t("tabCompletedPurchases")} ({completedPurchases.length})
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Desktop table */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full min-w-[560px] text-xs">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">{t("colPoId")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colDescription")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colJob")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colClient")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colRep")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colDate")}</th>
-                    <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
-                    <th className="px-3 py-2 font-medium text-right">{t("colAmount")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recent_purchases.map((p) => (
-                    <tr key={p.purchase_id} className="border-b hover:bg-gray-50 transition">
-                      <td className="px-3 py-2 font-mono text-xs">{p.purchase_id}</td>
-                      <td className="px-3 py-2 max-w-[180px] truncate">{p.description}</td>
-                      <td className="px-3 py-2 font-mono text-gqm-green-dark font-semibold">{p.job?.job_id ?? "—"}</td>
-                      <td className="px-3 py-2">{p.job?.client ?? "—"}</td>
-                      <td className="px-3 py-2">{p.rep}</td>
-                      <td className="px-3 py-2 tabular-nums">{p.date}</td>
-                      <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtK(p.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+          <TabsContent value="pending">
+            {pendingPurchases.length === 0 ? (
+              <EmptyState message={t("errorNoRecentPurchases")} />
+            ) : (
+              <ScrollArea className="h-[320px] rounded-md border p-1">
+                <PurchaseList purchases={pendingPurchases} t={t} />
+              </ScrollArea>
+            )}
+          </TabsContent>
+
+          <TabsContent value="completed">
+            {completedPurchases.length === 0 ? (
+              <EmptyState message={t("errorNoRecentPurchases")} />
+            ) : (
+              <ScrollArea className="h-[320px] rounded-md border p-1">
+                <PurchaseList purchases={completedPurchases} t={t} />
+              </ScrollArea>
+            )}
+          </TabsContent>
+        </Tabs>
       </SectionCard>
 
       {/* ── 10. Full Job Detail Table ─────────────────────────────────────── */}
@@ -1111,7 +1210,9 @@ export default function JobsPanel({
                   style={{ background: statusRowBg(j.status) }}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-semibold text-gqm-green-dark">{j.job_id}</span>
+                    <Link href={`/jobs/${j.job_id}`} className="font-mono font-semibold text-gqm-green-dark hover:underline">
+                      {j.job_id}
+                    </Link>
                     <StatusBadge status={j.status} />
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -1166,7 +1267,11 @@ export default function JobsPanel({
                       className="border-b transition"
                       style={{ background: statusRowBg(j.status) }}
                     >
-                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">{j.job_id}</td>
+                      <td className="px-3 py-2 font-mono font-semibold text-gqm-green-dark">
+                        <Link href={`/jobs/${j.job_id}`} className="hover:underline">
+                          {j.job_id}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2 max-w-[140px] truncate">{j.client}</td>
                       <td className="px-3 py-2">{j.rep}</td>
                       <td className="px-3 py-2"><StatusBadge status={j.status} /></td>

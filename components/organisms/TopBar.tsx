@@ -50,27 +50,46 @@ export function TopBar() {
   const { setIsOpen } = useSidebar()
 
   useEffect(() => {
-    const memberId =
-      localStorage.getItem("user_id") ??
-      (() => {
-        try {
-          const ud = localStorage.getItem("user_data")
-          return ud ? JSON.parse(ud)?.id ?? null : null
-        } catch { return null }
-      })()
+    const ud = (() => {
+      try {
+        const raw = localStorage.getItem("user_data")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    })()
+
+    if (!ud) { setLoadingMember(false); return }
+
+    // Prioritize ud.role as it's the most reliable source for the current user's role
+    const userRole = ud.role || localStorage.getItem("user_type") || ud.user_type
+    const isTech = userRole === "LEAD_TECHNICIAN"
+    const memberId = ud.id || ud.user_id || localStorage.getItem("user_id") || ud.ID_Member || ud.ID_Technician
+
+    // Set initial data from localStorage immediately
+    setMember({
+      Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? null,
+      Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (isTech ? "Technician" : "Member"),
+      Email_Address: ud.Email_Address ?? ud.email ?? null,
+    })
 
     if (!memberId) { setLoadingMember(false); return }
 
-    apiFetch(`/api/members/${memberId}`, { cache: "no-store" })
+    const endpoint = isTech 
+      ? `/api/technician/${memberId}` 
+      : `/api/members/${memberId}`
+
+    apiFetch(endpoint, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => {
+        // Unified mapping: check technician fields first, then member fields
         setMember({
-          Member_Name:   data.Member_Name   ?? null,
-          Company_Role:  data.Company_Role  ?? null,
-          Email_Address: data.Email_Address ?? null,
+          Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? null,
+          Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (isTech ? "Technician" : "Member"),
+          Email_Address: data.Email_Address ?? data.Email ?? data.email ?? null,
         })
       })
-      .catch((err) => console.warn("[TopBar] could not load member:", err))
+      .catch((err) => {
+        console.warn("[TopBar] could not load info:", err)
+      })
       .finally(() => setLoadingMember(false))
   }, [])
 

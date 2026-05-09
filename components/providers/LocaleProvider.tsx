@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
+// Triggering reload of JSON messages - v23
 import enMessages from "@/messages/en.json"
 import esMessages from "@/messages/es.json"
 
@@ -61,26 +62,53 @@ export function useLocale() {
 /**
  * Returns a translator function for the given namespace.
  * Usage: const t = useTranslations("navigation"); t("dashboard", { name: "John" })
+ * If no namespace is provided, it returns a translator for the root of the messages object.
  */
-export function useTranslations(namespace: keyof Messages) {
+export function useTranslations(namespace?: string) {
   const { messages } = useContext(LocaleContext)
-  const section = messages[namespace] as Record<string, any>
 
-  const t = (key: string, values?: Record<string, any>): string => {
-    let text = section?.[key] || key
-    if (values) {
-      Object.entries(values).forEach(([k, v]) => {
-        text = text.replace(new RegExp(`{${k}}`, "g"), String(v))
-      })
+  return useMemo(() => {
+    // Resolve the section based on a dot-separated namespace (e.g. "jobEstimate.general")
+    let section: any = messages
+    if (namespace) {
+      const parts = namespace.split(".")
+      for (const p of parts) {
+        if (section && typeof section === "object" && p in section) {
+          section = section[p]
+        } else {
+          section = undefined
+          break
+        }
+      }
     }
-    return text
-  }
 
-  // Basic implementation of .rich to avoid crashes
-  // In a full implementation, this would handle React components in chunks
-  t.rich = (key: string, values?: Record<string, any>): string => {
-    return t(key, values)
-  }
+    const t = (key: string, values?: Record<string, any>): string => {
+      // Handle nested keys (e.g. "form.title")
+      let text: any = section
+      const keys = key.split(".")
+      
+      for (const k of keys) {
+        if (text && typeof text === "object" && k in text) {
+          text = text[k]
+        } else {
+          text = key // Fallback to key if not found
+          break
+        }
+      }
 
-  return t
+      if (typeof text !== "string") {
+        text = String(text || key)
+      }
+
+      if (values) {
+        Object.entries(values).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`{${k}}`, "g"), String(v))
+        })
+      }
+      return text
+    }
+
+    t.rich = t
+    return t
+  }, [messages, namespace])
 }

@@ -93,10 +93,10 @@ type JobRow = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getWeekDays(): Date[] {
+function getWeekDays(offset = 0): Date[] {
   const today = new Date()
   const monday = new Date(today)
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + offset * 7)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
@@ -327,112 +327,47 @@ function TaskRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-xl p-3 sm:p-4 border transition-all duration-200 mb-2 bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/40 hover:scale-[1.005]"
+      style={{ gridColumn: `${col} / span ${span}` }}
+      className={`
+        group relative flex flex-col justify-between overflow-hidden
+        rounded-xl p-2.5 transition-all duration-200 
+        bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/30 hover:shadow-xl hover:-translate-y-0.5
+        min-h-[85px] sm:min-h-[100px]
+      `}
     >
-      {/* Top row: name + badges */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="font-semibold text-sm truncate max-w-[150px] sm:max-w-[220px] text-white">
-          {task.Name || task.ID_Tasks}
-        </span>
+      {/* Status indicator bar at the very top */}
+      <div className={`absolute top-0 left-0 right-0 h-1 ${status.bar} opacity-70 group-hover:opacity-100 transition-opacity`} />
 
-        <span
-          className={[
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-            status.badge,
-          ].join(" ")}
-        >
-          {status.icon}
-          {status.label}
-        </span>
+      <div className="space-y-1.5">
+        <div className="flex items-start justify-between gap-1.5">
+          <h4 className="font-bold text-[10px] sm:text-[11px] text-white leading-tight line-clamp-2 group-hover:text-emerald-300 transition-colors">
+            {task.Name || task.ID_Tasks}
+          </h4>
+          <div className="shrink-0 scale-75 sm:scale-90 opacity-80 group-hover:opacity-100 transition-opacity">
+            {status.icon}
+          </div>
+        </div>
 
-        <span
-          className={[
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-            priority.badge,
-          ].join(" ")}
-        >
-          <span className={["h-1.5 w-1.5 rounded-full", priority.dot].join(" ")} />
-          {priority.label}
-        </span>
-
-        {jobType && (
-          <span
-            className={[
-              "rounded-full px-2 py-0.5 text-xs font-bold",
-              JOB_TYPE_COLORS[jobType] ??
-                "bg-gray-100 text-gray-600 border border-gray-200",
-            ].join(" ")}
-          >
-            {jobType}
-          </span>
-        )}
-      </div>
-
-      {/* Gantt bar grid */}
-      <div className="grid grid-cols-7 gap-1 items-center">
-        {Array.from({ length: 7 }, (_, idx) => {
-          const dayCol = idx + 1
-          const inBar = dayCol >= col && dayCol < col + span
-          const isStart = dayCol === col
-          const isEnd = dayCol === col + span - 1
-
-          return (
-            <div key={idx} className="h-6 flex items-center">
-              {inBar ? (
-                <div
-                  className={[
-                    "h-full w-full transition-all",
-                    status.bar,
-                    isStart && isEnd
-                      ? "rounded-full"
-                      : isStart
-                      ? "rounded-l-full"
-                      : isEnd
-                      ? "rounded-r-full"
-                      : "",
-                    "opacity-90",
-                  ].join(" ")}
-                />
-              ) : (
-                <div className="h-px w-full bg-white/10" />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Info row: dates + job + member */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-white/60">
-        <span>{t("taskStart")} {fmtFullDate(task.Designation_date, t)}</span>
-        <span>{t("taskDue")} {fmtFullDate(task.Delivery_date, t)}</span>
-        {task.job && (
-          <span className="truncate">
-            <span className="text-white/40 mr-1">{t("colJob")}</span>
-            <span className="font-medium text-white/75">
-              #{task.job.ID_Jobs}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className={`h-1.5 w-1.5 rounded-full ring-1 ring-white/20 ${priority.dot}`} title={priority.label} />
+          {jobType && (
+            <span className={`rounded-md px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${JOB_TYPE_COLORS[jobType] || "bg-white/10 text-white"}`}>
+              {jobType}
             </span>
-            {task.job.Project_name && (
-              <span className="text-white/60"> · {task.job.Project_name}</span>
-            )}
-          </span>
-        )}
-        {memberName && (
-          <span className="flex items-center gap-1">
-            <User className="h-3 w-3 text-white/40" />
-            <span className="text-white/75">{memberName}</span>
-            {task.member?.Company_Role && (
-              <span className="text-white/40">· {task.member.Company_Role}</span>
-            )}
-          </span>
-        )}
-        {!memberName && task.subcontractor && (
-          <span className="flex items-center gap-1">
-            <Building2 className="h-3 w-3 text-white/40" />
-            <span className="text-white/75">{task.subcontractor.Name ?? task.subcontractor.ID_Subcontractor}</span>
-            {task.subcontractor.Organization && (
-              <span className="text-white/40">· {cleanPgArray(task.subcontractor.Organization)}</span>
-            )}
-          </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-white/80 font-medium truncate">
+          <User className="h-3 w-3 shrink-0 opacity-50 text-emerald-400" />
+          <span className="truncate">{memberName || task.subcontractor?.Name || t("legendOther")}</span>
+        </div>
+        {task.job && (
+          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold text-white/50 truncate">
+            <span className="text-emerald-300 opacity-90 tabular-nums">#{task.job.ID_Jobs}</span>
+            {task.job.Project_name && <span className="truncate opacity-60 font-normal">· {task.job.Project_name}</span>}
+          </div>
         )}
       </div>
     </button>
@@ -1074,8 +1009,15 @@ function FilterChip({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function WeeklyTasksPanel() {
+export default function WeeklyTasksPanel({
+  subcontractorId,
+  hidePersonFilters = false,
+}: {
+  subcontractorId?: string | null
+  hidePersonFilters?: boolean
+}) {
   const t = useTranslations("dashboard")
+  const [weekOffset, setWeekOffset] = useState(0)
   const [jobType, setJobType] = useState<JobType>("ALL")
   const [tasks, setTasks] = useState<WeeklyTask[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1085,7 +1027,9 @@ export default function WeeklyTasksPanel() {
   // Filter state
   const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("ALL")
   const [memberFilter, setMemberFilter] = useState<FilterOption | null>(null)
-  const [subFilter, setSubFilter] = useState<FilterOption | null>(null)
+  const [subFilter, setSubFilter] = useState<FilterOption | null>(
+    subcontractorId ? { id: subcontractorId, name: "" } : null
+  )
   const [jobFilter, setJobFilter] = useState<FilterOption | null>(null)
 
   // Picker open state
@@ -1096,7 +1040,7 @@ export default function WeeklyTasksPanel() {
   // Detail dialog
   const [detailTask, setDetailTask] = useState<WeeklyTask | null>(null)
 
-  const weekDays = useMemo(() => getWeekDays(), [])
+  const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
 
   // Fetch
   useEffect(() => {
@@ -1106,6 +1050,12 @@ export default function WeeklyTasksPanel() {
         setIsLoading(true)
         const qs = new URLSearchParams()
         if (jobType !== "ALL") qs.set("job_type", jobType)
+        if (weekOffset !== 0) qs.set("week_offset", String(weekOffset))
+        
+        // Priority for subcontractorId prop (technician view)
+        const activeSubId = subcontractorId || subFilter?.id
+        if (activeSubId) qs.set("subcontractor_id", activeSubId)
+        
         const res = await apiFetch(`/api/tasks/weekly?${qs.toString()}`, {
           cache: "no-store",
         })
@@ -1121,12 +1071,12 @@ export default function WeeklyTasksPanel() {
       }
     }
     run()
-  }, [jobType])
+  }, [jobType, weekOffset, subFilter, subcontractorId])
 
   // Reset page when filters change
   useEffect(() => {
     setScrollPage(0)
-  }, [statusFilter, memberFilter, subFilter, jobFilter])
+  }, [statusFilter, memberFilter, subFilter, jobFilter, weekOffset])
 
   // Priority sort + client-side filters
   const filteredTasks = useMemo(() => {
@@ -1201,12 +1151,39 @@ export default function WeeklyTasksPanel() {
             <CalendarDays className="h-5 w-5 text-white" />
             <h2 className="text-white text-lg font-semibold">{t("weeklyTasks")}</h2>
           </div>
-          <p className="text-white/70 text-sm mt-0.5">
-            {fmtShortDate(weekDays[0], t)} – {fmtShortDate(weekDays[6], t)} ·{" "}
-            {hasActiveFilters
-              ? `${filteredTasks.length} ${t("ofPagination")} ${tasks.length} ${t("tasksSuffix")}`
-              : `${tasks.length} ${tasks.length !== 1 ? t("tasksSuffix") : t("taskSuffix")}`}
-          </p>
+          <div className="flex items-center gap-1 mt-1.5">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => o - 1)}
+              aria-label={t("weekNavPrev")}
+              className="rounded-full p-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <p className="text-white/70 text-sm">
+              {fmtShortDate(weekDays[0], t)} – {fmtShortDate(weekDays[6], t)} ·{" "}
+              {hasActiveFilters
+                ? `${filteredTasks.length} ${t("ofPagination")} ${tasks.length} ${t("tasksSuffix")}`
+                : `${tasks.length} ${tasks.length !== 1 ? t("tasksSuffix") : t("taskSuffix")}`}
+            </p>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => o + 1)}
+              aria-label={t("weekNavNext")}
+              className="rounded-full p-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="ml-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition-colors"
+              >
+                {t("weekNavToday")}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Summary chips */}
@@ -1296,38 +1273,35 @@ export default function WeeklyTasksPanel() {
       </div>
       {/* Filter chips */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        {/* Member filter */}
-        <FilterChip
-          label={t("filterMember")}
-          activeLabel={memberFilter?.name}
-          onClick={() => setMemberPickerOpen(true)}
-          onClear={() => setMemberFilter(null)}
-        />
-
-        {/* Subcontractor filter */}
-        <FilterChip
-          label={t("filterSubcontractor")}
-          activeLabel={subFilter?.name}
-          onClick={() => setSubPickerOpen(true)}
-          onClear={() => setSubFilter(null)}
-        />
-
-        {/* Job filter */}
+        {!hidePersonFilters && (
+          <FilterChip
+            label={t("filterMember")}
+            activeLabel={memberFilter?.name}
+            onClick={() => setMemberPickerOpen(true)}
+            onClear={() => setMemberFilter(null)}
+          />
+        )}
+        {!hidePersonFilters && (
+          <FilterChip
+            label={t("filterSubcontractor")}
+            activeLabel={subFilter?.name}
+            onClick={() => setSubPickerOpen(true)}
+            onClear={() => setSubFilter(null)}
+          />
+        )}
         <FilterChip
           label={t("filterJob")}
           activeLabel={jobFilter?.name}
           onClick={() => setJobPickerOpen(true)}
           onClear={() => setJobFilter(null)}
         />
-
-        {/* Clear all */}
         {hasActiveFilters && (
           <button
             type="button"
             onClick={() => {
               setStatusFilter("ALL")
-              setMemberFilter(null)
-              setSubFilter(null)
+              if (!hidePersonFilters) setMemberFilter(null)
+              if (!hidePersonFilters) setSubFilter(null)
               setJobFilter(null)
             }}
             className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/90 transition-colors ml-1"
@@ -1337,96 +1311,107 @@ export default function WeeklyTasksPanel() {
         )}
       </div>
 
-      {/* ── Day header ── */}
-      <div className="grid grid-cols-7 gap-1 mb-3">
-        {weekDays.map((d, i) => {
-          const today = isToday(d)
-          return (
-            <div
-              key={i}
-              className={[
-                "rounded-lg py-2 px-1 text-center",
-                today ? "bg-white shadow-sm" : "bg-white/10",
-              ].join(" ")}
-            >
-              <p
-                className={[
-                  "text-xs font-semibold",
-                  today ? "text-gqm-green-dark" : "text-white/80",
-                ].join(" ")}
-              >
-                {t(DAY_KEYS[i])}
+      {/* ── Day header & Content Wrapper (Scrollable) ── */}
+      <div className="overflow-x-auto pb-4 scrollbar-hide">
+        <div className="min-w-[800px] sm:min-w-0">
+          
+          {/* Day header */}
+          <div className="grid grid-cols-7 gap-1.5 mb-4">
+            {weekDays.map((d, i) => {
+              const today = isToday(d)
+              return (
+                <div
+                  key={i}
+                  className={[
+                    "rounded-xl py-2.5 px-1 text-center transition-all",
+                    today ? "bg-white shadow-lg scale-105 z-10" : "bg-white/5 border border-white/5",
+                  ].join(" ")}
+                >
+                  <p
+                    className={[
+                      "text-[10px] uppercase tracking-wider font-bold",
+                      today ? "text-gqm-green-dark" : "text-white/40",
+                    ].join(" ")}
+                  >
+                    {t(DAY_KEYS[i])}
+                  </p>
+                  <p
+                    className={[
+                      "text-base font-black tabular-nums mt-0.5",
+                      today ? "text-gqm-green-dark" : "text-white/90",
+                    ].join(" ")}
+                  >
+                    {d.getDate()}
+                  </p>
+                  {today && (
+                    <div className="mx-auto mt-1.5 h-1 w-4 rounded-full bg-gqm-green" />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Content Grid */}
+          {isLoading ? (
+            <GanttSkeleton />
+          ) : filteredTasks.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 py-20 text-center">
+              <CalendarDays className="mx-auto h-12 w-12 text-white/20 mb-4" />
+              <p className="text-white text-lg font-bold">{t("noTasksFound")}</p>
+              <p className="text-white/40 text-sm mt-2 max-w-xs mx-auto">
+                {hasActiveFilters
+                  ? t("tryAdjustingFilters")
+                  : jobType !== "ALL"
+                  ? t("errorNoTasksForJobType", { type: jobType })
+                  : t("noTasksThisWeek")}
               </p>
-              <p
-                className={[
-                  "text-sm font-bold tabular-nums",
-                  today ? "text-gqm-green-dark" : "text-white",
-                ].join(" ")}
-              >
-                {d.getDate()}
-              </p>
-              {today && (
-                <div className="mx-auto mt-1 h-1.5 w-1.5 rounded-full bg-gqm-green" />
-              )}
             </div>
-          )
-        })}
-      </div>
-
-      {/* ── Content ── */}
-      {isLoading ? (
-        <GanttSkeleton />
-      ) : filteredTasks.length === 0 ? (
-        <div className="rounded-xl border border-white/20 bg-white/10 py-14 text-center">
-          <CalendarDays className="mx-auto h-10 w-10 text-white/40 mb-3" />
-          <p className="text-white font-semibold">{t("noTasksFound")}</p>
-          <p className="text-white/60 text-sm mt-1">
-            {hasActiveFilters
-              ? t("tryAdjustingFilters")
-              : jobType !== "ALL"
-              ? t("errorNoTasksForJobType", { type: jobType })
-              : t("noTasksThisWeek")}
-          </p>
-        </div>
-      ) : (
-        <div>
-          {pagedTasks.map((task) => (
-            <TaskRow
-              key={task.ID_Tasks}
-              task={task}
-              weekDays={weekDays}
-              onClick={() => setDetailTask(task)}
-            />
-          ))}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-8"
-                disabled={scrollPage === 0}
-                onClick={() => setScrollPage((p) => Math.max(0, p - 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-white/80 text-xs tabular-nums">
-                {scrollPage + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-8"
-                disabled={scrollPage >= totalPages - 1}
-                onClick={() =>
-                  setScrollPage((p) => Math.min(totalPages - 1, p + 1))
-                }
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          ) : (
+            <div className="grid grid-cols-7 gap-x-1.5 sm:gap-x-2.5 gap-y-3.5 auto-rows-max">
+              {pagedTasks.map((task) => (
+                <TaskRow
+                  key={task.ID_Tasks}
+                  task={task}
+                  weekDays={weekDays}
+                  onClick={() => setDetailTask(task)}
+                />
+              ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {!isLoading && filteredTasks.length > 0 && totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
+          <p className="text-[10px] text-white/30 uppercase font-bold tracking-widest">
+            {t("showingPagination")} {scrollPage * PAGE_SIZE + 1}-{Math.min((scrollPage + 1) * PAGE_SIZE, filteredTasks.length)} {t("ofPagination")} {filteredTasks.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10 h-8 w-8 p-0 rounded-lg"
+              disabled={scrollPage === 0}
+              onClick={() => setScrollPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+              <span className="text-white font-bold text-xs tabular-nums">{scrollPage + 1}</span>
+              <span className="text-white/20 text-[10px]">/</span>
+              <span className="text-white/40 text-xs tabular-nums">{totalPages}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10 h-8 w-8 p-0 rounded-lg"
+              disabled={scrollPage >= totalPages - 1}
+              onClick={() => setScrollPage((p) => Math.min(totalPages - 1, p + 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 

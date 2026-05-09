@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Loader2, Megaphone } from "lucide-react"
 import { useState } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface Props {
   open: boolean
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function DeleteOpportunityDialog({ open, onOpenChange, opportunityId, projectName, onConfirm }: Props) {
+  const t = useTranslations("opportunities")
   const [loading, setLoading] = useState(false)
 
   const handleConfirm = async () => {
@@ -37,15 +39,11 @@ export function DeleteOpportunityDialog({ open, onOpenChange, opportunityId, pro
               <Megaphone className="h-5 w-5 text-red-600" />
             </div>
             <AlertDialogTitle className="text-lg font-bold text-slate-900">
-              Delete Opportunity
+              {t("del_title")}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-slate-500 text-sm">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-slate-800">
-              {projectName || opportunityId}
-            </span>
-            ? This will also remove all linked skills and applicants. This action cannot be undone.
+            {t("del_confirm", { name: projectName || opportunityId })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2">
@@ -53,7 +51,7 @@ export function DeleteOpportunityDialog({ open, onOpenChange, opportunityId, pro
             disabled={loading}
             className="rounded-xl border-slate-200 text-slate-600"
           >
-            Cancel
+            {t("del_cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={loading}
@@ -61,7 +59,7 @@ export function DeleteOpportunityDialog({ open, onOpenChange, opportunityId, pro
             className="rounded-xl bg-red-600 hover:bg-red-700 text-white gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Delete
+            {t("del_delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

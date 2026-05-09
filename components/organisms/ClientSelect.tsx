@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { Input } from "@/components/ui/input"
 import { Building2, Search, X, ChevronLeft, ChevronRight, RefreshCcw, CheckCircle2, AlertCircle } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,8 @@ function useSingleClient(id: string | undefined) {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export function ClientSelect({ value, onChange, initialClients = [], changed, disabled = false }: Props) {
+  const t = useTranslations("jobs")
+  const tCommon = useTranslations("common")
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
@@ -238,7 +241,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
             onClick={handleClear}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClear(e as any) } }}
             className="flex-shrink-0 cursor-pointer rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500 transition-colors"
-            title="Clear selection"
+            title={t("clientClearSelection")}
           >
             <X className="h-3.5 w-3.5" />
           </div>
@@ -248,7 +251,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="text-sm text-slate-400">Select a client…</span>
+          <span className="text-sm text-slate-400">{t("clientSelectPlaceholder")}</span>
         </>
       )}
     </div>
@@ -267,7 +270,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
             <div className="font-mono text-[10px] text-slate-400">{selectedMapped.id}</div>
           </div>
         ) : (
-          <span className="text-sm text-slate-400">No client selected</span>
+          <span className="text-sm text-slate-400">{t("clientNoSelected")}</span>
         )}
       </div>
     )
@@ -291,9 +294,9 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
               <Building2 className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-800">Select Client</h3>
+              <h3 className="text-sm font-bold text-slate-800">{t("clientModalTitle")}</h3>
               {table.data && (
-                <p className="text-[11px] text-slate-400">{table.data.total} clients available</p>
+                <p className="text-[11px] text-slate-400">{table.data.total} {t("clientsAvailableSuffix")}</p>
               )}
             </div>
           </div>
@@ -311,7 +314,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
               autoFocus
-              placeholder="Search by name, address, status…"
+              placeholder={t("clientSearchPlaceholder")}
               value={table.query}
               onChange={(e) => table.setQuery(e.target.value)}
               className="pl-9 text-sm border-slate-200 bg-slate-50 focus:bg-white"
@@ -331,7 +334,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
         <div className="max-h-80 overflow-y-auto">
           {table.loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
-              <RefreshCcw className="h-4 w-4 animate-spin" /> Loading clients…
+              <RefreshCcw className="h-4 w-4 animate-spin" /> {t("clientLoading")}
             </div>
           ) : table.error ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
@@ -341,14 +344,14 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
                 onClick={table.refetch}
                 className="text-xs text-emerald-600 hover:underline"
               >
-                Retry
+                {tCommon("retry")}
               </button>
             </div>
           ) : !table.data?.results.length ? (
             <div className="py-10 text-center">
               <Building2 className="mx-auto mb-2 h-7 w-7 text-slate-200" />
-              <p className="text-sm text-slate-400">No clients found</p>
-              {table.query && <p className="text-xs text-slate-300 mt-0.5">Try a different search term</p>}
+              <p className="text-sm text-slate-400">{t("clientNoResults")}</p>
+              {table.query && <p className="text-xs text-slate-300 mt-0.5">{t("clientTryDifferent")}</p>}
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
@@ -400,7 +403,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
 
                       {row.Compliance_Partner && (
                         <div className="mt-0.5 text-[10px] text-slate-300">
-                          Partner: {row.Compliance_Partner}
+                          {t("clientPartner")} {row.Compliance_Partner}
                         </div>
                       )}
                     </div>
@@ -419,7 +422,7 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
         {/* Footer / pagination */}
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
           <p className="text-xs text-slate-400">
-            Page <span className="font-semibold text-slate-600">{table.page}</span> of{" "}
+            {tCommon("page")} <span className="font-semibold text-slate-600">{table.page}</span> {tCommon("of")}{" "}
             <span className="font-semibold text-slate-600">{table.totalPages}</span>
             {table.data && (
               <span className="ml-1.5 text-slate-300">· {table.data.total} total</span>
@@ -432,14 +435,14 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
               disabled={table.page === 1 || table.loading}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
-              <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              <ChevronLeft className="h-3.5 w-3.5" /> {t("clientPrev")}
             </button>
             <button
               onClick={() => table.setPage((p) => Math.min(table.totalPages, p + 1))}
               disabled={table.page >= table.totalPages || table.loading}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
-              Next <ChevronRight className="h-3.5 w-3.5" />
+              {t("clientNext")} <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

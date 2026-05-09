@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { TaskBoard } from "@/components/organisms/TaskBoard"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { Task } from "@/lib/types"
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 }
 
 export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
+  const t = useTranslations("jobTasks")
   const [memberNames, setMemberNames] = useState<Record<string, string>>({})
 
   // Fetch all GQM members once to resolve member names in task cards
@@ -56,14 +58,14 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
       }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0B2E1E", margin: 0 }}>
-            Tasks
+            {t("title")}
           </h2>
           {total > 0 && (
             <p style={{ fontSize: "12px", color: "#6B7280", margin: "2px 0 0" }}>
-              {done}/{total} completed
-              {inProg > 0 && ` · ${inProg} in progress`}
+              {t("completedCount", { done, total })}
+              {inProg > 0 && ` · ${t("inProgressCount", { count: inProg })}`}
               {overdue > 0 && (
-                <span style={{ color: "#DC2626", fontWeight: 600 }}> · {overdue} overdue</span>
+                <span style={{ color: "#DC2626", fontWeight: 600 }}> · {t("overdueCount", { count: overdue })}</span>
               )}
             </p>
           )}
@@ -89,7 +91,7 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
           onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
           onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
         >
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> New Task
+          <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> {t("newTask")}
         </button>
       </div>
 
@@ -124,10 +126,10 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
         }}>
           <div style={{ fontSize: "36px", marginBottom: "10px" }}>📋</div>
           <p style={{ fontSize: "15px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            No tasks yet
+            {t("noTasks")}
           </p>
           <p style={{ fontSize: "12px", marginBottom: "20px" }}>
-            Create the first task for this job
+            {t("createFirstTask")}
           </p>
           <button
             onClick={onCreateTask}
@@ -142,7 +144,7 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
               cursor:       "pointer",
             }}
           >
-            + Create Task
+            + {t("createTask")}
           </button>
         </div>
       ) : (

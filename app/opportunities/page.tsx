@@ -17,6 +17,7 @@ import {
   CheckCircle2, XCircle, Filter, Eye, Trash2,
 } from "lucide-react"
 import Link from "next/link"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,11 +50,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 function PriorityBadge({ priority }: { priority: string | null }) {
+  const t = useTranslations("opportunities")
   if (!priority) return <span className="text-slate-300 text-xs">—</span>
   const cls = PRIORITY_COLORS[priority] ?? "bg-slate-100 text-slate-600 border-slate-200"
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
-      {priority}
+      {priority === "Low" ? t("priority_low") : 
+       priority === "Medium" ? t("priority_medium") :
+       priority === "High" ? t("priority_high") :
+       priority === "Critical" ? t("priority_critical") : priority}
     </span>
   )
 }
@@ -83,15 +88,19 @@ function TableSkeleton() {
 function OpportunitiesTable({
   rows,
   onDelete,
+  userRole,
 }: {
   rows: OpportunityRow[]
   onDelete: (row: OpportunityRow) => void
+  userRole?: string
 }) {
+  const t = useTranslations("opportunities")
+  const isTech = userRole === "LEAD_TECHNICIAN"
   if (rows.length === 0) {
     return (
       <div className="flex flex-col h-48 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white">
         <Megaphone className="h-8 w-8 text-slate-200" />
-        <p className="text-sm text-slate-400">No opportunities found</p>
+        <p className="text-sm text-slate-400">{t("opp_noResults")}</p>
       </div>
     )
   }
@@ -117,11 +126,11 @@ function OpportunitiesTable({
                   <PriorityBadge priority={row.Priority} />
                   {row.State === true ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                      <CheckCircle2 className="h-3 w-3" /> Active
+                      <CheckCircle2 className="h-3 w-3" /> {t("opp_active")}
                     </span>
                   ) : row.State === false ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                      <XCircle className="h-3 w-3" /> Inactive
+                      <XCircle className="h-3 w-3" /> {t("opp_inactive")}
                     </span>
                   ) : null}
                 </div>
@@ -131,24 +140,28 @@ function OpportunitiesTable({
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="rounded-full bg-violet-100 px-1.5 text-[11px] font-bold text-violet-700">{row.skills?.length ?? 0}</span>
-                    skills
+                    {t("opp_skillsCount")}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <span className="rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">{row.subcontractors?.length ?? 0}</span>
-                    applicants
-                  </span>
+                  {!isTech && (
+                    <span className="flex items-center gap-1">
+                      <span className="rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">{row.subcontractors?.length ?? 0}</span>
+                      {t("opp_applicantsCount")}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-shrink-0 gap-1">
                 <Link href={`/opportunities/${row.ID_Opportunities}`}>
-                  <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title="View">
+                  <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title={t("opp_viewDetails")}>
                     <Eye className="h-3.5 w-3.5" />
                   </button>
                 </Link>
-                <button onClick={() => onDelete(row)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {!isTech && (
+                  <button onClick={() => onDelete(row)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title={t("opp_delete")}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -161,8 +174,8 @@ function OpportunitiesTable({
           <table className="w-full min-w-[780px] border-collapse">
             <thead className="border-b border-slate-100 bg-slate-50/80">
               <tr>
-                {["ID", "Project", "Job", "Priority", "State", "Start Date", "Skills", "Applicants", ""].map((h) => (
-                  <th key={h} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
+                {[t("opp_colId"), t("opp_colProject"), t("opp_colJob"), t("opp_colPriority"), t("opp_colState"), t("opp_colStartDate"), t("opp_colSkills"), !isTech && t("opp_colApplicants"), ""].filter(Boolean).map((h) => (
+                  <th key={String(h)} className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400 ${h === "" ? "text-right" : ""}`}>
                     {h}
                   </th>
                 ))}
@@ -192,11 +205,11 @@ function OpportunitiesTable({
                   <td className="px-4 py-3 whitespace-nowrap">
                     {row.State === true ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        <CheckCircle2 className="h-3 w-3" /> Active
+                        <CheckCircle2 className="h-3 w-3" /> {t("opp_active")}
                       </span>
                     ) : row.State === false ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                        <XCircle className="h-3 w-3" /> Inactive
+                        <XCircle className="h-3 w-3" /> {t("opp_inactive")}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-300">—</span>
@@ -212,22 +225,26 @@ function OpportunitiesTable({
                       {row.skills?.length ?? 0}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
-                      {row.subcontractors?.length ?? 0}
-                    </span>
-                  </td>
+                  {!isTech && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[11px] font-bold text-blue-700">
+                        {row.subcontractors?.length ?? 0}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
                       <Link href={`/opportunities/${row.ID_Opportunities}`}>
-                        <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title="View">
+                        <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors" title={t("opp_viewDetails")}>
                           <Eye className="h-3.5 w-3.5" />
                         </button>
                       </Link>
-                      <button onClick={() => onDelete(row)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {!isTech && (
+                        <button onClick={() => onDelete(row)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-600 transition-colors" title={t("opp_delete")}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -247,6 +264,7 @@ const PER_PAGE = 10
 
 export default function OpportunitiesPage() {
   const router = useRouter()
+  const t = useTranslations("opportunities")
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
 
@@ -286,7 +304,7 @@ export default function OpportunitiesPage() {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("opp_errLoad"))
     } finally { setLoading(false) }
   }, [])
 
@@ -300,11 +318,11 @@ export default function OpportunitiesPage() {
         method: "DELETE", cache: "no-store",
       })
       if (!res.ok) throw new Error(`Delete failed (${res.status})`)
-      toast({ title: "Deleted", description: "Opportunity removed successfully." })
+      toast({ title: t("opp_toastDeleted"), description: t("opp_toastDeletedDesc") })
       setDeleteOpen(false); setDeleteTarget(null)
       fetchPage(page, dSearch)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to delete", variant: "destructive" })
+      toast({ title: t("opp_toastError"), description: e?.message ?? t("opp_toastDeleteError"), variant: "destructive" })
     }
   }
 
@@ -325,10 +343,10 @@ export default function OpportunitiesPage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6">
               <AlertCircle className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
-            <p className="text-slate-500 max-w-md mb-8">You don't have permission to view Opportunities.</p>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("opp_accessDenied")}</h1>
+            <p className="text-slate-500 max-w-md mb-8">{t("opp_accessDeniedDesc")}</p>
             <Button onClick={() => router.push("/dashboard")} className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold">
-              Return to Dashboard
+              {t("opp_btnReturnDashboard")}
             </Button>
           </main>
         </div>
@@ -350,8 +368,8 @@ export default function OpportunitiesPage() {
                 <Megaphone className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Opportunities</h1>
-                <p className="hidden text-xs text-slate-500 sm:block">Job postings for subcontractors to apply</p>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{t("opp_title")}</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">{t("opp_subtitle")}</p>
               </div>
             </div>
           </div>
@@ -362,24 +380,26 @@ export default function OpportunitiesPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <h2 className="truncate text-base font-bold text-slate-800">All Opportunities</h2>
+                  <h2 className="truncate text-base font-bold text-slate-800">{t("opp_tableTitle")}</h2>
                   <span className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {activeFilters > 0 && (
                     <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 sm:flex">
-                      <Filter className="h-2.5 w-2.5" /> {activeFilters} filter
+                      <Filter className="h-2.5 w-2.5" /> {activeFilters === 1 ? t("opp_activeFilter") : t("opp_activeFilters", { count: activeFilters })}
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => router.push("/opportunities/create")}
-                  className="ml-3 flex-shrink-0 gap-1.5 bg-violet-600 hover:bg-violet-700 text-sm text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="sm:hidden">New</span>
-                  <span className="hidden sm:inline">New Opportunity</span>
-                </Button>
+                {user?.role !== "LEAD_TECHNICIAN" && (
+                  <Button
+                    onClick={() => router.push("/opportunities/create")}
+                    className="ml-3 flex-shrink-0 gap-1.5 bg-violet-600 hover:bg-violet-700 text-sm text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">{t("opp_btnNewShort")}</span>
+                    <span className="hidden sm:inline">{t("opp_btnNew")}</span>
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
@@ -388,7 +408,7 @@ export default function OpportunitiesPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by project name, description, ID…"
+                    placeholder={t("opp_searchPlaceholder")}
                     className="pl-9 text-sm border-slate-200 focus:border-violet-400"
                   />
                   {search && (
@@ -399,7 +419,7 @@ export default function OpportunitiesPage() {
                 </div>
                 {activeFilters > 0 && (
                   <Button variant="outline" size="sm" onClick={() => setSearch("")} className="gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600">
-                    <X className="h-3.5 w-3.5" /> Reset
+                    <X className="h-3.5 w-3.5" /> {t("opp_btnReset")}
                   </Button>
                 )}
               </div>
@@ -413,32 +433,34 @@ export default function OpportunitiesPage() {
                 <AlertCircle className="h-8 w-8 text-red-400" />
                 <p className="text-sm font-medium text-red-600">{error}</p>
                 <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch)} className="gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5" /> {t("opp_btnRetry")}
                 </Button>
               </div>
             ) : (
-              <OpportunitiesTable rows={rows} onDelete={(row) => { setDeleteTarget(row); setDeleteOpen(true) }} />
+              <OpportunitiesTable
+                rows={rows}
+                onDelete={(row) => { setDeleteTarget(row); setDeleteOpen(true) }}
+                userRole={user?.role}
+              />
             )}
 
             {/* Pagination */}
             {!loading && !error && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
                 <p className="text-xs text-slate-500 sm:text-sm">
-                  Showing{" "}
-                  <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
-                  of <span className="font-semibold text-slate-800">{total}</span> opportunities
+                  {t("opp_paginationShowing", { from: showFrom, to: showTo, total })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">Previous</span>
+                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("opp_btnPrev")}</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
                   </span>
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-                    <span className="hidden sm:inline">Next</span><ChevronRight className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t("opp_btnNext")}</span><ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

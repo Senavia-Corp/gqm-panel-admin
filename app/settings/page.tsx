@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,38 +32,7 @@ interface ReportFilters {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const JOB_TYPES: { value: JobType; label: string; color: string }[] = [
-  { value: "ALL", label: "All Types",  color: "#0B2E1E" },
-  { value: "QID", label: "QID",        color: "#059669" },
-  { value: "PTL", label: "PTL",        color: "#2563EB" },
-  { value: "PAR", label: "PAR",        color: "#7C3AED" },
-]
-
-const DOC_TYPES: { value: DocType; label: string; icon: string }[] = [
-  { value: "all",              label: "All Documents",    icon: "⊞" },
-  { value: "invoices",         label: "Invoices",         icon: "📄" },
-  { value: "bills",            label: "Bills",            icon: "🧾" },
-  { value: "invoice_payments", label: "Inv. Payments",    icon: "💳" },
-  { value: "bill_payments",    label: "Bill Payments",    icon: "💰" },
-]
-
-const MONTHS = [
-  { value: "ALL", label: "All Months" },
-  { value: "1",  label: "January"   }, { value: "2",  label: "February"  },
-  { value: "3",  label: "March"     }, { value: "4",  label: "April"     },
-  { value: "5",  label: "May"       }, { value: "6",  label: "June"      },
-  { value: "7",  label: "July"      }, { value: "8",  label: "August"    },
-  { value: "9",  label: "September" }, { value: "10", label: "October"   },
-  { value: "11", label: "November"  }, { value: "12", label: "December"  },
-]
-
 const YEARS = ["ALL", "2026", "2025", "2024", "2023"]
-
-const TL_PERIODS: { value: TLPeriod; label: string; desc: string }[] = [
-  { value: "day",   label: "Day",   desc: "Activity for a single day"  },
-  { value: "week",  label: "Week",  desc: "Activity for a 7-day week"  },
-  { value: "month", label: "Month", desc: "Activity for a full month"  },
-]
 
 // ─── Small sub-components ─────────────────────────────────────────────────────
 
@@ -150,9 +120,41 @@ function PreviewTag({ label, value }: { label: string; value: string }) {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const t = useTranslations("settings")
+  const tc = useTranslations("common")
   const [user, setUser] = useState<any>(null)
 
   const today = new Date().toISOString().split("T")[0]
+
+  const MONTHS = [
+    { value: "ALL", label: t("allMonths") },
+    { value: "1",  label: tc("months.January")   }, { value: "2",  label: tc("months.February")  },
+    { value: "3",  label: tc("months.March")     }, { value: "4",  label: tc("months.April")     },
+    { value: "5",  label: tc("months.May")       }, { value: "6",  label: tc("months.June")      },
+    { value: "7",  label: tc("months.July")      }, { value: "8",  label: tc("months.August")    },
+    { value: "9",  label: tc("months.September") }, { value: "10", label: tc("months.October")   },
+    { value: "11", label: tc("months.November")  }, { value: "12", label: tc("months.December")  },
+  ]
+
+  const JOB_TYPES: { value: JobType; label: string; color: string }[] = [
+    { value: "ALL", label: t("jobTypeAll"), color: "#0B2E1E" },
+    { value: "QID", label: "QID",          color: "#059669" },
+    { value: "PTL", label: "PTL",          color: "#2563EB" },
+    { value: "PAR", label: "PAR",          color: "#7C3AED" },
+  ]
+
+  const TL_PERIODS: { value: TLPeriod; label: string; desc: string }[] = [
+    { value: "day",   label: t("tlPeriodDayLabel"),   desc: t("tlPeriodDayDesc")   },
+    { value: "week",  label: t("tlPeriodWeekLabel"),  desc: t("tlPeriodWeekDesc")  },
+    { value: "month", label: t("tlPeriodMonthLabel"), desc: t("tlPeriodMonthDesc") },
+  ]
+
+  const REPORT_CATS = [
+    { value: "financial" as const,  label: t("catFinancialLabel"),  icon: "💰", desc: t("catFinancialDesc")  },
+    { value: "jobs"      as const,  label: t("catJobsLabel"),       icon: "🏗️", desc: t("catJobsDesc")       },
+    { value: "timeline"  as const,  label: t("catTimelineLabel"),   icon: "🕐", desc: t("catTimelineDesc")   },
+    { value: "commission" as const, label: t("catCommissionLabel"), icon: "🎟️", desc: t("catCommissionDesc") },
+  ]
 
   const [filters, setFilters] = useState<ReportFilters>({
     category:  "financial",
@@ -268,11 +270,11 @@ export default function SettingsPage() {
     const isCommission = filters.category === "commission"
 
     if (isTimeline && !filters.tlJobId.trim()) {
-      setError("Job ID is required for Timeline reports.")
+      setError(t("errorJobIdRequired"))
       return
     }
     if (isCommission && filters.commMembers.length === 0) {
-      setError("Please select at least one member.")
+      setError(t("errorMemberRequired"))
       return
     }
 
@@ -320,7 +322,7 @@ export default function SettingsPage() {
   async function handlePreviewJSON() {
     if (filters.category === "jobs" || filters.category === "commission") return
     if (filters.category === "timeline" && !filters.tlJobId.trim()) {
-      setError("Job ID is required for Timeline reports.")
+      setError(t("errorJobIdRequired"))
       return
     }
     setLoadingJson(true); setError(null)
@@ -342,15 +344,14 @@ export default function SettingsPage() {
 
   // ── Derived display values ──────────────────────────────────────────────────
 
-  const yearLabel  = filters.year  === "ALL" ? "All Years"  : filters.year
-  const monthLabel = filters.month === "ALL" ? "All Months" : MONTHS.find(m => m.value === filters.month)?.label ?? filters.month
-  const docLabel   = DOC_TYPES.find(d => d.value === filters.docType)?.label ?? "All"
+  const yearLabel  = filters.year  === "ALL" ? t("allYears")  : filters.year
+  const monthLabel = filters.month === "ALL" ? t("allMonths") : MONTHS.find(m => m.value === filters.month)?.label ?? filters.month
   const isTimeline   = filters.category === "timeline"
   const isFinancial  = filters.category === "financial"
   const isCommission = filters.category === "commission"
 
-  const repLabel    = filters.rep === "ALL" ? "All Reps" : filters.rep
-  const clientLabel = filters.clientId === "ALL" ? "All Clients" : (clients.find(c => c.ID_Client === filters.clientId)?.Client_Community ?? filters.clientId)
+  const repLabel    = filters.rep === "ALL" ? tc("all") : filters.rep
+  const clientLabel = filters.clientId === "ALL" ? tc("all") : (clients.find(c => c.ID_Client === filters.clientId)?.Client_Community ?? filters.clientId)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -364,10 +365,10 @@ export default function SettingsPage() {
           {/* Page header */}
           <div style={{ marginBottom: "28px" }}>
             <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#0B2E1E", margin: 0 }}>
-              Settings
+              {t("pageTitle")}
             </h1>
             <p style={{ fontSize: "14px", color: "#6B7280", marginTop: "4px" }}>
-              Manage preferences and generate reports.
+              {t("pageSubtitle")}
             </p>
           </div>
 
@@ -398,10 +399,10 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 style={{ color: "#fff", fontSize: "17px", fontWeight: 700, margin: 0 }}>
-                  Report Generator
+                  {t("cardTitle")}
                 </h2>
                 <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px", margin: 0 }}>
-                  Configure filters and download PDF reports
+                  {t("cardSubtitle")}
                 </p>
               </div>
             </div>
@@ -411,15 +412,10 @@ export default function SettingsPage() {
               {/* ── Step 1: Report category ───────────────────────────── */}
               <section style={{ marginBottom: "28px" }}>
                 <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                  1 · Report Type
+                  {t("stepReportType")}
                 </p>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  {([
-                    { value: "financial", label: "Jobs Financial Report", icon: "💰", desc: "Quoted, Sold, Pct & Profitability" },
-                    { value: "jobs",      label: "Jobs Status",         icon: "🏗️",  desc: "Pipeline & Status breakdown" },
-                    { value: "timeline",  label: "Job Activity",        icon: "🕐",  desc: "Timeline audit per job"      },
-                    { value: "commission", label: "Member Commissions", icon: "🎟️", desc: "Calculated earnings & history" },
-                  ] as const).map(cat => (
+                  {REPORT_CATS.map(cat => (
                     <button
                       key={cat.value}
                       onClick={() => set("category", cat.value)}
@@ -459,23 +455,23 @@ export default function SettingsPage() {
                   {/* Step 2: Job ID */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                      2 · Job ID
+                      {t("stepJobId")}
                     </p>
                     <p style={{ fontSize: "12px", color: "#6B7280", marginBottom: "12px", marginTop: 0 }}>
-                      Enter the exact Job ID whose activity you want to report on{" "}
+                      {t("tlJobIdHint")}{" "}
                       <code style={{ background: "#F3F4F6", padding: "1px 5px", borderRadius: "4px", fontSize: "11px" }}>
-                        e.g. QID6-0001
+                        {t("tlJobIdPlaceholder")}
                       </code>
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: "300px" }}>
                       <label style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Job ID
+                        {t("tlJobIdLabel")}
                       </label>
                       <input
                         type="text"
                         value={filters.tlJobId}
                         onChange={e => set("tlJobId", e.target.value)}
-                        placeholder="e.g. QID6-0001"
+                        placeholder={t("tlJobIdPlaceholder")}
                         style={{
                           border: "1.5px solid #D1D5DB", borderRadius: "8px",
                           padding: "8px 12px", fontSize: "13px", color: "#111827",
@@ -490,7 +486,7 @@ export default function SettingsPage() {
                   {/* Step 3: Period */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                      3 · Period
+                      {t("stepPeriod")}
                     </p>
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                       {TL_PERIODS.map(p => (
@@ -518,14 +514,14 @@ export default function SettingsPage() {
                   {/* Step 4: Reference date */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                      4 · Reference Date
+                      {t("stepRefDate")}
                     </p>
                     <p style={{ fontSize: "12px", color: "#6B7280", marginBottom: "12px", marginTop: 0 }}>
-                      The report will cover the <strong>{filters.tlPeriod}</strong> that contains this date.
+                      {t("tlRefDateDesc", { period: filters.tlPeriod })}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: "200px" }}>
                       <label style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Date
+                        {t("tlRefDateLabel")}
                       </label>
                       <input
                         type="date"
@@ -547,7 +543,7 @@ export default function SettingsPage() {
                   {/* Step 2: Member selection */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                      2 · Select Members
+                      {t("stepSelectMembers")}
                     </p>
 
                     {/* Search bar */}
@@ -555,7 +551,7 @@ export default function SettingsPage() {
                       <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", fontSize: "14px", pointerEvents: "none" }}>🔍</span>
                       <input
                         type="text"
-                        placeholder="Search member..."
+                        placeholder={t("commSearchPlaceholder")}
                         value={membersQ}
                         onChange={e => {
                           const q = e.target.value
@@ -592,7 +588,7 @@ export default function SettingsPage() {
                         ))
                       ) : members.length === 0 ? (
                         <p style={{ gridColumn: "1/-1", textAlign: "center", color: "#9CA3AF", fontSize: "13px", margin: "16px 0" }}>
-                          No members found.
+                          {t("commNoMembers")}
                         </p>
                       ) : (
                         members.map(m => {
@@ -633,17 +629,17 @@ export default function SettingsPage() {
                           onClick={() => set("commMembers", [...new Set([...filters.commMembers, ...members.map(m => m.ID_Member)])])}
                           style={{ fontSize: "11px", color: "#0B2E1E", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                         >
-                          + Add page
+                          {t("commAddPage")}
                         </button>
                         <button 
                           onClick={() => set("commMembers", [])}
                           style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                         >
-                          Clear all
+                          {t("commClearAll")}
                         </button>
                         {filters.commMembers.length > 0 && (
                           <span style={{ fontSize: "11px", color: "#059669", fontWeight: 600 }}>
-                            {filters.commMembers.length} selected
+                            {t("commSelected", { count: filters.commMembers.length })}
                           </span>
                         )}
                       </div>
@@ -684,20 +680,20 @@ export default function SettingsPage() {
                   {/* Step 3: Time filters */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>
-                      3 · Time Range
+                      {t("stepTimeRangeComm")}
                     </p>
                     <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                       <div style={{ minWidth: "150px" }}>
                         <SelectField
-                          label="Year"
+                          label={t("labelYear")}
                           value={filters.year}
                           onChange={v => set("year", v)}
-                          options={YEARS.map(y => ({ value: y, label: y === "ALL" ? "All Years" : y }))}
+                          options={YEARS.map(y => ({ value: y, label: y === "ALL" ? t("allYears") : y }))}
                         />
                       </div>
                       <div style={{ minWidth: "180px" }}>
                         <SelectField
-                          label="Month"
+                          label={t("labelMonth")}
                           value={filters.month}
                           onChange={v => set("month", v)}
                           options={MONTHS}
@@ -713,7 +709,7 @@ export default function SettingsPage() {
                   {/* Step 2: Job type */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
-                      2 · Job Type
+                      {t("stepJobType")}
                     </p>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       {JOB_TYPES.map(jt => (
@@ -734,21 +730,21 @@ export default function SettingsPage() {
                   {/* Step 3: Time filters */}
                   <section style={{ marginBottom: "28px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>
-                      3 · Time Range
+                      {t("stepTimeRange")}
                     </p>
                     <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                       <div style={{ minWidth: "150px" }}>
                         <SelectField
-                          label="Year"
+                          label={t("labelYear")}
                           value={filters.year}
                           onChange={v => set("year", v)}
-                          options={YEARS.map(y => ({ value: y, label: y === "ALL" ? "All Years" : y }))}
+                          options={YEARS.map(y => ({ value: y, label: y === "ALL" ? t("allYears") : y }))}
                         />
                       </div>
                       {isFinancial && (
                         <div style={{ minWidth: "180px" }}>
                           <SelectField
-                            label="Month"
+                            label={t("labelMonth")}
                             value={filters.month}
                             onChange={v => set("month", v)}
                             options={MONTHS}
@@ -775,33 +771,33 @@ export default function SettingsPage() {
                 gap:          "8px",
                 flexWrap:     "wrap",
               }}>
-                <span style={{ fontSize: "12px", color: "#9CA3AF", marginRight: "4px" }}>Selected:</span>
+                <span style={{ fontSize: "12px", color: "#9CA3AF", marginRight: "4px" }}>{t("previewSelected")}</span>
                 {isTimeline ? (
                   <>
-                    <PreviewTag label="Job"    value={filters.tlJobId || "—"} />
-                    <PreviewTag label="Period" value={filters.tlPeriod} />
-                    <PreviewTag label="Date"   value={filters.tlRefDate || today} />
-                    <PreviewTag label="Report" value="Activity Timeline" />
+                    <PreviewTag label={t("previewJob")}    value={filters.tlJobId || "—"} />
+                    <PreviewTag label={t("previewPeriod")} value={filters.tlPeriod} />
+                    <PreviewTag label={t("previewDate")}   value={filters.tlRefDate || today} />
+                    <PreviewTag label={"Report"} value={t("previewReportActivity")} />
                   </>
                 ) : isCommission ? (
                   <>
-                    <PreviewTag label="Members" value={filters.commMembers.length === 0 ? "None" : filters.commMembers.length === members.length ? "All" : `${filters.commMembers.length} selected`} />
-                    <PreviewTag label="Year"    value={yearLabel} />
-                    <PreviewTag label="Month"   value={monthLabel} />
-                    <PreviewTag label="Report"  value="Commissions (Excel)" />
+                    <PreviewTag label={t("previewMembers")} value={filters.commMembers.length === 0 ? t("previewNone") : filters.commMembers.length === members.length ? t("previewAll") : t("commSelected", { count: filters.commMembers.length })} />
+                    <PreviewTag label={t("previewYear")}    value={yearLabel} />
+                    <PreviewTag label={t("previewMonth")}   value={monthLabel} />
+                    <PreviewTag label={"Report"}  value={t("previewReportCommissions")} />
                   </>
                 ) : (
                   <>
-                    <PreviewTag label="Type"  value={filters.jobType} />
-                    <PreviewTag label="Year"  value={yearLabel} />
-                    <PreviewTag label="Month" value={monthLabel} />
+                    <PreviewTag label={t("previewType")}  value={filters.jobType} />
+                    <PreviewTag label={t("previewYear")}  value={yearLabel} />
+                    <PreviewTag label={t("previewMonth")} value={monthLabel} />
                     {isFinancial && (
                       <>
-                        <PreviewTag label="Rep"    value={repLabel} />
-                        <PreviewTag label="Client" value={clientLabel} />
+                        <PreviewTag label={t("previewRep")}    value={repLabel} />
+                        <PreviewTag label={t("previewClient")} value={clientLabel} />
                       </>
                     )}
-                    <PreviewTag label="Report" value={isFinancial ? "Jobs Financial" : "Jobs"} />
+                    <PreviewTag label={"Report"} value={isFinancial ? t("previewReportFinancial") : t("previewReportJobs")} />
                   </>
                 )}
               </div>
@@ -824,7 +820,7 @@ export default function SettingsPage() {
                   display: "flex", alignItems: "center", gap: "8px",
                   fontSize: "13px", color: "#065F46",
                 }}>
-                  <span>✅</span> Report downloaded successfully!
+                  <span>✅</span> {t("successDownload")}
                 </div>
               )}
 
@@ -860,10 +856,10 @@ export default function SettingsPage() {
                         display: "inline-block",
                         animation: "spin 0.7s linear infinite",
                       }} />
-                      {isCommission ? "Generating Excel…" : "Generating PDF…"}
+                      {isCommission ? t("btnGeneratingExcel") : t("btnGeneratingPDF")}
                     </>
                   ) : (
-                    <> {isCommission ? "⬇ Download Excel Report" : "⬇ Download PDF Report"} </>
+                    <> {isCommission ? t("btnDownloadExcel") : t("btnDownloadPDF")} </>
                   )}
                 </button>
 
@@ -887,7 +883,7 @@ export default function SettingsPage() {
                       transition:   "all 0.15s ease",
                     }}
                   >
-                    {loadingJson ? "Loading…" : "{ } Preview JSON"}
+                    {loadingJson ? t("btnLoadingJSON") : t("btnPreviewJSON")}
                   </button>
                 )}
               </div>

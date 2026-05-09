@@ -20,10 +20,13 @@ import { ProfilePipelineJobs } from "./components/ProfilePipelineJobs"
 import { ProfileWeeklyTasks } from "./components/ProfileWeeklyTasks"
 import { ProfileCommunities } from "./components/ProfileCommunities"
 import { ProfileCommissions } from "./components/ProfileCommissions"
+import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface MemberProfile {
   ID_Member: string
+  ID_Subcontractor?: string | null
   Member_Name: string | null
   Company_Role: string | null
   Email_Address: string
@@ -59,6 +62,7 @@ function EditableField({
   editValues: EditState
   onChange: (k: keyof EditState, v: string) => void
 }) {
+  const t = useTranslations()
   return (
     <div className="group relative">
       <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -74,7 +78,7 @@ function EditableField({
         />
       ) : (
         <p className="rounded-lg border border-transparent bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
-          {value || <span className="text-slate-400 italic">Not set</span>}
+          {value || <span className="text-slate-400 italic">{t("profile.personal.notSet")}</span>}
         </p>
       )}
     </div>
@@ -149,6 +153,7 @@ function AvatarInitials({ name }: { name: string | null }) {
 export default function ProfilePage() {
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations()
 
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -179,28 +184,46 @@ export default function ProfilePage() {
   // ── Fetch profile from API ────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
-    const memberId = localStorage.getItem("user_id") ?? user?.user_id ?? user?.id ?? user?.ID_Member
+    const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+    const isTech = userRole === "LEAD_TECHNICIAN"
+    const memberId = localStorage.getItem("user_id") ?? user?.id ?? user?.user_id ?? user?.ID_Member ?? user?.ID_Technician
     if (!memberId) { setIsLoading(false); return }
 
     void (async () => {
       try {
-        const res = await apiFetch(`/api/members/${memberId}`)
+        const endpoint = isTech ? `/api/technician/${memberId}` : `/api/members/${memberId}`
+        const res = await apiFetch(endpoint)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data: MemberProfile = await res.json()
-        setProfile(data)
+        const data: any = await res.json()
+        
+        const mappedProfile: MemberProfile = isTech 
+            ? {
+                ID_Member: data.ID_Technician,
+                ID_Subcontractor: data.subcontractor?.ID_Subcontractor ?? data.ID_Subcontractor,
+                Member_Name: data.Name,
+                Company_Role: data.Type_of_technician,
+                Email_Address: data.Email_Address,
+                Phone_Number: data.Phone_Number || null,
+                Address: data.Location || null,
+                podio_profile_id: null,
+                podio_item_id: null,
+              }
+          : data
+
+        setProfile(mappedProfile)
         setEditValues({
-          Member_Name: data.Member_Name ?? "",
-          Company_Role: data.Company_Role ?? "",
-          Email_Address: data.Email_Address ?? "",
-          Phone_Number: data.Phone_Number ?? "",
-          Address: data.Address ?? "",
+          Member_Name: mappedProfile.Member_Name ?? "",
+          Company_Role: mappedProfile.Company_Role ?? "",
+          Email_Address: mappedProfile.Email_Address ?? "",
+          Phone_Number: mappedProfile.Phone_Number ?? "",
+          Address: mappedProfile.Address ?? "",
           currentPassword: "",
           newPassword: "",
           confirmPassword: "",
         })
       } catch (err) {
         console.error("[profile] fetch error:", err)
-        toast({ title: "Error", description: "Could not load profile data.", variant: "destructive" })
+        toast({ title: t("common.error"), description: t("members.failedLoad"), variant: "destructive" })
       } finally {
         setIsLoading(false)
       }
@@ -212,18 +235,33 @@ export default function ProfilePage() {
 
   // ── Save info ─────────────────────────────────────────────────────────────
   const handleSaveInfo = async () => {
-    if (!profile) return
+    if (!profile || !user) return
     setIsSaving(true)
     try {
-      const payload: Record<string, string> = {
-        Member_Name: editValues.Member_Name,
-        Company_Role: editValues.Company_Role,
-        Email_Address: editValues.Email_Address,
-        Phone_Number: editValues.Phone_Number,
-        Address: editValues.Address,
-      }
+      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+      const isTech = userRole === "LEAD_TECHNICIAN"
 
-      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
+      const payload: Record<string, string> = isTech
+        ? {
+            Name: editValues.Member_Name,
+            Type_of_technician: editValues.Company_Role,
+            Email_Address: editValues.Email_Address,
+            Phone_Number: editValues.Phone_Number,
+            Location: editValues.Address,
+          }
+        : {
+            Member_Name: editValues.Member_Name,
+            Company_Role: editValues.Company_Role,
+            Email_Address: editValues.Email_Address,
+            Phone_Number: editValues.Phone_Number,
+            Address: editValues.Address,
+          }
+
+      const endpoint = isTech 
+        ? `/api/technician/${profile.ID_Member}` 
+        : `/api/members/${profile.ID_Member}`
+
+      const res = await apiFetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -235,9 +273,9 @@ export default function ProfilePage() {
       const updated = await res.json()
       setProfile((prev) => prev ? { ...prev, ...updated } : updated)
       setEditingInfo(false)
-      toast({ title: "Profile updated", description: "Your information has been saved." })
+      toast({ title: t("profile.toasts.updated"), description: t("profile.toasts.updatedDesc") })
     } catch (err) {
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to save.", variant: "destructive" })
+      toast({ title: t("common.error"), description: err instanceof Error ? err.message : t("common.error"), variant: "destructive" })
     } finally {
       setIsSaving(false)
     }
@@ -245,18 +283,25 @@ export default function ProfilePage() {
 
   // ── Save password ─────────────────────────────────────────────────────────
   const handleSavePassword = async () => {
-    if (!profile) return
+    if (!profile || !user) return
     if (editValues.newPassword !== editValues.confirmPassword) {
-      toast({ title: "Passwords don't match", description: "New password and confirmation must be identical.", variant: "destructive" })
+      toast({ title: t("profile.toasts.errMatch"), description: t("profile.toasts.errMatchDesc"), variant: "destructive" })
       return
     }
     if (editValues.newPassword.length < 6) {
-      toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" })
+      toast({ title: t("profile.toasts.errShort"), description: t("profile.toasts.errShortDesc"), variant: "destructive" })
       return
     }
     setIsSaving(true)
     try {
-      const res = await apiFetch(`/api/members/${profile.ID_Member}`, {
+      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+      const isTech = userRole === "LEAD_TECHNICIAN"
+
+      const endpoint = isTech 
+        ? `/api/technician/${profile.ID_Member}` 
+        : `/api/members/${profile.ID_Member}`
+
+      const res = await apiFetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Password: editValues.newPassword }),
@@ -267,9 +312,9 @@ export default function ProfilePage() {
       }
       setEditingPassword(false)
       setEditValues((prev) => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }))
-      toast({ title: "Password updated", description: "Your password has been changed successfully." })
+      toast({ title: t("profile.toasts.passUpdated"), description: t("profile.toasts.passUpdatedDesc") })
     } catch (err) {
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to update password.", variant: "destructive" })
+      toast({ title: t("common.error"), description: err instanceof Error ? err.message : t("common.error"), variant: "destructive" })
     } finally {
       setIsSaving(false)
     }
@@ -293,6 +338,9 @@ export default function ProfilePage() {
   }
 
   if (!user) return null
+
+  const userRole = user.role || localStorage.getItem("user_type") || user.user_type
+  const isTech = userRole === "LEAD_TECHNICIAN"
 
   return (
     <div className="flex h-screen bg-slate-50/80">
@@ -321,14 +369,14 @@ export default function ProfilePage() {
                   <AvatarInitials name={profile?.Member_Name ?? null} />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
-                      Member Profile
+                      {isTech ? t("profile.header.titleTech") : t("profile.header.titleMember")}
                     </p>
                     <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
                       {profile?.Member_Name ?? "—"}
                     </h1>
                     <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1.5">
                       <Briefcase className="h-3.5 w-3.5" />
-                      {profile?.Company_Role ?? "No role set"}
+                      {profile?.Company_Role ?? t("profile.header.noRole")}
                     </p>
                   </div>
                 </div>
@@ -336,13 +384,13 @@ export default function ProfilePage() {
                 {/* Stat pills */}
                 <div className="flex flex-wrap gap-2">
                   <StatPill
-                    label="Member ID"
+                    label={isTech ? t("profile.header.labelIdTech") : t("profile.header.labelIdMember")}
                     value={profile?.ID_Member ?? "—"}
                     color="bg-white/5 text-white"
                   />
                   <StatPill
-                    label="Role"
-                    value={profile?.role?.Role_Name ?? "Member"}
+                    label={t("profile.header.labelRole")}
+                    value={isTech ? t("profile.header.roleLeader") : (profile?.role?.Role_Name ?? t("profile.header.roleMember"))}
                     color="bg-emerald-500/20 text-emerald-300"
                   />
                 </div>
@@ -361,21 +409,34 @@ export default function ProfilePage() {
               </div>
             ) : profile && (
               <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-6 grid w-full grid-cols-3 sm:grid-cols-5 h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm">
+                <TabsList className={`mb-6 grid w-full h-auto rounded-xl p-1 bg-white border border-slate-200 shadow-sm ${isTech ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3 sm:grid-cols-5"}`}>
                   <TabsTrigger value="personal" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                    <span className="sm:hidden">Personal</span>
-                    <span className="hidden sm:inline">Personal Info</span>
+                    <span className="sm:hidden">{t("common.personal")}</span>
+                    <span className="hidden sm:inline">{t("profile.tabs.personal")}</span>
                   </TabsTrigger>
                   <TabsTrigger value="jobs" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                    <span className="sm:hidden">Jobs</span>
-                    <span className="hidden sm:inline">Pipeline Jobs</span>
+                    <span className="sm:hidden">{t("common.jobs")}</span>
+                    <span className="hidden sm:inline">{t("profile.tabs.jobs")}</span>
                   </TabsTrigger>
                   <TabsTrigger value="tasks" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                    <span className="sm:hidden">Tasks</span>
-                    <span className="hidden sm:inline">Weekly Tasks</span>
+                    <span className="sm:hidden">{t("common.tasks")}</span>
+                    <span className="hidden sm:inline">{t("profile.tabs.tasks")}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Communities</TabsTrigger>
-                  <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">Commissions</TabsTrigger>
+                  {isTech && (
+                    <TabsTrigger value="opportunities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                      <span className="sm:hidden">{t("profile.tabs.opportunitiesShort")}</span>
+                      <span className="hidden sm:inline">{t("profile.tabs.opportunities")}</span>
+                    </TabsTrigger>
+                  )}
+                  {!isTech && (
+                    <>
+                      <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">{t("profile.tabs.communities")}</TabsTrigger>
+                      <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                        <span className="sm:hidden">{t("profile.tabs.commissionsShort")}</span>
+                        <span className="hidden sm:inline">{t("profile.tabs.commissions")}</span>
+                      </TabsTrigger>
+                    </>
+                  )}
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-6 mt-0">
@@ -388,8 +449,8 @@ export default function ProfilePage() {
                         <User className="h-4 w-4 text-emerald-600" />
                       </div>
                       <div>
-                        <h2 className="text-sm font-bold text-slate-800">Personal Information</h2>
-                        <p className="text-xs text-slate-400">Manage your profile details</p>
+                        <h2 className="text-sm font-bold text-slate-800">{t("profile.personal.title")}</h2>
+                        <p className="text-xs text-slate-400">{t("profile.personal.subtitle")}</p>
                       </div>
                     </div>
                     {!editingInfo ? (
@@ -399,7 +460,7 @@ export default function ProfilePage() {
                         onClick={() => setEditingInfo(true)}
                         className="gap-1.5 border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
                       >
-                        <Pencil className="h-3.5 w-3.5" /> Edit
+                        <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}
                       </Button>
                     ) : (
                       <div className="flex gap-2">
@@ -410,7 +471,7 @@ export default function ProfilePage() {
                           disabled={isSaving}
                           className="gap-1.5 border-slate-200 text-slate-500"
                         >
-                          <X className="h-3.5 w-3.5" /> Cancel
+                          <X className="h-3.5 w-3.5" /> {t("common.cancel")}
                         </Button>
                         <Button
                           size="sm"
@@ -419,7 +480,7 @@ export default function ProfilePage() {
                           className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
                           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Save
+                          {t("common.save")}
                         </Button>
                       </div>
                     )}
@@ -427,12 +488,12 @@ export default function ProfilePage() {
 
                   {/* Fields */}
                   <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 sm:grid-cols-2">
-                    <EditableField label="Full Name" value={profile?.Member_Name} fieldKey="Member_Name" icon={User} editing={editingInfo} editValues={editValues} onChange={handleChange} />
-                    <EditableField label="Company Role" value={profile?.Company_Role} fieldKey="Company_Role" icon={Briefcase} editing={editingInfo} editValues={editValues} onChange={handleChange} />
-                    <EditableField label="Email Address" value={profile?.Email_Address} fieldKey="Email_Address" icon={Mail} type="email" editing={editingInfo} editValues={editValues} onChange={handleChange} />
-                    <EditableField label="Phone Number" value={profile?.Phone_Number} fieldKey="Phone_Number" icon={Phone} type="tel" editing={editingInfo} editValues={editValues} onChange={handleChange} />
+                    <EditableField label={t("profile.personal.labelName")} value={profile?.Member_Name} fieldKey="Member_Name" icon={User} editing={editingInfo} editValues={editValues} onChange={handleChange} />
+                    <EditableField label={t("profile.personal.labelRole")} value={profile?.Company_Role} fieldKey="Company_Role" icon={Briefcase} editing={editingInfo} editValues={editValues} onChange={handleChange} />
+                    <EditableField label={t("profile.personal.labelEmail")} value={profile?.Email_Address} fieldKey="Email_Address" icon={Mail} type="email" editing={editingInfo} editValues={editValues} onChange={handleChange} />
+                    <EditableField label={t("profile.personal.labelPhone")} value={profile?.Phone_Number} fieldKey="Phone_Number" icon={Phone} type="tel" editing={editingInfo} editValues={editValues} onChange={handleChange} />
                     <div className="sm:col-span-2">
-                      <EditableField label="Address" value={profile?.Address} fieldKey="Address" icon={MapPin} editing={editingInfo} editValues={editValues} onChange={handleChange} />
+                      <EditableField label={t("profile.personal.labelAddress")} value={profile?.Address} fieldKey="Address" icon={MapPin} editing={editingInfo} editValues={editValues} onChange={handleChange} />
                     </div>
                   </div>
                 </div>
@@ -445,8 +506,8 @@ export default function ProfilePage() {
                         <KeyRound className="h-4 w-4 text-amber-600" />
                       </div>
                       <div>
-                        <h2 className="text-sm font-bold text-slate-800">Password & Security</h2>
-                        <p className="text-xs text-slate-400">Update your login credentials</p>
+                        <h2 className="text-sm font-bold text-slate-800">{t("profile.security.title")}</h2>
+                        <p className="text-xs text-slate-400">{t("profile.security.subtitle")}</p>
                       </div>
                     </div>
                     {!editingPassword ? (
@@ -456,7 +517,7 @@ export default function ProfilePage() {
                         onClick={() => setEditingPassword(true)}
                         className="gap-1.5 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-700"
                       >
-                        <Lock className="h-3.5 w-3.5" /> Change
+                        <Lock className="h-3.5 w-3.5" /> {t("profile.security.btnChange")}
                       </Button>
                     ) : (
                       <div className="flex gap-2">
@@ -467,7 +528,7 @@ export default function ProfilePage() {
                           disabled={isSaving}
                           className="gap-1.5 border-slate-200 text-slate-500"
                         >
-                          <X className="h-3.5 w-3.5" /> Cancel
+                          <X className="h-3.5 w-3.5" /> {t("common.cancel")}
                         </Button>
                         <Button
                           size="sm"
@@ -476,7 +537,7 @@ export default function ProfilePage() {
                           className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
                         >
                           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Update
+                          {t("common.update")}
                         </Button>
                       </div>
                     )}
@@ -488,8 +549,8 @@ export default function ProfilePage() {
                         <Lock className="h-5 w-5 text-slate-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-700">Password is set</p>
-                        <p className="text-xs text-slate-400">Click "Change" to update your password</p>
+                        <p className="text-sm font-medium text-slate-700">{t("profile.security.msgSet")}</p>
+                        <p className="text-xs text-slate-400">{t("profile.security.msgChange")}</p>
                       </div>
                       <div className="ml-auto text-slate-300">
                         <ChevronRight className="h-5 w-5" />
@@ -497,12 +558,12 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3">
-                      <PasswordField label="New Password" fieldKey="newPassword" icon={Lock} editValues={editValues} onChange={handleChange} />
-                      <PasswordField label="Confirm Password" fieldKey="confirmPassword" icon={Shield} editValues={editValues} onChange={handleChange} />
+                      <PasswordField label={t("profile.security.labelNew")} fieldKey="newPassword" icon={Lock} editValues={editValues} onChange={handleChange} />
+                      <PasswordField label={t("profile.security.labelConfirm")} fieldKey="confirmPassword" icon={Shield} editValues={editValues} onChange={handleChange} />
                       {/* Strength hint */}
                       {editValues.newPassword && (
                         <div className="flex flex-col justify-end">
-                          <p className="text-xs text-slate-400 mb-1.5">Strength</p>
+                          <p className="text-xs text-slate-400 mb-1.5">{t("profile.security.strength")}</p>
                           <div className="flex gap-1">
                             {[1, 2, 3, 4].map((i) => (
                               <div
@@ -516,7 +577,7 @@ export default function ProfilePage() {
                             ))}
                           </div>
                           <p className="text-xs text-slate-400 mt-1">
-                            {editValues.newPassword.length < 4 ? "Weak" : editValues.newPassword.length < 8 ? "Fair" : editValues.newPassword.length < 12 ? "Good" : "Strong"}
+                            {editValues.newPassword.length < 4 ? t("profile.security.strengthWeak") : editValues.newPassword.length < 8 ? t("profile.security.strengthFair") : editValues.newPassword.length < 12 ? t("profile.security.strengthGood") : t("profile.security.strengthStrong")}
                           </p>
                         </div>
                       )}
@@ -531,14 +592,14 @@ export default function ProfilePage() {
                       <IdCard className="h-4 w-4 text-slate-500" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-800">System Information</h2>
-                      <p className="text-xs text-slate-400">Read-only identifiers</p>
+                      <h2 className="text-sm font-bold text-slate-800">{t("profile.system.title")}</h2>
+                      <p className="text-xs text-slate-400">{t("profile.system.subtitle")}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                     {[
-                      { label: "Member ID", value: profile?.ID_Member, icon: IdCard },
-                      { label: "Podio Profile ID", value: profile?.podio_profile_id, icon: Building2 },
+                      { label: isTech ? t("profile.header.labelIdTech") : t("profile.header.labelIdMember"), value: profile?.ID_Member, icon: IdCard },
+                      { label: t("profile.system.labelPodio"), value: profile?.podio_profile_id, icon: Building2 },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4">
                         <Icon className="h-4 w-4 flex-shrink-0 text-slate-400" />
@@ -555,20 +616,42 @@ export default function ProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="jobs" className="mt-0">
-                  <ProfilePipelineJobs memberId={profile.ID_Member} />
+                  <ProfilePipelineJobs 
+                    memberId={profile.ID_Member} 
+                    subcontractorId={profile.ID_Subcontractor}
+                    isTechnician={isTech} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="tasks" className="mt-0">
-                  <ProfileWeeklyTasks memberId={profile.ID_Member} />
+                  <ProfileWeeklyTasks 
+                    memberId={profile.ID_Member} 
+                    subcontractorId={profile.ID_Subcontractor}
+                    isTechnician={isTech} 
+                  />
                 </TabsContent>
 
-                <TabsContent value="communities" className="mt-0">
-                  <ProfileCommunities memberId={profile.ID_Member} />
-                </TabsContent>
+                {isTech && (
+                  <TabsContent value="opportunities" className="mt-0">
+                    <OpportunitiesPanel 
+                      subcontractorId={profile.ID_Subcontractor} 
+                      isTechnician={true} 
+                      onlyApplied={true}
+                    />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="commissions" className="mt-0">
-                  <ProfileCommissions memberId={profile.ID_Member} />
-                </TabsContent>
+                {!isTech && (
+                  <>
+                    <TabsContent value="communities" className="mt-0">
+                      <ProfileCommunities memberId={profile.ID_Member} />
+                    </TabsContent>
+
+                    <TabsContent value="commissions" className="mt-0">
+                      <ProfileCommissions memberId={profile.ID_Member} />
+                    </TabsContent>
+                  </>
+                )}
               </Tabs>
             )}
           </div>

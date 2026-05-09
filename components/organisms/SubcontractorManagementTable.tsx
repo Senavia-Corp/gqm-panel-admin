@@ -1,6 +1,6 @@
 "use client"
 
-import { Eye, Trash2, Mail, Building2, Hash, Star, ShieldCheck, Wrench, MapPin, AlertCircle } from "lucide-react"
+import { Eye, Trash2, Mail, Building2, Hash, ShieldCheck, Wrench, AlertCircle, Phone } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/components/providers/LocaleProvider"
@@ -49,22 +49,23 @@ function StatusBadge({ status }: { status?: string | null }) {
   )
 }
 
-function ScoreBadge({ score }: { score?: number | null }) {
+function ComplianceBadge({ value }: { value?: string | null }) {
   const t = useTranslations("subcontractors")
-  if (score == null) return (
+  if (!value) return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400 italic">
-      <Star className="h-2.5 w-2.5" /> {t("noScore")}
+      <ShieldCheck className="h-2.5 w-2.5" /> {t("noCompliance")}
     </span>
   )
-  const pct = Math.min(100, Math.max(0, score))
-  const cls =
-    pct >= 80 ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
-    pct >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                "bg-red-100 text-red-600 border-red-200"
+  const map: Record<string, string> = {
+    yes: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    no:  "bg-red-100 text-red-600 border-red-200",
+    "n/a": "bg-slate-100 text-slate-500 border-slate-200",
+  }
+  const cls = map[value.toLowerCase()] ?? "bg-blue-100 text-blue-700 border-blue-200"
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
-      <Star className="h-2.5 w-2.5 fill-current" />
-      {pct % 1 === 0 ? pct : pct.toFixed(1)}
+      <ShieldCheck className="h-2.5 w-2.5" />
+      {value}
     </span>
   )
 }
@@ -72,7 +73,7 @@ function ScoreBadge({ score }: { score?: number | null }) {
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function SubcAvatar({ name }: { name?: string | null }) {
-  const initials = (name ?? "??").slice(0, 2).toUpperCase()
+  const initials = (name ?? "??").replace(/[^a-zA-Z0-9\s]/g, "").trim().slice(0, 2).toUpperCase() || "??"
   const COLORS = [
     ["#ECFDF5", "#059669"], ["#EFF6FF", "#2563EB"], ["#FFF7ED", "#EA580C"],
     ["#F5F3FF", "#7C3AED"], ["#FEF2F2", "#DC2626"], ["#F0FDF4", "#16A34A"],
@@ -109,6 +110,24 @@ function EmailCell({ raw }: { raw?: string | null }) {
   )
 }
 
+// ─── Phone cell ───────────────────────────────────────────────────────────────
+
+function PhoneCell({ raw }: { raw?: string | null }) {
+  const t = useTranslations("subcontractors")
+  if (!raw?.trim()) return (
+    <span className="flex items-center gap-1 text-xs italic text-slate-300">
+      <Phone className="h-3 w-3 flex-shrink-0" /> {t("noPhone")}
+    </span>
+  )
+  return (
+    <a href={`tel:${raw.trim()}`}
+      className="flex items-center gap-1 text-xs text-slate-700 hover:underline">
+      <Phone className="h-3 w-3 flex-shrink-0 text-slate-400" />
+      <span className="truncate max-w-[140px]" title={raw.trim()}>{raw.trim()}</span>
+    </a>
+  )
+}
+
 // ─── Table ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -135,40 +154,39 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
       <div className="sm:hidden divide-y divide-slate-100">
         {subcontractors.map((s) => (
           <div key={s.ID_Subcontractor} className="flex flex-col gap-3 p-4">
-            {/* Top: avatar + name + status */}
+            {/* Top: avatar + organization + status */}
             <div className="flex items-center gap-3">
-              <SubcAvatar name={s.Name} />
+              <SubcAvatar name={s.Organization ?? s.Name} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-800">
-                  {s.Name ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
+                  {s.Organization ?? <span className="font-normal italic text-slate-300">{t("noOrganization")}</span>}
                 </p>
-                {s.Specialty ? (
-                  <span className="flex items-center gap-1 text-[11px] text-slate-500">
-                    <Wrench className="h-2.5 w-2.5 text-slate-400" />{s.Specialty}
-                  </span>
+                {s.Name ? (
+                  <span className="truncate text-[11px] text-slate-500">{s.Name}</span>
                 ) : (
-                  <span className="text-[11px] italic text-slate-300">{t("noSpecialty")}</span>
+                  <span className="text-[11px] italic text-slate-300">{t("unnamed")}</span>
                 )}
               </div>
               <StatusBadge status={s.Status} />
             </div>
 
-            {/* Meta: ID + org + score */}
+            {/* Meta: ID + specialty + compliance */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
               <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
                 {s.ID_Subcontractor}
               </span>
-              {s.Organization && (
+              {s.Specialty && (
                 <span className="flex items-center gap-1 text-xs text-slate-600">
-                  <Building2 className="h-3 w-3 flex-shrink-0 text-slate-400" />
-                  <span className="max-w-[160px] truncate">{s.Organization}</span>
+                  <Wrench className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                  <span className="max-w-[160px] truncate">{s.Specialty}</span>
                 </span>
               )}
-              <ScoreBadge score={s.Score} />
+              <ComplianceBadge value={s.Gqm_compliance} />
             </div>
 
-            {/* Email */}
+            {/* Email + Phone */}
             <EmailCell raw={s.Email_Address} />
+            <PhoneCell raw={s.Phone_Number} />
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-2">
@@ -178,11 +196,13 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                   <Eye className="h-3.5 w-3.5" /> {t("viewDetails")}
                 </Button>
               </Link>
-              <Button variant="ghost" size="sm"
-                className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
-                onClick={() => onDelete?.(s)}>
-                <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
-              </Button>
+              {onDelete && (
+                <Button variant="ghost" size="sm"
+                  className="h-8 gap-1.5 rounded-lg bg-slate-800 px-3 text-xs text-white shadow-sm transition-colors hover:bg-red-600"
+                  onClick={() => onDelete?.(s)}>
+                  <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -193,12 +213,13 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
         <thead>
           <tr className="border-b border-slate-100 bg-slate-50/80">
             {[
-              { icon: Hash,       label: t("items") },
-              { icon: Building2,  label: t("title") },
-              { icon: Building2,  label: t("organization") },
-              { icon: ShieldCheck,label: t("status") },
-              { icon: Mail,       label: t("email") },
-              { icon: Star,       label: t("score") },
+              { icon: Hash,        label: t("items") },
+              { icon: Building2,   label: t("organization") },
+              { icon: Building2,   label: t("title") },
+              { icon: ShieldCheck, label: t("status") },
+              { icon: Mail,        label: t("email") },
+              { icon: Phone,       label: t("phone") },
+              { icon: ShieldCheck, label: t("compliance") },
             ].map(({ icon: Icon, label }) => (
               <th key={label} className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pl-5">
                 <span className="flex items-center gap-1"><Icon className="h-3 w-3" />{label}</span>
@@ -219,13 +240,13 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                 </span>
               </td>
 
-              {/* Name + specialty */}
+              {/* Organization + specialty */}
               <td className="px-3 py-3.5">
                 <div className="flex items-center gap-2.5">
-                  <SubcAvatar name={s.Name} />
+                  <SubcAvatar name={s.Organization ?? s.Name} />
                   <div className="min-w-0">
-                    <p className="max-w-[160px] truncate text-sm font-semibold text-slate-800">
-                      {s.Name ?? <span className="font-normal italic text-slate-300">{t("unnamed")}</span>}
+                    <p className="max-w-[180px] truncate text-sm font-semibold text-slate-800">
+                      {s.Organization ?? <span className="font-normal italic text-slate-300">{t("noOrganization")}</span>}
                     </p>
                     {s.Specialty ? (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
@@ -238,15 +259,12 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                 </div>
               </td>
 
-              {/* Organization */}
+              {/* Name */}
               <td className="px-3 py-3.5">
-                {s.Organization ? (
-                  <span className="flex items-center gap-1 text-xs text-slate-700">
-                    <Building2 className="h-3 w-3 flex-shrink-0 text-slate-400" />
-                    <span className="max-w-[140px] truncate" title={s.Organization}>{s.Organization}</span>
-                  </span>
+                {s.Name ? (
+                  <span className="max-w-[140px] truncate text-sm text-slate-700" title={s.Name}>{s.Name}</span>
                 ) : (
-                  <span className="text-xs italic text-slate-300">{t("noOrganization")}</span>
+                  <span className="text-xs italic text-slate-300">{t("unnamed")}</span>
                 )}
               </td>
 
@@ -260,9 +278,14 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                 <EmailCell raw={s.Email_Address} />
               </td>
 
-              {/* Score */}
+              {/* Phone */}
               <td className="px-3 py-3.5">
-                <ScoreBadge score={s.Score} />
+                <PhoneCell raw={s.Phone_Number} />
+              </td>
+
+              {/* Compliance */}
+              <td className="px-3 py-3.5">
+                <ComplianceBadge value={s.Gqm_compliance} />
               </td>
 
               {/* Actions */}
@@ -275,12 +298,14 @@ export function SubcontractorManagementTable({ subcontractors, onDelete }: Props
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="icon"
-                    className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
-                    onClick={() => onDelete?.(s)}
-                    title={t("delete")}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {onDelete && (
+                    <Button variant="ghost" size="icon"
+                      className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
+                      onClick={() => onDelete?.(s)}
+                      title={t("delete")}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

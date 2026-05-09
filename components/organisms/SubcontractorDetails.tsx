@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Subcontractor, Technician, ChangeOrder, Client, TimelineEvent } from "@/lib/types"
+import type { Subcontractor, Technician, ChangeOrder, Client, TimelineEvent, FinancialDocument } from "@/lib/types"
 import {
   ArrowLeft,
   Plus,
@@ -25,6 +25,7 @@ import {
   Calculator,
   Tag,
   Eye,
+  DollarSign,
 } from "lucide-react"
 import { TechniciansTable } from "./TechniciansTable"
 import { TechnicianDetails } from "./TechnicianDetails"
@@ -97,9 +98,11 @@ interface SubcontractorDetailsProps {
   client: Client
   timelineEvents: TimelineEvent[]
   estimateCosts?: any[]
-
+  bills?: FinancialDocument[]
+  jobSubcontractors?: Subcontractor[]
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
+  role: string
 }
 
 function normalizeOrg(raw: any): string {
@@ -143,10 +146,14 @@ export function SubcontractorDetails({
   client,
   timelineEvents,
   estimateCosts = [],
+  bills = [],
+  jobSubcontractors,
   defaultSyncPodio,
   jobYearForPodioSync,
+  role,
 }: SubcontractorDetailsProps) {
   const t = useTranslations("subcontractors")
+  const isTech = role === "LEAD_TECHNICIAN"
   const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [activeSubTab, setActiveSubTab] = useState("orders")
@@ -200,21 +207,21 @@ export function SubcontractorDetails({
     fetchOrdersForJobAndSub()
   }, [fetchOrdersForJobAndSub])
 
-  const handleEditOrderSubmit = async (orderId: string, orderName: string, selectedItemIds: string[], syncPodioOverride: boolean) => {
+  const handleEditOrderSubmit = async (orderId: string, orderName: string, selectedItemIds: string[], syncPodioOverride: boolean, subcontractorId: string, billId?: string) => {
     try {
       const currentItems = targetOrderForEdit?.Items || []
       const currentItemIds = currentItems.map((i: any) => String(i.ID_EstimateItem || i.ID_EstimateCost || i.id || i.ID)).filter(Boolean)
       const itemsToAdd = selectedItemIds.filter(id => !currentItemIds.includes(id))
       const itemsToRemove = currentItemIds.filter((id: string) => !selectedItemIds.includes(id))
 
-      await Promise.all(itemsToRemove.map((id: string) => 
+      await Promise.all(itemsToRemove.map((id: string) =>
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ID_Order: null })
         })
       ))
-      await Promise.all(itemsToAdd.map((id: string) => 
+      await Promise.all(itemsToAdd.map((id: string) =>
         apiFetch(`/api/estimate/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -229,7 +236,11 @@ export function SubcontractorDetails({
       const orderRes = await apiFetch(`/api/order/${orderId}?${qs.toString()}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Title: orderName })
+        body: JSON.stringify({
+          Title: orderName,
+          ID_Subcontractor: subcontractorId,
+          ID_FinancialDoc: billId ?? null,
+        })
       })
 
       if (!orderRes.ok) throw new Error("Failed to update order")
@@ -417,18 +428,22 @@ export function SubcontractorDetails({
                       </div>
                       
                       <div className="flex items-center gap-1.5 transition-opacity">
-                        <Button 
-                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                          onClick={() => { setTargetOrderForEdit(order); setEditOrderOpen(true); }}
-                        ><Pencil className="h-3.5 w-3.5" /></Button>
+                        {!isTech && (
+                          <Button 
+                            variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                            onClick={() => { setTargetOrderForEdit(order); setEditOrderOpen(true); }}
+                          ><Pencil className="h-3.5 w-3.5" /></Button>
+                        )}
                         <Button 
                           variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
                           onClick={() => setSelectedOrder(order)}
                         ><Eye className="h-3.5 w-3.5" /></Button>
-                        <Button 
-                          variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
-                          onClick={() => { setTargetOrderForDelete(order); setDeleteOrderOpen(true); }}
-                        ><Trash2 className="h-3.5 w-3.5" /></Button>
+                        {!isTech && (
+                          <Button 
+                            variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
+                            onClick={() => { setTargetOrderForDelete(order); setDeleteOrderOpen(true); }}
+                          ><Trash2 className="h-3.5 w-3.5" /></Button>
+                        )}
                       </div>
                     </div>
 
@@ -448,6 +463,40 @@ export function SubcontractorDetails({
                         </div>
                       </div>
 
+                      {/* Linked Financial Documents (Bills) */}
+                      {order.financial_docs?.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-1 rounded bg-orange-50 text-orange-600">
+                              <DollarSign className="h-2.5 w-2.5" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("linkedBill")}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {order.financial_docs.map((fd: any) => (
+                              <div key={fd.ID_FinancialDoc} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-orange-200 hover:shadow-sm transition-all group/fd">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.4)] flex-shrink-0" />
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-slate-600 truncate">{fd.Job_Ref_QBO || fd.ID_FinancialDoc}</div>
+                                    <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                      <Calendar className="h-2 w-2" />
+                                      {fd.Due_Date || "No Date"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 flex-shrink-0">
+                                  <span className="text-xs font-black text-slate-700 tabular-nums">${Number(fd.Total_Amount || 0).toFixed(2)}</span>
+                                  <Badge variant="outline" className="text-[9px] font-bold h-4 border-orange-200 text-orange-600 uppercase">
+                                    {fd.Percentage_Paid ?? 0}% PAID
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Change Orders Mini List */}
                       {order.change_orders?.length > 0 && (
                         <div className="pt-3 border-t border-slate-100">
@@ -466,9 +515,11 @@ export function SubcontractorDetails({
                                 </div>
                                 <div className="flex items-center gap-3 flex-shrink-0">
                                   <span className="text-xs font-black text-slate-700 tabular-nums">${Number(co.ChangeOrderFormula || 0).toFixed(2)}</span>
-                                  <div className="flex gap-1 transition-opacity">
-                                    <button onClick={() => { setTargetOrderForCh(order); setTargetChangeOrder(co); setEditChOpen(true); }} className="text-slate-300 hover:text-amber-600 p-0.5"><Pencil className="h-3 w-3" /></button>
-                                  </div>
+                                  {!isTech && (
+                                    <div className="flex gap-1 transition-opacity">
+                                      <button onClick={() => { setTargetOrderForCh(order); setTargetChangeOrder(co); setEditChOpen(true); }} className="text-slate-300 hover:text-amber-600 p-0.5"><Pencil className="h-3 w-3" /></button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -493,9 +544,9 @@ export function SubcontractorDetails({
         </div>
       </div>
 
-      <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} />
+      <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)} role={role} />
       <DeleteOrderDialog open={deleteOrderOpen} onOpenChange={(v) => { setDeleteOrderOpen(v); if (!v) setTargetOrderForDelete(null); }} order={targetOrderForDelete} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onDeleted={fetchOrdersForJobAndSub} jobPodioId={jobPodioId} subcontractorId={subcontractor?.ID_Subcontractor ?? ""} />
-      <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={[subcontractor]} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
+      <EditOrderDialog open={editOrderOpen} onOpenChange={(v) => { setEditOrderOpen(v); if (!v) setTargetOrderForEdit(null); }} order={targetOrderForEdit} items={estimateCosts} subcontractors={jobSubcontractors ?? [subcontractor]} bills={bills} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync} onEditOrder={handleEditOrderSubmit} />
       
       {/* Change Order Dialogs */}
       {targetOrderForCh?.ID_Order && (
@@ -504,6 +555,7 @@ export function SubcontractorDetails({
           onOpenChange={(v) => { setCreateChOpen(v); if (!v) setTargetOrderForCh(null); }}
           jobId={String(jobId)} jobPodioId={jobPodioId} orderId={String(targetOrderForCh.ID_Order)} defaultSyncPodio={defaultSyncPodio} jobYearForPodioSync={jobYearForPodioSync}
           onCreated={fetchOrdersForJobAndSub}
+          role={role}
         />
       )}
       {targetOrderForCh?.ID_Order && targetChangeOrder?.ID_ChangeOrder && (

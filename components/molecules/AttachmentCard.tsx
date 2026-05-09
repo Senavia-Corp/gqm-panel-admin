@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Attachment } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface AttachmentCardProps {
   attachment: Attachment
@@ -69,6 +70,7 @@ function PodioToggle({
   jobYear?: number
   disabled?: boolean
 }) {
+  const t = useTranslations("jobs")
   return (
     <button
       type="button"
@@ -88,7 +90,7 @@ function PodioToggle({
       }
       <div className="flex-1 text-left">
         <span className="text-xs font-semibold">
-          Sync to Podio {value ? "ON" : "OFF"}
+          {value ? t("docPodioSyncOn") : t("docPodioSyncOff")}
         </span>
         {value && jobYear && (
           <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -96,7 +98,7 @@ function PodioToggle({
           </span>
         )}
         {value && !jobYear && (
-          <span className="ml-2 text-[10px] text-red-500">Year not resolved — sync may fail</span>
+          <span className="ml-2 text-[10px] text-red-500">{t("docPodioYearNotResolved")}</span>
         )}
       </div>
     </button>
@@ -124,6 +126,7 @@ export function AttachmentCard({
   canEdit   = true,
   canDelete = true,
 }: AttachmentCardProps) {
+  const t = useTranslations("jobs")
   const [showEditDialog,   setShowEditDialog]   = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
@@ -170,13 +173,13 @@ export function AttachmentCard({
         const err = await res.json().catch(() => ({}))
         throw new Error((err as any)?.error ?? (err as any)?.detail ?? "Failed to update")
       }
-      toast({ title: "Description updated", description: "Changes saved successfully." })
+      toast({ title: t("docToastUpdatedTitle"), description: t("docToastUpdatedDesc") })
       setShowEditDialog(false)
       onUpdate?.()
     } catch (err) {
       toast({
-        title:       "Error",
-        description: err instanceof Error ? err.message : "Failed to update description",
+        title:       t("docToastUpdateErrorTitle"),
+        description: err instanceof Error ? err.message : t("docToastUpdateErrorDesc"),
         variant:     "destructive",
       })
     } finally {
@@ -197,15 +200,15 @@ export function AttachmentCard({
         throw new Error((err as any)?.error ?? (err as any)?.detail ?? "Failed to delete")
       }
       toast({
-        title:       "File deleted",
-        description: `${attachment.Document_name} removed successfully.`,
+        title:       t("docToastDeletedTitle"),
+        description: `${attachment.Document_name} ${t("docToastDeletedDescSuffix")}`,
       })
       setShowDeleteDialog(false)
       onDelete?.()
     } catch (err) {
       toast({
-        title:       "Error",
-        description: err instanceof Error ? err.message : "Failed to delete file",
+        title:       t("docToastDeletedErrorTitle"),
+        description: err instanceof Error ? err.message : t("docToastDeletedErrorDesc"),
         variant:     "destructive",
       })
     } finally {
@@ -265,7 +268,7 @@ export function AttachmentCard({
           </p>
           {attachment.Attachment_descr
             ? <p className="mt-1 line-clamp-2 text-xs text-slate-500">{attachment.Attachment_descr}</p>
-            : <p className="mt-1 text-xs italic text-slate-300">No description</p>
+            : <p className="mt-1 text-xs italic text-slate-300">{t("docAttachNoDesc")}</p>
           }
 
           {/* Actions */}
@@ -275,13 +278,13 @@ export function AttachmentCard({
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
             >
               <Download className="h-3.5 w-3.5" />
-              Download
+              {t("docAttachDownload")}
             </button>
             {canEdit && (
               <button
                 onClick={handleOpenEdit}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-                title="Edit description"
+                title={t("docAttachEditTitle")}
               >
                 <Edit className="h-3.5 w-3.5" />
               </button>
@@ -291,7 +294,7 @@ export function AttachmentCard({
                 onClick={handleOpenDelete}
                 disabled={isDeleting}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                title="Delete file"
+                title={t("docAttachDeleteTitle")}
               >
                 {isDeleting
                   ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-red-400" />
@@ -316,9 +319,9 @@ export function AttachmentCard({
                 <Trash2 className="h-5 w-5 text-red-500" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-slate-900">Delete File</DialogTitle>
+                <DialogTitle className="text-base font-semibold text-slate-900">{t("docDeleteDialogTitle")}</DialogTitle>
                 <DialogDescription className="mt-0.5 text-xs text-slate-500">
-                  This action cannot be undone.
+                  {t("docDeleteCannotUndo")}
                 </DialogDescription>
               </div>
             </div>
@@ -340,13 +343,13 @@ export function AttachmentCard({
             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
               <p className="text-xs text-amber-700">
-                The file will be permanently removed from the database and from Cloudinary storage.
+                {t("docDeleteCloudinary")}
               </p>
             </div>
 
             {/* Podio sync toggle */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Podio Sync</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("docPodioSectionLabel")}</Label>
               <PodioToggle
                 value={deleteSyncPodio}
                 onChange={setDeleteSyncPodio}
@@ -363,7 +366,7 @@ export function AttachmentCard({
                 disabled={isDeleting}
                 className="flex-1"
               >
-                Cancel
+                {t("docDeleteCancelBtn")}
               </Button>
               <Button
                 variant="destructive"
@@ -374,12 +377,12 @@ export function AttachmentCard({
                 {isDeleting ? (
                   <>
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Deleting…
+                    {t("docDeleteDeletingBtn")}
                   </>
                 ) : (
                   <>
                     <Trash2 className="mr-1.5 h-4 w-4" />
-                    Delete File
+                    {t("docDeleteConfirmBtn")}
                   </>
                 )}
               </Button>
@@ -392,7 +395,7 @@ export function AttachmentCard({
       <Dialog open={showEditDialog} onOpenChange={(v) => !isUpdating && setShowEditDialog(v)}>
         <DialogContent className="!max-w-[460px] gap-0 overflow-hidden p-0">
           <div className="border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5">
-            <DialogTitle className="text-base font-semibold">Edit Description</DialogTitle>
+            <DialogTitle className="text-base font-semibold">{t("docEditDialogTitle")}</DialogTitle>
             <DialogDescription className="mt-0.5 text-xs text-slate-500">
               {attachment.Document_name}
             </DialogDescription>
@@ -402,11 +405,11 @@ export function AttachmentCard({
             {/* Description input */}
             <div className="space-y-1.5">
               <Label htmlFor="edit-desc" className="text-sm font-medium text-slate-700">
-                Description
+                {t("docEditDescLabel")}
               </Label>
               <Input
                 id="edit-desc"
-                placeholder="Enter a description…"
+                placeholder={t("docEditDescPlaceholder")}
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !isUpdating && handleSaveEdit()}
@@ -415,7 +418,7 @@ export function AttachmentCard({
 
             {/* Podio sync toggle */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Podio Sync</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("docPodioSectionLabel")}</Label>
               <PodioToggle
                 value={editSyncPodio}
                 onChange={setEditSyncPodio}
@@ -430,7 +433,7 @@ export function AttachmentCard({
                 onClick={() => setShowEditDialog(false)}
                 disabled={isUpdating}
               >
-                Cancel
+                {t("docEditCancelBtn")}
               </Button>
               <Button
                 onClick={handleSaveEdit}
@@ -440,12 +443,12 @@ export function AttachmentCard({
                 {isUpdating ? (
                   <>
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Saving…
+                    {t("docEditSavingBtn")}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                    Save
+                    {t("docEditSaveBtn")}
                   </>
                 )}
               </Button>
