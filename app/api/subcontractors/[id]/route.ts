@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const RAW_PYTHON_BASE_URL =
-  process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms/"
+const API_BASE = getBackendUrl()
 
 function joinUrl(base: string, path: string) {
   const b = base.endsWith("/") ? base.slice(0, -1) : base
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     const { id } = await params
     const authHeader = _req.headers.get("Authorization")
 
-    const url = joinUrl(RAW_PYTHON_BASE_URL, `/subcontractors/${encodeURIComponent(id)}`)
+    const url = joinUrl(API_BASE, `/subcontractors/${encodeURIComponent(id)}`)
     const response = await fetch(url, {
       method: "GET",
       headers: { 
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const syncPodio = (searchParams.get("sync_podio") ?? "false").toLowerCase() === "true"
 
     const url = joinUrl(
-      RAW_PYTHON_BASE_URL,
+      API_BASE,
       `/subcontractors/${encodeURIComponent(id)}?sync_podio=${syncPodio ? "true" : "false"}`
     )
 
@@ -99,7 +99,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const syncPodio = (searchParams.get("sync_podio") ?? "false").toLowerCase() === "true"
 
     const url = joinUrl(
-      RAW_PYTHON_BASE_URL,
+      API_BASE,
       `/subcontractors/${encodeURIComponent(id)}?sync_podio=${syncPodio ? "true" : "false"}`
     )
 
