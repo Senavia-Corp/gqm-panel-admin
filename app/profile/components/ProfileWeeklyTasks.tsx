@@ -4,8 +4,10 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, CheckSquare, Calendar, ChevronRight, AlertCircle, Clock } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
+  const t = useTranslations()
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -14,7 +16,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
     // Para técnicos necesitamos el subcontractorId, para miembros el memberId
     const targetId = isTechnician ? subcontractorId : memberId
     if (!targetId) {
-      if (isTechnician) setError("No subcontractor associated with this technician profile.")
+      if (isTechnician) setError(t("profile.tabs.noSub"))
       setLoading(false)
       return
     }
@@ -24,7 +26,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
         setLoading(true)
         const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
         const res = await apiFetch(`/api/tasks/weekly?${idParam}`)
-        if (!res.ok) throw new Error("Failed to fetch weekly tasks")
+        if (!res.ok) throw new Error(t("detail.errLoad"))
         const data = await res.json()
         setTasks(data || [])
       } catch (err: any) {
@@ -35,7 +37,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
     }
 
     fetchTasks()
-  }, [memberId, subcontractorId, isTechnician])
+  }, [memberId, subcontractorId, isTechnician, t])
 
   if (loading) {
     return (
@@ -49,7 +51,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
     return (
       <div className="rounded-xl bg-red-50 p-4 flex items-center gap-3 text-red-600">
         <AlertCircle className="h-5 w-5" />
-        <p className="text-sm font-medium">Error loading tasks: {error}</p>
+        <p className="text-sm font-medium">{t("common.error")}: {error}</p>
       </div>
     )
   }
@@ -58,8 +60,8 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
         <CheckSquare className="h-12 w-12 mb-3 text-slate-200" />
-        <p className="font-medium text-slate-600">No tasks for this week</p>
-        <p className="text-sm">You're all caught up!</p>
+        <p className="font-medium text-slate-600">{t("profile.tabs.noTasks")}</p>
+        <p className="text-sm">{t("profile.tabs.caughtUp")}</p>
       </div>
     )
   }
@@ -89,25 +91,25 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
           
           <div className="flex items-start justify-between mb-3">
             <h3 className="text-base font-bold text-slate-800 line-clamp-1 pr-2">
-              {task.Name || "Untitled Task"}
+              {task.Name || t("profile.tabs.untitledTask")}
             </h3>
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${getPriorityColor(task.Priority)}`}>
-              {task.Priority || "Normal"}
+              {task.Priority || t("profile.tabs.normalPriority")}
             </span>
           </div>
           
           <p className="text-sm text-slate-500 mb-4 line-clamp-2 min-h-[40px]">
-            {task.Task_description || "No description"}
+            {task.Task_description || t("profile.tabs.noDesc")}
           </p>
           
           <div className="flex flex-col gap-3 mt-auto">
             <div className="flex items-center justify-between text-xs font-medium text-slate-500">
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                <span>Due: {task.Delivery_date ? new Date(task.Delivery_date).toLocaleDateString() : "—"}</span>
+                <span>{t("profile.tabs.labelDue")}: {task.Delivery_date ? new Date(task.Delivery_date).toLocaleDateString() : "—"}</span>
               </div>
               <span className={`px-2 py-1 rounded-md border ${getStatusColor(task.Task_status)}`}>
-                {task.Task_status || "Pending"}
+                {task.Task_status || t("profile.tabs.labelPending")}
               </span>
             </div>
             
@@ -116,7 +118,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
                 href={`/jobs/${task.job.ID_Jobs}`}
                 className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 text-sm text-indigo-600 hover:text-indigo-800 font-semibold group"
               >
-                <span>Job: {task.job.ID_Jobs}</span>
+                <span>{t("profile.tabs.labelJob")}: {task.job.ID_Jobs}</span>
                 <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
               </Link>
             )}

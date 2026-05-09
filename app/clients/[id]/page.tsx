@@ -284,6 +284,9 @@ type ParentMgmtCo = {
   Main_office_email?: string | null
   Main_office_number?: string | null
   State?: string | null
+  President_Name?: string | null
+  President_Email?: string | null
+  President_Phone?: string | null
   podio_item_id?: string | null
   clients?: ClientCommunity[]
   managers?: any[]
@@ -810,6 +813,72 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                           linkPrefix="tel:"
                           emptyLabel="Sin teléfono"
                         />
+                      )}
+                    </Field>
+                  </div>
+                </Section>
+
+                {/* President Contact */}
+                <Section icon={Users} title="Contacto del Presidente" accent="text-amber-700 bg-amber-50/60">
+                  <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                    <Field label="Nombre" hint="Presidente / CEO de la compañía">
+                      {isEditing ? (
+                        <Input
+                          value={formData.President_Name ?? ""}
+                          onChange={(e) => handleFieldChange("President_Name", e.target.value)}
+                          placeholder="ej. John Smith"
+                          className={`${inputCls} ${editedFields.has("President_Name") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
+                        />
+                      ) : (
+                        <FieldValue value={parentMgmtCo.President_Name} placeholder="Sin nombre" icon={Users} />
+                      )}
+                    </Field>
+
+                    <Field label="Correo Electrónico">
+                      {isEditing ? (
+                        <Input
+                          type="email"
+                          value={formData.President_Email ?? ""}
+                          onChange={(e) => handleFieldChange("President_Email", e.target.value)}
+                          placeholder="presidente@ejemplo.com"
+                          className={`${inputCls} ${editedFields.has("President_Email") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
+                        />
+                      ) : (
+                        parentMgmtCo.President_Email ? (
+                          <a
+                            href={`mailto:${parentMgmtCo.President_Email}`}
+                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+                          >
+                            <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                            {parentMgmtCo.President_Email}
+                          </a>
+                        ) : (
+                          <FieldValue value={null} placeholder="Sin correo" />
+                        )
+                      )}
+                    </Field>
+
+                    <Field label="Teléfono">
+                      {isEditing ? (
+                        <Input
+                          type="tel"
+                          value={formData.President_Phone ?? ""}
+                          onChange={(e) => handleFieldChange("President_Phone", e.target.value)}
+                          placeholder="(555) 000-0000"
+                          className={`${inputCls} ${editedFields.has("President_Phone") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
+                        />
+                      ) : (
+                        parentMgmtCo.President_Phone ? (
+                          <a
+                            href={`tel:${parentMgmtCo.President_Phone}`}
+                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+                          >
+                            <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                            {parentMgmtCo.President_Phone}
+                          </a>
+                        ) : (
+                          <FieldValue value={null} placeholder="Sin teléfono" />
+                        )
                       )}
                     </Field>
                   </div>

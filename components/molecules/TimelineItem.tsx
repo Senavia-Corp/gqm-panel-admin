@@ -79,7 +79,7 @@ interface TimelineItemProps {
 }
 
 export function TimelineItem({ entry, isLast = false, animationDelay = 0 }: TimelineItemProps) {
-  const t = useTranslations("clients")
+  const t = useTranslations("jobTimelineTab.item")
   const ref  = useRef<HTMLDivElement>(null)
   const meta = getActionMeta(entry.Action)
   const { date, time } = formatDatetime(entry.Action_datetime)
@@ -156,7 +156,7 @@ export function TimelineItem({ entry, isLast = false, animationDelay = 0 }: Time
             color:      "#111827",
             lineHeight: 1.3,
           }}>
-            {entry.Action ?? t("tlActivityFallback")}
+            {entry.Action ?? t("fallbackAction")}
           </span>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
             <span style={{ fontSize: "10px", color: "#9CA3AF", whiteSpace: "nowrap" }}>{date}</span>
@@ -196,8 +196,8 @@ export function TimelineItem({ entry, isLast = false, animationDelay = 0 }: Time
               </span>
             </div>
           ) : (
-            <span style={{ fontSize: "10px", color: "#D1D5DB", fontStyle: "italic" }}>
-              {t("tlUnknownUser")}
+            <span style={{ fontSize: "10px", color: "#9CA3AF", fontStyle: "italic" }}>
+              {t("unknownUser")}
             </span>
           )}
 

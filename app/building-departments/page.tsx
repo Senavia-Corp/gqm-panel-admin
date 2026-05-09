@@ -14,6 +14,7 @@ import {
   Plus, Search, ChevronLeft, ChevronRight, Landmark,
   AlertCircle, RefreshCw, X, Filter,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { BuildingDeptRow } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
 
@@ -66,6 +67,7 @@ const PER_PAGE = 10
 
 export default function BuildingDepartmentsPage() {
   const router = useRouter()
+  const t = useTranslations("buildingDepartments")
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
 
@@ -105,7 +107,7 @@ export default function BuildingDepartmentsPage() {
       setTotal(data.total ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load")
+      setError(e?.message ?? t("bd_errLoad"))
     } finally { setLoading(false) }
   }, [])
 
@@ -122,11 +124,11 @@ export default function BuildingDepartmentsPage() {
         { method: "DELETE", cache: "no-store" }
       )
       if (!res.ok) throw new Error(`Delete failed (${res.status})`)
-      toast({ title: "Deleted", description: "Building department removed." })
+      toast({ title: t("bd_toastDeleted"), description: t("bd_toastDeletedDesc") })
       setDeleteOpen(false); setDeleteTarget(null)
       fetchPage(page, dSearch)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to delete", variant: "destructive" })
+      toast({ title: t("bd_toastError"), description: e?.message ?? t("bd_toastDeleteError"), variant: "destructive" })
     }
   }
 
@@ -147,16 +149,15 @@ export default function BuildingDepartmentsPage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-6">
               <AlertCircle className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">{t("bd_accessDenied")}</h1>
             <p className="text-slate-500 max-w-md mb-8">
-              You do not have the required permissions to view Building Departments.
-              Please contact your administrator.
+              {t("bd_accessDeniedDesc")}
             </p>
             <Button
               onClick={() => router.push("/dashboard")}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold"
             >
-              Return to Dashboard
+              {t("bd_btnReturnDashboard")}
             </Button>
           </main>
         </div>
@@ -178,8 +179,8 @@ export default function BuildingDepartmentsPage() {
                 <Landmark className="h-4 w-4 text-white sm:h-5 sm:w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">Building Departments</h1>
-                <p className="hidden text-xs text-slate-500 sm:block">Permitting offices and regulatory entities across the US</p>
+                <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{t("bd_title")}</h1>
+                <p className="hidden text-xs text-slate-500 sm:block">{t("bd_subtitle")}</p>
               </div>
             </div>
           </div>
@@ -190,13 +191,13 @@ export default function BuildingDepartmentsPage() {
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <h2 className="truncate text-base font-bold text-slate-800">All Building Departments</h2>
+                  <h2 className="truncate text-base font-bold text-slate-800">{t("bd_tableTitle")}</h2>
                   <span className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white">
                     {total}
                   </span>
                   {activeFilters > 0 && (
                     <span className="hidden items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 sm:flex">
-                      <Filter className="h-2.5 w-2.5" /> {activeFilters} filter
+                      <Filter className="h-2.5 w-2.5" /> {activeFilters === 1 ? t("bd_activeFilter") : t("bd_activeFilters", { count: activeFilters })}
                     </span>
                   )}
                 </div>
@@ -206,8 +207,8 @@ export default function BuildingDepartmentsPage() {
                     className="ml-3 flex-shrink-0 gap-1.5 bg-blue-600 hover:bg-blue-700 text-sm text-white"
                   >
                     <Plus className="h-4 w-4" />
-                    <span className="sm:hidden">Add</span>
-                    <span className="hidden sm:inline">Add Department</span>
+                    <span className="sm:hidden">{t("bd_btnAdd").split(" ")[0]}</span>
+                    <span className="hidden sm:inline">{t("bd_btnAdd")}</span>
                   </Button>
                 )}
               </div>
@@ -218,7 +219,7 @@ export default function BuildingDepartmentsPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by city, location, ID…"
+                    placeholder={t("bd_searchPlaceholder")}
                     className="pl-9 text-sm border-slate-200 focus:border-blue-400"
                   />
                   {search && (
@@ -236,7 +237,7 @@ export default function BuildingDepartmentsPage() {
                     onClick={() => setSearch("")}
                     className="gap-1.5 text-xs border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600"
                   >
-                    <X className="h-3.5 w-3.5" /> Reset
+                    <X className="h-3.5 w-3.5" /> {t("bd_btnReset")}
                   </Button>
                 )}
               </div>
@@ -250,7 +251,7 @@ export default function BuildingDepartmentsPage() {
                 <AlertCircle className="h-8 w-8 text-red-400" />
                 <p className="text-sm font-medium text-red-600">{error}</p>
                 <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch)} className="gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5" /> {t("bd_btnRetry")}
                 </Button>
               </div>
             ) : (
@@ -261,21 +262,19 @@ export default function BuildingDepartmentsPage() {
             {!loading && !error && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
                 <p className="text-xs text-slate-500 sm:text-sm">
-                  Showing{" "}
-                  <span className="font-semibold text-slate-800">{showFrom}–{showTo}</span>{" "}
-                  of <span className="font-semibold text-slate-800">{total}</span> departments
+                  {t("bd_paginationShowing", { from: showFrom, to: showTo, total })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
-                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">Previous</span>
+                    <ChevronLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("bd_btnPrev")}</span>
                   </Button>
                   <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     {page} / {totalPages}
                   </span>
                   <Button variant="outline" size="sm" className="gap-1 text-xs border-slate-200"
                     disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-                    <span className="hidden sm:inline">Next</span><ChevronRight className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t("bd_btnNext")}</span><ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

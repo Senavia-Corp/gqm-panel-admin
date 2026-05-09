@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   ArrowLeft, Save, Loader2, Eye, EyeOff,
   User, Mail, Phone, MapPin, Shield, Briefcase,
@@ -70,11 +71,12 @@ function PasswordInput({ value, onChange, placeholder }: {
 // ─── Password strength ─────────────────────────────────────────────────────────
 
 function PasswordStrength({ password }: { password: string }) {
+  const t = useTranslations("members")
   if (!password) return null
   const checks = [
-    { label: "8+ characters",    ok: password.length >= 8 },
-    { label: "Uppercase letter", ok: /[A-Z]/.test(password) },
-    { label: "Number",           ok: /[0-9]/.test(password) },
+    { label: t("pwdRuleLength"), ok: password.length >= 8 },
+    { label: t("pwdRuleUpper"),  ok: /[A-Z]/.test(password) },
+    { label: t("pwdRuleNum"),    ok: /[0-9]/.test(password) },
   ]
   const score = checks.filter(c => c.ok).length
   const bar   = ["bg-red-400", "bg-amber-400", "bg-emerald-400"][score - 1] ?? "bg-slate-200"
@@ -103,6 +105,7 @@ export default function CreateMemberPage() {
   const router  = useRouter()
   const [user, setUser]     = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const t = useTranslations("members")
 
   const [form, setForm] = useState({
     Member_Name:  "",
@@ -123,12 +126,12 @@ export default function CreateMemberPage() {
   }, [router])
 
   const validate = (): string | null => {
-    if (!form.Member_Name.trim())   return "Full name is required"
-    if (!form.Email_Address.trim()) return "Email is required"
-    if (!form.Password)             return "Password is required"
-    if (form.Password !== form.confirmPassword) return "Passwords do not match"
+    if (!form.Member_Name.trim())   return t("valNameReq")
+    if (!form.Email_Address.trim()) return t("valEmailReq")
+    if (!form.Password)             return t("valPwdReq")
+    if (form.Password !== form.confirmPassword) return t("valPwdMismatch")
     if (form.Password.length < 8 || !/[A-Z]/.test(form.Password) || !/[0-9]/.test(form.Password))
-      return "Password must be 8+ characters with one uppercase letter and one number"
+      return t("valPwdRules")
     return null
   }
 
@@ -160,10 +163,10 @@ export default function CreateMemberPage() {
       }
 
       const created = await res.json()
-      toast({ title: "Member created", description: `${created.Member_Name ?? "New member"} was added successfully.` })
+      toast({ title: t("toastCreatedTitle"), description: t("toastCreatedDesc", { name: created.Member_Name ?? t("unnamed") }) })
       router.push(created.ID_Member ? `/members/${created.ID_Member}` : "/members")
     } catch (e: any) {
-      toast({ title: "Error creating member", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastErrorTitle"), description: e?.message, variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -202,9 +205,9 @@ export default function CreateMemberPage() {
                   </div>
                   <div className="min-w-0">
                     <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">
-                      {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal">New Member</span>}
+                      {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal">{t("createTitle")}</span>}
                     </h1>
-                    <p className="mt-0.5 hidden text-xs text-slate-400 sm:block">Creating new GQM member</p>
+                    <p className="mt-0.5 hidden text-xs text-slate-400 sm:block">{t("createSubtitle")}</p>
                   </div>
                 </div>
               </div>
@@ -213,7 +216,7 @@ export default function CreateMemberPage() {
                 {/* Cancel — text on desktop, icon-only on mobile */}
                 <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving}
                   className="hidden gap-1.5 text-xs border-slate-200 sm:flex">
-                  Cancel
+                  {t("createCancel")}
                 </Button>
                 <Button variant="outline" onClick={() => router.push("/members")} disabled={saving}
                   size="icon" className="h-8 w-8 border-slate-200 sm:hidden">
@@ -224,7 +227,7 @@ export default function CreateMemberPage() {
                 <Button size="sm" onClick={handleSubmit} disabled={saving}
                   className="hidden gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  {saving ? "Creating…" : "Create Member"}
+                  {saving ? t("createCreating") : t("createBtn")}
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving} size="icon"
                   className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 sm:hidden">
@@ -242,80 +245,80 @@ export default function CreateMemberPage() {
               <div className="min-w-0 space-y-4 sm:space-y-5 xl:col-span-3 lg:col-span-2">
 
                 {/* Member Information */}
-                <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title="Member Information">
+                <SectionCard icon={User} iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t("sectionInfo")}>
                   <div className="grid gap-5 md:grid-cols-2">
                     <div className="min-w-0 md:col-span-2">
-                      <FieldLabel required>Full Name</FieldLabel>
+                      <FieldLabel required>{t("fieldFullName")}</FieldLabel>
                       <Input
                         value={form.Member_Name}
                         onChange={e => setField("Member_Name", e.target.value)}
                         className={inputCls}
-                        placeholder="e.g. John Smith"
+                        placeholder={t("phFullName")}
                       />
                     </div>
                     <div>
-                      <FieldLabel>Company Role</FieldLabel>
+                      <FieldLabel>{t("fieldRole")}</FieldLabel>
                       <Input
                         value={form.Company_Role}
                         onChange={e => setField("Company_Role", e.target.value)}
                         className={inputCls}
-                        placeholder="e.g. Account Representative"
+                        placeholder={t("phRole")}
                       />
                     </div>
                     <div>
-                      <FieldLabel required>Email Address</FieldLabel>
+                      <FieldLabel required>{t("fieldEmail")}</FieldLabel>
                       <Input
                         type="email"
                         value={form.Email_Address}
                         onChange={e => setField("Email_Address", e.target.value)}
                         className={inputCls}
-                        placeholder="email@example.com"
+                        placeholder={t("phEmail")}
                       />
                     </div>
                     <div>
-                      <FieldLabel>Phone Number</FieldLabel>
+                      <FieldLabel>{t("fieldPhone")}</FieldLabel>
                       <Input
                         value={form.Phone_Number}
                         onChange={e => setField("Phone_Number", e.target.value)}
                         className={inputCls}
-                        placeholder="(555) 000-0000"
+                        placeholder={t("phPhone")}
                       />
                     </div>
                     <div className="min-w-0 md:col-span-2">
-                      <FieldLabel>Address</FieldLabel>
+                      <FieldLabel>{t("fieldAddress")}</FieldLabel>
                       <Textarea
                         value={form.Address}
                         onChange={e => setField("Address", e.target.value)}
                         className={`${inputCls} resize-none`}
                         rows={2}
-                        placeholder="Full address"
+                        placeholder={t("phAddress")}
                       />
                     </div>
                   </div>
                 </SectionCard>
 
                 {/* Password */}
-                <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500" title="Password">
+                <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500" title={t("sectionPassword")}>
                   <div className="grid gap-5 md:grid-cols-2">
                     <div>
-                      <FieldLabel required>Password</FieldLabel>
+                      <FieldLabel required>{t("fieldPassword")}</FieldLabel>
                       <PasswordInput
                         value={form.Password}
                         onChange={v => setField("Password", v)}
-                        placeholder="New password"
+                        placeholder={t("phPassword")}
                       />
                       <PasswordStrength password={form.Password} />
                     </div>
                     <div>
-                      <FieldLabel required>Confirm Password</FieldLabel>
+                      <FieldLabel required>{t("fieldConfirmPwd")}</FieldLabel>
                       <PasswordInput
                         value={form.confirmPassword}
                         onChange={v => setField("confirmPassword", v)}
-                        placeholder="Repeat password"
+                        placeholder={t("phConfirmPwd")}
                       />
                       {form.confirmPassword && (
                         <p className={`mt-2 text-[11px] font-medium ${form.Password === form.confirmPassword ? "text-emerald-600" : "text-red-500"}`}>
-                          {form.Password === form.confirmPassword ? "✓ Passwords match" : "✗ Passwords do not match"}
+                          {form.Password === form.confirmPassword ? t("pwdMatch") : t("pwdMismatch")}
                         </p>
                       )}
                     </div>
@@ -328,7 +331,7 @@ export default function CreateMemberPage() {
               <div className="min-w-0 space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Preview</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("previewTitle")}</p>
                   </div>
 
                   {/* Avatar preview */}
@@ -338,7 +341,7 @@ export default function CreateMemberPage() {
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-slate-800 leading-snug">
-                        {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal text-sm">No name yet</span>}
+                        {form.Member_Name.trim() || <span className="italic text-slate-400 font-normal text-sm">{t("previewNoName")}</span>}
                       </p>
                       {form.Company_Role && <p className="text-xs text-slate-500 mt-0.5">{form.Company_Role}</p>}
                     </div>
@@ -347,24 +350,24 @@ export default function CreateMemberPage() {
                   <div className="divide-y divide-slate-50 px-5">
                     {[
                       {
-                        icon: Mail, label: "Email",
+                        icon: Mail, label: t("previewEmail"),
                         value: form.Email_Address || null,
-                        empty: "Not set",
+                        empty: t("previewNotSet"),
                       },
                       {
-                        icon: Phone, label: "Phone",
+                        icon: Phone, label: t("previewPhone"),
                         value: form.Phone_Number || null,
-                        empty: "Not set",
+                        empty: t("previewNotSet"),
                       },
                       {
-                        icon: MapPin, label: "Address",
+                        icon: MapPin, label: t("previewAddress"),
                         value: form.Address || null,
-                        empty: "Not set",
+                        empty: t("previewNotSet"),
                       },
                       {
-                        icon: Briefcase, label: "Role",
+                        icon: Briefcase, label: t("previewRole"),
                         value: form.Company_Role || null,
-                        empty: "Not set",
+                        empty: t("previewNotSet"),
                       },
                     ].map(({ icon: Icon, label, value, empty }) => (
                       <div key={label} className="flex items-start gap-3 py-3">
@@ -382,13 +385,13 @@ export default function CreateMemberPage() {
 
                 {/* Required fields reminder */}
                 <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                  <p className="text-[11px] font-semibold text-amber-700 mb-1">Required fields</p>
+                  <p className="text-[11px] font-semibold text-amber-700 mb-1">{t("reqTitle")}</p>
                   <ul className="space-y-1">
                     {[
-                      { label: "Full Name",    done: !!form.Member_Name.trim() },
-                      { label: "Email",        done: !!form.Email_Address.trim() },
-                      { label: "Password",     done: form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) },
-                      { label: "Pwd. matches", done: !!form.confirmPassword && form.Password === form.confirmPassword },
+                      { label: t("fieldFullName"), done: !!form.Member_Name.trim() },
+                      { label: t("previewEmail"),  done: !!form.Email_Address.trim() },
+                      { label: t("fieldPassword"), done: form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) },
+                      { label: t("reqPwdMatch"),   done: !!form.confirmPassword && form.Password === form.confirmPassword },
                     ].map(({ label, done }) => (
                       <li key={label} className={`flex items-center gap-1.5 text-[11px] font-medium ${done ? "text-emerald-600" : "text-amber-600"}`}>
                         {done ? "✓" : "○"} {label}
@@ -405,17 +408,17 @@ export default function CreateMemberPage() {
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3.5 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-400">
-                Fields marked with <span className="text-red-400">*</span> are required
+                {t("reqHelp")}
               </p>
               <div className="flex items-center gap-2.5">
                 <Button variant="outline" size="sm" onClick={() => router.push("/members")} disabled={saving}
                   className="flex-1 gap-1.5 text-xs border-slate-200 sm:flex-none">
-                  Cancel
+                  {t("createCancel")}
                 </Button>
                 <Button size="sm" onClick={handleSubmit} disabled={saving}
                   className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs sm:flex-none">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  {saving ? "Creating…" : "Create Member"}
+                  {saving ? t("createCreating") : t("createBtn")}
                 </Button>
               </div>
             </div>

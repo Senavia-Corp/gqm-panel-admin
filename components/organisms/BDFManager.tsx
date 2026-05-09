@@ -8,6 +8,7 @@ import {
   FilePlus2, RotateCcw, Pencil, Eye,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 import { CreateEstimateItemDialog } from "@/components/organisms/CreateEstimateItemDialog"
 import type { BDFStatus, EstimateItem } from "@/lib/types"
@@ -42,15 +43,16 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number) {
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: BDFStatus | null }) {
+  const t = useTranslations("jobEstimate.bdfManager")
   if (status === "Approved")
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700">
-        <CheckCircle2 className="h-3 w-3" /> Approved
+        <CheckCircle2 className="h-3 w-3" /> {t("statusApproved")}
       </span>
     )
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
-      <Clock className="h-3 w-3" /> Estimated
+      <Clock className="h-3 w-3" /> {t("statusEstimated")}
     </span>
   )
 }
@@ -60,6 +62,7 @@ function StatusBadge({ status }: { status: BDFStatus | null }) {
 function PodioToggle({ value, onChange, jobYear, disabled }: {
   value: boolean; onChange: (v: boolean) => void; jobYear?: number; disabled?: boolean
 }) {
+  const t = useTranslations("jobEstimate.bdfManager")
   return (
     <button
       type="button"
@@ -73,12 +76,12 @@ function PodioToggle({ value, onChange, jobYear, disabled }: {
         ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
         : <ZapOff className="h-4 w-4 flex-shrink-0" />}
       <div className="flex-1 text-left">
-        <span className="text-xs font-semibold">Sync to Podio {value ? "ON" : "OFF"}</span>
+        <span className="text-xs font-semibold">{value ? t("podioSyncOn") : t("podioSyncOff")}</span>
         {value && jobYear && (
           <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{jobYear}</span>
         )}
         {value && !jobYear && (
-          <span className="ml-2 text-[10px] text-red-500">Year not resolved — sync may fail</span>
+          <span className="ml-2 text-[10px] text-red-500">{t("podioSyncUnresolved")}</span>
         )}
       </div>
     </button>
@@ -123,6 +126,7 @@ interface CreateBDFDialogProps {
 }
 
 function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreated }: CreateBDFDialogProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const [title, setTitle]             = useState("")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
@@ -136,11 +140,11 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
 
   const handleSubmit = async () => {
     const errs: typeof errors = {}
-    if (!title.trim())                       errs.title       = "Required"
-    if (!description.trim())                 errs.description = "Required — document the permit quote process"
+    if (!title.trim())                       errs.title       = t("errRequired")
+    if (!description.trim())                 errs.description = t("errRequired")
     const parsed = parseFloat(amount)
-    if (isNaN(parsed) || parsed < 0)         errs.amount = "Must be a valid amount ≥ 0"
-    if (atLimit)                             errs.title  = `Maximum ${BDF_MAX} BDF costs reached (Podio limit)`
+    if (isNaN(parsed) || parsed < 0)         errs.amount = t("errInvalidAmount")
+    if (atLimit)                             errs.title  = t("bdfLimitExceeded", { max: BDF_MAX })
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)
@@ -169,11 +173,11 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
         Unit_Price: parsed, Client_Price: parsed,
         Margin: 0, Profit: 0, Percent_Invoiced: 0, Internal_Notes: "", ID_Order: null,
       }
-      toast.success("BDF cost created")
+      toast.success(t("toastCreated"))
       onCreated(item)
       reset(); onClose()
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create BDF cost")
+      toast.error(e?.message ?? t("toastCreateFail"))
     } finally { setLoading(false) }
   }
 
@@ -191,8 +195,8 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
               <Building2 className="h-4.5 w-4.5 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">New BDF Cost</h2>
-              <p className="text-[11px] text-slate-400">Quick add — Building Department Fee</p>
+              <h2 className="text-sm font-bold text-slate-900">{t("createBdf")}</h2>
+              <p className="text-[11px] text-slate-400">{t("createBdfDesc")}</p>
             </div>
           </div>
           <button onClick={handleClose}
@@ -205,33 +209,33 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
           {atLimit && (
             <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500 mt-0.5" />
-              <p className="text-xs text-amber-700">Maximum of {BDF_MAX} BDF costs reached (Podio limit).</p>
+              <p className="text-xs text-amber-700">{t("bdfLimitExceeded", { max: BDF_MAX })}</p>
             </div>
           )}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
-              Title <span className="text-red-400">*</span>
+              {t("fTitle")} <span className="text-red-400">*</span>
             </label>
             <input type="text" value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: undefined })) }}
-              placeholder="e.g. Building permit — Zone A"
+              placeholder={t("fTitleHint")}
               className={`${FIELD_BASE} ${errors.title ? "border-red-300 bg-red-50" : ""}`}
               disabled={loading || atLimit} />
             {errors.title && <p className="mt-1 text-[11px] text-red-500">{errors.title}</p>}
           </div>
           <AmountField
-            label="Estimated Amount" value={amount}
+            label={t("fEstimatedAmount")} value={amount}
             onChange={(v) => { setAmount(v); setErrors((p) => ({ ...p, amount: undefined })) }}
             disabled={loading || atLimit} error={errors.amount}
           />
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
-              Description <span className="text-red-400">*</span>
+              {t("fDescription")} <span className="text-red-400">*</span>
             </label>
             <textarea
               rows={4}
               value={description}
               onChange={(e) => { setDescription(e.target.value); setErrors((p) => ({ ...p, description: undefined })) }}
-              placeholder="Document the permit quote process — vendor contacted, quote received, reference number, conditions, etc."
+              placeholder={t("fDescriptionHint")}
               disabled={loading || atLimit}
               className={`${FIELD_BASE} resize-none leading-relaxed ${errors.description ? "border-red-300 bg-red-50" : ""}`}
             />
@@ -243,11 +247,11 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleSubmit} disabled={loading || atLimit}
             className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</> : <><Plus className="h-3.5 w-3.5" /> Create</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnCreating")}</> : <><Plus className="h-3.5 w-3.5" /> {t("btnCreate")}</>}
           </button>
         </div>
       </div>
@@ -265,6 +269,7 @@ interface ApproveBDFDialogProps {
 }
 
 function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: ApproveBDFDialogProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const [amount, setAmount]           = useState("")
   const [syncPodio, setSyncPodio]     = useState(false)
   const [loading, setLoading]         = useState(false)
@@ -276,7 +281,7 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
 
   const handleApprove = async () => {
     const parsed = parseFloat(amount)
-    if (isNaN(parsed) || parsed < 0) { setAmountError("Must be a valid amount ≥ 0"); return }
+    if (isNaN(parsed) || parsed < 0) { setAmountError(t("errInvalidAmount")); return }
     if (!item) return
     setLoading(true)
     try {
@@ -287,11 +292,11 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
-      toast.success("BDF cost approved")
+      toast.success(t("toastApproved"))
       // Builder_Cost is intentionally preserved — it is the original estimated amount
       onApproved({ ...item, Status: "Approved", Client_Price: parsed })
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to approve BDF cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastApproveFail")) }
     finally { setLoading(false) }
   }
 
@@ -309,7 +314,7 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
               <CheckCircle2 className="h-4.5 w-4.5 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Approve BDF Cost</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t("approveBdf")}</h2>
               <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{item.Title}</p>
             </div>
           </div>
@@ -322,17 +327,16 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
         <div className="space-y-4 px-5 py-5">
           <div className="rounded-xl border border-teal-100 bg-teal-50 p-3 space-y-1">
             <p className="text-xs text-teal-700">
-              Sets this cost as confirmed spend → moves it to <strong>Bldg Dept Fees</strong>.
+              {t("approveHint1")}
             </p>
             <p className="text-xs text-teal-600">
-              The original estimate <strong>({money(item.Builder_Cost)})</strong> stays in{" "}
-              <strong>Estimated City</strong> unchanged.
+              {t("approveHint2", { amount: money(item.Builder_Cost) })}
             </p>
           </div>
 
           {item.Description && (
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Quote Notes</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t("quoteNotes")}</p>
               <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
                 {item.Description}
               </p>
@@ -340,7 +344,7 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
           )}
 
           <AmountField
-            label="Confirmed Amount"
+            label={t("fConfirmedAmount")}
             value={amount}
             onChange={(v) => { setAmount(v); setAmountError("") }}
             disabled={loading}
@@ -348,7 +352,7 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
             placeholder={String(item.Builder_Cost)}
           />
           <p className="text-[11px] text-slate-400 -mt-2">
-            Original estimate: <span className="font-semibold text-slate-600">{money(item.Builder_Cost)}</span> — update if the actual spend differs.
+            {t("originalEstimateHint", { amount: money(item.Builder_Cost) })}
           </p>
 
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
@@ -357,11 +361,11 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleApprove} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Approving…</> : <><CheckCircle2 className="h-3.5 w-3.5" /> Approve</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnApproving")}</> : <><CheckCircle2 className="h-3.5 w-3.5" /> {t("btnApprove")}</>}
           </button>
         </div>
       </div>
@@ -380,6 +384,7 @@ interface EditBDFDialogProps {
 }
 
 function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBDFDialogProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
   const [syncPodio, setSyncPodio]     = useState(false)
@@ -398,7 +403,7 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
 
   const handleSave = async () => {
     const parsed = parseFloat(amount)
-    if (isNaN(parsed) || parsed < 0) { setAmountError("Must be a valid amount ≥ 0"); return }
+    if (isNaN(parsed) || parsed < 0) { setAmountError(t("errInvalidAmount")); return }
     if (!item) return
     setLoading(true)
     try {
@@ -411,13 +416,13 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
-      toast.success("BDF cost updated")
+      toast.success(t("toastEdited"))
       const updated = isApproved
         ? { ...item, Client_Price: parsed, Description: description.trim() || item.Description }
         : { ...item, Builder_Cost: parsed, Client_Price: parsed, Unit_Cost: parsed, Description: description.trim() || item.Description }
       onEdited(updated)
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to update BDF cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastEditFail")) }
     finally { setLoading(false) }
   }
 
@@ -435,7 +440,7 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
               <Pencil className="h-4.5 w-4.5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Edit BDF Cost</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t("editBdf")}</h2>
               <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{item.Title}</p>
             </div>
           </div>
@@ -448,16 +453,12 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
         <div className="space-y-4 px-5 py-5">
           <div className={`rounded-xl border p-3 ${isApproved ? "border-teal-100 bg-teal-50" : "border-amber-100 bg-amber-50"}`}>
             <p className={`text-xs ${isApproved ? "text-teal-700" : "text-amber-700"}`}>
-              {isApproved ? (
-                <>Editing the <strong>confirmed spend</strong>. The original estimate ({money(item.Builder_Cost)}) stays unchanged in Estimated City.</>
-              ) : (
-                <>Editing the <strong>estimated amount</strong>. This will update Estimated City.</>
-              )}
+              {isApproved ? t("editHintApproved", { amount: money(item.Builder_Cost) }) : t("editHintEstimated")}
             </p>
           </div>
 
           <AmountField
-            label={isApproved ? "Confirmed Amount" : "Estimated Amount"}
+            label={isApproved ? t("fConfirmedAmount") : t("fEstimatedAmount")}
             value={amount}
             onChange={(v) => { setAmount(v); setAmountError("") }}
             disabled={loading}
@@ -466,17 +467,17 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
 
           {isApproved && (
             <p className="text-[11px] text-slate-400 -mt-2">
-              Original estimate: <span className="font-semibold text-slate-600">{money(item.Builder_Cost)}</span>
+              {t("originalEstimateHint", { amount: money(item.Builder_Cost) })}
             </p>
           )}
 
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Description</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t("fDescription")}</label>
             <textarea
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Document the permit quote process…"
+              placeholder={t("fDescriptionHint")}
               disabled={loading}
               className={`${FIELD_BASE} resize-none leading-relaxed`}
             />
@@ -488,11 +489,11 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleSave} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</> : <><Pencil className="h-3.5 w-3.5" /> Save</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnSaving")}</> : <><Pencil className="h-3.5 w-3.5" /> {t("btnSave")}</>}
           </button>
         </div>
       </div>
@@ -509,6 +510,7 @@ interface UnapproveBDFDialogProps {
 }
 
 function UnapproveBDFDialog({ open, item, onClose, jobId, jobYear, onUnapproved }: UnapproveBDFDialogProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const [syncPodio, setSyncPodio] = useState(false)
   const [loading, setLoading]     = useState(false)
 
@@ -526,12 +528,12 @@ function UnapproveBDFDialog({ open, item, onClose, jobId, jobYear, onUnapproved 
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
-        catch (e: any) { toast.error(`Unapproved but Podio sync failed: ${e?.message}`); onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost }); handleClose(); return }
+        catch (e: any) { toast.error(t("toastSyncFail", { action: t("btnUnapprove"), error: e?.message })); onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost }); handleClose(); return }
       }
-      toast.success("BDF cost moved back to Estimated")
+      toast.success(t("toastUnapproved"))
       onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost })
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to unapprove BDF cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastUnapproveFail")) }
     finally { setLoading(false) }
   }
 
@@ -548,16 +550,14 @@ function UnapproveBDFDialog({ open, item, onClose, jobId, jobYear, onUnapproved 
             <RotateCcw className="h-4.5 w-4.5 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Move back to Estimated?</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t("unapproveBdf")}</h3>
             <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Title}</p>
           </div>
         </div>
         <div className="space-y-4 px-5 py-4">
           <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
             <p className="text-xs text-amber-700">
-              This will remove <strong>{money(item.Client_Price)}</strong> from Bldg Dept Fees and
-              restore it as an estimated cost. The confirmed amount will be reset to the original
-              estimate of <strong>{money(item.Builder_Cost)}</strong>.
+              {t("unapproveHint", { clientPrice: money(item.Client_Price), builderCost: money(item.Builder_Cost) })}
             </p>
           </div>
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
@@ -565,11 +565,11 @@ function UnapproveBDFDialog({ open, item, onClose, jobId, jobYear, onUnapproved 
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleUnapprove} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing…</> : <><RotateCcw className="h-3.5 w-3.5" /> Move to Estimated</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnUnapproving")}</> : <><RotateCcw className="h-3.5 w-3.5" /> {t("btnUnapprove")}</>}
           </button>
         </div>
       </div>
@@ -586,6 +586,7 @@ interface DeleteBDFDialogProps {
 }
 
 function DeleteBDFDialog({ open, item, onClose, jobId, jobYear, onDeleted }: DeleteBDFDialogProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const [syncPodio, setSyncPodio] = useState(false)
   const [loading, setLoading]     = useState(false)
 
@@ -599,12 +600,12 @@ function DeleteBDFDialog({ open, item, onClose, jobId, jobYear, onDeleted }: Del
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
-        catch (e: any) { toast.error(`Deleted but Podio sync failed: ${e?.message}`); onDeleted(item); handleClose(); return }
+        catch (e: any) { toast.error(t("toastSyncFail", { action: t("btnDelete"), error: e?.message })); onDeleted(item); handleClose(); return }
       }
-      toast.success("BDF cost deleted")
+      toast.success(t("toastDeleted"))
       onDeleted(item)
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to delete BDF cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastDeleteFail")) }
     finally { setLoading(false) }
   }
 
@@ -621,22 +622,22 @@ function DeleteBDFDialog({ open, item, onClose, jobId, jobYear, onDeleted }: Del
             <Trash2 className="h-4.5 w-4.5 text-red-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Delete BDF Cost?</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t("deleteBdf")}</h3>
             <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Title}</p>
           </div>
         </div>
         <div className="space-y-4 px-5 py-4">
-          <p className="text-sm text-slate-500">This will permanently remove the cost and recalculate job totals.</p>
+          <p className="text-sm text-slate-500">{t("deleteHint")}</p>
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleDelete} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
-            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Deleting…</> : <><Trash2 className="h-3.5 w-3.5" /> Delete</>}
+            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> {t("btnDeleting")}</> : <><Trash2 className="h-3.5 w-3.5" /> {t("btnDelete")}</>}
           </button>
         </div>
       </div>
@@ -656,6 +657,7 @@ interface BDFManagerProps {
 }
 
 export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetails }: BDFManagerProps) {
+  const t = useTranslations("jobEstimate.bdfManager")
   const bdfItems = items.filter((i) => i.Cost_Type === "BDF")
 
   const [quickCreateOpen, setQuickCreateOpen]   = useState(false)
@@ -688,8 +690,8 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
               <Building2 className="h-4 w-4 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">BDF Manager</h2>
-              <p className="text-[11px] text-slate-400">Building Department Fees — {bdfItems.length}/{BDF_MAX} slots used</p>
+              <h2 className="text-sm font-bold text-slate-900">{t("title")}</h2>
+              <p className="text-[11px] text-slate-400">{t("titleDesc", { count: bdfItems.length, max: BDF_MAX })}</p>
             </div>
           </div>
 
@@ -697,45 +699,45 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
             <button
               onClick={() => setQuickCreateOpen(true)}
               disabled={bdfItems.length >= BDF_MAX}
-              title={bdfItems.length >= BDF_MAX ? `Maximum ${BDF_MAX} BDF costs reached` : undefined}
+              title={bdfItems.length >= BDF_MAX ? t("bdfLimitWarning", { max: BDF_MAX }) : undefined}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
-              <Plus className="h-3.5 w-3.5" /> Quick Add
+              <Plus className="h-3.5 w-3.5" /> {t("btnQuickAdd")}
             </button>
             <button
               onClick={() => setFullFormOpen(true)}
               disabled={bdfItems.length >= BDF_MAX}
-              title={bdfItems.length >= BDF_MAX ? `Maximum ${BDF_MAX} BDF costs reached` : undefined}
+              title={bdfItems.length >= BDF_MAX ? t("bdfLimitWarning", { max: BDF_MAX }) : undefined}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
-              <FilePlus2 className="h-3.5 w-3.5" /> Full Form
+              <FilePlus2 className="h-3.5 w-3.5" /> {t("btnFullForm")}
             </button>
           </div>
         </div>
 
         {/* Podio slot indicator */}
         <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-5 py-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Podio slots</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("podioSlots")}</span>
           <div className="flex gap-1.5">
             {Array.from({ length: BDF_MAX }).map((_, i) => (
               <div key={i} className={`h-2.5 w-2.5 rounded-full ${i < bdfItems.length ? "bg-orange-400" : "bg-slate-200"}`} />
             ))}
           </div>
-          <span className="text-[11px] text-slate-400">{BDF_MAX - bdfItems.length} remaining</span>
+          <span className="text-[11px] text-slate-400">{t("remaining", { count: BDF_MAX - bdfItems.length })}</span>
         </div>
       </div>
 
       {/* ── Summary cards ───────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Estimated City (from BDF)</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">{t("estimatedCity")}</p>
           <p className="mt-1 text-xl font-black text-amber-800">{money(totalEstimatedCity)}</p>
-          <p className="mt-0.5 text-[11px] text-amber-600">Sum of all BDF original estimates</p>
+          <p className="mt-0.5 text-[11px] text-amber-600">{t("estimatedCityDesc")}</p>
         </div>
         <div className="rounded-xl border border-teal-100 bg-teal-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-600">Bldg Dept Fees (Approved)</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-600">{t("bldgDeptFees")}</p>
           <p className="mt-1 text-xl font-black text-teal-800">{money(totalApproved)}</p>
-          <p className="mt-0.5 text-[11px] text-teal-600">{approvedItems.length} cost{approvedItems.length !== 1 ? "s" : ""} confirmed</p>
+          <p className="mt-0.5 text-[11px] text-teal-600">{approvedItems.length !== 1 ? t("bldgDeptFeesDescPlural", { count: approvedItems.length }) : t("bldgDeptFeesDesc", { count: approvedItems.length })}</p>
         </div>
       </div>
 
@@ -745,11 +747,11 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
             <Building2 className="h-6 w-6 text-slate-400" />
           </div>
-          <p className="text-sm font-medium text-slate-500">No BDF costs yet</p>
-          <p className="text-[11px] text-slate-400">Create a cost to start estimating building department fees</p>
+          <p className="text-sm font-medium text-slate-500">{t("noCostsTitle")}</p>
+          <p className="text-[11px] text-slate-400">{t("noCostsDesc")}</p>
           <button onClick={() => setQuickCreateOpen(true)}
             className="flex items-center gap-1.5 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-colors">
-            <Plus className="h-3.5 w-3.5" /> New BDF Cost
+            <Plus className="h-3.5 w-3.5" /> {t("btnNewCost")}
           </button>
         </div>
       ) : (
@@ -757,11 +759,11 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
           <table className="w-full min-w-[580px]">
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Title</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Estimated</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Confirmed</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">Status</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">Actions</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableTitle")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableEstimated")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableConfirmed")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableStatus")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -785,31 +787,31 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => onViewDetails(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                          title="View details">
+                          title={t("tooltipView")}>
                           <Eye className="h-3.5 w-3.5" />
                         </button>
                         {!isApproved && (
                           <button onClick={() => setApprove(item)}
                             className="flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700 hover:bg-teal-100 transition-colors"
-                            title="Approve cost">
-                            <CheckCircle2 className="h-3 w-3" /> Approve
+                            title={t("tooltipApprove")}>
+                            <CheckCircle2 className="h-3 w-3" /> {t("statusApproved")}
                           </button>
                         )}
                         {isApproved && (
                           <button onClick={() => setUnapprove(item)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-amber-200 hover:text-amber-600 transition-colors"
-                            title="Move back to Estimated">
+                            title={t("tooltipUnapprove")}>
                             <RotateCcw className="h-3.5 w-3.5" />
                           </button>
                         )}
                         <button onClick={() => setEdit(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                          title="Edit cost">
+                          title={t("tooltipEdit")}>
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button onClick={() => setDelete(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
-                          title="Delete cost">
+                          title={t("tooltipDelete")}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>

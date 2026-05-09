@@ -14,13 +14,15 @@ import {
 import type { Permission, Role, PaginatedResponse, IAMDocument } from "@/lib/types"
 import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
 function PolicySummary({ document }: { document?: IAMDocument | null }) {
+  const t = useTranslations("roles_permissions")
   if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
   const allActions = document.Statement.flatMap(s => s.Action)
-  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">Full Access</span>
+  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">{t("roles.btnFullAccess")}</span>
   const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
   return (
     <div className="flex flex-wrap gap-1">
@@ -34,6 +36,7 @@ function PolicySummary({ document }: { document?: IAMDocument | null }) {
 }
 
 function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations("roles_permissions")
   return (
     <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1">
       <button
@@ -42,7 +45,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boo
           active ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
         }`}
       >
-        <CheckCircle2 className="h-3.5 w-3.5" /> Active
+        <CheckCircle2 className="h-3.5 w-3.5" /> {t("detail.statusActive")}
       </button>
       <button
         onClick={() => onChange(false)}
@@ -50,7 +53,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: (v: boo
           !active ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
         }`}
       >
-        <X className="h-3.5 w-3.5" /> Inactive
+        <X className="h-3.5 w-3.5" /> {t("detail.statusInactive")}
       </button>
     </div>
   )
@@ -62,6 +65,7 @@ const ITEMS_PER_PAGE = 10
 export default function RoleDetailPage() {
   const { roleId } = useParams() as { roleId: string }
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
 
   const [user, setUser] = useState<any>(null)
   const [role, setRole] = useState<Role | null>(null)
@@ -190,7 +194,7 @@ export default function RoleDetailPage() {
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-700 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Roles & Permissions
+            {t("form.backTo")}
           </button>
 
           {/* ── Page header ──────────────────────────────────────────────── */}
@@ -200,8 +204,8 @@ export default function RoleDetailPage() {
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate text-xl sm:text-2xl font-bold text-slate-900">Role Detail</h1>
-                <p className="hidden sm:block text-sm text-slate-500">Edit role fields and manage linked permissions.</p>
+                <h1 className="truncate text-xl sm:text-2xl font-bold text-slate-900">{t("roles.detail.title")}</h1>
+                <p className="hidden sm:block text-sm text-slate-500">{t("roles.detail.subtitle")}</p>
               </div>
             </div>
 
@@ -212,7 +216,7 @@ export default function RoleDetailPage() {
                 className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
               >
                 <Save className="h-4 w-4" />
-                {saving ? "Saving…" : <><span className="sm:hidden">Save</span><span className="hidden sm:inline">Save Changes</span></>}
+                {saving ? t("detail.btnSaving") : <><span className="sm:hidden">{t("common.save")}</span><span className="hidden sm:inline">{t("detail.btnSave")}</span></>}
               </Button>
               <Button
                 variant="destructive"
@@ -221,7 +225,7 @@ export default function RoleDetailPage() {
                 className="gap-2"
               >
                 <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{deleting ? "Deleting…" : "Delete"}</span>
+                <span className="hidden sm:inline">{deleting ? t("detail.btnDeleting") : t("detail.btnDelete")}</span>
               </Button>
             </div>
           </div>
@@ -230,18 +234,18 @@ export default function RoleDetailPage() {
           {loading ? (
             <div className="flex h-52 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
               <div className="flex items-center gap-2 text-sm text-slate-400">
-                <RefreshCcw className="h-4 w-4 animate-spin" /> Loading role…
+                <RefreshCcw className="h-4 w-4 animate-spin" /> {t("detail.loading")}
               </div>
             </div>
           ) : loadError ? (
             <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
               <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
-              <p className="text-sm font-semibold text-slate-700">Could not load role</p>
+              <p className="text-sm font-semibold text-slate-700">{t("detail.errLoad")}</p>
               <p className="mt-1 text-xs text-red-500">{loadError}</p>
-              <Button onClick={fetchRole} className="mt-3 h-8 text-xs bg-emerald-600 hover:bg-emerald-700">Retry</Button>
+              <Button onClick={fetchRole} className="mt-3 h-8 text-xs bg-emerald-600 hover:bg-emerald-700">{t("retry")}</Button>
             </div>
           ) : !role ? (
-            <div className="py-12 text-center text-sm text-slate-400">Role not found</div>
+            <div className="py-12 text-center text-sm text-slate-400">{t("detail.notFound")}</div>
           ) : (
             <>
               {/* ── Role info card ─────────────────────────────────────── */}
@@ -249,7 +253,7 @@ export default function RoleDetailPage() {
                 {/* ID + status row */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Role ID</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{t("roles.detail.labelId")}</p>
                     <span className="font-mono text-sm font-bold text-slate-700">{role.ID_Role}</span>
                   </div>
                   <ActiveToggle active={Boolean(role.Active)} onChange={(v) => setRole({ ...role, Active: v })} />
@@ -260,20 +264,20 @@ export default function RoleDetailPage() {
                 {/* Name + description */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Name</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelName")}</label>
                     <Input
                       value={asString(role.Name)}
                       onChange={(e) => setRole({ ...role, Name: e.target.value })}
-                      placeholder="Role name"
+                      placeholder={t("roles.phName")}
                       className="border-slate-200 bg-slate-50 focus:bg-white"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("roles.labelDescription")}</label>
                     <Textarea
                       value={asString(role.Description)}
                       onChange={(e) => setRole({ ...role, Description: e.target.value })}
-                      placeholder="Role description"
+                      placeholder={t("roles.phDescription")}
                       className="min-h-[88px] resize-y border-slate-200 bg-slate-50 focus:bg-white"
                     />
                   </div>
@@ -289,21 +293,21 @@ export default function RoleDetailPage() {
                       <Shield className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-800">Permissions</h2>
-                      <p className="text-xs text-slate-400">Link and unlink permissions for this role.</p>
+                      <h2 className="text-sm font-bold text-slate-800">{t("roles.detail.labelPermissions")}</h2>
+                      <p className="text-xs text-slate-400">{t("roles.detail.subtitlePermissions")}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Select value={selectedPermissionId} onValueChange={(v) => setSelectedPermissionId(v)}>
                       <SelectTrigger className="flex-1 sm:w-64 text-sm border-slate-200 bg-slate-50">
-                        <SelectValue placeholder="Select a permission to link…" />
+                        <SelectValue placeholder={t("roles.detail.phSelectLink")} />
                       </SelectTrigger>
                       <SelectContent>
                         {permLoading ? (
-                          <SelectItem value="__loading" disabled>Loading…</SelectItem>
+                          <SelectItem value="__loading" disabled>{t("common.loading")}</SelectItem>
                         ) : permError ? (
-                          <SelectItem value="__error" disabled>Failed to load</SelectItem>
+                          <SelectItem value="__error" disabled>{t("common.error")}</SelectItem>
                         ) : allPermissions.length ? (
                           allPermissions.map((p) => (
                             <SelectItem key={p.ID_Permission} value={p.ID_Permission} disabled={linkedPermissionIds.has(p.ID_Permission)}>
@@ -311,7 +315,7 @@ export default function RoleDetailPage() {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="__empty" disabled>No permissions available</SelectItem>
+                          <SelectItem value="__empty" disabled>{t("roles.noPermissions")}</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -330,7 +334,7 @@ export default function RoleDetailPage() {
                 <div className="overflow-hidden rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5">
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      All permissions — page {permPage} of {permTotalPages}
+                      {t("roles.detail.labelAllPermissions", { page: permPage, total: permTotalPages })}
                     </span>
                     <div className="flex gap-1.5">
                       <button
@@ -338,14 +342,14 @@ export default function RoleDetailPage() {
                         disabled={permPage === 1}
                         className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-white disabled:opacity-40"
                       >
-                        ← Prev
+                        {t("paginationPrev")}
                       </button>
                       <button
                         onClick={() => fetchPermissions(Math.min(permTotalPages, permPage + 1))}
                         disabled={permPage === permTotalPages}
                         className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-white disabled:opacity-40"
                       >
-                        Next →
+                        {t("paginationNext")}
                       </button>
                     </div>
                   </div>
@@ -362,10 +366,10 @@ export default function RoleDetailPage() {
                                 <span className="font-mono text-[11px] text-slate-400">{p.ID_Permission}</span>
                                 {linked ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Linked
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("roles.detail.linkedYes")}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">Not linked</span>
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">{t("roles.detail.linkedNot")}</span>
                                 )}
                               </div>
                               <p className="text-xs font-semibold text-slate-700">{asString(p.Name) || "—"}</p>
@@ -400,11 +404,11 @@ export default function RoleDetailPage() {
                     <table className="w-full min-w-[520px]">
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">ID</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Name</th>
-                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">Policy Summary</th>
-                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Linked</th>
-                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">Action</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.detail.thId")}</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.detail.thName")}</th>
+                          <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.detail.thPolicy")}</th>
+                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.detail.thLinked")}</th>
+                          <th className="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("roles.detail.thAction")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -423,10 +427,10 @@ export default function RoleDetailPage() {
                               <td className="px-4 py-2.5 text-center">
                                 {linked ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Yes
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("roles.detail.linkedYes")}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">No</span>
+                                  <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-400">{t("roles.detail.linkedNo")}</span>
                                 )}
                               </td>
                               <td className="px-4 py-2.5 text-center">
@@ -435,14 +439,14 @@ export default function RoleDetailPage() {
                                     onClick={() => unlinkPermission(p.ID_Permission)}
                                     className="flex items-center gap-1 mx-auto rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                                   >
-                                    <Link2Off className="h-3 w-3" /> Unlink
+                                    <Link2Off className="h-3 w-3" /> {t("roles.detail.btnUnlink")}
                                   </button>
                                 ) : (
                                   <button
                                     onClick={() => linkPermission(p.ID_Permission)}
                                     className="flex items-center gap-1 mx-auto rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
                                   >
-                                    <Link2 className="h-3 w-3" /> Link
+                                    <Link2 className="h-3 w-3" /> {t("roles.detail.btnLink")}
                                   </button>
                                 )}
                               </td>
@@ -457,7 +461,7 @@ export default function RoleDetailPage() {
                 {/* Currently linked permissions */}
                 <div>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Currently linked ({(role.permissions ?? []).length})
+                    {t("roles.detail.labelCurrentlyLinked", { count: (role.permissions ?? []).length })}
                   </p>
                   {(role.permissions ?? []).length ? (
                     <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
@@ -474,7 +478,7 @@ export default function RoleDetailPage() {
                               <p className="font-mono text-[10px] text-slate-400">{p.ID_Permission}</p>
                             </div>
                             <span className="flex-shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                              Linked
+                              {t("roles.detail.linkedYes")}
                             </span>
                           </div>
                           <div className="mt-2.5">
@@ -489,7 +493,7 @@ export default function RoleDetailPage() {
                   ) : (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-center">
                       <Shield className="mx-auto mb-1.5 h-6 w-6 text-slate-200" />
-                      <p className="text-xs text-slate-400">No permissions linked to this role yet</p>
+                      <p className="text-xs text-slate-400">{t("roles.detail.noLinkedPermissions")}</p>
                     </div>
                   )}
                 </div>

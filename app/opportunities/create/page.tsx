@@ -13,6 +13,7 @@ import {
   Megaphone, ArrowLeft, Loader2, Save, Briefcase,
   Info, Settings, Search, X, ChevronLeft, ChevronRight, Zap,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { OpportunitySkill } from "@/lib/types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
   const [rows, setRows] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const t = useTranslations("opportunities")
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   useEffect(() => { if (open) { setQuery(""); setPage(1) } }, [open])
@@ -104,8 +106,8 @@ function JobPickerModal({ open, onClose, onSelect }: {
               <Briefcase className="h-5 w-5 text-slate-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Select Job</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Link this opportunity to a job</p>
+              <h2 className="text-lg font-bold text-slate-900">{t("modal_title")}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{t("modal_subtitle")}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50">
@@ -120,7 +122,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by job ID, project name…"
+              placeholder={t("modal_phSearch")}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
@@ -130,7 +132,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           {loading ? (
             <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-300" /></div>
           ) : rows.length === 0 ? (
-            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">No jobs found</p></div>
+            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">{t("modal_noResults")}</p></div>
           ) : (
             <ul className="divide-y divide-slate-50">
               {rows.map((job) => (
@@ -156,7 +158,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
         </div>
 
         <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
-          <p className="text-xs text-slate-400">Showing <span className="font-semibold text-slate-600">{rows.length}</span> of <span className="font-semibold text-slate-600">{total}</span></p>
+          <p className="text-xs text-slate-400">{t("modal_showing", { count: rows.length, total })}</p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -181,6 +183,7 @@ const PRIORITIES = ["Low", "Medium", "High", "Critical"]
 
 function CreateOpportunityContent() {
   const router = useRouter()
+  const t = useTranslations("opportunities")
   const searchParams = useSearchParams()
   const returnTo = searchParams.get("returnTo")
   const initialJobId = searchParams.get("job_id")
@@ -232,7 +235,7 @@ function CreateOpportunityContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!projectName.trim()) {
-      toast({ title: "Required", description: "Project name is required.", variant: "destructive" })
+      toast({ title: t("form_toastRequired"), description: t("form_toastProjectRequired"), variant: "destructive" })
       return
     }
     setSaving(true)
@@ -253,7 +256,7 @@ function CreateOpportunityContent() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error((err as any)?.detail || "Failed to create opportunity")
+        throw new Error((err as any)?.detail || t("form_toastCreateError"))
       }
       const created = await res.json()
       const oppId = created.ID_Opportunities
@@ -265,14 +268,14 @@ function CreateOpportunityContent() {
         )
       )
 
-      toast({ title: "Created", description: "Opportunity created successfully." })
+      toast({ title: t("form_toastCreated"), description: t("form_toastCreatedDesc") })
       if (returnTo) {
         router.push(`/opportunities/${oppId}?returnTo=${encodeURIComponent(returnTo)}`)
       } else {
         router.push(`/opportunities/${oppId}`)
       }
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "Failed to create", variant: "destructive" })
+      toast({ title: t("form_toastError"), description: e?.message ?? t("form_toastCreateError"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -296,8 +299,8 @@ function CreateOpportunityContent() {
                   <Megaphone className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="truncate text-xl font-black text-slate-900 sm:text-2xl">New Opportunity</h1>
-                  <p className="hidden text-xs text-slate-500 sm:block">Create a job posting for subcontractors</p>
+                  <h1 className="truncate text-xl font-black text-slate-900 sm:text-2xl">{t("form_title")}</h1>
+                  <p className="hidden text-xs text-slate-500 sm:block">{t("form_subtitle")}</p>
                 </div>
               </div>
               <Button
@@ -306,8 +309,8 @@ function CreateOpportunityContent() {
                 className="ml-2 flex-shrink-0 gap-2 bg-violet-600 hover:bg-violet-700 text-white"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span className="hidden sm:inline">{saving ? "Creating…" : "Create Opportunity"}</span>
-                <span className="sm:hidden">Create</span>
+                <span className="hidden sm:inline">{saving ? t("form_btnCreating") : t("form_btnCreate")}</span>
+                <span className="sm:hidden">{t("form_btnCreateShort")}</span>
               </Button>
             </div>
           </div>
@@ -315,22 +318,22 @@ function CreateOpportunityContent() {
           <form onSubmit={handleSubmit} className="mx-auto max-w-3xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* Basic Info */}
-            <SectionCard icon={Info} title="Basic Info">
+            <SectionCard icon={Info} title={t("form_secBasic")}>
               <div>
-                <FieldLabel>Project Name *</FieldLabel>
+                <FieldLabel>{t("form_labelProjectName")}</FieldLabel>
                 <Input
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="e.g. Electrical Renovation – Building A"
+                  placeholder={t("form_phProjectName")}
                   className="border-slate-200"
                 />
               </div>
               <div>
-                <FieldLabel>Description</FieldLabel>
+                <FieldLabel>{t("form_labelDescription")}</FieldLabel>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the scope of work, requirements, expectations…"
+                  placeholder={t("form_phDescription")}
                   rows={4}
                   className="border-slate-200 resize-none"
                 />
@@ -338,10 +341,10 @@ function CreateOpportunityContent() {
             </SectionCard>
 
             {/* Settings */}
-            <SectionCard icon={Settings} title="Settings">
+            <SectionCard icon={Settings} title={t("form_secSettings")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <FieldLabel>Priority</FieldLabel>
+                  <FieldLabel>{t("form_labelPriority")}</FieldLabel>
                   <div className="flex flex-wrap gap-2">
                     {PRIORITIES.map((p) => (
                       <button
@@ -354,13 +357,16 @@ function CreateOpportunityContent() {
                             : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
                         }`}
                       >
-                        {p}
+                        {p === "Low" ? t("priority_low") : 
+                         p === "Medium" ? t("priority_medium") :
+                         p === "High" ? t("priority_high") :
+                         p === "Critical" ? t("priority_critical") : p}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>State</FieldLabel>
+                  <FieldLabel>{t("form_labelState")}</FieldLabel>
                   <button
                     type="button"
                     onClick={() => setState((v) => !v)}
@@ -371,12 +377,12 @@ function CreateOpportunityContent() {
                     }`}
                   >
                     <Zap className={`h-4 w-4 ${state ? "fill-emerald-400 text-emerald-500" : ""}`} />
-                    {state ? "Active" : "Inactive"}
+                    {state ? t("opp_active") : t("opp_inactive")}
                   </button>
                 </div>
               </div>
               <div>
-                <FieldLabel>Start Date</FieldLabel>
+                <FieldLabel>{t("form_labelStartDate")}</FieldLabel>
                 <Input
                   type="date"
                   value={startDate}
@@ -387,7 +393,7 @@ function CreateOpportunityContent() {
             </SectionCard>
 
             {/* Job link */}
-            <SectionCard icon={Briefcase} title="Linked Job">
+            <SectionCard icon={Briefcase} title={t("form_secLinkedJob")}>
               {linkedJob ? (
                 <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
                   <div>
@@ -395,7 +401,7 @@ function CreateOpportunityContent() {
                     <p className="font-mono text-xs text-slate-500">{linkedJob.ID_Jobs}</p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setLinkedJob(null)} className="h-7 text-xs text-slate-400 hover:text-red-500 gap-1">
-                    <X className="h-3.5 w-3.5" /> Remove
+                    <X className="h-3.5 w-3.5" /> {t("form_btnRemoveJob")}
                   </Button>
                 </div>
               ) : (
@@ -405,18 +411,18 @@ function CreateOpportunityContent() {
                   className="w-full flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors"
                 >
                   <Search className="h-4 w-4" />
-                  Select a job to link…
+                  {t("form_btnSelectJob")}
                 </button>
               )}
             </SectionCard>
 
             {/* Skills */}
-            <SectionCard icon={Zap} title="Required Skills">
+            <SectionCard icon={Zap} title={t("form_secSkills")}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Filter skills…"
+                  placeholder={t("form_phSkillSearch")}
                   value={skillSearch}
                   onChange={(e) => setSkillSearch(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200"
@@ -458,7 +464,7 @@ function CreateOpportunityContent() {
                   )
                 })}
                 {filteredSkills.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-4">No skills found</p>
+                  <p className="text-xs text-slate-400 text-center py-4">{t("form_noSkills")}</p>
                 )}
               </div>
             </SectionCard>

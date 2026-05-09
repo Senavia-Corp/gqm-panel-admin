@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
 import { Shield, Users, Plus, Lock } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import PermissionsTable from "@/components/organisms/roles-permissions/PermissionsTable"
 import RolesTable from "@/components/organisms/roles-permissions/RolesTable"
 
@@ -13,6 +14,7 @@ type Tab = "permissions" | "roles"
 
 export default function RolesPermissionsPage() {
   const router = useRouter()
+  const t = useTranslations("roles_permissions")
   const [user, setUser] = useState<any>(null)
   const [tab, setTab] = useState<Tab>("permissions")
 
@@ -41,8 +43,8 @@ export default function RolesPermissionsPage() {
                 <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Roles & Permissions</h1>
-                <p className="hidden sm:block text-sm text-slate-500">Manage access control for admin panel sections.</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t("title")}</h1>
+                <p className="hidden sm:block text-sm text-slate-500">{t("subtitle")}</p>
               </div>
             </div>
 
@@ -57,8 +59,8 @@ export default function RolesPermissionsPage() {
               className="flex-shrink-0 gap-2 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span className="sm:hidden">New</span>
-              <span className="hidden sm:inline">{tab === "permissions" ? "New Permission" : "New Role"}</span>
+              <span className="sm:hidden">{t("btnNewShort")}</span>
+              <span className="hidden sm:inline">{tab === "permissions" ? t("btnNewPermission") : t("btnNewRole")}</span>
             </Button>
           </div>
 
@@ -73,7 +75,7 @@ export default function RolesPermissionsPage() {
               }`}
             >
               <Shield className="h-4 w-4" />
-              Permissions
+              {t("tabPermissions")}
             </button>
             <button
               onClick={() => setTab("roles")}
@@ -84,7 +86,7 @@ export default function RolesPermissionsPage() {
               }`}
             >
               <Users className="h-4 w-4" />
-              Roles
+              {t("tabRoles")}
             </button>
           </div>
 

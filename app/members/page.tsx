@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -118,6 +119,7 @@ export default function MembersPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const { hasPermission } = usePermissions()
+  const t = useTranslations("members")
 
   // ── Table state ────────────────────────────────────────────────────────────
   const [rows,    setRows]    = useState<MemberRow[]>([])
@@ -164,7 +166,7 @@ export default function MembersPage() {
       setTotal(data.total   ?? 0)
     } catch (e: any) {
       if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load members")
+      setError(e?.message ?? t("failedLoad"))
     } finally {
       setLoading(false)
     }
@@ -215,15 +217,15 @@ export default function MembersPage() {
                   <Users className="h-4 w-4 text-white sm:h-5 sm:w-5" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-slate-900 leading-none sm:text-2xl">GQM Members</h1>
-                  <p className="mt-1 hidden text-sm text-slate-500 sm:block">Manage all GQM members and their information</p>
+                  <h1 className="text-xl font-bold text-slate-900 leading-none sm:text-2xl">{t("title")}</h1>
+                  <p className="mt-1 hidden text-sm text-slate-500 sm:block">{t("description")}</p>
                 </div>
               </div>
               {hasPermission("member:create") && (
                 <>
                   <Button onClick={() => router.push("/members/create")}
                     className="hidden gap-2 bg-emerald-600 hover:bg-emerald-700 sm:flex">
-                    <Plus className="h-4 w-4" /> Add Member
+                    <Plus className="h-4 w-4" /> {t("addMember")}
                   </Button>
                   <Button onClick={() => router.push("/members/create")} size="icon"
                     className="h-9 w-9 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 sm:hidden">
@@ -239,7 +241,7 @@ export default function MembersPage() {
               {/* Toolbar */}
               <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-base font-semibold text-slate-800">All Members</h2>
+                  <h2 className="text-base font-semibold text-slate-800">{t("allMembers")}</h2>
                   {total > 0 && (
                     <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-bold text-white">
                       {total}
@@ -249,7 +251,7 @@ export default function MembersPage() {
                 <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   <Input
-                    placeholder="Search: name, role, email…"
+                    placeholder={t("searchPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:ring-1 focus:ring-emerald-400/30 transition-colors"
@@ -273,7 +275,7 @@ export default function MembersPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={() => fetchData(page, debouncedSearch)}
                     className="gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-100">
-                    <RefreshCw className="h-3.5 w-3.5" /> Retry
+                    <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                   </Button>
                 </div>
               )}
@@ -296,12 +298,12 @@ export default function MembersPage() {
                   <div className="flex flex-col items-center gap-3 py-16">
                     <Users className="h-8 w-8 text-slate-300" />
                     <p className="text-sm text-slate-500">
-                      {search ? `No members found for "${search}"` : "No members yet"}
+                      {search ? t("noMembersFoundFor", { query: search }) : t("noMembersYet")}
                     </p>
                     {search && (
                       <button onClick={() => setSearch("")}
                         className="text-xs font-medium text-emerald-600 hover:underline">
-                        Clear search
+                        {t("clearSearch")}
                       </button>
                     )}
                   </div>
@@ -312,7 +314,7 @@ export default function MembersPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-800 leading-none">
-                            {member.Member_Name ?? <span className="italic text-slate-400">Unnamed</span>}
+                            {member.Member_Name ?? <span className="italic text-slate-400">{t("unnamed")}</span>}
                           </p>
                           <p className="mt-0.5 font-mono text-[11px] text-slate-400">{member.ID_Member}</p>
                         </div>
@@ -361,10 +363,10 @@ export default function MembersPage() {
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/80">
                       {[
-                        { icon: Users,    label: "Member"  },
-                        { icon: Briefcase,label: "Role"    },
-                        { icon: Mail,     label: "Email"   },
-                        { icon: Phone,    label: "Phone"   },
+                        { icon: Users,    label: t("colMember")  },
+                        { icon: Briefcase,label: t("colRole")    },
+                        { icon: Mail,     label: t("colEmail")   },
+                        { icon: Phone,    label: t("colPhone")   },
                         { icon: null,     label: ""        },
                       ].map(({ icon: Icon, label }, i) => (
                         <th key={i} className={`px-5 py-3 text-left ${i === 4 ? "text-right" : ""}`}>
@@ -387,12 +389,12 @@ export default function MembersPage() {
                           <div className="flex flex-col items-center gap-3">
                             <Users className="h-8 w-8 text-slate-300" />
                             <p className="text-sm text-slate-500">
-                              {search ? `No members found for "${search}"` : "No members yet"}
+                              {search ? t("noMembersFoundFor", { query: search }) : t("noMembersYet")}
                             </p>
                             {search && (
                               <button onClick={() => setSearch("")}
                                 className="text-xs font-medium text-emerald-600 hover:underline">
-                                Clear search
+                                {t("clearSearch")}
                               </button>
                             )}
                           </div>
@@ -408,7 +410,7 @@ export default function MembersPage() {
                             <MemberAvatar name={member.Member_Name} id={member.ID_Member} />
                             <div>
                               <p className="text-sm font-semibold text-slate-800 leading-none">
-                                {member.Member_Name ?? <span className="italic text-slate-400">Unnamed</span>}
+                                {member.Member_Name ?? <span className="italic text-slate-400">{t("unnamed")}</span>}
                               </p>
                               <p className="mt-1 font-mono text-[11px] text-slate-400">{member.ID_Member}</p>
                             </div>
@@ -450,7 +452,7 @@ export default function MembersPage() {
                             <button
                               onClick={() => router.push(`/members/${member.ID_Member}`)}
                               className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white transition-colors hover:bg-amber-600"
-                              title="View member"
+                              title={t("viewMember")}
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -458,7 +460,7 @@ export default function MembersPage() {
                               <button
                                 onClick={() => setDeleteTarget(member)}
                                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900"
-                                title="Delete member"
+                                title={t("deleteMember")}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -475,14 +477,14 @@ export default function MembersPage() {
               {!loading && !error && total > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
                   <p className="text-xs text-slate-500">
-                    {rangeStart}–{rangeEnd} of <span className="font-semibold text-slate-700">{total.toLocaleString()}</span> members
+                    {rangeStart}–{rangeEnd} {t("paginationOf")} <span className="font-semibold text-slate-700">{total.toLocaleString()}</span> {t("paginationMembers")}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm"
                       className="h-7 gap-1 text-xs border-slate-200"
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1 || loading}>
-                      <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                      <ChevronLeft className="h-3.5 w-3.5" /> {t("btnPrev")}
                     </Button>
                     <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                       {page} / {totalPages}
@@ -491,7 +493,7 @@ export default function MembersPage() {
                       className="h-7 gap-1 text-xs border-slate-200"
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={page >= totalPages || loading}>
-                      Next <ChevronRight className="h-3.5 w-3.5" />
+                      {t("btnNext")} <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -505,23 +507,23 @@ export default function MembersPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent className="rounded-2xl border-slate-200">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900">Delete Member</AlertDialogTitle>
+            <AlertDialogTitle className="text-slate-900">{t("delMemberTitle")}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-slate-700">{deleteTarget?.Member_Name ?? deleteTarget?.ID_Member}</span>?
-              This action cannot be undone.
+              {t("delMemberWarning").split("{name}")[0]}
+              <span className="font-semibold text-slate-700">{deleteTarget?.Member_Name ?? deleteTarget?.ID_Member}</span>
+              {t("delMemberWarning").split("{name}")[1]}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-slate-200 text-xs" disabled={deleting}>
-              Cancel
+              {t("delMemberCancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleting}
               className="gap-1.5 bg-red-600 hover:bg-red-700 text-xs"
             >
-              {deleting ? "Deleting…" : "Delete Member"}
+              {deleting ? t("delMemberDeleting") : t("delMemberDeleteBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { BarChart3, Building2, Home } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { EstimateBreakdownTable } from "@/components/organisms/EstimateBreakdownTable"
 import { EstimateItemDetails } from "@/components/organisms/EstimateItemDetails"
 import { BDFManager } from "@/components/organisms/BDFManager"
@@ -46,6 +47,7 @@ export function JobEstimateTab({
   jobYear,
   jobType,
 }: Props) {
+  const t = useTranslations("jobEstimate.general")
   const [activeTab, setActiveTab] = useState<EstimateTab>("general")
 
   const bdfCount  = items.filter((i) => i.Cost_Type === "BDF").length
@@ -65,7 +67,7 @@ export function JobEstimateTab({
             }`}
           >
             <BarChart3 className="h-3.5 w-3.5" />
-            General
+            {t("tabGeneral")}
           </button>
           <button
             onClick={() => setActiveTab("bdf")}
@@ -76,7 +78,7 @@ export function JobEstimateTab({
             }`}
           >
             <Building2 className="h-3.5 w-3.5" />
-            BDF Manager
+            {t("tabBdf")}
             {bdfCount > 0 && (
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 activeTab === "bdf" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"
@@ -94,7 +96,7 @@ export function JobEstimateTab({
             }`}
           >
             <Home className="h-3.5 w-3.5" />
-            Rent Manager
+            {t("tabRent")}
             {rentCount > 0 && (
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 activeTab === "rent" ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"

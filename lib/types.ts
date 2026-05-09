@@ -699,12 +699,19 @@ export interface Opportunity {
   Priority: string | null
   Start_Date: string | null
   ID_Jobs: string | null
+  ID_Order: string | null
   job: {
     ID_Jobs: string
     Job_type: string | null
     Project_Name: string | null
     Project_location: string | null
     Job_status: string | null
+  } | null
+  order: {
+    ID_Order: string
+    Title: string | null
+    Formula: number | null
+    Adj_formula: number | null
   } | null
   skills: OpportunitySkill[]
   subcontractors: any[]

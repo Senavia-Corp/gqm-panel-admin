@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Plus,
   MapPin,
+  DollarSign,
 } from "lucide-react"
 import { SectionCard } from "./components/SectionCard"
 import { EmptyState } from "./components/EmptyState"
@@ -48,12 +49,19 @@ interface Opportunity {
   Start_Date: string | null
   State: boolean | null
   ID_Jobs: string | null
+  ID_Order: string | null
   skills: OpportunitySkill[]
   subcontractors: Array<{ ID_Subcontractor: string }>
   applicants_count: number
   job?: {
     ID_Jobs: string
     Project_location: string | null
+  } | null
+  order?: {
+    ID_Order: string
+    Title: string | null
+    Formula: number | null
+    Adj_formula: number | null
   } | null
 }
 
@@ -248,14 +256,14 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician, only
       <div className={`rounded-xl border-2 border-black ${onlyApplied ? 'bg-white' : 'bg-gradient-to-br from-gqm-green-dark via-[#064e3b] to-emerald-950'} shadow-sm overflow-hidden`}>
         <div className={`flex items-start justify-between gap-4 border-b ${onlyApplied ? 'border-slate-100 bg-slate-50/50' : 'border-white/10'} px-6 py-4`}>
           <div>
-            <h2 className={`text-base font-bold ${onlyApplied ? 'text-slate-800' : 'text-white'}`}>{onlyApplied ? "My Applied Opportunities" : t("boardTitle")}</h2>
-            <p className={`mt-0.5 text-sm ${onlyApplied ? 'text-slate-500' : 'text-emerald-100/70'}`}>{onlyApplied ? "Opportunities you have applied for" : t("boardSubtitle")}</p>
+            <h2 className={`text-base font-bold ${onlyApplied ? 'text-slate-800' : 'text-white'}`}>{onlyApplied ? t("myAppliedTitle") : t("boardTitle")}</h2>
+            <p className={`mt-0.5 text-sm ${onlyApplied ? 'text-slate-500' : 'text-emerald-100/70'}`}>{onlyApplied ? t("myAppliedSubtitle") : t("boardSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <span className={`flex h-6 min-w-[24px] items-center justify-center rounded-full ${onlyApplied ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-400/20 text-emerald-400 border-emerald-400/30'} px-2 text-xs font-bold border`}>
               {Array.isArray(opportunities) ? opportunities.length : 0}
             </span>
-            <span className={`text-[10px] ${onlyApplied ? 'text-slate-400' : 'text-emerald-400/60'} font-bold uppercase tracking-wider`}>{onlyApplied ? "Applied" : t("active")}</span>
+            <span className={`text-[10px] ${onlyApplied ? 'text-slate-400' : 'text-emerald-400/60'} font-bold uppercase tracking-wider`}>{onlyApplied ? t("applied") : t("active")}</span>
           </div>
         </div>
 
@@ -334,7 +342,7 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician, only
             ))}
           </div>
         ) : (!Array.isArray(opportunities) || opportunities.length === 0) ? (
-          <EmptyState message="No active opportunities found at the moment." />
+          <EmptyState message={t("noAppliedFound")} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {opportunities.map((opp) => {
@@ -368,9 +376,19 @@ export default function OpportunitiesPanel({ subcontractorId, isTechnician, only
                   </p>
 
                   {opp.job?.Project_location && (
-                    <div className="flex items-center gap-1.5 mb-4 text-[11px] text-emerald-700 font-semibold bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
+                    <div className="flex items-center gap-1.5 mb-2 text-[11px] text-emerald-700 font-semibold bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="line-clamp-1">{opp.job.Project_location}</span>
+                    </div>
+                  )}
+
+                  {/* Linked order formula */}
+                  {opp.order?.Formula != null && (
+                    <div className="flex items-center gap-1.5 mb-4 text-[11px] text-white font-bold bg-emerald-600 p-1.5 rounded-lg">
+                      <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        {opp.order.Formula.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </div>
                   )}
 

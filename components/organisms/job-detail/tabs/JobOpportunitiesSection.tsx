@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Megaphone, Plus, RefreshCcw, Loader2, AlertCircle, Search, X, Users,
-  CheckCircle2, XCircle, ExternalLink, Calendar
+  CheckCircle2, XCircle, ExternalLink, Calendar, DollarSign, ShoppingCart,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 import type { Opportunity } from "@/lib/types"
@@ -199,6 +199,21 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
                     </span>
                   )}
                 </div>
+
+                {/* Linked Order Formula */}
+                {opp.order?.Formula != null && (
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      <span>{opp.order.Formula.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    {opp.order.Title && (
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-50 border border-slate-100 rounded-md px-2 py-0.5 max-w-[200px] truncate">
+                        {opp.order.Title}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
                 <div className="text-center bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">

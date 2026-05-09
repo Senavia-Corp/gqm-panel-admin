@@ -20,9 +20,10 @@ import {
   Megaphone, ArrowLeft, Pencil, Save, X, Loader2, Trash2,
   Briefcase, Info, Settings, Zap, Users, Search, Plus,
   ChevronLeft, ChevronRight, CheckCircle2, XCircle,
-  ExternalLink, Star, Mail, Phone, ChevronDown,
+  ExternalLink, Star, Mail, Phone, ChevronDown, ShoppingCart, DollarSign,
 } from "lucide-react"
 import { LinkSubcontractorModal } from "@/components/organisms/LinkSubcontractorModal"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,7 @@ function AppStateSelector({
   value: string | null
   onChange: (state: string) => void
 }) {
+  const t = useTranslations("opportunities")
   const colors = value ? APP_STATE_COLORS[value] : null
   return (
     <DropdownMenu>
@@ -111,7 +113,10 @@ function AppStateSelector({
           }`}
         >
           {colors && <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${colors.dot}`} />}
-          {value ?? "No state"}
+          {value === "Pending" ? t("det_appPending") :
+           value === "Reviewing" ? t("det_appReviewing") :
+           value === "Accepted" ? t("det_appAccepted") :
+           value === "Rejected" ? t("det_appRejected") : (value ?? t("det_noState"))}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </button>
       </DropdownMenuTrigger>
@@ -120,7 +125,7 @@ function AppStateSelector({
           onClick={() => onChange("")}
           className="rounded-lg text-xs text-slate-400 cursor-pointer"
         >
-          No state
+          {t("det_noState")}
         </DropdownMenuItem>
         {APP_STATES.map((s) => {
           const c = APP_STATE_COLORS[s]
@@ -131,7 +136,10 @@ function AppStateSelector({
               className="rounded-lg text-xs cursor-pointer gap-2"
             >
               <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${c.dot}`} />
-              {s}
+              {s === "Pending" ? t("det_appPending") :
+               s === "Reviewing" ? t("det_appReviewing") :
+               s === "Accepted" ? t("det_appAccepted") :
+               s === "Rejected" ? t("det_appRejected") : s}
             </DropdownMenuItem>
           )
         })}
@@ -190,6 +198,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
   const [rows, setRows] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
+  const t = useTranslations("opportunities")
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   useEffect(() => { if (open) { setQuery(""); setPage(1) } }, [open])
@@ -228,8 +237,8 @@ function JobPickerModal({ open, onClose, onSelect }: {
               <Briefcase className="h-5 w-5 text-slate-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Select Job</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Link this opportunity to a job</p>
+              <h2 className="text-lg font-bold text-slate-900">{t("modal_title")}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{t("modal_subtitle")}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50">
@@ -244,7 +253,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by job ID, project name…"
+              placeholder={t("modal_phSearch")}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
             />
           </div>
@@ -254,7 +263,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
           {loading ? (
             <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-300" /></div>
           ) : rows.length === 0 ? (
-            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">No jobs found</p></div>
+            <div className="flex h-40 items-center justify-center"><p className="text-sm text-slate-400">{t("modal_noResults")}</p></div>
           ) : (
             <ul className="divide-y divide-slate-50">
               {rows.map((job) => (
@@ -285,8 +294,7 @@ function JobPickerModal({ open, onClose, onSelect }: {
 
         <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
           <p className="text-xs text-slate-400">
-            Showing <span className="font-semibold text-slate-600">{rows.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{total}</span>
+            {t("modal_showing", { count: rows.length, total })}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))} disabled={page <= 1 || loading} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40">
@@ -311,6 +319,7 @@ export default function OpportunityDetailPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const t = useTranslations("opportunities")
   const searchParams = useSearchParams()
   const returnTo = searchParams.get("returnTo")
 
@@ -334,6 +343,12 @@ export default function OpportunityDetailPage() {
   const [startDate, setStartDate] = useState("")
   const [editLinkedJob, setEditLinkedJob] = useState<any | null>(null)
 
+  // Order picker state
+  const [editLinkedOrder, setEditLinkedOrder] = useState<{ ID_Order: string; Title: string | null; Formula: number | null; Adj_formula: number | null } | null>(null)
+  const [jobOrders, setJobOrders] = useState<{ ID_Order: string; Title: string | null; Formula: number | null; Adj_formula: number | null }[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [linkingOrder, setLinkingOrder] = useState(false)
+
   const fetchOpp = useCallback(async () => {
     setLoading(true)
     try {
@@ -352,12 +367,31 @@ export default function OpportunityDetailPage() {
       setPriority(oppData.Priority ?? "Medium")
       setStartDate(toDateInput(oppData.Start_Date))
       setEditLinkedJob(oppData.job ?? null)
+      setEditLinkedOrder(oppData.order ?? null)
     } catch {
-      toast({ title: "Error", description: "Failed to load opportunity.", variant: "destructive" })
+      toast({ title: t("opp_toastError"), description: t("det_errLoad"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }, [id])
+
+  // Fetch orders for the currently selected job (used in edit mode)
+  const fetchJobOrders = useCallback(async (jobId: string) => {
+    setOrdersLoading(true)
+    setJobOrders([])
+    try {
+      const res = await apiFetch(`/api/order?ID_Jobs=${encodeURIComponent(jobId)}&limit=100`)
+      if (!res.ok) { setJobOrders([]); return }
+      const data = await res.json()
+      // Backend uses @paginate decorator → { results: [], total: N }
+      const list = Array.isArray(data) ? data : (data?.results ?? [])
+      setJobOrders(list)
+    } catch {
+      setJobOrders([])
+    } finally {
+      setOrdersLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     const u = localStorage.getItem("user_data")
@@ -381,6 +415,7 @@ export default function OpportunityDetailPage() {
         Priority: priority,
         Start_Date: startDate ? `${startDate}T00:00:00` : null,
         ID_Jobs: editLinkedJob?.ID_Jobs ?? null,
+        ID_Order: editLinkedOrder?.ID_Order ?? null,
       }
       const res = await apiFetch(`/api/opportunities/${id}`, {
         method: "PATCH",
@@ -393,10 +428,10 @@ export default function OpportunityDetailPage() {
         throw new Error(msg)
       }
       setEditing(false)
-      toast({ title: "Saved", description: "Opportunity updated." })
+      toast({ title: t("det_toastSaved"), description: t("det_toastSavedDesc") })
       await fetchOpp()
     } catch (e: any) {
-      toast({ title: "Error saving", description: e?.message ?? "Failed to save changes.", variant: "destructive" })
+      toast({ title: t("opp_toastError"), description: e?.message ?? t("det_toastSaveError"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -410,6 +445,8 @@ export default function OpportunityDetailPage() {
     setPriority(opp.Priority ?? "Medium")
     setStartDate(toDateInput(opp.Start_Date))
     setEditLinkedJob(opp.job ?? null)
+    setEditLinkedOrder(opp.order ?? null)
+    setJobOrders([])
     setEditing(false)
   }
 
@@ -418,13 +455,13 @@ export default function OpportunityDetailPage() {
 
   const handleLinkSkill = async (skillId: string) => {
     const res = await apiFetch(`/api/opportunities/${id}/skills/${skillId}`, { method: "POST" })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to link skill.", variant: "destructive" }); return }
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastLinkSkillError"), variant: "destructive" }); return }
     await fetchOpp()
   }
 
   const handleUnlinkSkill = async (skillId: string) => {
     const res = await apiFetch(`/api/opportunities/${id}/skills/${skillId}`, { method: "DELETE" })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to unlink skill.", variant: "destructive" }); return }
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastUnlinkSkillError"), variant: "destructive" }); return }
     await fetchOpp()
   }
 
@@ -433,7 +470,7 @@ export default function OpportunityDetailPage() {
 
   const handleLinkApplicant = async (subId: string) => {
     const res = await apiFetch(`/api/opportunities/${id}/applicants/${subId}`, { method: "POST" })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to link applicant.", variant: "destructive" }); return }
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastLinkAppError"), variant: "destructive" }); return }
     const list: OpportunityApplicant[] = await apiFetch(`/api/opportunities/${id}/applicants`)
       .then((r) => r.json()).catch(() => [])
     setApplicants(list)
@@ -441,7 +478,7 @@ export default function OpportunityDetailPage() {
 
   const handleUnlinkApplicant = async (subId: string) => {
     const res = await apiFetch(`/api/opportunities/${id}/applicants/${subId}`, { method: "DELETE" })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to remove applicant.", variant: "destructive" }); return }
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastUnlinkAppError"), variant: "destructive" }); return }
     setApplicants((prev) => prev.filter((a) => a.ID_Subcontractor !== subId))
   }
 
@@ -451,14 +488,14 @@ export default function OpportunityDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ state: newState || null }),
     })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to update state.", variant: "destructive" }); return }
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastUpdateStateError"), variant: "destructive" }); return }
     setApplicants((prev) => prev.map((a) => a.ID_Subcontractor === subId ? { ...a, application_state: newState || null } : a))
   }
 
   const confirmDelete = async () => {
     const res = await apiFetch(`/api/opportunities/${id}`, { method: "DELETE" })
-    if (!res.ok) { toast({ title: "Error", description: "Failed to delete.", variant: "destructive" }); return }
-    toast({ title: "Deleted", description: "Opportunity removed." })
+    if (!res.ok) { toast({ title: t("opp_toastError"), description: t("det_toastDeleteError"), variant: "destructive" }); return }
+    toast({ title: t("det_toastDeleted"), description: t("det_toastDeletedDesc") })
     router.push("/opportunities")
   }
 
@@ -491,11 +528,11 @@ export default function OpportunityDetailPage() {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
-          <main className="flex-1 flex flex-col items-center justify-center gap-4">
-            <p className="text-slate-500">Opportunity not found.</p>
-            <Button onClick={() => router.push("/opportunities")}>Back to list</Button>
-          </main>
-        </div>
+        <main className="flex-1 flex flex-col items-center justify-center gap-4">
+          <p className="text-slate-500">{t("det_notFound")}</p>
+          <Button onClick={() => router.push("/opportunities")}>{t("det_btnBackList")}</Button>
+        </main>
+      </div>
       </div>
     )
   }
@@ -527,21 +564,21 @@ export default function OpportunityDetailPage() {
                   editing ? (
                     <>
                       <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving} className="gap-1.5 text-xs border-slate-200">
-                        <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">Cancel</span>
+                        <X className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnCancel")}</span>
                       </Button>
                       <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white">
                         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                        <span className="hidden sm:inline">{saving ? "Saving…" : "Save Changes"}</span>
-                        <span className="sm:hidden">Save</span>
+                        <span className="hidden sm:inline">{saving ? t("det_saving") : t("det_btnSave")}</span>
+                        <span className="sm:hidden">{t("det_btnSaveShort")}</span>
                       </Button>
                     </>
                   ) : (
                     <>
                       <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5 text-xs border-slate-200">
-                        <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit</span>
+                        <Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnEdit")}</span>
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="gap-1.5 text-xs border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-600">
-                        <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Delete</span>
+                        <Trash2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("det_btnDelete")}</span>
                       </Button>
                     </>
                   )
@@ -553,16 +590,16 @@ export default function OpportunityDetailPage() {
           <div className="mx-auto max-w-3xl space-y-4 p-4 sm:space-y-5 sm:p-6">
 
             {/* Basic Info */}
-            <SectionCard icon={Info} title="Basic Info">
+            <SectionCard icon={Info} title={t("form_secBasic")}>
               <div>
-                <FieldLabel>Project Name</FieldLabel>
+                <FieldLabel>{t("form_labelProjectName")}</FieldLabel>
                 {editing
                   ? <Input value={projectName} onChange={(e) => setProjectName(e.target.value)} className="border-slate-200" />
                   : <ReadonlyField value={opp.Project_name} />
                 }
               </div>
               <div>
-                <FieldLabel>Description</FieldLabel>
+                <FieldLabel>{t("form_labelDescription")}</FieldLabel>
                 {editing
                   ? <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="border-slate-200 resize-none" />
                   : <ReadonlyField value={opp.Description} />
@@ -571,44 +608,52 @@ export default function OpportunityDetailPage() {
             </SectionCard>
 
             {/* Settings */}
-            <SectionCard icon={Settings} title="Settings">
+            <SectionCard icon={Settings} title={t("form_secSettings")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <FieldLabel>Priority</FieldLabel>
+                  <FieldLabel>{t("form_labelPriority")}</FieldLabel>
                   {editing ? (
                     <div className="flex flex-wrap gap-2">
                       {PRIORITIES.map((p) => (
                         <button key={p} type="button" onClick={() => setPriority(p)}
                           className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${priority === p ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
-                          {p}
+                          {p === "Low" ? t("priority_low") : 
+                           p === "Medium" ? t("priority_medium") :
+                           p === "High" ? t("priority_high") :
+                           p === "Critical" ? t("priority_critical") : p}
                         </button>
                       ))}
                     </div>
                   ) : (
                     opp.Priority
-                      ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${PRIORITY_COLORS[opp.Priority] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}>{opp.Priority}</span>
+                      ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${PRIORITY_COLORS[opp.Priority] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                          {opp.Priority === "Low" ? t("priority_low") : 
+                           opp.Priority === "Medium" ? t("priority_medium") :
+                           opp.Priority === "High" ? t("priority_high") :
+                           opp.Priority === "Critical" ? t("priority_critical") : opp.Priority}
+                        </span>
                       : <span className="text-slate-300 text-sm">—</span>
                   )}
                 </div>
                 <div>
-                  <FieldLabel>State</FieldLabel>
+                  <FieldLabel>{t("form_labelState")}</FieldLabel>
                   {editing ? (
                     <button type="button" onClick={() => setState((v) => !v)}
                       className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-semibold transition-all ${state ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-400"}`}>
                       <Zap className={`h-4 w-4 ${state ? "fill-emerald-400 text-emerald-500" : ""}`} />
-                      {state ? "Active" : "Inactive"}
+                      {state ? t("opp_active") : t("opp_inactive")}
                     </button>
                   ) : (
                     opp.State === true
-                      ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Active</span>
+                      ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"><CheckCircle2 className="h-3 w-3" /> {t("opp_active")}</span>
                       : opp.State === false
-                      ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500"><XCircle className="h-3 w-3" /> Inactive</span>
+                      ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500"><XCircle className="h-3 w-3" /> {t("opp_inactive")}</span>
                       : <span className="text-slate-300 text-sm">—</span>
                   )}
                 </div>
               </div>
               <div>
-                <FieldLabel>Start Date</FieldLabel>
+                <FieldLabel>{t("form_labelStartDate")}</FieldLabel>
                 {editing
                   ? <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border-slate-200 sm:max-w-[220px]" />
                   : <ReadonlyField value={formatDate(opp.Start_Date)} />
@@ -617,7 +662,7 @@ export default function OpportunityDetailPage() {
             </SectionCard>
 
             {/* Linked Job */}
-            <SectionCard icon={Briefcase} title="Linked Job">
+            <SectionCard icon={Briefcase} title={t("form_secLinkedJob")}>
               {editing ? (
                 editLinkedJob ? (
                   <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
@@ -629,10 +674,10 @@ export default function OpportunityDetailPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button variant="ghost" size="sm" onClick={() => setJobPickerOpen(true)} className="h-7 text-xs text-blue-600 hover:bg-blue-100">
-                        Change
+                        {t("det_btnChangeJob")}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => setEditLinkedJob(null)} className="h-7 text-xs text-slate-400 hover:text-red-500 gap-1">
-                        <X className="h-3.5 w-3.5" /> Remove
+                        <X className="h-3.5 w-3.5" /> {t("det_btnRemoveJob")}
                       </Button>
                     </div>
                   </div>
@@ -643,7 +688,7 @@ export default function OpportunityDetailPage() {
                     className="w-full flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-400 hover:border-blue-300 hover:text-blue-600 transition-colors"
                   >
                     <Search className="h-4 w-4" />
-                    Select a job to link…
+                    {t("form_btnSelectJob")}
                   </button>
                 )
               ) : linkedJob ? (
@@ -656,17 +701,112 @@ export default function OpportunityDetailPage() {
                   </div>
                   <Link href={`/jobs/${linkedJobId}`} target="_blank">
                     <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-blue-600 hover:bg-blue-100">
-                      <ExternalLink className="h-3 w-3" /> Open Job
+                      <ExternalLink className="h-3 w-3" /> {t("det_btnOpenJob")}
                     </Button>
                   </Link>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">No job linked</p>
+                <p className="text-sm text-slate-400">{t("det_noJobLinked")}</p>
+              )}
+            </SectionCard>
+
+            {/* Linked Order */}
+            <SectionCard icon={ShoppingCart} title="Linked Order">
+              {editing ? (
+                <div className="space-y-3">
+                  {/* Job must be selected first */}
+                  {!editLinkedJob ? (
+                    <p className="text-sm text-slate-400 italic">Select a linked Job first to load its orders.</p>
+                  ) : (
+                    <>
+                      {editLinkedOrder ? (
+                        <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{editLinkedOrder.Title || editLinkedOrder.ID_Order}</p>
+                            <p className="font-mono text-xs text-slate-500">{editLinkedOrder.ID_Order}</p>
+                            {editLinkedOrder.Formula != null && (
+                              <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                                <DollarSign className="h-3 w-3" />
+                                {editLinkedOrder.Formula}
+                              </p>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="sm"
+                            onClick={() => setEditLinkedOrder(null)}
+                            className="h-7 gap-1 text-xs text-slate-400 hover:text-red-500">
+                            <X className="h-3.5 w-3.5" /> Remove
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fetchJobOrders(editLinkedJob.ID_Jobs)}
+                          className="w-full flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-400 hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                          Load orders from linked job
+                        </button>
+                      )}
+
+                      {/* Order list (shown after clicking Load) */}
+                      {!editLinkedOrder && jobOrders.length > 0 && (
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+                          {ordersLoading ? (
+                            <div className="flex h-20 items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
+                            </div>
+                          ) : (
+                            jobOrders.map((ord) => (
+                              <button
+                                key={ord.ID_Order}
+                                type="button"
+                                onClick={() => setEditLinkedOrder(ord)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-800 truncate">{ord.Title || ord.ID_Order}</p>
+                                  <p className="font-mono text-[11px] text-slate-400">{ord.ID_Order}</p>
+                                </div>
+                                {ord.Formula != null && (
+                                  <span className="ml-3 flex-shrink-0 flex items-center gap-0.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                                    <DollarSign className="h-2.5 w-2.5" />
+                                    {ord.Formula}
+                                  </span>
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+
+                      {!editLinkedOrder && !ordersLoading && jobOrders.length === 0 && (
+                        <p className="text-center text-xs text-slate-400 py-2">No orders found for this job.</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : opp.order ? (
+                <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{opp.order.Title || opp.order.ID_Order}</p>
+                    <p className="font-mono text-xs text-slate-500">{opp.order.ID_Order}</p>
+                  </div>
+                  {opp.order.Formula != null && (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-1.5">
+                      <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-sm font-bold text-emerald-700">
+                        {opp.order.Formula.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No order linked to this opportunity.</p>
               )}
             </SectionCard>
 
             {/* Skills */}
-            <SectionCard icon={Zap} title={`Required Skills (${opp.skills?.length ?? 0})`}>
+            <SectionCard icon={Zap} title={t("det_secSkillsCount", { count: opp.skills?.length ?? 0 })}>
               {(opp.skills?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {opp.skills.map((skill) => (
@@ -688,7 +828,7 @@ export default function OpportunityDetailPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search skills to add…"
+                      placeholder={t("det_phSkillSearch")}
                       value={skillSearch}
                       onChange={(e) => setSkillSearch(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200"
@@ -715,7 +855,7 @@ export default function OpportunityDetailPage() {
                       )
                     })}
                     {filteredSkills.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-4">No skills found</p>
+                      <p className="text-xs text-slate-400 text-center py-4">{t("form_noSkills")}</p>
                     )}
                   </div>
                 </div>
@@ -725,10 +865,10 @@ export default function OpportunityDetailPage() {
             {userRole !== "LEAD_TECHNICIAN" && (
               <SectionCard
                 icon={Users}
-                title={`Applicants (${applicants.length})`}
+                title={t("det_secApplicantsCount", { count: applicants.length })}
                 action={
                   <Button variant="outline" size="sm" onClick={() => setApplicantModalOpen(true)} className="h-7 gap-1.5 rounded-lg px-2.5 text-xs border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-600">
-                    <Plus className="h-3.5 w-3.5" /> Add
+                    <Plus className="h-3.5 w-3.5" /> {t("det_btnAddApplicant")}
                   </Button>
                 }
               >
@@ -737,7 +877,7 @@ export default function OpportunityDetailPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
                       <Users className="h-5 w-5 text-slate-300" />
                     </div>
-                    <p className="text-sm text-slate-400">No applicants yet</p>
+                    <p className="text-sm text-slate-400">{t("det_noApplicants")}</p>
                   </div>
                 ) : (
                   <div className="-mx-4 -mb-4 divide-y divide-slate-50 sm:-mx-5 sm:-mb-5">

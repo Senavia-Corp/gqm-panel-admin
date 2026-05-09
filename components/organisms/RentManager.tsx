@@ -8,6 +8,7 @@ import {
   FilePlus2, RotateCcw, Pencil, Eye,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 import { CreateEstimateItemDialog } from "@/components/organisms/CreateEstimateItemDialog"
 import type { BDFStatus, EstimateItem } from "@/lib/types"
@@ -40,15 +41,16 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number) {
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: BDFStatus | null }) {
+  const t = useTranslations("jobEstimate.rentManager")
   if (status === "Approved")
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700">
-        <CheckCircle2 className="h-3 w-3" /> Approved
+        <CheckCircle2 className="h-3 w-3" /> {t("statusApproved")}
       </span>
     )
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
-      <Clock className="h-3 w-3" /> Estimated
+      <Clock className="h-3 w-3" /> {t("statusEstimated")}
     </span>
   )
 }
@@ -58,6 +60,7 @@ function StatusBadge({ status }: { status: BDFStatus | null }) {
 function PodioToggle({ value, onChange, jobYear, disabled }: {
   value: boolean; onChange: (v: boolean) => void; jobYear?: number; disabled?: boolean
 }) {
+  const t = useTranslations("jobEstimate.rentManager")
   return (
     <button
       type="button"
@@ -71,12 +74,12 @@ function PodioToggle({ value, onChange, jobYear, disabled }: {
         ? <Zap className="h-4 w-4 fill-emerald-400 text-emerald-500 flex-shrink-0" />
         : <ZapOff className="h-4 w-4 flex-shrink-0" />}
       <div className="flex-1 text-left">
-        <span className="text-xs font-semibold">Sync to Podio {value ? "ON" : "OFF"}</span>
+        <span className="text-xs font-semibold">{value ? t("podioSyncOn") : t("podioSyncOff")}</span>
         {value && jobYear && (
           <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{jobYear}</span>
         )}
         {value && !jobYear && (
-          <span className="ml-2 text-[10px] text-red-500">Year not resolved — sync may fail</span>
+          <span className="ml-2 text-[10px] text-red-500">{t("podioSyncUnresolved")}</span>
         )}
       </div>
     </button>
@@ -120,6 +123,7 @@ interface CreateRentDialogProps {
 }
 
 function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRentDialogProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const [title, setTitle]             = useState("")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
@@ -132,10 +136,10 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
 
   const handleSubmit = async () => {
     const errs: typeof errors = {}
-    if (!title.trim())       errs.title       = "Required"
-    if (!description.trim()) errs.description = "Required — document the rent/equipment quote"
+    if (!title.trim())       errs.title       = t("errRequired")
+    if (!description.trim()) errs.description = t("errRequired")
     const parsed = parseFloat(amount)
-    if (isNaN(parsed) || parsed < 0) errs.amount = "Must be a valid amount ≥ 0"
+    if (isNaN(parsed) || parsed < 0) errs.amount = t("errInvalidAmount")
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)
@@ -164,11 +168,11 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
         Unit_Price: parsed, Client_Price: parsed,
         Margin: 0, Profit: 0, Percent_Invoiced: 0, Internal_Notes: "", ID_Order: null,
       }
-      toast.success("Rent cost created")
+      toast.success(t("toastCreated"))
       onCreated(item)
       reset(); onClose()
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create rent cost")
+      toast.error(e?.message ?? t("toastCreateFail"))
     } finally { setLoading(false) }
   }
 
@@ -186,8 +190,8 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
               <Home className="h-4 w-4 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">New Rent Cost</h2>
-              <p className="text-[11px] text-slate-400">Quick add — Rent and Equipment</p>
+              <h2 className="text-sm font-bold text-slate-900">{t("createRent")}</h2>
+              <p className="text-[11px] text-slate-400">{t("createRentDesc")}</p>
             </div>
           </div>
           <button onClick={handleClose}
@@ -199,29 +203,29 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
         <div className="space-y-4 px-5 py-5">
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
-              Title <span className="text-red-400">*</span>
+              {t("fTitle")} <span className="text-red-400">*</span>
             </label>
             <input type="text" value={title}
               onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: undefined })) }}
-              placeholder="e.g. Equipment rental — Zone A"
+              placeholder={t("fTitleHint")}
               className={`${FIELD_BASE} ${errors.title ? "border-red-300 bg-red-50" : ""}`}
               disabled={loading} />
             {errors.title && <p className="mt-1 text-[11px] text-red-500">{errors.title}</p>}
           </div>
           <AmountField
-            label="Estimated Amount" value={amount}
+            label={t("fEstimatedAmount")} value={amount}
             onChange={(v) => { setAmount(v); setErrors((p) => ({ ...p, amount: undefined })) }}
             disabled={loading} error={errors.amount}
           />
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
-              Description <span className="text-red-400">*</span>
+              {t("fDescription")} <span className="text-red-400">*</span>
             </label>
             <textarea
               rows={4}
               value={description}
               onChange={(e) => { setDescription(e.target.value); setErrors((p) => ({ ...p, description: undefined })) }}
-              placeholder="Document the rent/equipment quote — vendor, reference number, duration, conditions, etc."
+              placeholder={t("fDescriptionHint")}
               disabled={loading}
               className={`${FIELD_BASE} resize-none leading-relaxed ${errors.description ? "border-red-300 bg-red-50" : ""}`}
             />
@@ -233,11 +237,11 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleSubmit} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…</> : <><Plus className="h-3.5 w-3.5" /> Create</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnCreating")}</> : <><Plus className="h-3.5 w-3.5" /> {t("btnCreate")}</>}
           </button>
         </div>
       </div>
@@ -254,6 +258,7 @@ interface ApproveRentDialogProps {
 }
 
 function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: ApproveRentDialogProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const [amount, setAmount]           = useState("")
   const [syncPodio, setSyncPodio]     = useState(false)
   const [loading, setLoading]         = useState(false)
@@ -275,10 +280,10 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
-      toast.success("Rent cost approved")
+      toast.success(t("toastApproved"))
       onApproved({ ...item, Status: "Approved", Client_Price: parsed })
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to approve rent cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastApproveFail")) }
     finally { setLoading(false) }
   }
 
@@ -296,7 +301,7 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
               <CheckCircle2 className="h-4 w-4 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Approve Rent Cost</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t("approveRent")}</h2>
               <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{item.Title}</p>
             </div>
           </div>
@@ -309,17 +314,16 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
         <div className="space-y-4 px-5 py-5">
           <div className="rounded-xl border border-teal-100 bg-teal-50 p-3 space-y-1">
             <p className="text-xs text-teal-700">
-              Sets this cost as confirmed spend → moves it to <strong>Paid Fees</strong>.
+              {t("approveHint1")}
             </p>
             <p className="text-xs text-teal-600">
-              The original estimate <strong>({money(item.Builder_Cost)})</strong> stays in{" "}
-              <strong>Estimated Rent</strong> unchanged.
+              {t("approveHint2", { amount: money(item.Builder_Cost) })}
             </p>
           </div>
 
           {item.Description && (
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Quote Notes</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t("quoteNotes")}</p>
               <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
                 {item.Description}
               </p>
@@ -327,7 +331,7 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
           )}
 
           <AmountField
-            label="Confirmed Amount"
+            label={t("fConfirmedAmount")}
             value={amount}
             onChange={(v) => { setAmount(v); setAmountError("") }}
             disabled={loading}
@@ -335,7 +339,7 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
             placeholder={String(item.Builder_Cost)}
           />
           <p className="text-[11px] text-slate-400 -mt-2">
-            Original estimate: <span className="font-semibold text-slate-600">{money(item.Builder_Cost)}</span> — update if the actual spend differs.
+            {t("originalEstimateHint", { amount: money(item.Builder_Cost) })}
           </p>
 
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
@@ -344,11 +348,11 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleApprove} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Approving…</> : <><CheckCircle2 className="h-3.5 w-3.5" /> Approve</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnApproving")}</> : <><CheckCircle2 className="h-3.5 w-3.5" /> {t("btnApprove")}</>}
           </button>
         </div>
       </div>
@@ -365,6 +369,7 @@ interface EditRentDialogProps {
 }
 
 function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditRentDialogProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
   const [syncPodio, setSyncPodio]     = useState(false)
@@ -396,13 +401,13 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
-      toast.success("Rent cost updated")
+      toast.success(t("toastEdited"))
       const updated = isApproved
         ? { ...item, Client_Price: parsed, Description: description.trim() || item.Description }
         : { ...item, Builder_Cost: parsed, Client_Price: parsed, Unit_Cost: parsed, Description: description.trim() || item.Description }
       onEdited(updated)
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to update rent cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastEditFail")) }
     finally { setLoading(false) }
   }
 
@@ -420,7 +425,7 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
               <Pencil className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Edit Rent Cost</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t("editRent")}</h2>
               <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{item.Title}</p>
             </div>
           </div>
@@ -433,16 +438,12 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
         <div className="space-y-4 px-5 py-5">
           <div className={`rounded-xl border p-3 ${isApproved ? "border-teal-100 bg-teal-50" : "border-amber-100 bg-amber-50"}`}>
             <p className={`text-xs ${isApproved ? "text-teal-700" : "text-amber-700"}`}>
-              {isApproved ? (
-                <>Editing the <strong>confirmed spend</strong>. The original estimate ({money(item.Builder_Cost)}) stays unchanged in Estimated Rent.</>
-              ) : (
-                <>Editing the <strong>estimated amount</strong>. This will update Estimated Rent.</>
-              )}
+              {isApproved ? t("editHintApproved", { amount: money(item.Builder_Cost) }) : t("editHintEstimated")}
             </p>
           </div>
 
           <AmountField
-            label={isApproved ? "Confirmed Amount" : "Estimated Amount"}
+            label={isApproved ? t("fConfirmedAmount") : t("fEstimatedAmount")}
             value={amount}
             onChange={(v) => { setAmount(v); setAmountError("") }}
             disabled={loading}
@@ -451,17 +452,17 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
 
           {isApproved && (
             <p className="text-[11px] text-slate-400 -mt-2">
-              Original estimate: <span className="font-semibold text-slate-600">{money(item.Builder_Cost)}</span>
+              {t("originalEstimateHint", { amount: money(item.Builder_Cost) })}
             </p>
           )}
 
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Description</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{t("fDescription")}</label>
             <textarea
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Document the rent/equipment details…"
+              placeholder={t("fDescriptionHintEdit")}
               disabled={loading}
               className={`${FIELD_BASE} resize-none leading-relaxed`}
             />
@@ -473,11 +474,11 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleSave} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</> : <><Pencil className="h-3.5 w-3.5" /> Save</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnSaving")}</> : <><Pencil className="h-3.5 w-3.5" /> {t("btnSave")}</>}
           </button>
         </div>
       </div>
@@ -494,6 +495,7 @@ interface UnapproveRentDialogProps {
 }
 
 function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved }: UnapproveRentDialogProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const [syncPodio, setSyncPodio] = useState(false)
   const [loading, setLoading]     = useState(false)
 
@@ -510,12 +512,12 @@ function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
-        catch (e: any) { toast.error(`Unapproved but Podio sync failed: ${e?.message}`); onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost }); handleClose(); return }
+        catch (e: any) { toast.error(t("toastSyncFail", { action: t("btnUnapprove"), error: e?.message })); onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost }); handleClose(); return }
       }
-      toast.success("Rent cost moved back to Estimated")
+      toast.success(t("toastUnapproved"))
       onUnapproved({ ...item, Status: "Estimated", Client_Price: item.Builder_Cost })
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to unapprove rent cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastUnapproveFail")) }
     finally { setLoading(false) }
   }
 
@@ -532,16 +534,14 @@ function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved
             <RotateCcw className="h-4 w-4 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Move back to Estimated?</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t("unapproveRent")}</h3>
             <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Title}</p>
           </div>
         </div>
         <div className="space-y-4 px-5 py-4">
           <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
             <p className="text-xs text-amber-700">
-              This will remove <strong>{money(item.Client_Price)}</strong> from Paid Fees and
-              restore it as an estimated cost. The confirmed amount will be reset to the original
-              estimate of <strong>{money(item.Builder_Cost)}</strong>.
+              {t("unapproveHint", { clientPrice: money(item.Client_Price), builderCost: money(item.Builder_Cost) })}
             </p>
           </div>
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
@@ -549,11 +549,11 @@ function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleUnapprove} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors">
-            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing…</> : <><RotateCcw className="h-3.5 w-3.5" /> Move to Estimated</>}
+            {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("btnUnapproving")}</> : <><RotateCcw className="h-3.5 w-3.5" /> {t("btnUnapprove")}</>}
           </button>
         </div>
       </div>
@@ -570,6 +570,7 @@ interface DeleteRentDialogProps {
 }
 
 function DeleteRentDialog({ open, item, onClose, jobId, jobYear, onDeleted }: DeleteRentDialogProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const [syncPodio, setSyncPodio] = useState(false)
   const [loading, setLoading]     = useState(false)
 
@@ -583,12 +584,12 @@ function DeleteRentDialog({ open, item, onClose, jobId, jobYear, onDeleted }: De
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
-        catch (e: any) { toast.error(`Deleted but Podio sync failed: ${e?.message}`); onDeleted(item); handleClose(); return }
+        catch (e: any) { toast.error(t("toastSyncFail", { action: t("btnDelete"), error: e?.message })); onDeleted(item); handleClose(); return }
       }
-      toast.success("Rent cost deleted")
+      toast.success(t("toastDeleted"))
       onDeleted(item)
       handleClose()
-    } catch (e: any) { toast.error(e?.message ?? "Failed to delete rent cost") }
+    } catch (e: any) { toast.error(e?.message ?? t("toastDeleteFail")) }
     finally { setLoading(false) }
   }
 
@@ -605,22 +606,22 @@ function DeleteRentDialog({ open, item, onClose, jobId, jobYear, onDeleted }: De
             <Trash2 className="h-4 w-4 text-red-600" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Delete Rent Cost?</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t("deleteRent")}</h3>
             <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Title}</p>
           </div>
         </div>
         <div className="space-y-4 px-5 py-4">
-          <p className="text-sm text-slate-500">This will permanently remove the cost and recalculate job totals.</p>
+          <p className="text-sm text-slate-500">{t("deleteHint")}</p>
           <PodioToggle value={syncPodio} onChange={setSyncPodio} jobYear={jobYear} disabled={loading} />
         </div>
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-4">
           <button onClick={handleClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={handleDelete} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
-            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Deleting…</> : <><Trash2 className="h-3.5 w-3.5" /> Delete</>}
+            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> {t("btnDeleting")}</> : <><Trash2 className="h-3.5 w-3.5" /> {t("btnDelete")}</>}
           </button>
         </div>
       </div>
@@ -640,6 +641,7 @@ interface RentManagerProps {
 }
 
 export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetails }: RentManagerProps) {
+  const t = useTranslations("jobEstimate.rentManager")
   const rentItems = items.filter((i) => i.Cost_Type === "Rent")
 
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
@@ -671,8 +673,8 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
               <Home className="h-4 w-4 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Rent Manager</h2>
-              <p className="text-[11px] text-slate-400">Rent and Equipment — {rentItems.length} cost{rentItems.length !== 1 ? "s" : ""}</p>
+              <h2 className="text-sm font-bold text-slate-900">{t("title")}</h2>
+              <p className="text-[11px] text-slate-400">{t("titleDesc", { count: rentItems.length })}</p>
             </div>
           </div>
 
@@ -681,13 +683,13 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
               onClick={() => setQuickCreateOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-700 transition-colors"
             >
-              <Plus className="h-3.5 w-3.5" /> Quick Add
+              <Plus className="h-3.5 w-3.5" /> {t("btnQuickAdd")}
             </button>
             <button
               onClick={() => setFullFormOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-700 transition-colors"
             >
-              <FilePlus2 className="h-3.5 w-3.5" /> Full Form
+              <FilePlus2 className="h-3.5 w-3.5" /> {t("btnFullForm")}
             </button>
           </div>
         </div>
@@ -696,14 +698,14 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
       {/* ── Summary cards ───────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Estimated Rent</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">{t("estimatedRent")}</p>
           <p className="mt-1 text-xl font-black text-amber-800">{money(totalEstimatedRent)}</p>
-          <p className="mt-0.5 text-[11px] text-amber-600">Sum of all rent original estimates</p>
+          <p className="mt-0.5 text-[11px] text-amber-600">{t("estimatedRentDesc")}</p>
         </div>
         <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">Paid Fees (Rent)</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">{t("paidFees")}</p>
           <p className="mt-1 text-xl font-black text-blue-800">{money(totalPaidFees)}</p>
-          <p className="mt-0.5 text-[11px] text-blue-600">{approvedItems.length} cost{approvedItems.length !== 1 ? "s" : ""} confirmed</p>
+          <p className="mt-0.5 text-[11px] text-blue-600">{t("paidFeesDesc", { count: approvedItems.length })}</p>
         </div>
       </div>
 
@@ -713,11 +715,11 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
             <Home className="h-6 w-6 text-slate-400" />
           </div>
-          <p className="text-sm font-medium text-slate-500">No rent costs yet</p>
-          <p className="text-[11px] text-slate-400">Create a cost to start estimating rent and equipment fees</p>
+          <p className="text-sm font-medium text-slate-500">{t("noCostsTitle")}</p>
+          <p className="text-[11px] text-slate-400">{t("noCostsDesc")}</p>
           <button onClick={() => setQuickCreateOpen(true)}
             className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 transition-colors">
-            <Plus className="h-3.5 w-3.5" /> New Rent Cost
+            <Plus className="h-3.5 w-3.5" /> {t("btnNewCost")}
           </button>
         </div>
       ) : (
@@ -725,11 +727,11 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
           <table className="w-full min-w-[580px]">
             <thead className="border-b border-slate-100 bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Title</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Estimated</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Confirmed</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">Status</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">Actions</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableTitle")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableEstimated")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableConfirmed")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableStatus")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("tableActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -753,31 +755,31 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => onViewDetails(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                          title="View details">
+                          title={t("tooltipView")}>
                           <Eye className="h-3.5 w-3.5" />
                         </button>
                         {!isApproved && (
                           <button onClick={() => setApprove(item)}
                             className="flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-700 hover:bg-teal-100 transition-colors"
-                            title="Approve cost">
-                            <CheckCircle2 className="h-3 w-3" /> Approve
+                            title={t("tooltipApprove")}>
+                            <CheckCircle2 className="h-3 w-3" /> {t("statusApproved")}
                           </button>
                         )}
                         {isApproved && (
                           <button onClick={() => setUnapprove(item)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-amber-200 hover:text-amber-600 transition-colors"
-                            title="Move back to Estimated">
+                            title={t("tooltipUnapprove")}>
                             <RotateCcw className="h-3.5 w-3.5" />
                           </button>
                         )}
                         <button onClick={() => setEdit(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                          title="Edit cost">
+                          title={t("tooltipEdit")}>
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button onClick={() => setDelete(item)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
-                          title="Delete cost">
+                          title={t("tooltipDelete")}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>

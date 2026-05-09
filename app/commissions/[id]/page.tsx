@@ -13,6 +13,7 @@ import {
   Check, X, Briefcase, Calendar, DollarSign, Hash, Layers, Users, Pencil
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ function InlineSelectEdit({ value, options, onSave }: {
   value: string; options: string[]
   onSave: (v: string) => Promise<void>
 }) {
+  const t = useTranslations("commissions")
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(value)
   const [saving,  setSaving]  = useState(false)
@@ -92,7 +94,9 @@ function InlineSelectEdit({ value, options, onSave }: {
 
   if (!editing) return (
     <div className="group flex items-center gap-2">
-      <span className="text-sm font-medium text-slate-700">{value || <span className="italic text-slate-400">—</span>}</span>
+      <span className="text-sm font-medium text-slate-700">
+        {value ? t(`type_${value}`) : <span className="italic text-slate-400">—</span>}
+      </span>
       <button onClick={() => setEditing(true)} className="invisible rounded p-0.5 text-slate-400 hover:text-slate-600 group-hover:visible">
         <Pencil className="h-3 w-3" />
       </button>
@@ -103,7 +107,7 @@ function InlineSelectEdit({ value, options, onSave }: {
     <div className="flex items-center gap-1.5">
       <Select value={draft} onValueChange={setDraft}>
         <SelectTrigger className="h-7 w-32 text-xs border-slate-200 bg-slate-50"><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+        <SelectContent>{options.map(o => <SelectItem key={o} value={o}>{t(`type_${o}`)}</SelectItem>)}</SelectContent>
       </Select>
       <button onClick={commit} disabled={saving} className="rounded p-1 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -120,6 +124,7 @@ function InlineSelectEdit({ value, options, onSave }: {
 function GroupCard({ group, onUpdated }: {
   group: CommissionGroup; onUpdated: () => void
 }) {
+  const t = useTranslations("commissions")
   const [expanded, setExpanded] = useState(true)
 
   const patchDetailType = async (detailId: string, newType: string) => {
@@ -145,7 +150,7 @@ function GroupCard({ group, onUpdated }: {
           </div>
         </button>
         <div className="text-right">
-          <p className="text-[11px] text-slate-400">Group Total</p>
+          <p className="text-[11px] text-slate-400">{t("det_groupTotal")}</p>
           <p className="text-sm font-bold text-emerald-700">{fmt(group.Total_detail)}</p>
         </div>
       </div>
@@ -154,15 +159,15 @@ function GroupCard({ group, onUpdated }: {
       {expanded && (
         <div className="grid grid-cols-3 gap-4 border-b border-slate-100 bg-white px-4 py-3 sm:px-5">
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Job Type</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("det_jobType")}</p>
             <p className="text-sm text-slate-700">{group.Jobs_type || "—"}</p>
           </div>
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Year</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("det_year")}</p>
             <p className="text-sm text-slate-700">{group.Jobs_year || "—"}</p>
           </div>
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Role</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("det_role")}</p>
             <p className="text-sm text-slate-700">{group.Rol || "—"}</p>
           </div>
         </div>
@@ -174,13 +179,13 @@ function GroupCard({ group, onUpdated }: {
           {group.comdetails.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10">
               <Briefcase className="h-6 w-6 text-slate-300" />
-              <p className="text-sm text-slate-500">No jobs associated</p>
+              <p className="text-sm text-slate-500">{t("det_noJobs")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[520px] divide-y divide-slate-50">
                 <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 bg-slate-50/80 px-5 py-2">
-                  {["Job", "Premium (GQM)", "Type", "Factor", "Total (Sell/Mgmt)"].map((h, i) => (
+                  {[t("det_colJob"), t("det_colPremium"), t("det_colType"), t("det_colFactor"), t("det_colTotal")].map((h, i) => (
                     <span key={i} className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{h}</span>
                   ))}
                 </div>
@@ -202,7 +207,7 @@ function GroupCard({ group, onUpdated }: {
                 ))}
 
                 <div className="flex justify-end border-t border-slate-100 bg-emerald-50/60 px-5 py-2.5">
-                  <span className="mr-2 text-xs font-semibold text-slate-500">Group total:</span>
+                  <span className="mr-2 text-xs font-semibold text-slate-500">{t("det_groupTotalSummary")}:</span>
                   <span className="font-mono text-sm font-bold text-emerald-700">{fmt(group.Total_detail)}</span>
                 </div>
               </div>
@@ -218,6 +223,7 @@ function GroupCard({ group, onUpdated }: {
 
 export default function CommissionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  const t = useTranslations("commissions")
   const { id } = use(params)
 
   const [user,       setUser]       = useState<any>(null)
@@ -238,7 +244,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data: Commission = await res.json()
       setCommission(data)
-    } catch (e: any) { setError(e?.message ?? "Failed to load commission") }
+    } catch (e: any) { setError(e?.message ?? t("det_errLoad")) }
     finally { setLoading(false) }
   }, [id])
 
@@ -267,12 +273,12 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
         <TopBar />
         <main className="flex-1 overflow-x-hidden p-4 sm:p-6">
           <button onClick={() => router.push("/commissions")} className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-            <ArrowLeft className="h-4 w-4" /> Back
+            <ArrowLeft className="h-4 w-4" /> {t("det_btnBack")}
           </button>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
-            <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">Could not load commission</h2></div>
+            <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">{t("det_errLoad")}</h2></div>
             <p className="mt-2 text-sm text-red-600">{error}</p>
-            <Button onClick={fetchCommission} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> Retry</Button>
+            <Button onClick={fetchCommission} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> {t("btnRetry")}</Button>
           </div>
         </main>
       </div>
@@ -299,7 +305,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
                   </div>
                   <div>
                     <h1 className="text-base font-bold text-slate-900 leading-none sm:text-lg">
-                      {commission.Month ? `${commission.Month.charAt(0) + commission.Month.slice(1).toLowerCase()} ${commission.Year}` : commission.ID_Commission}
+                      {commission.Month ? `${t(`month_${commission.Month.toLowerCase()}`)} ${commission.Year}` : commission.ID_Commission}
                     </h1>
                     <p className="mt-0.5 hidden font-mono text-xs text-slate-400 sm:block">{commission.ID_Commission}</p>
                   </div>
@@ -314,7 +320,7 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
                 {commission.comgroups.length === 0 ? (
                   <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-slate-200 bg-white py-16 text-center">
                     <Layers className="h-10 w-10 text-slate-300" />
-                    <p className="font-semibold text-slate-600">No commission groups found</p>
+                    <p className="font-semibold text-slate-600">{t("det_noGroups")}</p>
                   </div>
                 ) : commission.comgroups.map(group => (
                   <GroupCard key={group.ID_ComGroup} group={group} onUpdated={fetchCommission} />
@@ -324,41 +330,41 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
               <div className="min-w-0 space-y-4">
                 <SectionCard>
                   <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Commission Summary</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_sidebarSummary")}</p>
                   </div>
                   <div className="divide-y divide-slate-50 p-4 sm:p-5">
                     <div className="flex items-center justify-between py-2.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Hash className="h-3 w-3" /> ID</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Hash className="h-3 w-3" /> {t("det_labelId")}</p>
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-600">{commission.ID_Commission}</span>
                     </div>
                     <div className="flex items-center justify-between py-2.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Calendar className="h-3 w-3" /> Period</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("detail.labelPeriod")}</p>
                       <span className="text-sm font-medium text-slate-700">
-                        {commission.Month ? commission.Month.charAt(0) + commission.Month.slice(1).toLowerCase() : "—"} {commission.Year}
+                        {commission.Month ? t(`month_${commission.Month.toLowerCase()}`) : "—"} {commission.Year}
                       </span>
                     </div>
                     {commission.member && (
                       <div className="flex items-center justify-between py-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> Member</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> {t("det_labelMember")}</p>
                         <span className="text-sm text-slate-700">{commission.member.Member_Name ?? commission.ID_Member}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between py-2.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Layers className="h-3 w-3" /> Groups</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><Layers className="h-3 w-3" /> {t("det_labelGroups")}</p>
                       <span className="text-sm font-semibold text-slate-800">{commission.comgroups.length}</span>
                     </div>
                   </div>
                   <div className="space-y-2 border-t border-slate-100 bg-slate-50/60 p-4 sm:p-5">
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Total Commission</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1"><DollarSign className="h-3 w-3" /> {t("det_labelTotalCom")}</p>
                       <span className="font-mono text-base font-bold text-emerald-700">{fmt(commission.Total_commission)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Margin</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_labelTotalMargin")}</p>
                       <span className="text-sm italic text-slate-400">{commission.Total_margin != null ? fmt(commission.Total_margin) : "—"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Reimbursement</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_labelReimbursement")}</p>
                       <span className="text-sm italic text-slate-400">{commission.Total_reimbursment != null ? fmt(commission.Total_reimbursment) : "—"}</span>
                     </div>
                   </div>
@@ -367,14 +373,14 @@ export default function CommissionDetailPage({ params }: { params: Promise<{ id:
                 {commission.comgroups.length > 0 && (
                   <SectionCard>
                     <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5 sm:py-3.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Groups Breakdown</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("det_sidebarBreakdown")}</p>
                     </div>
                     <div className="divide-y divide-slate-50 p-2">
                       {commission.comgroups.map(g => (
                         <div key={g.ID_ComGroup} className="flex items-center justify-between px-3 py-2.5">
                           <div>
                             <p className="text-xs font-semibold text-slate-700">{groupLabel(g)}</p>
-                            <p className="text-[10px] text-slate-400">{g.comdetails.length} job{g.comdetails.length !== 1 ? "s" : ""}</p>
+                            <p className="text-[10px] text-slate-400">{t("det_jobsCount", { count: g.comdetails.length })}</p>
                           </div>
                           <span className="font-mono text-sm font-bold text-slate-700">{fmt(g.Total_detail)}</span>
                         </div>

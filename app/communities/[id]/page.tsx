@@ -106,6 +106,7 @@ type Client = {
   Collection_Process?: string | null
   Payment_Collection?: string | null
   Text?: string | null
+  Residential_Units?: number | null
   podio_item_id?: string | null
   ID_Community_Tracking?: string | null
   // ✅ Ahora tipado correctamente
@@ -1401,6 +1402,19 @@ export default function ClientDetailPage({ params }: Props) {
                         <Label className="mb-1.5 block text-sm font-medium">{t("fieldMaintenance")}</Label>
                         <Input disabled={!isEditing} value={formData.Maintenance_Sup ?? ""}
                           onChange={(e) => set_("Maintenance_Sup", e.target.value)} className={ch("Maintenance_Sup")} />
+                      </div>
+
+                      <div className="min-w-0">
+                        <Label className="mb-1.5 block text-sm font-medium">{t("fieldResidentialUnits")}</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          disabled={!isEditing}
+                          value={formData.Residential_Units ?? ""}
+                          onChange={(e) => set_("Residential_Units", e.target.value === "" ? null : Number(e.target.value))}
+                          className={ch("Residential_Units")}
+                          placeholder="0"
+                        />
                       </div>
 
                       <div className="min-w-0">

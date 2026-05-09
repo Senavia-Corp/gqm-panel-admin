@@ -105,7 +105,7 @@ export function CreateOrderDialog({
   const [isLinkSubcOpen, setIsLinkSubcOpen] = useState(false)
   const [suggestedName, setSuggestedName] = useState("")
 
-  const t = useTranslations("jobs")
+  const t = useTranslations("jobEstimate.createOrder")
   const tCommon = useTranslations("common")
 
   // Compute the suggested PO code whenever jobId or existingOrdersCount changes
@@ -187,7 +187,7 @@ export function CreateOrderDialog({
     if (Object.keys(newErrs).length > 0) return
 
     if (selectedItems.length === 0) {
-      toast.error("Please select at least one estimate item for the order")
+      toast.error(t("noFreeItems"))
       return
     }
 
@@ -269,7 +269,7 @@ export function CreateOrderDialog({
                         setErrors((prev) => ({ ...prev, orderName: undefined }))
                       }}
                       className="flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 transition-colors"
-                      title={`Use suggested code: ${suggestedName}`}
+                      title={t("suggestedCode", { code: suggestedName })}
                     >
                       <Sparkles className="h-2.5 w-2.5" />
                       {suggestedName}
@@ -303,10 +303,10 @@ export function CreateOrderDialog({
                       onClick={() => setIsLinkSubcOpen(true)}
                       disabled={isSubmitting}
                       className="flex items-center gap-1 rounded-lg bg-slate-50 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-40"
-                      title="Link a new subcontractor to this job"
+                      title={t("linkNewSub")}
                     >
                       <UserPlus className="h-2.5 w-2.5" />
-                      Link new
+                      {t("linkNewSub")}
                     </button>
                   )}
                 </div>
@@ -329,7 +329,7 @@ export function CreateOrderDialog({
                               className="text-orange-500 underline hover:text-orange-600 font-semibold"
                               onClick={(e) => { e.preventDefault(); setIsLinkSubcOpen(true) }}
                             >
-                              Link one now
+                              {t("linkOneNow")}
                             </button>
                           )}
                         </div>
@@ -425,7 +425,7 @@ export function CreateOrderDialog({
                       <span className="text-xs font-bold text-emerald-800">{t("orderNewAdjFormula")}</span>
                       <span className="text-sm font-black text-emerald-700">${formulaData.newAdjFormula.toFixed(2)}</span>
                     </div>
-                    <span className="text-[10px] text-emerald-600/70">Initial formula amount</span>
+                    <span className="text-[10px] text-emerald-600/70">{t("orderNewFormulaHint")}</span>
                   </div>
                 </div>
               </div>
@@ -437,7 +437,7 @@ export function CreateOrderDialog({
                   onChange={setSyncPodioLocal} 
                   jobYear={jobYearForPodioSync} 
                   disabled={isSubmitting} 
-                  textPrefix="Sync creation to Podio" 
+                  textPrefix={t("podioSyncOn").replace(" ON", "")} 
                 />
               </div>
             </div>
@@ -466,7 +466,7 @@ export function CreateOrderDialog({
                     onClick={selectAllVisible}
                     disabled={isSubmitting || filteredAvailableItems.length === 0}
                     className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                    title="Select Visible"
+                    title={tCommon("selectAll")}
                   >
                     <CheckSquare className="h-4 w-4" />
                   </button>
@@ -475,7 +475,7 @@ export function CreateOrderDialog({
                     onClick={clearSelection}
                     disabled={isSubmitting || selectedItems.length === 0}
                     className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
-                    title="Clear Selection"
+                    title={tCommon("clear")}
                   >
                     <XCircle className="h-4 w-4" />
                   </button>
@@ -486,7 +486,7 @@ export function CreateOrderDialog({
                 {filteredAvailableItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center p-8 text-slate-400">
                     <PackageOpen className="h-10 w-10 mb-3 opacity-20" />
-                    <p className="text-sm">No free estimate costs available</p>
+                    <p className="text-sm">{t("noFreeItems")}</p>
                   </div>
                 ) : (
                   <div className="grid gap-2">

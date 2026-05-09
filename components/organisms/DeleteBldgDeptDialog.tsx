@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Landmark, Loader2, Trash2 } from "lucide-react"
 import { useState } from "react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface Props {
   open: boolean
@@ -30,6 +31,7 @@ export function DeleteBldgDeptDialog({
   onConfirm,
   defaultSyncWithPodio = true,
 }: Props) {
+  const t = useTranslations("buildingDepartments")
   const [syncPodio, setSyncPodio] = useState(defaultSyncWithPodio)
   const [loading, setLoading] = useState(false)
 
@@ -50,15 +52,10 @@ export function DeleteBldgDeptDialog({
             <Trash2 className="h-6 w-6 text-red-600" />
           </div>
           <AlertDialogTitle className="text-lg font-bold text-slate-900">
-            Delete Building Department
+            {t("bd_deleteTitle")}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-slate-500">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-slate-700">
-              {cityName || bldgDeptId}
-            </span>
-            ? This action cannot be undone. Any jobs linked to this department
-            will lose the reference.
+            {t("bd_deleteConfirm", { name: cityName || bldgDeptId })}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -68,7 +65,7 @@ export function DeleteBldgDeptDialog({
             <div className="flex items-center gap-2">
               <Landmark className="h-4 w-4 text-slate-400" />
               <span className="text-sm font-medium text-slate-700">
-                Also delete from Podio
+                {t("bd_deleteSyncPodio")}
               </span>
             </div>
             <div
@@ -91,7 +88,7 @@ export function DeleteBldgDeptDialog({
             disabled={loading}
             className="text-sm border-slate-200"
           >
-            Cancel
+            {t("bd_cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={loading}
@@ -99,9 +96,9 @@ export function DeleteBldgDeptDialog({
             className="gap-2 bg-red-600 text-white hover:bg-red-700 text-sm"
           >
             {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Deleting…</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> {t("bd_deleting")}</>
             ) : (
-              <><Trash2 className="h-4 w-4" /> Delete</>
+              <><Trash2 className="h-4 w-4" /> {t("bd_delete")}</>
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

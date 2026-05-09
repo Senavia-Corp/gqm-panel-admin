@@ -11,6 +11,7 @@ import {
   DollarSign, TrendingUp, BarChart3, Package, RefreshCcw,
   Zap, ZapOff,
 } from "lucide-react"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,10 +89,11 @@ function StatCard({ label, value, sub, color }: {
 
 // ─── Generic confirm dialog (for Delete All) ──────────────────────────────────
 
-function ConfirmDialog({ open, onClose, title, description, onConfirm, loading, confirmLabel = "Delete" }: {
+function ConfirmDialog({ open, onClose, title, description, onConfirm, loading, confirmLabel }: {
   open: boolean; onClose: () => void; title: string; description: string
   onConfirm: () => void; loading: boolean; confirmLabel?: string
 }) {
+  const t = useTranslations("jobEstimate.general.modals")
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
@@ -108,11 +110,11 @@ function ConfirmDialog({ open, onClose, title, description, onConfirm, loading, 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-            Cancel
+            {t("btnCancel")}
           </button>
           <button onClick={onConfirm} disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
-            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Deleting…</> : confirmLabel}
+            {loading ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> {t("btnDeleting")}</> : (confirmLabel || t("btnDelete"))}
           </button>
         </div>
       </div>
@@ -138,6 +140,7 @@ interface DeleteEstimateCostDialogProps {
 function DeleteEstimateCostDialog({
   open, onClose, item, jobId, jobYear, onConfirm, loading,
 }: DeleteEstimateCostDialogProps) {
+  const t = useTranslations("jobEstimate.general.modals")
   const [syncPodio, setSyncPodio] = useState(false)
 
   // Reset toggle when dialog opens for a new item
@@ -166,7 +169,7 @@ function DeleteEstimateCostDialog({
             <Trash2 className="h-5 w-5 text-red-600" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Delete estimate cost?</h3>
+            <h3 className="text-base font-bold text-slate-900">{t("deleteOneTitle")}</h3>
             <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[220px]">
               {item.Title}
             </p>
@@ -176,7 +179,7 @@ function DeleteEstimateCostDialog({
         <div className="px-5 py-4 space-y-4">
           {/* Warning */}
           <p className="text-sm text-slate-500">
-            This cost will be permanently removed. This action cannot be undone.
+            {t("deleteOneDesc")}
           </p>
 
           {/* Podio sync section — only for BDF / PTLGCF */}
@@ -184,13 +187,10 @@ function DeleteEstimateCostDialog({
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2.5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                  Podio Sync
+                  {t("podioSyncTitle")}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Deleting this <span className="font-semibold">{item.Cost_Type}</span> cost
-                  will recalculate{" "}
-                  <span className="font-mono font-semibold">{fieldName}</span>{" "}
-                  in the database. Enable sync to push the updated value to Podio.
+                  {t("podioSyncDesc", { type: item.Cost_Type, field: fieldName })}
                 </p>
               </div>
 
@@ -211,7 +211,7 @@ function DeleteEstimateCostDialog({
                 }
                 <div className="flex-1 text-left">
                   <span className="text-xs font-semibold">
-                    Sync to Podio {syncPodio ? "ON" : "OFF"}
+                    {syncPodio ? t("podioSyncOn") : t("podioSyncOff")}
                   </span>
                   {syncPodio && jobYear && (
                     <span className="ml-2 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -220,7 +220,7 @@ function DeleteEstimateCostDialog({
                   )}
                   {syncPodio && !jobYear && (
                     <span className="ml-2 text-[10px] text-red-500">
-                      Year not resolved — sync may fail
+                      {t("podioSyncFail")}
                     </span>
                   )}
                 </div>
@@ -236,7 +236,7 @@ function DeleteEstimateCostDialog({
             disabled={loading}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
-            Cancel
+            {t("btnCancel")}
           </button>
           <button
             onClick={() => onConfirm(syncPodio)}
@@ -244,8 +244,8 @@ function DeleteEstimateCostDialog({
             className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
           >
             {loading
-              ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
-              : <><Trash2 className="h-3.5 w-3.5" /> Delete</>
+              ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> {t("btnDeleting")}</>
+              : <><Trash2 className="h-3.5 w-3.5" /> {t("btnDelete")}</>
             }
           </button>
         </div>
@@ -278,6 +278,7 @@ export function EstimateBreakdownTable({
   hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport,
   onDeleteItem, onEditItem, jobYear, jobType,
 }: EstimateBreakdownTableProps) {
+  const t = useTranslations("jobEstimate.general")
   const [search, setSearch]               = useState("")
   const [expandedGroups, setExpanded]     = useState<Set<string>>(new Set())
   const [showDeleteAll, setShowDeleteAll] = useState(false)
@@ -464,24 +465,26 @@ export function EstimateBreakdownTable({
               <BarChart3 className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Estimate Breakdown</h2>
-              <p className="text-[11px] text-slate-400">{safeItems.length} cost items</p>
+              <h2 className="text-sm font-bold text-slate-900">{t("breakdownTitle")}</h2>
+              <p className="text-[11px] text-slate-400">
+                {safeItems.length === 1 ? t("costItems", { count: safeItems.length }) : t("costItemsPlural", { count: safeItems.length })}
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {hasUnsaved && (
               <div className="flex items-center gap-2">
-                <p className="hidden text-[11px] text-amber-600 sm:block">Unsaved — save before creating orders</p>
+                <p className="hidden text-[11px] text-amber-600 sm:block">{t("unsavedWarning")}</p>
                 <button onClick={handleCancel}
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-                  <X className="h-3.5 w-3.5" /> Discard
+                  <X className="h-3.5 w-3.5" /> {t("btnDiscard")}
                 </button>
                 <button onClick={handleSave} disabled={isSaving}
                   className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors">
                   {isSaving
-                    ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-                    : <><Save className="h-3.5 w-3.5" /> Save Changes</>
+                    ? <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> {t("btnSaving")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("btnSave")}</>
                   }
                 </button>
               </div>
@@ -490,7 +493,7 @@ export function EstimateBreakdownTable({
             {hasSavedEstimates && !hasUnsaved && (
               <button onClick={() => setShowDeleteAll(true)}
                 className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors">
-                <Trash2 className="h-3.5 w-3.5" /> Delete All
+                <Trash2 className="h-3.5 w-3.5" /> {t("btnDeleteAll")}
               </button>
             )}
 
@@ -499,14 +502,14 @@ export function EstimateBreakdownTable({
                 <input type="file" accept=".xls,.xlsx" id="estimate-upload" onChange={handleFileUpload} className="hidden" />
                 <label htmlFor="estimate-upload"
                   className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors">
-                  <FileUp className="h-3.5 w-3.5" /> Import Excel
+                  <FileUp className="h-3.5 w-3.5" /> {t("btnImport")}
                 </label>
               </>
             )}
 
             <button onClick={() => setCreateOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
-              <FilePlus2 className="h-3.5 w-3.5" /> New Cost
+              <FilePlus2 className="h-3.5 w-3.5" /> {t("btnNewCost")}
             </button>
 
             <button
@@ -520,8 +523,8 @@ export function EstimateBreakdownTable({
               }`}
             >
               <Plus className="h-3.5 w-3.5" />
-              Create Order
-              {!canCreateOrder && <span className="ml-1 text-[10px] opacity-70">(save first)</span>}
+              {t("btnCreateOrder")}
+              {!canCreateOrder && <span className="ml-1 text-[10px] opacity-70">{t("saveFirst")}</span>}
             </button>
           </div>
         </div>
@@ -529,7 +532,7 @@ export function EstimateBreakdownTable({
         {isSaving && (
           <div className="border-t border-amber-100 bg-amber-50 px-5 py-2">
             <p className="text-[11px] font-medium text-amber-700">
-              Saving estimate costs — this may take a moment. Please don't close this page.
+              {t("savingMsg")}
             </p>
           </div>
         )}
@@ -540,32 +543,32 @@ export function EstimateBreakdownTable({
         {/* Subcontractor breakdown */}
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard
-            label="Total Estimated in Orders"
+            label={t("stats.subInOrders")}
             value={`$${fmtCurrency(totSubInOrders)}`}
             color="emerald"
-            sub={`${subInOrders.length} item${subInOrders.length !== 1 ? "s" : ""} linked to orders`}
+            sub={subInOrders.length === 1 ? t("stats.subInOrdersSub", { count: subInOrders.length }) : t("stats.subInOrdersSubPlural", { count: subInOrders.length })}
           />
           <StatCard
-            label="Total Estimated with no Orders"
+            label={t("stats.subNoOrders")}
             value={`$${fmtCurrency(totSubNoOrders)}`}
             color="amber"
-            sub={`${subNoOrders.length} item${subNoOrders.length !== 1 ? "s" : ""} not in orders`}
+            sub={subNoOrders.length === 1 ? t("stats.subNoOrdersSub", { count: subNoOrders.length }) : t("stats.subNoOrdersSubPlural", { count: subNoOrders.length })}
           />
           <StatCard
-            label="Total Estimated"
+            label={t("stats.subTotal")}
             value={`$${fmtCurrency(totSub)}`}
             color="blue"
-            sub={`${subItems.length} subcontractor item${subItems.length !== 1 ? "s" : ""}`}
+            sub={subItems.length === 1 ? t("stats.subTotalSub", { count: subItems.length }) : t("stats.subTotalSubPlural", { count: subItems.length })}
           />
         </div>
         {/* Type breakdown */}
         <div className={`grid gap-3 sm:grid-cols-2 ${isPTL ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
-          <StatCard label="Rent Estimated"                 value={`$${fmtCurrency(totRentEstimated)}`} color="teal"   sub="Quoted, pending approval" />
-          <StatCard label="Rent Approved"                  value={`$${fmtCurrency(totRentApproved)}`}  color="emerald" sub="Confirmed spend" />
-          <StatCard label="Total Estimated Material"       value={`$${fmtCurrency(totMaterial)}`}      color="violet" />
-          <StatCard label="BDF Estimated"                  value={`$${fmtCurrency(totBDFEstimated)}`}  color="orange" sub="Quoted, pending approval" />
-          <StatCard label="BDF Approved"                   value={`$${fmtCurrency(totBDFApproved)}`}   color="rose"   sub="Confirmed spend" />
-          {isPTL && <StatCard label="Total PTL G.C. Fees"  value={`$${fmtCurrency(totPTLGCF)}`}       color="slate"  />}
+          <StatCard label={t("stats.rentEst")}                 value={`$${fmtCurrency(totRentEstimated)}`} color="teal"   sub={t("stats.rentEstSub")} />
+          <StatCard label={t("stats.rentAppr")}                  value={`$${fmtCurrency(totRentApproved)}`}  color="emerald" sub={t("stats.rentApprSub")} />
+          <StatCard label={t("stats.matTotal")}       value={`$${fmtCurrency(totMaterial)}`}      color="violet" />
+          <StatCard label={t("stats.bdfEst")}                  value={`$${fmtCurrency(totBDFEstimated)}`}  color="orange" sub={t("stats.bdfEstSub")} />
+          <StatCard label={t("stats.bdfAppr")}                   value={`$${fmtCurrency(totBDFApproved)}`}   color="rose"   sub={t("stats.bdfApprSub")} />
+          {isPTL && <StatCard label={t("stats.ptlTotal")}  value={`$${fmtCurrency(totPTLGCF)}`}       color="slate"  />}
         </div>
       </div>
 
@@ -576,7 +579,7 @@ export function EstimateBreakdownTable({
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title, cost code, or group…"
+              placeholder={t("table.searchPlaceholder")}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
             />
           </div>
@@ -587,14 +590,14 @@ export function EstimateBreakdownTable({
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-white">
               <tr>
                 <th className="w-8 px-4 py-3" />
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Title</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Cost Code</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Qty</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Unit Cost</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">Type</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Builder Cost</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Client Price</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">Actions</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colTitle")}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colCostCode")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colQty")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colUnitCost")}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colType")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colBuilderCost")}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colClientPrice")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("table.colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -605,8 +608,8 @@ export function EstimateBreakdownTable({
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
                         <Package className="h-6 w-6 text-slate-400" />
                       </div>
-                      <p className="text-sm font-medium text-slate-500">No estimate costs yet</p>
-                      <p className="text-[11px] text-slate-400">Import an Excel file or create costs manually</p>
+                      <p className="text-sm font-medium text-slate-500">{t("table.emptyTitle")}</p>
+                      <p className="text-[11px] text-slate-400">{t("table.emptySub")}</p>
                     </div>
                   </td>
                 </tr>
@@ -645,27 +648,27 @@ export function EstimateBreakdownTable({
                               <span className="text-sm font-medium text-slate-800">{item.Title}</span>
                               {item.ID_Order && (
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                  In Order
+                                  {t("table.badgeInOrder")}
                                 </span>
                               )}
                               {String(item.ID_EstimateItem).startsWith("TEMP") && (
                                 <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
-                                  Unsaved
+                                  {t("table.badgeUnsaved")}
                                 </span>
                               )}
                               {PODIO_SYNC_TYPES.has(item.Cost_Type ?? "") && (
                                 <span className="rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
-                                  Podio field
+                                  {t("table.badgePodio")}
                                 </span>
                               )}
                               {(isBDF || isRent) && item.Status === "Approved" && (
                                 <span className="rounded-full border border-teal-200 bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">
-                                  Approved
+                                  {t("table.badgeApproved")}
                                 </span>
                               )}
                               {(isBDF || isRent) && item.Status !== "Approved" && (
                                 <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
-                                  Estimated
+                                  {t("table.badgeEstimated")}
                                 </span>
                               )}
                             </div>
@@ -691,7 +694,7 @@ export function EstimateBreakdownTable({
                                 <button
                                   onClick={() => onViewDetails(item)}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                                  title="View details"
+                                  title={t("table.actionView")}
                                 >
                                   <Eye className="h-3.5 w-3.5" />
                                 </button>
@@ -701,7 +704,7 @@ export function EstimateBreakdownTable({
                                 <button
                                   onClick={(e) => { e.stopPropagation(); onEditItem(item); }}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-blue-200 hover:text-blue-500 transition-colors"
-                                  title="Edit cost"
+                                  title={t("table.actionEdit")}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                                 </button>
@@ -710,19 +713,19 @@ export function EstimateBreakdownTable({
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(item); }}
                                   className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-500 transition-colors"
-                                  title="Delete cost"
+                                  title={t("table.actionDelete")}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
                               {isBDF && (
                                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-400 select-none">
-                                  BDF Manager
+                                  {t("table.actionBdfManager")}
                                 </span>
                               )}
                               {isRent && (
                                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-400 select-none">
-                                  Rent Manager
+                                  {t("table.actionRentManager")}
                                 </span>
                               )}
                             </div>
@@ -745,11 +748,11 @@ export function EstimateBreakdownTable({
       <ConfirmDialog
         open={showDeleteAll}
         onClose={() => !isDeleting && setShowDeleteAll(false)}
-        title="Delete All Estimate Costs?"
-        description={`This will permanently delete all ${safeItems.length} estimate costs. This action cannot be undone.`}
+        title={t("modals.deleteAllTitle")}
+        description={t("modals.deleteAllDesc", { count: safeItems.length })}
         onConfirm={handleDeleteAll}
         loading={isDeleting}
-        confirmLabel="Delete All"
+        confirmLabel={t("modals.deleteAllConfirm")}
       />
 
       {/* Delete single — with optional Podio sync for BDF/PTLGCF */}

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Store, Globe, Mail, Phone, ExternalLink, Link2Off, Loader2 } from "lucide-react"
 import type { SupplierEntry } from "./SupplierBrowserPanel"
 import { safeUrl } from "./SupplierBrowserPanel"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface Props {
   suppliers: SupplierEntry[]
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
+  const t = useTranslations("supplierBrowser")
+
   if (suppliers.length === 0) {
     return (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -20,7 +23,7 @@ export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
             <Store className="h-3.5 w-3.5 text-violet-600" />
           </div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Linked Suppliers
+            {t("linkedTitle")}
           </p>
           <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-slate-200 px-1.5 text-[10px] font-bold text-slate-500">
             0
@@ -28,8 +31,8 @@ export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
         </div>
         <div className="flex flex-col items-center gap-1.5 px-5 py-6 text-center">
           <Store className="h-7 w-7 text-slate-200" />
-          <p className="text-xs text-slate-400">No suppliers linked yet</p>
-          <p className="text-[11px] text-slate-300">Use the directory below to link suppliers</p>
+          <p className="text-xs text-slate-400">{t("noLinkedYet")}</p>
+          <p className="text-[11px] text-slate-300">{t("useDirectoryBelow")}</p>
         </div>
       </div>
     )
@@ -42,7 +45,7 @@ export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
           <Store className="h-3.5 w-3.5 text-violet-600" />
         </div>
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Linked Suppliers
+          {t("linkedTitle")}
         </p>
         <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[10px] font-bold text-white">
           {suppliers.length}
@@ -71,7 +74,7 @@ export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
                 <button
                   onClick={() => onUnlink(s.ID_Supplier)}
                   disabled={isUnlinking}
-                  title="Unlink supplier"
+                  title={t("unlinkTitle")}
                   className="flex-shrink-0 rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50 opacity-0 group-hover:opacity-100"
                 >
                   {isUnlinking
@@ -100,7 +103,7 @@ export function LinkedSuppliersCard({ suppliers, onUnlink, unlinking }: Props) {
                   <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] text-violet-600 hover:underline">
                     <Globe className="h-2.5 w-2.5 flex-shrink-0" />
-                    Website
+                    {t("website")}
                     <ExternalLink className="h-2 w-2 flex-shrink-0" />
                   </a>
                 )}
