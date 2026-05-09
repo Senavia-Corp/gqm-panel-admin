@@ -725,94 +725,7 @@ function CertCard({
   )
 }
 
-// ─── Member notification panel ────────────────────────────────────────────────
-
-function NotificationPanel({
-  subcId, notifyMemberId, onMemberChange, members, membersLoading, t,
-}: {
-  subcId: string
-  notifyMemberId: string
-  onMemberChange: (id: string) => void
-  members: MemberOption[]
-  membersLoading: boolean
-  t: (k: any) => string
-}) {
-  const selected = members.find(m => m.ID_Member === notifyMemberId)
-  const isActive = !!notifyMemberId
-
-  return (
-    <div className={cn(
-      "overflow-hidden rounded-2xl border px-4 py-4 sm:px-5",
-      isActive ? "border-blue-200 bg-blue-50/50" : "border-slate-200 bg-slate-50"
-    )}>
-      <div className="flex items-start gap-3">
-        <div className={cn(
-          "mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl",
-          isActive ? "bg-blue-100" : "bg-slate-100"
-        )}>
-          {isActive ? <Bell className="h-4 w-4 text-blue-600" /> : <BellOff className="h-4 w-4 text-slate-400" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-slate-700">{t("certNotifyTitle")}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">{t("certNotifyDesc")}</p>
-
-          <div className="mt-3 flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <Select
-                value={notifyMemberId || "__none__"}
-                onValueChange={v => onMemberChange(v === "__none__" ? "" : v)}
-                disabled={membersLoading}
-              >
-                <SelectTrigger className="h-8 w-full border-slate-200 bg-white text-xs">
-                  {membersLoading
-                    ? <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" /> Loading…</span>
-                    : <SelectValue placeholder={t("certNotifySelectMember")} />}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">
-                    <span className="italic text-slate-400">{t("certNotifyNoMember")}</span>
-                  </SelectItem>
-                  {members.map(m => (
-                    <SelectItem key={m.ID_Member} value={m.ID_Member}>
-                      <span className="flex items-center gap-1.5">
-                        <User className="h-3 w-3 flex-shrink-0 text-slate-400" />
-                        <span className="font-medium">{m.name}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {notifyMemberId && (
-              <button onClick={() => onMemberChange("")}
-                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {isActive && selected && (
-            <div className="mt-2 space-y-0.5">
-              <p className="flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
-                <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                {t("certNotifyActive").replace("{name}", selected.name)}
-              </p>
-              {selected.email && (
-                <p className="truncate pl-[18px] text-[11px] text-blue-500">{selected.email}</p>
-              )}
-            </div>
-          )}
-          {!isActive && (
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
-              <BellOff className="h-3 w-3 flex-shrink-0" />
-              {t("certNotifyInactive")}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
+// Member notification panel - REMOVED
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
@@ -832,55 +745,11 @@ export function SubcontractorCertificatesTab({
   const [error, setError]           = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
-  // Member notification state
-  const MEMBER_KEY  = `cert_notify_member_${subcId}`
-  const [notifyMemberId, setNotifyMemberId] = useState<string>("")
-  const [members, setMembers]               = useState<MemberOption[]>([])
-  const [membersLoading, setMembersLoading] = useState(false)
+  // Member notification state - REMOVED per user request
 
-  // Load saved member from localStorage
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem(MEMBER_KEY) : null
-    if (saved) setNotifyMemberId(saved)
-  }, [subcId])
+  // Load members logic removed
 
-  // Fetch member list once
-  useEffect(() => {
-    async function loadMembers() {
-      console.log("[CertTab] Fetching members list (limit 50)...")
-      setMembersLoading(true)
-      try {
-        const res = await apiFetch("/api/members?page=1&limit=50")
-        console.log(`[CertTab] Members response status: ${res.status}`)
-        if (!res.ok) {
-          console.error("[CertTab] Failed to fetch members")
-          return
-        }
-        const data = await res.json()
-        const raw: any[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
-        console.log(`[CertTab] Received ${raw.length} members`)
-        setMembers(raw.map(m => ({
-          ID_Member: m.ID_Member,
-          name:  m.Member_Name || m.Acc_Rep || m.Email_Address || m.ID_Member,
-          email: m.Email_Address ?? "",
-        })))
-      } catch (err) {
-        console.error("[CertTab] Error loading members:", err)
-      } finally { 
-        setMembersLoading(false)
-        console.log("[CertTab] Members loading finished")
-      }
-    }
-    loadMembers()
-  }, [])
-
-  function handleMemberChange(memberId: string) {
-    setNotifyMemberId(memberId)
-    if (typeof window !== "undefined") {
-      if (memberId) localStorage.setItem(MEMBER_KEY, memberId)
-      else          localStorage.removeItem(MEMBER_KEY)
-    }
-  }
+  // Member change logic removed
 
   // Auto-expire: PATCH status to Expired when date has passed
   async function autoExpire(list: Certificate[]): Promise<Certificate[]> {
@@ -902,9 +771,7 @@ export function SubcontractorCertificatesTab({
   }
 
   // Auto-create tasks for certs expiring within 30 days
-  const autoCreateTasks = useCallback(async (list: Certificate[], memberId: string) => {
-    if (!memberId) return
-
+  const autoCreateTasks = useCallback(async (list: Certificate[]) => {
     const expiring = list.filter(c => {
       const d = daysUntilExpiration(c.Expiration_date)
       return d !== null && d >= 0 && d <= 30
@@ -935,12 +802,7 @@ export function SubcontractorCertificatesTab({
         body: JSON.stringify({ ...base, ID_Subcontractor: cert.ID_Subcontractor }),
       }).catch(() => null)
 
-      const memberRes = await apiFetch("/api/tasks", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...base, ID_Member: memberId }),
-      }).catch(() => null)
-
-      if (subcRes?.ok && memberRes?.ok) {
+      if (subcRes?.ok) {
         if (typeof window !== "undefined") localStorage.setItem(dedupKey, todayIso())
         created++
       }
@@ -960,15 +822,12 @@ export function SubcontractorCertificatesTab({
       const res = await apiFetch(`/api/certificates/subcontractor/${encodeURIComponent(subcId)}`)
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
-      const list: Certificate[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
+      const raw: Certificate[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
       
-      // DISABLED: This automatic logic bombards the API and blocks the connection pool
-      // const list = await autoExpire(raw)
+      const list = await autoExpire(raw)
       setCerts(list)
       
-      // DISABLED: Automatic task creation is too heavy for the mount phase
-      // const savedMember = typeof window !== "undefined" ? localStorage.getItem(MEMBER_KEY) : null
-      // await autoCreateTasks(list, savedMember ?? notifyMemberId)
+      await autoCreateTasks(list)
     } catch (e: any) {
       setError(e?.message ?? "Failed to load certificates")
     } finally { setLoading(false) }
@@ -976,15 +835,7 @@ export function SubcontractorCertificatesTab({
 
   useEffect(() => { fetchCerts() }, [subcId])
 
-  // Re-run task creation when member is selected
-  useEffect(() => {
-    // DISABLED: Triggering this on every member change is too aggressive for production
-    /*
-    if (notifyMemberId && certs.length > 0) {
-      autoCreateTasks(certs, notifyMemberId)
-    }
-    */
-  }, [notifyMemberId])
+  // Re-run task creation removed
 
   function handleCreated(cert: Certificate) { setCerts(prev => [cert, ...prev]) }
   function handleUpdated(updated: Certificate) {
@@ -1034,15 +885,7 @@ export function SubcontractorCertificatesTab({
       {/* Body */}
       <div className="space-y-4 p-6">
 
-        {/* Notification panel — always visible */}
-        <NotificationPanel
-          subcId={subcId}
-          notifyMemberId={notifyMemberId}
-          onMemberChange={handleMemberChange}
-          members={members}
-          membersLoading={membersLoading}
-          t={t}
-        />
+        {/* Notification panel REMOVED */}
 
         {/* Certificate list */}
         {loading && (
