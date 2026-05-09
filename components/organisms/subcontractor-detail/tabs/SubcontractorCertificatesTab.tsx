@@ -184,8 +184,10 @@ function CreateCertDialog({
   const setField = (k: keyof CertFormData, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   async function handleCreate() {
+    console.log("[CertTab] handleCreate started")
     setCreating(true)
     try {
+      console.log(`[CertTab] Creating certificate for subc: ${subcId}`)
       const res = await apiFetch(`/api/certificates/subcontractor/${encodeURIComponent(subcId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -464,8 +466,14 @@ function CertCard({
           Expiration_date: data.Expiration_date || null, Notes: data.Notes || null,
         }),
       })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
+      console.log(`[CertTab] Backend response status: ${res.status}`)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error("[CertTab] Creation failed:", errorData)
+        throw new Error(errorData.error || t("toastError"))
+      }
       const updated = await res.json()
+      console.log("[CertTab] Certificate updated successfully:", updated)
       onUpdated({ ...cert, ...updated, attachments: cert.attachments })
       setEditOpen(false)
       toast({ title: t("certUpdated") })
@@ -839,18 +847,29 @@ export function SubcontractorCertificatesTab({
   // Fetch member list once
   useEffect(() => {
     async function loadMembers() {
+      console.log("[CertTab] Fetching members list (limit 50)...")
       setMembersLoading(true)
       try {
-        const res = await apiFetch("/api/members?page=1&limit=200")
-        if (!res.ok) return
+        const res = await apiFetch("/api/members?page=1&limit=50")
+        console.log(`[CertTab] Members response status: ${res.status}`)
+        if (!res.ok) {
+          console.error("[CertTab] Failed to fetch members")
+          return
+        }
         const data = await res.json()
         const raw: any[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
+        console.log(`[CertTab] Received ${raw.length} members`)
         setMembers(raw.map(m => ({
           ID_Member: m.ID_Member,
           name:  m.Member_Name || m.Acc_Rep || m.Email_Address || m.ID_Member,
           email: m.Email_Address ?? "",
         })))
-      } finally { setMembersLoading(false) }
+      } catch (err) {
+        console.error("[CertTab] Error loading members:", err)
+      } finally { 
+        setMembersLoading(false)
+        console.log("[CertTab] Members loading finished")
+      }
     }
     loadMembers()
   }, [])
@@ -941,12 +960,15 @@ export function SubcontractorCertificatesTab({
       const res = await apiFetch(`/api/certificates/subcontractor/${encodeURIComponent(subcId)}`)
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
-      const raw: Certificate[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
-      const list = await autoExpire(raw)
+      const list: Certificate[] = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
+      
+      // DISABLED: This automatic logic bombards the API and blocks the connection pool
+      // const list = await autoExpire(raw)
       setCerts(list)
-      // Read current memberId from localStorage (may differ from state if just mounted)
-      const savedMember = typeof window !== "undefined" ? localStorage.getItem(MEMBER_KEY) : null
-      await autoCreateTasks(list, savedMember ?? notifyMemberId)
+      
+      // DISABLED: Automatic task creation is too heavy for the mount phase
+      // const savedMember = typeof window !== "undefined" ? localStorage.getItem(MEMBER_KEY) : null
+      // await autoCreateTasks(list, savedMember ?? notifyMemberId)
     } catch (e: any) {
       setError(e?.message ?? "Failed to load certificates")
     } finally { setLoading(false) }
@@ -956,9 +978,12 @@ export function SubcontractorCertificatesTab({
 
   // Re-run task creation when member is selected
   useEffect(() => {
+    // DISABLED: Triggering this on every member change is too aggressive for production
+    /*
     if (notifyMemberId && certs.length > 0) {
       autoCreateTasks(certs, notifyMemberId)
     }
+    */
   }, [notifyMemberId])
 
   function handleCreated(cert: Certificate) { setCerts(prev => [cert, ...prev]) }
