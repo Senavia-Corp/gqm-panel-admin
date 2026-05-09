@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const API_BASE = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
+import { getBackendUrl } from "@/lib/api-utils"
+
+const API_BASE = getBackendUrl()
 
 type Ctx = { params: Promise<{ subcId: string }> }
 

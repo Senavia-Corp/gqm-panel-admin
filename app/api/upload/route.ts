@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const PYTHON_API_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
+import { getBackendUrl } from "@/lib/api-utils"
+
+const PYTHON_API_URL = getBackendUrl()
 
 /**
  * POST /api/upload
@@ -38,7 +40,8 @@ export async function POST(request: NextRequest) {
     }
 
     const targetUrl = `${PYTHON_API_URL}/attachments/upload?sync_podio=${syncPodio}`
-    console.log("[upload proxy] POST →", targetUrl)
+    console.log("[upload proxy] Full Target URL:", targetUrl)
+    console.log("[upload proxy] Method: POST")
 
     const authHeader   = request.headers.get("Authorization")
     const userIdHeader = request.headers.get("X-User-Id")
