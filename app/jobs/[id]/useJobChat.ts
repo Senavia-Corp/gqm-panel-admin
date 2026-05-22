@@ -24,6 +24,7 @@ interface UseJobChatReturn {
   isSending:   boolean
   error:        string | null
   sendMessage: (content: string) => Promise<void>
+  pollNew:      () => Promise<void>
   currentUserId: string | null
 }
 
@@ -73,6 +74,9 @@ export function useJobChat({
   // Track the ID of the last message we received so polling only fetches new ones
   const lastIdRef   = useRef<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Track if the tab is visible to avoid unnecessary polling
+  const isTabVisibleRef = useRef(true)
 
   // ── Initial load ─────────────────────────────────────────────────────────
 
@@ -137,11 +141,43 @@ export function useJobChat({
 
     loadInitial()
 
-    // Start polling after the initial load settles
-    intervalRef.current = setInterval(pollNew, pollIntervalMs)
+    const startPolling = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = setInterval(pollNew, pollIntervalMs)
+    }
+
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+
+    // Start polling if tab is visible
+    if (isTabVisibleRef.current) {
+      startPolling()
+    }
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden
+      isTabVisibleRef.current = isVisible
+
+      if (isVisible) {
+        // Resume polling and fetch missed messages
+        pollNew()
+        startPolling()
+      } else {
+        // Stop polling when tab is hidden
+        stopPolling()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      stopPolling()
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [jobId, loadInitial, pollNew, pollIntervalMs])
 
@@ -178,5 +214,5 @@ export function useJobChat({
     }
   }, [jobId])
 
-  return { messages, isLoading, isSending, error, sendMessage, currentUserId }
+  return { messages, isLoading, isSending, error, sendMessage, pollNew, currentUserId }
 }
