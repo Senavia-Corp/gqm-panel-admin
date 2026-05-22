@@ -286,7 +286,7 @@ export default function CreateCommunityPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [parentSelectorOpen, setParentSelectorOpen] = useState(false)
   const [selectedParent, setSelectedParent] = useState<ParentMgmtCo | null>(null)
   const { hasPermission } = usePermissions()
