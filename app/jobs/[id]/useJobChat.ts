@@ -62,7 +62,7 @@ function authHeaders(): Record<string, string> {
 
 export function useJobChat({
   jobId,
-  pollIntervalMs = 10_000,
+  pollIntervalMs = 30_000,
 }: UseJobChatOptions): UseJobChatReturn {
   const [messages,    setMessages]    = useState<ChatMessageData[]>([])
   const [isLoading,   setIsLoading]   = useState(true)

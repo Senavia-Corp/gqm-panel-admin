@@ -151,7 +151,7 @@ export default function CreateParentCoPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const { hasPermission } = usePermissions()
 
   const canCreate = hasPermission("parent_mgmt_co:create")
