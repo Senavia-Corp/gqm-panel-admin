@@ -19,13 +19,13 @@ export async function GET(req: Request) {
 
     const target = `${backend.replace(/\/$/, "")}/metrics/reports/jobs?${qs.toString()}`
 
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || ""
     const res = await fetch(target, {
       method: "GET",
-      // NO pongas Content-Type aquí (no estás mandando body)
       headers: {
         Accept: "application/pdf",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
-      // opcional: evita cache en Vercel/Next
       cache: "no-store",
     })
 
