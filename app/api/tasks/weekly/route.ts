@@ -44,10 +44,15 @@ export async function GET(request: NextRequest) {
   const controller = new AbortController()
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
+  const authHeader = request.headers.get("authorization")
+  const headers: Record<string, string> = {}
+  if (authHeader) headers["Authorization"] = authHeader
+
   try {
     const res = await fetch(url.toString(), {
       method:  "GET",
       cache:   "no-store",
+      headers,
       signal:  controller.signal,
     })
 
