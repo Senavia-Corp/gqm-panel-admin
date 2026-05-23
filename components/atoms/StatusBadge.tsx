@@ -24,7 +24,7 @@ const statusStyles: Record<JobStatus, string> = {
 }
 
 function normalizeStatus(status: string): JobStatus | string {
-  const value = status.trim()
+  const value = status?.trim()
 
   // Common variants -> canonical values matching lib/types.ts
   if (value === "Assigned/P.Quote" || value === "Assigned/P.Quote") return "Assigned/P. Quote"
@@ -49,7 +49,7 @@ function normalizeStatus(status: string): JobStatus | string {
   if (value === "Schedule / Work in Progress") return "Scheduled / Work in Progress"
 
   if (value === "PAID") return "PAID"
-  if (value.toLowerCase() === "paid") return "Paid"
+  if (value?.toLowerCase() === "paid") return "Paid"
 
   // Fallback: return trimmed original
   return value

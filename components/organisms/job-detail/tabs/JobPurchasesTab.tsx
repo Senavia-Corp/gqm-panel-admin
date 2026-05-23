@@ -430,6 +430,7 @@ function PurchaseSection({
   onOpen: (id: string) => void
   onDelete: (id: string) => Promise<void>
 }) {
+  const ts = useTranslations("jobPurchasesTab.sections")
   const [collapsed, setCollapsed] = useState(purchases.length === 0)
 
   return (
@@ -453,7 +454,7 @@ function PurchaseSection({
       {!collapsed && (
         <div className="p-4 space-y-2.5">
           {purchases.length === 0 ? (
-            <p className="text-center text-xs text-slate-400 italic py-4">{useTranslations("jobPurchasesTab.sections")("noPurchases")}</p>
+            <p className="text-center text-xs text-slate-400 italic py-4">{ts("noPurchases")}</p>
           ) : (
             purchases.map(p => (
               <PurchaseCard
@@ -479,6 +480,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
   const ts = useTranslations("jobPurchasesTab.sections")
   const tst = useTranslations("jobPurchasesTab.states")
   const tsum = useTranslations("jobPurchasesTab.summary")
+  const tsearch = useTranslations("jobPurchasesTab.search")
 
   const [purchases, setPurchases] = useState<PurchaseRow[]>([])
   const [total, setTotal] = useState(0)
@@ -644,7 +646,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder={useTranslations("jobPurchasesTab.search")("placeholder")}
+          placeholder={tsearch("placeholder")}
           className="w-full pl-9 pr-8 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30"
         />
         {q && (

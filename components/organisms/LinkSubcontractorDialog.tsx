@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Badge as UIBadge } from "@/components/ui/badge"
+import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -174,6 +175,7 @@ export function LinkSubcontractorDialog({
   open, onClose, jobId, onSubcontractorLinked, defaultSyncPodio = true, jobYear,
 }: Props) {
   const t = useTranslations("jobs")
+  const { errorModal, showError, closeError } = useErrorModal()
   const [loading, setLoading]   = useState(false)
   const [linking, setLinking]   = useState<string | null>(null)
   const [page, setPage]         = useState(1)
@@ -280,12 +282,16 @@ export function LinkSubcontractorDialog({
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error((err as any)?.error || "Failed to link")
+        const errorMessage = (err as any)?.error || "Failed to link"
+        const errorDetail = (err as any)?.detail || ""
+
+        showError(errorMessage, errorDetail, "/api/job-subcontractor", res.status)
+        throw new Error(errorMessage)
       }
       onSubcontractorLinked()
       onClose()
     } catch (err) {
-      console.error(err)
+      // Error ya manejado arriba con showError
     } finally {
       setLinking(null)
     }
@@ -310,7 +316,7 @@ export function LinkSubcontractorDialog({
   const canPrev = page > 1
   const canNext = page < totalPages
 
-  return createPortal(
+  const dialog = createPortal(
     /* Backdrop */
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6"
@@ -651,5 +657,20 @@ export function LinkSubcontractorDialog({
       </div>
     </div>,
     typeof document !== "undefined" ? document.body : (null as any)
+  )
+
+  return (
+    <>
+      {dialog}
+      <ErrorModal
+        open={errorModal.open}
+        onClose={closeError}
+        message={errorModal.message}
+        detail={errorModal.detail}
+        endpoint={errorModal.endpoint}
+        severity={errorModal.severity}
+        statusCode={errorModal.statusCode}
+      />
+    </>
   )
 }

@@ -11,12 +11,20 @@ const MEMBER_API = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.us
 type Ctx = { params: Promise<{ id: string; roleId: string }> }
 
 // Link role → member (replaces existing role since member has one role max)
-export async function POST(_req: Request, { params }: Ctx) {
+export async function POST(req: Request, { params }: Ctx) {
   const { id, roleId } = await params
+
+  const authHeader = req.headers.get("authorization")
+  const userIdHeader = req.headers.get("x-user-id")
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (authHeader) headers["authorization"] = authHeader
+  if (userIdHeader) headers["x-user-id"] = userIdHeader
+
   try {
     const res = await fetch(`${MEMBER_API}/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ ID_Role: roleId }),
       cache: "no-store",
     })
@@ -29,12 +37,20 @@ export async function POST(_req: Request, { params }: Ctx) {
 }
 
 // Unlink role from member
-export async function DELETE(_req: Request, { params }: Ctx) {
+export async function DELETE(req: Request, { params }: Ctx) {
   const { id } = await params
+
+  const authHeader = req.headers.get("authorization")
+  const userIdHeader = req.headers.get("x-user-id")
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (authHeader) headers["authorization"] = authHeader
+  if (userIdHeader) headers["x-user-id"] = userIdHeader
+
   try {
     const res = await fetch(`${MEMBER_API}/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ ID_Role: null }),
       cache: "no-store",
     })
