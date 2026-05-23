@@ -12,7 +12,7 @@ export async function DELETE(
 
     const response = await fetch(url, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
     })
 
     const responseText = await response.text()

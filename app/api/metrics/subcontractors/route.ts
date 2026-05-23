@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
     const target = `${backend.replace(/\/$/, "")}/subcontractor_metrics?${qs.toString()}`
 
-    const res  = await fetch(target, { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" })
+    const res  = await fetch(target, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") }, cache: "no-store" })
     const ct = res.headers.get("content-type") ?? ""
     if (!ct.includes("application/json")) {
       const text = await res.text()

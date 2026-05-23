@@ -18,6 +18,8 @@ export async function POST(req: Request, { params }: Ctx) {
   const userIdHeader = req.headers.get("x-user-id")
 
   const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const _authHeader = (req.headers.get("authorization") || req.headers.get("Authorization") || "");
+    if (_authHeader) headers["Authorization"] = _authHeader;
   if (authHeader) headers["authorization"] = authHeader
   if (userIdHeader) headers["x-user-id"] = userIdHeader
 

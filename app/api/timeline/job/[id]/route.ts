@@ -35,7 +35,7 @@ export async function GET(
     const res = await fetch(url, {
       method:  "GET",
       cache:   "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
       signal:  controller.signal,
     })
 

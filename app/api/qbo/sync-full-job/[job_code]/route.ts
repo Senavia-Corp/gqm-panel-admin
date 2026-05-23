@@ -31,7 +31,7 @@ export async function POST(
   try {
     const response = await fetch(targetUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
     })
 
     const data = await response.json()

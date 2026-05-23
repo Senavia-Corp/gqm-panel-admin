@@ -20,6 +20,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     // ── Forward X-User-Id ───────────────────────────────────────────────────
     const userId  = request.headers.get("X-User-Id")
     const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const _authHeader = (request.headers.get("authorization") || request.headers.get("Authorization") || "");
+    if (_authHeader) headers["Authorization"] = _authHeader;
     if (userId) headers["X-User-Id"] = userId
 
     const response = await fetch(pythonUrl.toString(), { method: "PATCH", headers, body: JSON.stringify(body) })

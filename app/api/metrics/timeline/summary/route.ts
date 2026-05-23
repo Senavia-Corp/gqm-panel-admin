@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
   try {
-    const res  = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal })
+    const res  = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal , headers: { "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") } })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return jsonError(data?.error ?? `Python API returned ${res.status}`, res.status)
     return NextResponse.json(data)

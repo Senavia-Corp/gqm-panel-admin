@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const text = await res.text()
     return new NextResponse(text, {
       status: res.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") },
     })
   } catch (e: any) {
     return NextResponse.json(
@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const text = await res.text()
     return new NextResponse(text, {
       status: res.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") },
     })
   } catch (e: any) {
     return NextResponse.json(
@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const text = await res.text()
     return new NextResponse(text, {
       status: res.status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") },
     })
   } catch (e: any) {
     return NextResponse.json(

@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     // ── Forward X-User-Id ───────────────────────────────────────────────────
     const userId  = request.headers.get("X-User-Id")
     const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const _authHeader = (request.headers.get("authorization") || request.headers.get("Authorization") || "");
+    if (_authHeader) headers["Authorization"] = _authHeader;
     if (userId) headers["X-User-Id"] = userId
 
     const response = await fetch(pythonUrl.toString(), { method: "POST", headers, body: JSON.stringify(body), redirect: "follow" })
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
     const skipKeys = new Set(["jobId","id_job","ID_Jobs","job_podio_id","jobPodioId","podio_id","podioId","ID_Subcontractor","id_subcontractor","subcontractor","subcontractorId"])
     incomingUrl.searchParams.forEach((v, k) => { if (!skipKeys.has(k)) pythonUrl.searchParams.set(k, v) })
 
-    const response = await fetch(pythonUrl.toString(), { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" })
+    const response = await fetch(pythonUrl.toString(), { method: "GET", headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") }, cache: "no-store" })
     const ct       = response.headers.get("content-type") || ""
     const body     = ct.includes("application/json") ? await response.json() : await response.text()
     return NextResponse.json(body, { status: response.status })

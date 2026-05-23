@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
     if (!id) return NextResponse.json({ detail: "Missing id" }, { status: 400 })
     const pythonUrl = new URL(`${PYTHON_API_URL}/change_order/${encodeURIComponent(id)}`)
     new URL(request.url).searchParams.forEach((v, k) => pythonUrl.searchParams.set(k, v))
-    const response = await fetch(pythonUrl.toString(), { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" })
+    const response = await fetch(pythonUrl.toString(), { method: "GET", headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") }, cache: "no-store" })
     const ct   = response.headers.get("content-type") || ""
     const body = ct.includes("application/json") ? await response.json() : await response.text()
     return NextResponse.json(body, { status: response.status })
@@ -37,6 +37,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     // ── Forward X-User-Id ───────────────────────────────────────────────────
     const userId  = request.headers.get("X-User-Id")
     const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const _authHeader = (request.headers.get("authorization") || request.headers.get("Authorization") || "");
+    if (_authHeader) headers["Authorization"] = _authHeader;
     if (userId) headers["X-User-Id"] = userId
 
     const response = await fetch(pythonUrl.toString(), { method: "PATCH", headers, body: JSON.stringify(body), redirect: "follow" })

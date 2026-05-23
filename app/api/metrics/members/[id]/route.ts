@@ -19,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const query  = qs.toString()
     const target = `${backend.replace(/\/$/, "")}/member_metrics/acc-rep-selling/${id}${query ? `?${query}` : ""}`
 
-    const res  = await fetch(target, { method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store" })
+    const res  = await fetch(target, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") }, cache: "no-store" })
     const ct = res.headers.get("content-type") ?? ""
     if (!ct.includes("application/json")) {
       const text = await res.text()

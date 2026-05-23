@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
     const userId = request.headers.get("X-User-Id")
 
     const headers: Record<string, string> = { "Content-Type": "application/json" }
+    const _authHeader = (request.headers.get("authorization") || request.headers.get("Authorization") || "");
+    if (_authHeader) headers["Authorization"] = _authHeader;
     if (userId) headers["X-User-Id"] = userId   // ← forwarded
 
     const response = await fetch(`${API_BASE_URL}/estimate/`, {

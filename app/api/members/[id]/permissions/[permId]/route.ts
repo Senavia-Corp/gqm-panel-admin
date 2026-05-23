@@ -12,7 +12,7 @@ export async function POST(_req: Request, { params }: Ctx) {
   try {
     const res = await fetch(`${PERM_API}/permission/${permId}/member/${id}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
       cache: "no-store",
     })
     const text = await res.text()
@@ -28,7 +28,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   try {
     const res = await fetch(`${PERM_API}/permission/${permId}/member/${id}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
       cache: "no-store",
     })
     const text = await res.text()

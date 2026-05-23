@@ -30,7 +30,7 @@ async function proxyFetch(url: string, init: RequestInit): Promise<NextResponse>
   const controller = new AbortController()
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal })
+    const res = await fetch(url, { ...init, signal: controller.signal , headers: { "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") } })
     if (!res.ok) {
       const text = await res.text().catch(() => "")
       return jsonError(`Python API error: ${text || res.statusText}`, res.status)

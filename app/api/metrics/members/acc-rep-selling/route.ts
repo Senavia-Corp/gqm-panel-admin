@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
     const res = await fetch(target, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": (req.headers.get("authorization") || req.headers.get("Authorization") || "") },
       // opcional: evita cache en server runtime
       cache: "no-store",
     })
