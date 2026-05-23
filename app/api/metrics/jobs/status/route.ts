@@ -17,10 +17,12 @@ export async function GET(req: Request) {
     if (year) qs.set("year", year)
 
     const target = `${backend.replace(/\/$/, "")}/job_metrics/status?${qs.toString()}`
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || ""
     const res = await fetch(target, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": authHeader,
       },
     })
 

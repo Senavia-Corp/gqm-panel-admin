@@ -27,7 +27,7 @@ async function proxyFetch(url: string, init: RequestInit) {
       ...init,
       cache:  "no-store",
       signal: controller.signal,
-    , headers: { "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") } })
+    })
 
     const text = await res.text()
     let data: unknown = null

@@ -11,7 +11,7 @@ function jsonError(message: string, status = 500, extra?: Record<string, unknown
     return NextResponse.json({ error: message, ...(extra ?? {}) }, { status })
 }
 
-async function proxyFetch(url: string, init?: RequestInit) {
+async function proxyFetch(url: string, init?: RequestInit, authHeader?: string) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
@@ -21,6 +21,7 @@ async function proxyFetch(url: string, init?: RequestInit) {
             cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
+                ...(authHeader ? { "Authorization": authHeader } : {}),
                 ...(init?.headers ?? {}),
             },
             signal: controller.signal,
@@ -68,11 +69,12 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get("id")
     const page = searchParams.get("page") ?? DEFAULT_PAGE
     const limit = searchParams.get("limit") ?? DEFAULT_LIMIT
+    const auth = request.headers.get("authorization") || request.headers.get("Authorization") || ""
 
     if (id) {
         const url = `${COMMISSION_GR_BASE}/${encodeURIComponent(id)}`
         console.log("[commission_group proxy] GET by id ->", url)
-        const result = await proxyFetch(url, { method: "GET" })
+        const result = await proxyFetch(url, { method: "GET" }, auth)
         if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
         return NextResponse.json(result.data)
     }
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams({ page, limit })
     const url = `${COMMISSION_GR_BASE}/?${params.toString()}`
     console.log("[commission_group proxy] GET list ->", url)
-    const result = await proxyFetch(url, { method: "GET" })
+    const result = await proxyFetch(url, { method: "GET" }, auth)
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
 }
@@ -94,14 +96,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null)
     if (!body) return jsonError("Invalid JSON body", 400)
+    const auth = request.headers.get("authorization") || request.headers.get("Authorization") || ""
 
     const url = `${COMMISSION_GR_BASE}/`
     console.log("[commission_group proxy] POST ->", url)
 
-    const result = await proxyFetch(url, {
-        method: "POST",
-        body: JSON.stringify(body),
-    })
+    const result = await proxyFetch(url, { method: "POST", body: JSON.stringify(body) }, auth)
 
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data, { status: 201 })
@@ -119,14 +119,12 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json().catch(() => null)
     if (!body) return jsonError("Invalid JSON body", 400)
+    const auth = request.headers.get("authorization") || request.headers.get("Authorization") || ""
 
     const url = `${COMMISSION_GR_BASE}/${encodeURIComponent(id)}`
     console.log("[commission_group proxy] PATCH ->", url)
 
-    const result = await proxyFetch(url, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-    })
+    const result = await proxyFetch(url, { method: "PATCH", body: JSON.stringify(body) }, auth)
 
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
@@ -140,11 +138,12 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     if (!id) return jsonError("Missing required query param: id", 400)
+    const auth = request.headers.get("authorization") || request.headers.get("Authorization") || ""
 
     const url = `${COMMISSION_GR_BASE}/${encodeURIComponent(id)}`
     console.log("[commission_group proxy] DELETE ->", url)
 
-    const result = await proxyFetch(url, { method: "DELETE" })
+    const result = await proxyFetch(url, { method: "DELETE" }, auth)
     if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
     return NextResponse.json(result.data)
 }

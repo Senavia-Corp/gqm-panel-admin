@@ -80,7 +80,8 @@ export async function GET(request: NextRequest) {
   const url = `${JOBS_BASE}/by-member-role?${params.toString()}`
   console.log("[jobs/by-member-role proxy] GET ->", url)
 
-  const result = await proxyFetch(url, { method: "GET" })
+  const authHeader = request.headers.get("authorization") || request.headers.get("Authorization") || ""
+  const result = await proxyFetch(url, { method: "GET", headers: { "Authorization": authHeader } })
   if (!result.ok) return jsonError(`Python API error (${result.status})`, result.status, { detail: result.error })
 
   return NextResponse.json(result.data)

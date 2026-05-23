@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": request.headers.get("authorization") || request.headers.get("Authorization") || "",
       },
     })
 
@@ -50,6 +51,7 @@ export async function DELETE(request: NextRequest) {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": request.headers.get("authorization") || request.headers.get("Authorization") || "",
       },
     })
 
