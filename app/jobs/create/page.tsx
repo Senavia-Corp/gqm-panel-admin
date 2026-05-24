@@ -87,7 +87,7 @@ export default function CreateJobPage() {
   const [loadingClients, setLoadingClients] = useState(true)
 
   const [loading, setLoading]     = useState(false)
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [yearSync, setYearSync]   = useState<string>("")
 
   const [formData, setFormData] = useState<{
