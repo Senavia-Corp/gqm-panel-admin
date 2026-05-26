@@ -42,6 +42,7 @@ export interface CommissionDetail {
 }
 
 export type JobStatus =
+  // QID statuses
   | "Assigned/P. Quote"
   | "Waiting for Approval"
   | "Scheduled / Work in Progress"
@@ -51,10 +52,12 @@ export type JobStatus =
   | "HOLD"
   | "PAID"
   | "Warranty"
+  // PTL statuses (real Podio values)
   | "Received-Stand By"
-  | "Assigned-In progress"
-  | "Completed PVI"
+  | "Stand By"
+  | "Entered"
   | "Paid"
+  // PAR statuses
   | "In Progress"
   | "Completed PVI / POs"
   | "Archived"

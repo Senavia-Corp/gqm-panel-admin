@@ -78,7 +78,8 @@ export function JobRightSidebar({ role, job }: Props) {
 
       {/* For members, show Chat. For technicians, show Timeline. */}
       {!isTech ? (
-        jobId ? <JobSidebarChat jobId={jobId} /> : null
+        null
+        // jobId ? <JobSidebarChat jobId={jobId} /> : null
       ) : (
         <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-3.5 flex flex-row items-center justify-between">

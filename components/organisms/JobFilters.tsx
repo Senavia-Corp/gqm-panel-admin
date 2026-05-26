@@ -33,6 +33,7 @@ interface JobFiltersProps {
 
 const JOB_STATUSES: Array<{ label: string; value: JobStatus | "all" }> = [
   { label: "All Statuses",                   value: "all" },
+  // QID
   { label: "Assigned/P.Quote",               value: "Assigned/P. Quote" },
   { label: "Waiting for Approval",           value: "Waiting for Approval" },
   { label: "Schedule/Work in Progress",      value: "Scheduled / Work in Progress" },
@@ -42,10 +43,12 @@ const JOB_STATUSES: Array<{ label: string; value: JobStatus | "all" }> = [
   { label: "HOLD",                           value: "HOLD" },
   { label: "PAID",                           value: "PAID" },
   { label: "Warranty",                       value: "Warranty" },
-  { label: "Received-Stand By",             value: "Received-Stand By" },
-  { label: "Assigned-In progress",           value: "Assigned-In progress" },
-  { label: "Completed PVI",                  value: "Completed PVI" },
+  // PTL (real Podio values)
+  { label: "Received-Stand By",              value: "Received-Stand By" },
+  { label: "Stand By",                       value: "Stand By" },
+  { label: "Entered",                        value: "Entered" },
   { label: "Paid",                           value: "Paid" },
+  // PAR
   { label: "In Progress",                    value: "In Progress" },
   { label: "Completed PVI / POs",            value: "Completed PVI / POs" },
   { label: "Archived",                       value: "Archived" },

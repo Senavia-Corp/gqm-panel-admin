@@ -66,8 +66,8 @@ const STATUS_COLORS: Record<string, string> = {
   Archived: "bg-slate-100 text-slate-500 border-slate-200",
   // PTL
   "Received-Stand By": "bg-slate-100 text-slate-600 border-slate-200",
-  "Assigned-In progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Completed PVI": "bg-teal-50 text-teal-700 border-teal-200",
+  "Stand By": "bg-slate-100 text-slate-600 border-slate-200",
+  "Entered": "bg-sky-50 text-sky-700 border-sky-200",
   Paid: "bg-green-50 text-green-700 border-green-200",
   // PAR
   "In Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",

@@ -20,6 +20,7 @@ import { useJobFilters } from "@/hooks/useJobFilters"
 import { apiFetch } from "@/lib/apiFetch"
 import { AdvancedJobFilters } from "@/components/organisms/AdvancedJobFilters"
 import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
+import { SyncStatusButton } from "@/components/organisms/SyncStatusButton"
 
 type JobsTab = "ALL" | JobType
 type YearFilter = "ALL" | "2026" | "2025" | "2024" | "2023"
@@ -260,7 +261,9 @@ export default function JobsPage() {
               </Tabs>
             </div>
 
-            <div className="hidden sm:block sm:w-[140px]" />
+            <div className="hidden sm:block">
+              <SyncStatusButton />
+            </div>
           </div>
 
           {isLoading ? (

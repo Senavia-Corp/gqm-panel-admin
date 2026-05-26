@@ -34,7 +34,7 @@ export async function GET(
     const res = await fetch(url, {
       method:  "GET",
       cache:   "no-store",
-      headers: { "Content-Type": "application/json", "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") },
+      headers: { "Content-Type": "application/json", "Authorization": (_request.headers.get("authorization") || _request.headers.get("Authorization") || "") },
       signal:  controller.signal,
     })
 

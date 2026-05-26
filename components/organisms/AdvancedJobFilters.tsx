@@ -75,6 +75,7 @@ interface AdvancedJobFiltersProps {
   onAddNew?: () => void
   onExportClick?: () => void
   isTechnician?: boolean
+  actionButtons?: React.ReactNode
 }
 
 export function AdvancedJobFilters({
@@ -104,6 +105,7 @@ export function AdvancedJobFilters({
   onAddNew,
   onExportClick,
   isTechnician,
+  actionButtons,
 }: AdvancedJobFiltersProps) {
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
@@ -224,6 +226,8 @@ export function AdvancedJobFilters({
                 <span>{t("filtersAddNew")}</span>
               </Button>
             )}
+
+            {actionButtons}
           </div>
         </div>
 

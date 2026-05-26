@@ -114,7 +114,16 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<string, string[]> = {
     "Warranty",
     "Archived",
   ],
-  PTL: ["Received-Stand By", "Assigned-In progress", "Completed PVI", "Cancelled", "Paid"],
+  PTL: [
+    "Received-Stand By",
+    "Scheduled / Work in Progress",
+    "Completed P. INV / POs",
+    "Invoiced",
+    "Paid",
+    "Cancelled",
+    "Entered",
+    "Stand By",
+  ],
   PAR: ["In Progress", "Completed PVI / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
@@ -139,8 +148,8 @@ const STATUS_BADGE: Record<string, string> = {
   "Cancelled": "bg-red-50 text-red-700 border-red-200",
   "Archived": "bg-slate-100 text-slate-500 border-slate-200",
   "Received-Stand By": "bg-slate-100 text-slate-600 border-slate-200",
-  "Assigned-In progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Completed PVI": "bg-teal-50 text-teal-700 border-teal-200",
+  "Stand By": "bg-slate-100 text-slate-600 border-slate-200",
+  "Entered": "bg-sky-50 text-sky-700 border-sky-200",
   "In Progress": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "Completed PVI / POs": "bg-teal-50 text-teal-700 border-teal-200",
 }

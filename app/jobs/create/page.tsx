@@ -20,6 +20,7 @@ import { fetchClients, createJob } from "@/lib/services/jobs-service"
 import type { JobType, JobStatus } from "@/lib/types"
 
 import { ClientSelect } from "@/components/organisms/ClientSelect"
+import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 
 import {
   ArrowLeft,
@@ -44,7 +45,16 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<JobType, JobStatus[]> = {
     "PAID",
     "Warranty",
   ],
-  PTL: ["Received-Stand By", "Assigned-In progress", "Completed PVI", "Cancelled", "Paid"],
+  PTL: [
+    "Received-Stand By",
+    "Scheduled / Work in Progress",
+    "Completed P. INV / POs",
+    "Invoiced",
+    "Paid",
+    "Cancelled",
+    "Entered",
+    "Stand By",
+  ],
   PAR: ["In Progress", "Completed PVI / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
@@ -84,11 +94,13 @@ export default function CreateJobPage() {
   const [userLoading, setUserLoading]   = useState(true)
 
   const [clients, setClients]               = useState<any[]>([])
-  const [loadingClients, setLoadingClients] = useState(true)
+  const [loadingClients, setLoadingClients] = useState(false)
 
   const [loading, setLoading]     = useState(false)
   const [syncPodio, setSyncPodio] = useState(true)
   const [yearSync, setYearSync]   = useState<string>("")
+
+  const { errorModal, showError, closeError } = useErrorModal()
 
   const [formData, setFormData] = useState<{
     jobType: JobType | ""
@@ -218,9 +230,13 @@ export default function CreateJobPage() {
       } else {
         router.push("/jobs")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating job:", error)
-      toast({ title: "Error", description: t("createError"), variant: "destructive" })
+      const errResponse = error?.response?.data
+      const message = errResponse?.error || error.message || t("createError")
+      const detail = errResponse?.detail || ""
+      
+      showError(message, detail, "POST /jobs", error?.response?.status)
     } finally {
       setLoading(false)
     }
@@ -610,6 +626,7 @@ export default function CreateJobPage() {
           </form>
         </main>
       </div>
+      <ErrorModal {...errorModal} onClose={closeError} />
     </div>
   )
 }

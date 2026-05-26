@@ -7,6 +7,7 @@ import { LocaleProvider } from "@/components/providers/LocaleProvider"
 import { SidebarProvider } from "@/components/providers/SidebarContext"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
+import ReactQueryProvider from "./providers/query-client-provider"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -48,15 +49,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <LocaleProvider>
-          <TooltipProvider>
-            <SidebarProvider>
-              {children}
-            </SidebarProvider>
-          </TooltipProvider>
-          <Analytics />
-          <Toaster richColors position="top-right" />
-        </LocaleProvider>
+        <ReactQueryProvider>
+          <LocaleProvider>
+            <TooltipProvider>
+              <SidebarProvider>
+                {children}
+              </SidebarProvider>
+            </TooltipProvider>
+            <Analytics />
+            <Toaster richColors position="top-right" />
+          </LocaleProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   )
