@@ -5,8 +5,8 @@ import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  CloudOff, Cloud, AlertCircle, CheckCircle2, RefreshCw,
-  X, AlertTriangle, Trash2
+  Cloud, AlertCircle, CheckCircle2, RefreshCw,
+  X, Trash2
 } from "lucide-react"
 import {
   useFailedSyncs,
