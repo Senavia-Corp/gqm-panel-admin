@@ -22,6 +22,7 @@ import {
   ZapOff,
   CheckCircle2,
   UserCheck,
+  AlertCircle,
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
@@ -32,6 +33,8 @@ type MemberRow = {
   Company_Role?: string | null
   Email_Address?: string | null
   Phone_Number?: string | null
+  podio_profile_id?: string | null
+  podio_item_id?: string | null
 }
 
 type ApiPage<T> = {
@@ -54,6 +57,47 @@ const ROLE_OPTIONS = [
   { value: "Acc Rep Selling", label: "Acc Rep Selling" },
   { value: "Mgmt Member",     label: "Mgmt Member" },
 ] as const
+
+const JOB_MEMBER_FIELDS_FE: Record<string, Record<string, { type: "app" | "contact", rol: string }>> = {
+  "PAR_2024": { "acc-rep-selling": { type: "app", rol: "Acc Rep Selling" } },
+  "PAR_2025": { "acc-rep-selling": { type: "app", rol: "Acc Rep Selling" } },
+  "PAR_2026": { "acc-rep-selling": { type: "app", rol: "Acc Rep Selling" } },
+  "PTL_2023": { "member": { type: "contact", rol: "Mgmt Member" } },
+  "PTL_2024": { "member": { type: "contact", rol: "Mgmt Member" } },
+  "PTL_2025": { "relationship-2": { type: "app", rol: "Mgmt Member" } },
+  "PTL_2026": { "relationship-2": { type: "app", rol: "Mgmt Member" } },
+  "QID_2023": {
+    "members": { type: "contact", rol: "Selling Member" },
+    "mgmt-member": { type: "contact", rol: "Mgmt Member" },
+    "lead-member": { type: "contact", rol: "Lead Member" }
+  },
+  "QID_2024": {
+    "relation-rep": { type: "app", rol: "Acc Rep Selling" },
+    "mgmt-member-2": { type: "app", rol: "Mgmt Member" },
+    "lead-member": { type: "contact", rol: "Lead Member" }
+  },
+  "QID_2025": {
+    "relation-rep": { type: "app", rol: "Acc Rep Selling" },
+    "mgmt-member-2": { type: "app", rol: "Mgmt Member" },
+    "lead-member": { type: "contact", rol: "Lead Member" }
+  },
+  "QID_2026": {
+    "relation-rep": { type: "app", rol: "Acc Rep Selling" },
+    "mgmt-member-2": { type: "app", rol: "Mgmt Member" },
+    "lead-member": { type: "contact", rol: "Lead Member" }
+  }
+}
+
+function getRequiredPodioType(jobId: string, year: number | undefined, roleName: string): "app" | "contact" | null {
+  if (!jobId || !year) return null
+  const jobType = jobId.startsWith("QID") ? "QID" : jobId.startsWith("PTL") ? "PTL" : jobId.startsWith("PAR") ? "PAR" : null
+  if (!jobType) return null
+  const key = `${jobType}_${year}`
+  const config = JOB_MEMBER_FIELDS_FE[key]
+  if (!config) return null
+  const found = Object.values(config).find((c) => c.rol === roleName)
+  return found ? found.type : null
+}
 
 // ── Avatar helpers ─────────────────────────────────────────────────────────
 const PALETTE = ["bg-emerald-500","bg-sky-500","bg-violet-500","bg-amber-500","bg-rose-500","bg-teal-500"]
@@ -86,20 +130,26 @@ function MemberTableRow({
   isSelected,
   onSelect,
   t,
+  isPodioMissing,
 }: {
   member: MemberRow
   isSelected: boolean
   onSelect: () => void
   t: (key: string, params?: any) => string
+  isPodioMissing: boolean
 }) {
   const name = member.Member_Name ?? "—"
   const bg   = avatarBg(String(member.Member_Name ?? member.ID_Member))
 
   return (
     <tr
-      onClick={onSelect}
-      className={`cursor-pointer border-t transition-colors ${
-        isSelected ? "bg-emerald-50 hover:bg-emerald-100" : "hover:bg-slate-50"
+      onClick={isPodioMissing ? undefined : onSelect}
+      className={`border-t transition-colors ${
+        isPodioMissing
+          ? "opacity-60 bg-slate-50/30 cursor-not-allowed"
+          : isSelected
+            ? "bg-emerald-50 hover:bg-emerald-100 cursor-pointer"
+            : "hover:bg-slate-50 cursor-pointer"
       }`}
     >
       <td className="p-3">
@@ -121,7 +171,12 @@ function MemberTableRow({
       </td>
       <td className="p-3 text-sm text-slate-600">{member.Phone_Number ?? "—"}</td>
       <td className="p-3 text-right">
-        {isSelected ? (
+        {isPodioMissing ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700">
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+            {t("notInPodio")}
+          </span>
+        ) : isSelected ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {t("selected")}
@@ -142,20 +197,26 @@ function MemberListItem({
   isSelected,
   onSelect,
   t,
+  isPodioMissing,
 }: {
   member: MemberRow
   isSelected: boolean
   onSelect: () => void
   t: (key: string, params?: any) => string
+  isPodioMissing: boolean
 }) {
   const name = member.Member_Name ?? "—"
   const bg   = avatarBg(String(member.Member_Name ?? member.ID_Member))
 
   return (
     <div
-      onClick={onSelect}
-      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-        isSelected ? "bg-emerald-50" : "active:bg-slate-50"
+      onClick={isPodioMissing ? undefined : onSelect}
+      className={`flex items-center gap-3 p-3 transition-colors ${
+        isPodioMissing
+          ? "opacity-60 bg-slate-50/30 cursor-not-allowed"
+          : isSelected
+            ? "bg-emerald-50 cursor-pointer"
+            : "active:bg-slate-50 cursor-pointer"
       }`}
     >
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white ${bg}`}>
@@ -169,9 +230,14 @@ function MemberListItem({
         </p>
       </div>
       <div className="flex-shrink-0">
-        {isSelected ? (
+        {isPodioMissing ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-700">
+            <AlertCircle className="h-3 w-3 flex-shrink-0" />
+            {t("notInPodio")}
+          </span>
+        ) : isSelected ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-            <CheckCircle2 className="h-3 w-3" />
+            <CheckCircle2 className="h-3.5 w-3.5" />
             {t("selected")}
           </span>
         ) : (
@@ -254,6 +320,23 @@ export function LinkMemberDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  // Miembro a mostrar en el preview: busca en página actual, si no usa el cache
+  const selectedMember =
+    data.results.find((m) => m.ID_Member === selectedMemberId) ?? selectedMemberCache
+
+  // Deseleccionar si el miembro actual seleccionado ya no es válido bajo el modo Podio actual
+  React.useEffect(() => {
+    if (!selectedMemberId || !selectedMember) return
+    const reqType = getRequiredPodioType(jobId, jobYear, selectedRole)
+    const isPodioMissing = syncPodio && !!reqType && (
+      reqType === "app" ? !selectedMember.podio_item_id : !selectedMember.podio_profile_id
+    )
+    if (isPodioMissing) {
+      setSelectedMemberId("")
+      setSelectedMemberCache(null)
+    }
+  }, [syncPodio, selectedRole, selectedMemberId, selectedMember, jobId, jobYear])
+
   // Al seleccionar un miembro, cachear para mantener preview al cambiar de página
   const handleSelect = (member: MemberRow) => {
     if (selectedMemberId === member.ID_Member) {
@@ -264,10 +347,6 @@ export function LinkMemberDialog({
       setSelectedMemberCache(member)
     }
   }
-
-  // Miembro a mostrar en el preview: busca en página actual, si no usa el cache
-  const selectedMember =
-    data.results.find((m) => m.ID_Member === selectedMemberId) ?? selectedMemberCache
 
   const handleLink = async () => {
     if (!selectedMemberId) {
@@ -436,15 +515,22 @@ export function LinkMemberDialog({
                   {search ? t("noResultsFor", { query: debouncedSearch }) : t("noMembersFound")}
                 </p>
               ) : (
-                data.results.map((m) => (
-                  <MemberListItem
-                    key={m.ID_Member}
-                    member={m}
-                    isSelected={selectedMemberId === m.ID_Member}
-                    onSelect={() => handleSelect(m)}
-                    t={t}
-                  />
-                ))
+                data.results.map((m) => {
+                  const reqType = getRequiredPodioType(jobId, jobYear, selectedRole)
+                  const isPodioMissing = syncPodio && !!reqType && (
+                    reqType === "app" ? !m.podio_item_id : !m.podio_profile_id
+                  )
+                  return (
+                    <MemberListItem
+                      key={m.ID_Member}
+                      member={m}
+                      isSelected={selectedMemberId === m.ID_Member}
+                      onSelect={() => handleSelect(m)}
+                      t={t}
+                      isPodioMissing={isPodioMissing}
+                    />
+                  )
+                })
               )}
             </div>
             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-3 py-2">
@@ -489,15 +575,22 @@ export function LinkMemberDialog({
                       </td>
                     </tr>
                   ) : (
-                    data.results.map((m) => (
-                      <MemberTableRow
-                        key={m.ID_Member}
-                        member={m}
-                        isSelected={selectedMemberId === m.ID_Member}
-                        onSelect={() => handleSelect(m)}
-                        t={t}
-                      />
-                    ))
+                    data.results.map((m) => {
+                      const reqType = getRequiredPodioType(jobId, jobYear, selectedRole)
+                      const isPodioMissing = syncPodio && !!reqType && (
+                        reqType === "app" ? !m.podio_item_id : !m.podio_profile_id
+                      )
+                      return (
+                        <MemberTableRow
+                          key={m.ID_Member}
+                          member={m}
+                          isSelected={selectedMemberId === m.ID_Member}
+                          onSelect={() => handleSelect(m)}
+                          t={t}
+                          isPodioMissing={isPodioMissing}
+                        />
+                      )
+                    })
                   )}
                 </tbody>
               </table>

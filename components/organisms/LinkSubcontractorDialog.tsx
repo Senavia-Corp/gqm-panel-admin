@@ -27,6 +27,7 @@ type SubRow = {
   Status?: string
   Email_Address?: any
   Score?: number
+  podio_item_id?: string | null
 }
 
 type TableResponse = {
@@ -544,6 +545,7 @@ export function LinkSubcontractorDialog({
                   {displayRows.map((s) => {
                     const org = normalizeOrg(s.Organization)
                     const isLinking = linking === s.ID_Subcontractor
+                    const isPodioMissing = syncPodio && !s.podio_item_id
                     
                     // Match ALL highlighting logic
                     const subSkillIds = (s as any).skill_ids || []
@@ -553,9 +555,11 @@ export function LinkSubcontractorDialog({
                       <tr 
                         key={s.ID_Subcontractor} 
                         className={`transition-colors group ${
-                          matchesAll 
-                            ? "bg-indigo-50/50 hover:bg-indigo-100/50 border-l-4 border-l-indigo-400" 
-                            : "hover:bg-slate-50/70"
+                          isPodioMissing
+                            ? "opacity-60 bg-slate-50/30"
+                            : matchesAll 
+                              ? "bg-indigo-50/50 hover:bg-indigo-100/50 border-l-4 border-l-indigo-400" 
+                              : "hover:bg-slate-50/70"
                         }`}
                       >
                       {/* ID */}
@@ -602,22 +606,29 @@ export function LinkSubcontractorDialog({
 
                       {/* Action */}
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleLink(s.ID_Subcontractor)}
-                          disabled={linking !== null}
-                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                            isLinking
-                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                              : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          }`}
-                        >
-                          {isLinking ? (
-                            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("linkSubLinking")}</>
-                          ) : (
-                            <><Link2 className="h-3.5 w-3.5" /> {t("linkSubLinkBtn")}</>
-                          )}
-                        </button>
+                        {isPodioMissing ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                            {t("linkSubNotInPodio")}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleLink(s.ID_Subcontractor)}
+                            disabled={linking !== null}
+                            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                              isLinking
+                                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            }`}
+                          >
+                            {isLinking ? (
+                              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("linkSubLinking")}</>
+                            ) : (
+                              <><Link2 className="h-3.5 w-3.5" /> {t("linkSubLinkBtn")}</>
+                            )}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
