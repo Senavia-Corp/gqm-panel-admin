@@ -12,13 +12,15 @@ import { type NextRequest, NextResponse } from "next/server"
 const API_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
 const TIMEOUT_MS   = 20_000
 
-function getUserId(request: NextRequest): string | null {
-  return request.headers.get("X-User-Id")
-}
-
-function buildHeaders(userId: string | null): Record<string, string> {
+function buildHeaders(request: NextRequest): Record<string, string> {
   const h: Record<string, string> = { "Content-Type": "application/json" }
+  
+  const userId = request.headers.get("X-User-Id")
   if (userId) h["X-User-Id"] = userId
+  
+  const auth = request.headers.get("authorization") || request.headers.get("Authorization")
+  if (auth) h["Authorization"] = auth
+  
   return h
 }
 
@@ -30,7 +32,7 @@ async function proxyFetch(url: string, init: RequestInit): Promise<NextResponse>
   const controller = new AbortController()
   const timeout    = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal , headers: { "Authorization": (request.headers.get("authorization") || request.headers.get("Authorization") || "") } })
+    const res = await fetch(url, { ...init, signal: controller.signal })
     if (!res.ok) {
       const text = await res.text().catch(() => "")
       return jsonError(`Python API error: ${text || res.statusText}`, res.status)
@@ -48,11 +50,10 @@ async function proxyFetch(url: string, init: RequestInit): Promise<NextResponse>
 // ── POST /api/tasks → create task ─────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const body   = await request.json()
-    const userId = getUserId(request)
+    const body = await request.json()
     return proxyFetch(`${API_BASE_URL}/tasks/`, {
       method:  "POST",
-      headers: buildHeaders(userId),
+      headers: buildHeaders(request),
       body:    JSON.stringify(body),
     })
   } catch (e) {
@@ -65,8 +66,7 @@ export async function POST(request: NextRequest) {
 // Optionally also accepts the legacy podio_item_id field — it is stripped before forwarding.
 export async function PATCH(request: NextRequest) {
   try {
-    const body   = await request.json()
-    const userId = getUserId(request)
+    const body = await request.json()
 
     // ✅ Use ID_Tasks as the primary identifier (matches Python /<task_id>)
     const taskId = body?.ID_Tasks ?? body?.id ?? null
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest) {
 
     return proxyFetch(`${API_BASE_URL}/tasks/${encodeURIComponent(taskId)}`, {
       method:  "PATCH",
-      headers: buildHeaders(userId),
+      headers: buildHeaders(request),
       body:    JSON.stringify(updateData),
     })
   } catch (e) {
@@ -91,7 +91,6 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = getUserId(request)
 
     // ✅ Primary: task_id (= ID_Tasks). Fallback: podio_item_id (legacy, kept for compat).
     const taskId = searchParams.get("task_id") ?? searchParams.get("podio_item_id") ?? null
@@ -99,7 +98,7 @@ export async function DELETE(request: NextRequest) {
 
     return proxyFetch(`${API_BASE_URL}/tasks/${encodeURIComponent(taskId)}`, {
       method:  "DELETE",
-      headers: buildHeaders(userId),
+      headers: buildHeaders(request),
     })
   } catch (e) {
     return jsonError("Internal server error")
