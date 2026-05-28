@@ -14,13 +14,11 @@ type Ctx = { params: Promise<{ id: string; roleId: string }> }
 export async function POST(req: Request, { params }: Ctx) {
   const { id, roleId } = await params
 
-  const authHeader = req.headers.get("authorization")
   const userIdHeader = req.headers.get("x-user-id")
 
   const headers: Record<string, string> = { "Content-Type": "application/json" }
-    const _authHeader = (req.headers.get("authorization") || req.headers.get("Authorization") || "");
-    if (_authHeader) headers["Authorization"] = _authHeader;
-  if (authHeader) headers["authorization"] = authHeader
+  const _authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || ""
+  if (_authHeader) headers["Authorization"] = _authHeader
   if (userIdHeader) headers["x-user-id"] = userIdHeader
 
   try {
@@ -42,11 +40,11 @@ export async function POST(req: Request, { params }: Ctx) {
 export async function DELETE(req: Request, { params }: Ctx) {
   const { id } = await params
 
-  const authHeader = req.headers.get("authorization")
   const userIdHeader = req.headers.get("x-user-id")
 
   const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (authHeader) headers["authorization"] = authHeader
+  const _authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || ""
+  if (_authHeader) headers["Authorization"] = _authHeader
   if (userIdHeader) headers["x-user-id"] = userIdHeader
 
   try {

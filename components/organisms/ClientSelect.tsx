@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Input } from "@/components/ui/input"
-import { Building2, Search, X, ChevronLeft, ChevronRight, RefreshCcw, CheckCircle2, AlertCircle } from "lucide-react"
+import { Building2, Search, X, ChevronLeft, ChevronRight, RefreshCcw, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -45,6 +45,7 @@ interface Props {
   initialClients?: any[]
   changed?: boolean
   disabled?: boolean
+  syncPodio?: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -158,10 +159,11 @@ function useSingleClient(id: string | undefined) {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 
-export function ClientSelect({ value, onChange, initialClients = [], changed, disabled = false }: Props) {
+export function ClientSelect({ value, onChange, initialClients = [], changed, disabled = false, syncPodio = false }: Props) {
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
   const [open, setOpen] = useState(false)
+  const [pendingClient, setPendingClient] = useState<ClientTableRow | null>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -285,10 +287,43 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
       {/* Panel */}
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        {pendingClient ? (
+          <div className="flex flex-col p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            </div>
+            <h3 className="text-center text-lg font-bold text-slate-800 mb-2">Cliente no en Podio</h3>
+            <p className="text-center text-sm text-slate-500 mb-6">
+              Este trabajo tiene activada la sincronización con Podio, pero el cliente seleccionado no se encuentra registrado en Podio.
+              <br /><br />
+              Por lo tanto, el sistema <b>no podrá vincular</b> a este cliente en el registro de Podio, y solo quedará guardado de manera local. ¿Deseas continuar?
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingClient(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors w-full sm:w-auto"
+              >
+                Elegir otro
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelect(pendingClient)
+                  setPendingClient(null)
+                }}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm w-full sm:w-auto"
+              >
+                Aceptar (Solo Local)
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
               <Building2 className="h-4 w-4 text-emerald-600" />
@@ -360,16 +395,18 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
                 const email = getEmail(row.Email_Address)
                 const phone = getEmail(row.Phone_Number as any)
                 const statusColor = STATUS_COLORS[row.Client_Status ?? ""] ?? "bg-slate-100 text-slate-500 border-slate-200"
+                const isPodioMissing = syncPodio && !row.podio_item_id
 
                 return (
                   <button
                     key={row.ID_Client}
                     type="button"
-                    onClick={() => handleSelect(row)}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isSelected
-                        ? "bg-emerald-50/70 hover:bg-emerald-50"
-                        : "hover:bg-slate-50"
+                    onClick={() => {
+                      if (isPodioMissing) setPendingClient(row)
+                      else handleSelect(row)
+                    }}
+                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
+                      isSelected ? "bg-emerald-50/70" : ""
                     }`}
                   >
                     {/* Icon */}
@@ -408,10 +445,18 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
                       )}
                     </div>
 
-                    {/* ID badge */}
-                    <span className="flex-shrink-0 font-mono text-[10px] text-slate-300 mt-1">
-                      {row.ID_Client}
-                    </span>
+                    {/* ID badge and Podio status */}
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1 mt-1">
+                      {isPodioMissing && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                          {t("linkSubNotInPodio")}
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-slate-300">
+                        {row.ID_Client}
+                      </span>
+                    </div>
                   </button>
                 )
               })}
@@ -446,6 +491,8 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>,
     document.body,

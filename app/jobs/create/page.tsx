@@ -593,6 +593,7 @@ export default function CreateJobPage() {
                       onChange={(selected) =>
                         setFormData((prev) => ({ ...prev, clientId: selected?.id ?? "" }))
                       }
+                      syncPodio={syncPodio}
                     />
                   )}
                 </div>

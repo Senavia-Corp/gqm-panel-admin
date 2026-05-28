@@ -25,6 +25,7 @@ type Props = {
   readOnly?: boolean
   patch?: (updates: Record<string, any>, opts?: { sync_podio?: boolean }) => Promise<void>
   isSaving?: boolean
+  syncPodio?: boolean
 }
 
 function pick<T = any>(obj: any, keys: string[], fallback: T): T {
@@ -221,6 +222,7 @@ export function JobDetailsTab({
   readOnly = false,
   patch,
   isSaving = false,
+  syncPodio = false,
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
   
@@ -274,6 +276,7 @@ export function JobDetailsTab({
           initialClients={clients}
           changed={isFieldChanged("ID_Client") || isFieldChanged("client")}
           disabled={isRestrictedReadOnly || !canReadClients}
+          syncPodio={syncPodio}
           onChange={(selected) => {
             if (isRestrictedReadOnly) return
             if (!selected) {

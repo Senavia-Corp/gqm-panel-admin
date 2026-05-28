@@ -1119,6 +1119,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             readOnly={!hasPermission("job:update")}
             patch={patch}
             isSaving={isSaving}
+            syncPodio={syncPodio}
           />
         </JobTabLayout>
       )

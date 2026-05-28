@@ -7,7 +7,7 @@ const PERM_API = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.
 
 type Ctx = { params: Promise<{ id: string; permId: string }> }
 
-export async function POST(_req: Request, { params }: Ctx) {
+export async function POST(request: Request, { params }: Ctx) {
   const { id, permId } = await params
   try {
     const res = await fetch(`${PERM_API}/permission/${permId}/member/${id}`, {
@@ -23,7 +23,7 @@ export async function POST(_req: Request, { params }: Ctx) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+export async function DELETE(request: Request, { params }: Ctx) {
   const { id, permId } = await params
   try {
     const res = await fetch(`${PERM_API}/permission/${permId}/member/${id}`, {
