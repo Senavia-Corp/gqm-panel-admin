@@ -1502,12 +1502,16 @@
     "linkSubColStatus": "Status",
     "linkSubLinking": "Linking…",
     "linkSubLinkBtn": "Link",
+    "linkSubNotInPodio": "Not in Podio",
     "linkSubFooterShowing": "Showing",
     "linkSubFooterOf": "of",
     "linkSubFooterUnit": "subcontractors",
     "linkSubSkillsInfoPre": "Highlighting subcontractors with",
     "linkSubSkillsInfoAll": "all",
     "linkSubSkillsInfoPost": "selected skills",
+    "linkSubErrorTitle": "Error linking",
+    "linkSubErrorMissingPodioIds": "Missing Podio IDs",
+    "linkSubErrorMissingPodioIdsDesc": "This job or subcontractor is not synced with Podio. Disable Podio sync to link.",
 
     "oppTitle": "Job Opportunities",
     "oppCountPlural": "opportunities linked to this job",
@@ -1890,7 +1894,8 @@
     "selected": "Selected",
     "select": "Select",
     "cancel": "Cancel",
-    "missingJobYear": "Missing job year"
+    "missingJobYear": "Missing job year",
+    "notInPodio": "Not in Podio"
   },
   "jobLogbook": {
     "title": "Logbook and Documentation",

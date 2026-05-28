@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import type { BuildingDeptRow } from "@/lib/types"
 import { useTranslations } from "@/components/providers/LocaleProvider"
@@ -61,10 +62,28 @@ function LinkBldgDeptModal({
   const [query, setQuery] = useState("")
   const debouncedQ = useDebounce(query, 300)
   const [page, setPage] = useState(1)
-  const [rows, setRows] = useState<BuildingDeptRow[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [linking, setLinking] = useState<string | null>(null)
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["bldg_dept_search", debouncedQ, page],
+    queryFn: async () => {
+      const params = new URLSearchParams({ mode: "table", limit: String(LIMIT), page: String(page) })
+      if (debouncedQ) params.set("q", debouncedQ)
+      const res = await apiFetch(`/api/bldg_dept?${params}`, { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to fetch building departments")
+      const data = await res.json()
+      return {
+        rows: data?.results ?? [],
+        total: Number(data?.total ?? 0)
+      }
+    },
+    enabled: open,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
+
+  const rows = data?.rows || []
+  const total = data?.total || 0
+  const loading = isLoading || isFetching
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / LIMIT)), [total])
 
@@ -79,26 +98,6 @@ function LinkBldgDeptModal({
   useEffect(() => {
     setPage(1)
   }, [debouncedQ])
-
-  // Fetch
-  useEffect(() => {
-    if (!open) return
-    const ctrl = new AbortController()
-    setLoading(true)
-    const params = new URLSearchParams({ mode: "table", limit: String(LIMIT), page: String(page) })
-    if (debouncedQ) params.set("q", debouncedQ)
-
-    apiFetch(`/api/bldg_dept?${params}`, { cache: "no-store", signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((data) => {
-        setRows(data?.results ?? [])
-        setTotal(Number(data?.total ?? 0))
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-
-    return () => ctrl.abort()
-  }, [open, debouncedQ, page])
 
   const handleSelect = useCallback(
     async (row: BuildingDeptRow) => {
@@ -179,7 +178,7 @@ function LinkBldgDeptModal({
             </div>
           ) : (
             <ul className="divide-y divide-slate-50">
-              {rows.map((row) => {
+              {rows.map((row: BuildingDeptRow) => {
                 const isLinking = linking === row.ID_BldgDept
                 const emails = toArr(row.Office_Email)
                 const phones = toArr(row.Phone)

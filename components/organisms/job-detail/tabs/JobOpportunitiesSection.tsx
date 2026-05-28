@@ -9,6 +9,7 @@ import {
 import { apiFetch } from "@/lib/apiFetch"
 import type { Opportunity } from "@/lib/types"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useQuery } from "@tanstack/react-query"
 
 function useDebounce<T>(value: T, ms: number): T {
   const [d, setD] = useState(value)
@@ -40,38 +41,30 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
   const router = useRouter()
   const t = useTranslations("jobs")
 
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const [q, setQ] = useState("")
   const dq = useDebounce(q, 350)
-  const abortRef = useRef<AbortController | null>(null)
 
-  const load = useCallback(async (search: string) => {
-    if (!jobId) return
-    abortRef.current?.abort()
-    const ctrl = new AbortController(); abortRef.current = ctrl
-    setLoading(true); setError(null)
-    try {
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["opportunities", jobId, dq],
+    queryFn: async () => {
+      if (!jobId) return { results: [], total: 0 }
       const qs = new URLSearchParams({ page: "1", limit: "50", job_id: jobId })
-      if (search) qs.set("q", search)
-      const res = await apiFetch(`/api/opportunities?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      if (dq) qs.set("q", dq)
+      const res = await apiFetch(`/api/opportunities?${qs}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       const results: Opportunity[] = Array.isArray(data.results) ? data.results : []
-      setOpportunities(results)
-      setTotal(typeof data.total === "number" ? data.total : results.length)
-    } catch (e: any) {
-      if (e?.name === "AbortError") return
-      setError(t("oppErrorDesc"))
-    } finally {
-      setLoading(false)
-    }
-  }, [jobId])
+      const total = typeof data.total === "number" ? data.total : results.length
+      return { results, total }
+    },
+    enabled: !!jobId,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
 
-  useEffect(() => { load(dq) }, [dq, load])
+  const opportunities = data?.results || []
+  const total = data?.total || 0
+  const loading = isLoading || isFetching
+  const errorMessage = error ? t("oppErrorDesc") : null
 
   const handleCreateNew = () => {
     const returnTo = encodeURIComponent(`/jobs/${jobId}?tab=subcontractors`)
@@ -98,7 +91,7 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => load(dq)}
+            onClick={() => refetch()}
             className="rounded-lg border border-slate-200 p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
             title={t("oppRefreshTitle")}
           >
@@ -136,13 +129,13 @@ export function JobOpportunitiesSection({ jobId, userRole }: { jobId: string; us
         <div className="flex h-48 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
         </div>
-      ) : error ? (
+      ) : errorMessage ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
           <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
           <p className="text-sm font-semibold text-slate-700">{t("oppErrorTitle")}</p>
-          <p className="mt-1 text-xs text-red-500">{error}</p>
+          <p className="mt-1 text-xs text-red-500">{errorMessage}</p>
           <button
-            onClick={() => load(dq)}
+            onClick={() => refetch()}
             className="mt-3 flex items-center gap-1.5 mx-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
           >
             <RefreshCcw className="h-3.5 w-3.5" /> {t("oppRetryBtn")}

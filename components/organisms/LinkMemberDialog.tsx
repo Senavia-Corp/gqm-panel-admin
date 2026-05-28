@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 
 type MemberRow = {
   ID_Member: string
@@ -265,9 +266,7 @@ export function LinkMemberDialog({
   const [syncPodio, setSyncPodio]               = React.useState<boolean>(defaultSyncPodio)
   const [page, setPage]                         = React.useState(1)
   const limit                                   = 10
-  const [loading, setLoading]                   = React.useState(false)
   const [linking, setLinking]                   = React.useState(false)
-  const [data, setData]                         = React.useState<ApiPage<MemberRow>>({ page: 1, limit, total: 0, results: [] })
   const [search, setSearch]                     = React.useState("")
   const [selectedMemberId, setSelectedMemberId] = React.useState<string>("")
 
@@ -277,8 +276,6 @@ export function LinkMemberDialog({
   // FIX: rol siempre tiene un valor por defecto válido — es parte de PK en la DB
   const [selectedRole, setSelectedRole] = React.useState<string>(ROLE_OPTIONS[0].value)
 
-  const totalPages = Math.max(1, Math.ceil((data.total ?? 0) / limit))
-
   // FIX: debounce del search para disparar fetch al servidor
   // La búsqueda era solo client-side sobre la página actual, por eso el miembro
   // logueado no aparecía si estaba en otra página
@@ -287,26 +284,24 @@ export function LinkMemberDialog({
   // Resetear a página 1 cuando cambia el término de búsqueda
   React.useEffect(() => { setPage(1) }, [debouncedSearch])
 
-  // FIX: fetch incluye ?q= → búsqueda server-side sobre todos los registros
-  const fetchMembers = React.useCallback(async () => {
-    setLoading(true)
-    try {
+  const { data: queryData, isLoading, isFetching } = useQuery({
+    queryKey: ["members_table", page, debouncedSearch],
+    queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim())
 
       const res  = await apiFetch(`/api/members/table?${params.toString()}`, { method: "GET" })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || json?.detail || "Failed to fetch members")
-      setData(json)
-    } catch (err) {
-      console.error("[LinkMemberDialog] fetchMembers error:", err)
-      toast({ title: "Error", description: t("errorFetch"), variant: "destructive" })
-    } finally {
-      setLoading(false)
-    }
-  }, [page, limit, debouncedSearch, toast])
+      return json as ApiPage<MemberRow>
+    },
+    enabled: open,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
 
-  React.useEffect(() => { if (open) void fetchMembers() }, [open, fetchMembers])
+  const data = queryData || { page: 1, limit, total: 0, results: [] }
+  const totalPages = Math.max(1, Math.ceil((data.total ?? 0) / limit))
+  const loading = isLoading || isFetching
 
   // Reset al abrir el dialog
   React.useEffect(() => {

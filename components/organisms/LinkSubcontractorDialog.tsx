@@ -10,6 +10,7 @@ import {
   Mail, Building2, Star, AlertCircle,
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -177,22 +178,55 @@ export function LinkSubcontractorDialog({
 }: Props) {
   const t = useTranslations("jobs")
   const { errorModal, showError, closeError } = useErrorModal()
-  const [loading, setLoading]   = useState(false)
   const [linking, setLinking]   = useState<string | null>(null)
   const [page, setPage]         = useState(1)
   const limit                   = 10
-  const [total, setTotal]       = useState(0)
-  const [rows, setRows]         = useState<SubRow[]>([])
   const [searchTerm, setSearchTerm]           = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter]       = useState("")
   const [syncPodio, setSyncPodio]             = useState(defaultSyncPodio)
   
   // Skills Filter State
-  const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([])
   const [skillSearch, setSkillSearch] = useState("")
-  const [isLoadingSkills, setIsLoadingSkills] = useState(false)
+
+  // Fetch Skills
+  const { data: availableSkills = [], isLoading: isLoadingSkills } = useQuery<Skill[]>({
+    queryKey: ["skills_list"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/skills")
+      if (!res.ok) throw new Error("Failed to fetch skills")
+      const data = await res.json()
+      return Array.isArray(data) ? data : (data?.results || [])
+    },
+    enabled: open,
+    staleTime: 1000 * 60 * 60, // 1 hour cache
+  })
+
+  // Fetch Subcontractors Table
+  const { data: tableData, isLoading: loading, isFetching } = useQuery<TableResponse>({
+    queryKey: ["subcontractors_table", page, debouncedSearch, statusFilter, selectedSkillIds, jobId],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      params.set("mode", "table")
+      params.set("page", String(page))
+      params.set("limit", String(limit))
+      if (statusFilter) params.set("status", statusFilter)
+      if (debouncedSearch) params.set("q", debouncedSearch)
+      if (selectedSkillIds.length > 0) params.set("skills", selectedSkillIds.join(","))
+      if (jobId) params.set("exclude_job_id", jobId)
+      
+      const res = await apiFetch(`/api/subcontractors?${params.toString()}`)
+      if (!res.ok) throw new Error("Failed to fetch subcontractors")
+      return await res.json()
+    },
+    enabled: open,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
+
+  const rows = Array.isArray(tableData?.results) ? tableData.results : []
+  const total = Number(tableData?.total || 0)
+  const isLoadingTable = loading || isFetching
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil((total || 0) / limit)), [total, limit])
 
@@ -201,28 +235,7 @@ export function LinkSubcontractorDialog({
     if (!open) return
     setPage(1); setSearchTerm(""); setDebouncedSearch(""); setStatusFilter(""); setSyncPodio(defaultSyncPodio)
     setSelectedSkillIds([])
-    void fetchAvailableSkills()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
-  const fetchAvailableSkills = async () => {
-    setIsLoadingSkills(true)
-    try {
-      const res = await apiFetch("/api/skills")
-      if (!res.ok) {
-        console.error("Skills API error:", res.status)
-        return
-      }
-      const data = await res.json()
-      // The backend uses a @paginate decorator, so the skills are under 'results'
-      const skills = Array.isArray(data) ? data : (data?.results || [])
-      setAvailableSkills(skills)
-    } catch (err) {
-      console.error("Error fetching skills:", err)
-    } finally {
-      setIsLoadingSkills(false)
-    }
-  }
+  }, [open, defaultSyncPodio])
 
   // Debounce search
   useEffect(() => {
@@ -234,40 +247,6 @@ export function LinkSubcontractorDialog({
   useEffect(() => {
     setPage(1)
   }, [debouncedSearch, statusFilter, selectedSkillIds])
-
-  // Fetch
-  useEffect(() => {
-    if (!open) return
-    void fetchSubcontractors()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, page, debouncedSearch, statusFilter, selectedSkillIds])
-
-  const fetchSubcontractors = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set("mode", "table")
-      params.set("page", String(page))
-      params.set("limit", String(limit))
-      if (statusFilter) params.set("status", statusFilter)
-      if (debouncedSearch) params.set("q", debouncedSearch)
-      if (selectedSkillIds.length > 0) params.set("skills", selectedSkillIds.join(","))
-      if (jobId) params.set("exclude_job_id", jobId)
-      
-      const res = await apiFetch(`/api/subcontractors?${params.toString()}`)
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData?.error || errorData?.detail || "Failed to fetch subcontractors")
-      }
-      const data = (await res.json()) as TableResponse
-      setRows(Array.isArray(data.results) ? data.results : [])
-      setTotal(Number(data.total || 0))
-    } catch (err) {
-      console.error(err); setRows([]); setTotal(0)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // No local filtering needed anymore as the server returns correctly filtered results
   const displayRows = rows
@@ -489,7 +468,7 @@ export function LinkSubcontractorDialog({
               <button
                 type="button"
                 onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))}
-                disabled={!canPrev || loading}
+                disabled={!canPrev || isLoadingTable}
                 className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -500,7 +479,7 @@ export function LinkSubcontractorDialog({
               <button
                 type="button"
                 onClick={() => setPage((p) => clamp(p + 1, 1, totalPages))}
-                disabled={!canNext || loading}
+                disabled={!canNext || isLoadingTable}
                 className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -521,7 +500,7 @@ export function LinkSubcontractorDialog({
 
         {/* ── Table ───────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-auto min-h-0">
-          {loading ? (
+          {isLoadingTable ? (
             <div className="flex h-48 items-center justify-center">
               <Loader2 className="h-7 w-7 animate-spin text-slate-300" />
             </div>
@@ -647,7 +626,7 @@ export function LinkSubcontractorDialog({
             <button
               type="button"
               onClick={() => setPage((p) => clamp(p - 1, 1, totalPages))}
-              disabled={!canPrev || loading}
+              disabled={!canPrev || isLoadingTable}
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -658,7 +637,7 @@ export function LinkSubcontractorDialog({
             <button
               type="button"
               onClick={() => setPage((p) => clamp(p + 1, 1, totalPages))}
-              disabled={!canNext || loading}
+              disabled={!canNext || isLoadingTable}
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="h-3.5 w-3.5" />

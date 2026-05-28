@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Layers, ClipboardList, Wrench, Briefcase } from "lucide-react"
+import { Layers, ClipboardList, Wrench, Briefcase, RefreshCw } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useJobFilters } from "@/hooks/useJobFilters"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AdvancedJobFilters } from "@/components/organisms/AdvancedJobFilters"
 import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
 import { SyncStatusButton } from "@/components/organisms/SyncStatusButton"
@@ -80,20 +81,9 @@ export default function JobsPage() {
   // ── Filters & Pagination ──────────────────────────────────────────────────
   const { state: filters, handlers, toServiceFilters, activeFilterCount } = useJobFilters()
   
-  const [totalJobs, setTotalJobs] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
   const itemsPerPage = 10
 
-  // ── Data ──────────────────────────────────────────────────────────────────
-  const [jobs, setJobs] = useState<JobDTO[]>([])
-  const [filteredJobs, setFilteredJobs] = useState<JobDTO[]>([])
-
-  const [technicianAllJobs, setTechnicianAllJobs] = useState<JobDTO[]>([])
-  const [technicianFilteredJobs, setTechnicianFilteredJobs] = useState<JobDTO[]>([])
-
   // ── UI ────────────────────────────────────────────────────────────────────
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
@@ -102,6 +92,7 @@ export default function JobsPage() {
   }>({ open: false, job: null, suggestedYear: null })
 
   const isTechnician = user?.role === "LEAD_TECHNICIAN"
+  const queryClient = useQueryClient()
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -111,12 +102,10 @@ export default function JobsPage() {
   }, [router])
 
   // ── Core fetch ────────────────────────────────────────────────────────────
-  async function loadJobs() {
-    if (!user) return
-    setIsLoading(true)
-    setLoadError(null)
-
-    try {
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["jobs_list", user?.id, isTechnician, filters],
+    queryFn: async () => {
+      if (!user) return { jobs: [], total: 0 }
       const currentFilters = toServiceFilters()
       
       if (isTechnician) {
@@ -125,29 +114,14 @@ export default function JobsPage() {
         const techData = await techRes.json()
         const subId = techData?.subcontractor?.ID_Subcontractor
         
-        if (!subId) {
-          setTechnicianAllJobs([])
-          setTechnicianFilteredJobs([])
-          setTotalJobs(0)
-          setTotalPages(1)
-          setIsLoading(false)
-          return
-        }
+        if (!subId) return { jobs: [], total: 0 }
 
-        // Fetch paginated jobs for this subcontractor directly from backend
         const { jobs: subJobs, total } = await fetchJobs(
           filters.page,
           itemsPerPage,
           { ...currentFilters, subcontractorId: subId }
         )
-        const sorted = sortArchivedLast(subJobs)
-        
-        setTechnicianAllJobs(sorted)
-        setTechnicianFilteredJobs(sorted)
-        setTotalJobs(total)
-        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)))
-        setIsLoading(false)
-        return
+        return { jobs: sortArchivedLast(subJobs), total }
       }
 
       const { jobs: jobsData, total } = await fetchJobs(
@@ -155,41 +129,21 @@ export default function JobsPage() {
         itemsPerPage,
         currentFilters
       )
-      const sorted = sortArchivedLast(jobsData)
-      setJobs(sorted)
-      setFilteredJobs(sorted)
-      setTotalJobs(total)
-      setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)))
-    } catch (err) {
-      console.error("[jobs] Error loading jobs:", err)
-      setLoadError(err instanceof Error ? err.message : "Unknown error")
-      toast({ title: "Error", description: t("loadError"), variant: "destructive" })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      return { jobs: sortArchivedLast(jobsData), total }
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
 
-  useEffect(() => {
-    if (user) {
-      loadJobs()
-    }
-  }, [
-    user, 
-    filters.page, 
-    filters.tab, 
-    filters.year, 
-    filters.appliedSearch,
-    filters.status, 
-    filters.clientId, 
-    filters.parentMgmtCoId,
-    filters.dateFrom, 
-    filters.dateTo,
-    filters.memberId
-  ])
+  const displayedJobs = data?.jobs ?? []
+  const totalJobs = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalJobs / itemsPerPage))
+  const loading = isLoading || isFetching
+  const loadError = error ? (error as Error).message : null
 
   const handleRetry = async () => {
     setRetrying(true)
-    await loadJobs()
+    await refetch()
     setRetrying(false)
   }
 
@@ -205,7 +159,7 @@ export default function JobsPage() {
     try {
       await deleteJob(job.ID_Jobs, { sync_podio: opts.syncPodio, year: opts.year })
       toast({ title: "Success", description: `${t("deletedSuccess").replace("{id}", job.ID_Jobs)}` })
-      loadJobs()
+      queryClient.invalidateQueries({ queryKey: ["jobs_list"] })
       setDeleteDialog({ open: false, job: null, suggestedYear: null })
     } catch (err) {
       console.error("[jobs] Error deleting job:", err)
@@ -220,7 +174,6 @@ export default function JobsPage() {
     if (filters.page < totalPages) handlers.setPage(filters.page + 1)
   }
 
-  const displayedJobs = isTechnician ? technicianFilteredJobs : filteredJobs
   const yearSuffix = filters.year === "ALL" ? "" : ` ${filters.year}`
   const headerTitle = `${tabTitles[filters.tab]}${yearSuffix}`
 
@@ -261,14 +214,27 @@ export default function JobsPage() {
               </Tabs>
             </div>
 
-            <div className="hidden sm:block">
+            <div className="hidden sm:flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={loading}
+                className="h-9 gap-2 text-slate-500 hover:text-slate-700"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                {tCommon("refresh") ?? "Refresh"}
+              </Button>
               <SyncStatusButton />
             </div>
           </div>
 
-          {isLoading ? (
+          {loading && displayedJobs.length === 0 ? (
             <div className="flex h-64 items-center justify-center">
-              <div className="text-lg text-gray-500">{t("loading")}</div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-slate-600"></div>
+                <div className="text-sm font-medium text-slate-500">{t("loading")}</div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

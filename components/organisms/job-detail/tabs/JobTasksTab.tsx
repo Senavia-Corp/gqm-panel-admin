@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { TaskBoard } from "@/components/organisms/TaskBoard"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useQuery } from "@tanstack/react-query"
 import type { Task } from "@/lib/types"
 
 type Props = {
@@ -17,22 +18,21 @@ type Props = {
 
 export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
   const t = useTranslations("jobTasks")
-  const [memberNames, setMemberNames] = useState<Record<string, string>>({})
-
-  // Fetch all GQM members once to resolve member names in task cards
-  useEffect(() => {
-    apiFetch("/api/members?page=1&limit=200")
-      .then(r => r.json())
-      .then(data => {
-        const results: any[] = data?.results ?? data?.items ?? (Array.isArray(data) ? data : [])
-        const map: Record<string, string> = {}
-        results.forEach(m => {
-          if (m.ID_Member) map[m.ID_Member] = m.Member_Name || m.Acc_Rep || m.ID_Member
-        })
-        setMemberNames(map)
+  const { data: memberNames = {} } = useQuery<Record<string, string>>({
+    queryKey: ["members_names_map"],
+    queryFn: async () => {
+      const r = await apiFetch("/api/members?page=1&limit=200")
+      if (!r.ok) throw new Error("Failed to fetch members")
+      const data = await r.json()
+      const results: any[] = data?.results ?? data?.items ?? (Array.isArray(data) ? data : [])
+      const map: Record<string, string> = {}
+      results.forEach(m => {
+        if (m.ID_Member) map[m.ID_Member] = m.Member_Name || m.Acc_Rep || m.ID_Member
       })
-      .catch(() => {})
-  }, [])
+      return map
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour cache
+  })
 
   const resolvedNamesMap = { ...namesMap, ...memberNames }
   const safeTasks = tasks ?? []

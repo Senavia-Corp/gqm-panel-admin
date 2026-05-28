@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -187,22 +188,19 @@ function PurchaseCard({
   const t = useTranslations("jobPurchasesTab.card")
   const td = useTranslations("jobPurchasesTab.details")
   const [expanded, setExpanded] = useState(false)
-  const [fullData, setFullData] = useState<FullPurchase | null>(null)
-  const [loadingFull, setLoadingFull] = useState(false)
 
-  const handleExpand = async () => {
-    const next = !expanded
-    setExpanded(next)
-    if (next && !fullData) {
-      setLoadingFull(true)
-      try {
-        const res = await apiFetch(`/api/purchases/${purchase.ID_Purchase}`, { cache: "no-store" })
-        if (res.ok) setFullData(await res.json())
-      } finally {
-        setLoadingFull(false)
-      }
-    }
-  }
+  const { data: fullData, isLoading: loadingFull } = useQuery<FullPurchase>({
+    queryKey: ["purchase_details", purchase.ID_Purchase],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/purchases/${purchase.ID_Purchase}`, { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to fetch purchase details")
+      return await res.json()
+    },
+    enabled: expanded,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
+
+  const handleExpand = () => setExpanded(e => !e)
 
   const orders = fullData?.purchase_orders ?? []
   const allItems = orders.flatMap(o => o.porder_items ?? [])
@@ -482,44 +480,37 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
   const tsum = useTranslations("jobPurchasesTab.summary")
   const tsearch = useTranslations("jobPurchasesTab.search")
 
-  const [purchases, setPurchases] = useState<PurchaseRow[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const [q, setQ] = useState("")
   const dq = useDebounce(q, 350)
-  const abortRef = useRef<AbortController | null>(null)
 
-  const load = useCallback(async (search: string) => {
-    if (!jobId) return
-    abortRef.current?.abort()
-    const ctrl = new AbortController(); abortRef.current = ctrl
-    setLoading(true); setError(null)
-    try {
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["job_purchases", jobId, dq],
+    queryFn: async () => {
+      if (!jobId) return { results: [], total: 0 }
       const qs = new URLSearchParams({ page: "1", limit: "200", job_id: jobId })
-      if (search) qs.set("q", search)
-      const res = await apiFetch(`/api/purchases/table?${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      if (dq) qs.set("q", dq)
+      const res = await apiFetch(`/api/purchases/table?${qs}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       const results: PurchaseRow[] = Array.isArray(data.results) ? data.results : []
-      setPurchases(results)
-      setTotal(typeof data.total === "number" ? data.total : results.length)
-    } catch (e: any) {
-      if (e?.name === "AbortError") return
-      setError(tst("errorDesc"))
-    } finally {
-      setLoading(false)
-    }
-  }, [jobId])
+      const total = typeof data.total === "number" ? data.total : results.length
+      return { results, total }
+    },
+    enabled: !!jobId,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  })
 
-  useEffect(() => { load(dq) }, [dq, load])
+  const purchases = data?.results || []
+  const total = data?.total || 0
+  const loading = isLoading || isFetching
+  const errorMessage = error ? tst("errorDesc") : null
 
   const handleDelete = async (id: string) => {
     const res = await apiFetch(`/api/purchases/${id}`, { method: "DELETE", cache: "no-store" })
     if (!res.ok) throw new Error(`Error ${res.status}`)
-    setPurchases(prev => prev.filter(p => p.ID_Purchase !== id))
-    setTotal(prev => prev - 1)
+    queryClient.invalidateQueries({ queryKey: ["job_purchases", jobId] })
   }
 
   const handleCreateNew = () => {
@@ -608,7 +599,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => load(dq)}
+            onClick={() => refetch()}
             className="rounded-lg border border-slate-200 p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
             title={t("btnRefresh")}
           >
@@ -661,13 +652,13 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
         <div className="flex h-48 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
         </div>
-      ) : error ? (
+      ) : errorMessage ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
           <AlertCircle className="mx-auto mb-2 h-7 w-7 text-red-400" />
           <p className="text-sm font-semibold text-slate-700">{tst("errorTitle")}</p>
-          <p className="mt-1 text-xs text-red-500">{error}</p>
+          <p className="mt-1 text-xs text-red-500">{errorMessage}</p>
           <button
-            onClick={() => load(dq)}
+            onClick={() => refetch()}
             className="mt-3 flex items-center gap-1.5 mx-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
           >
             <RefreshCcw className="h-3.5 w-3.5" /> {tst("btnRetry")}

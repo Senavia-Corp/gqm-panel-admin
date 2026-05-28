@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Input } from "@/components/ui/input"
 import { Building2, Search, X, ChevronLeft, ChevronRight, RefreshCcw, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -76,16 +77,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ─── Hook: debounced fetch from /api/clients/table ────────────────────────────
 
-function useClientTable(open: boolean) {
+function useClientTable(enabled: boolean) {
+  const [page, setPage] = useState(1)
   const [query, setQuery] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
-  const [page, setPage] = useState(1)
-  const [data, setData] = useState<TableResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const limit = 8
 
-  // Debounce query
+  // Debounce logic
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedQuery(query)
@@ -94,67 +91,56 @@ function useClientTable(open: boolean) {
     return () => clearTimeout(t)
   }, [query])
 
-  const fetch_ = useCallback(async (pg: number, q: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ page: String(pg), limit: String(limit) })
-      if (q) params.set("q", q)
-      const res = await apiFetch(`/api/clients/table?${params}`, { cache: "no-store" })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
-      const json: TableResponse = await res.json()
-      setData(json)
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load clients")
-      setData(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [limit])
+  const { data, isLoading, isFetching } = useQuery<TableResponse>({
+    queryKey: ["clients_table", debouncedQuery, page],
+    queryFn: async () => {
+      const q = debouncedQuery ? `&q=${encodeURIComponent(debouncedQuery)}` : ""
+      const res = await apiFetch(`/api/clients/table?page=${page}&limit=8${q}`)
+      if (!res.ok) throw new Error("Failed to fetch clients table")
+      return await res.json()
+    },
+    enabled: enabled,
+    staleTime: 1000 * 60 * 5, // Cache for 5 mins
+  })
 
-  // Fetch when open or page/query changes
-  useEffect(() => {
-    if (!open) return
-    fetch_(page, debouncedQuery)
-  }, [open, page, debouncedQuery, fetch_])
-
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / limit))
+  const totalPages = data ? Math.ceil(data.total / data.limit) : 1
 
   return {
     query, setQuery,
     page, setPage,
-    data, loading, error,
+    data: data || null, 
+    loading: isLoading || isFetching,
+    error: null,
     totalPages,
-    refetch: () => fetch_(page, debouncedQuery),
+    refetch: () => {},
   }
 }
 
 // ─── Hook: load a single client by id (for display when not in current page) ─
 
 function useSingleClient(id: string | undefined) {
-  const [client, setClient] = useState<ClientTableRow | null>(null)
-
-  useEffect(() => {
-    if (!id) { setClient(null); return }
-    // Try /api/clients/table?q=<id> first (lightweight)
-    const load = async () => {
-      try {
-        const res = await apiFetch(`/api/clients/table?q=${encodeURIComponent(id)}&limit=1`, { cache: "no-store" })
-        if (!res.ok) return
+  const { data: client } = useQuery<ClientTableRow | null>({
+    queryKey: ["client_single", id],
+    queryFn: async () => {
+      if (!id) return null
+      
+      const res = await apiFetch(`/api/clients/table?q=${encodeURIComponent(id)}&limit=1`, { cache: "no-store" })
+      if (res.ok) {
         const json: TableResponse = await res.json()
         const found = json.results.find((r) => r.ID_Client === id)
-        if (found) { setClient(found); return }
-        // Fallback to full client endpoint
-        const res2 = await apiFetch(`/api/clients/${encodeURIComponent(id)}`, { cache: "no-store" })
-        if (!res2.ok) return
-        const full = await res2.json()
-        setClient(full)
-      } catch { /* silent */ }
-    }
-    load()
-  }, [id])
+        if (found) return found
+      }
+      
+      // Fallback
+      const res2 = await apiFetch(`/api/clients/${encodeURIComponent(id)}`, { cache: "no-store" })
+      if (!res2.ok) return null
+      return await res2.json()
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5, // Cache for 5 mins
+  })
 
-  return client
+  return client ?? null
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
@@ -168,10 +154,12 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
   const modalRef = useRef<HTMLDivElement>(null)
 
   const table = useClientTable(open)
-  const singleClient = useSingleClient(value && !table.data?.results.some(r => r.ID_Client === value) ? value : undefined)
+  const foundInitial = initialClients.find((c) => c.ID_Client === value)
+  const singleClient = useSingleClient(value && !foundInitial && !table.data?.results.some(r => r.ID_Client === value) ? value : undefined)
 
   // Find selected client in current results or fallback
   const selectedRow = table.data?.results.find(r => r.ID_Client === value)
+    ?? foundInitial
     ?? (singleClient?.ID_Client === value ? singleClient : null)
 
   const selectedMapped = selectedRow ? mapRow(selectedRow) : null

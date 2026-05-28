@@ -5,6 +5,7 @@ import { SubcontractorsTable } from "@/components/organisms/SubcontractorsTable"
 import { SubcontractorDetails } from "@/components/organisms/SubcontractorDetails"
 import type { Subcontractor } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 import { JobOpportunitiesSection } from "./JobOpportunitiesSection"
 
 type Props = {
@@ -47,30 +48,20 @@ export function JobSubcontractorsTab({
   syncPodio,
 }: Props) {
   const isTech = role === "LEAD_TECHNICIAN"
-  const [techSubId, setTechSubId] = useState<string | null>(null)
-  const [loadingTech, setLoadingTech] = useState(isTech)
-
-  useEffect(() => {
-    if (isTech) {
-      const fetchTechData = async () => {
-        try {
-          const userData = localStorage.getItem("user_data")
-          if (!userData) return
-          const user = JSON.parse(userData)
-          const res = await apiFetch(`/api/technician/${user.id}`)
-          if (res.ok) {
-            const data = await res.json()
-            setTechSubId(data?.subcontractor?.ID_Subcontractor || null)
-          }
-        } catch (error) {
-          console.error("Failed to fetch tech sub ID:", error)
-        } finally {
-          setLoadingTech(false)
-        }
-      }
-      fetchTechData()
-    }
-  }, [isTech])
+  const { data: techSubId, isLoading: loadingTech } = useQuery<string | null>({
+    queryKey: ["technician_sub_id"],
+    queryFn: async () => {
+      const userData = localStorage.getItem("user_data")
+      if (!userData) return null
+      const user = JSON.parse(userData)
+      const res = await apiFetch(`/api/technician/${user.id}`)
+      if (!res.ok) throw new Error("Failed to fetch tech")
+      const data = await res.json()
+      return data?.subcontractor?.ID_Subcontractor || null
+    },
+    enabled: isTech,
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+  })
 
   if (role !== "GQM_MEMBER" && role !== "LEAD_TECHNICIAN") return null
   if (!job) return null

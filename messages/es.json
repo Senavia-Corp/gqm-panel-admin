@@ -1501,12 +1501,16 @@
     "linkSubColStatus": "Estado",
     "linkSubLinking": "Vinculando…",
     "linkSubLinkBtn": "Vincular",
+    "linkSubNotInPodio": "No en Podio",
     "linkSubFooterShowing": "Mostrando",
     "linkSubFooterOf": "de",
     "linkSubFooterUnit": "subcontratistas",
     "linkSubSkillsInfoPre": "Resaltando subcontratistas con",
     "linkSubSkillsInfoAll": "todas",
     "linkSubSkillsInfoPost": "las habilidades seleccionadas",
+    "linkSubErrorTitle": "Error al vincular",
+    "linkSubErrorMissingPodioIds": "Faltan IDs de Podio",
+    "linkSubErrorMissingPodioIdsDesc": "Este trabajo o subcontratista no está sincronizado con Podio. Desactiva la sincronización con Podio para vincular.",
 
     "oppTitle": "Oportunidades de Trabajo",
     "oppCountPlural": "oportunidades vinculadas a este trabajo",
@@ -1889,7 +1893,8 @@
     "selected": "Seleccionado",
     "select": "Seleccionar",
     "cancel": "Cancelar",
-    "missingJobYear": "Falta el año del trabajo"
+    "missingJobYear": "Falta el año del trabajo",
+    "notInPodio": "No en Podio"
   },
   "jobLogbook": {
     "title": "Bitácora y Documentación",

@@ -5,6 +5,7 @@ import { RefreshCw, Activity, Download } from "lucide-react"
 import { TimelineItem, type TLActivityEntry } from "@/components/molecules/TimelineItem"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useInfiniteQuery } from "@tanstack/react-query"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,33 +116,41 @@ function PDFPopover({ jobId, onClose }: { jobId: string; onClose: () => void }) 
 
 export function JobTimelineTab({ jobId }: { jobId: string }) {
   const t = useTranslations("jobTimelineTab")
-  const [tl, setTl] = useState<TimelineState>({
-    entries: [], total: 0, page: 1, loading: true, loadingMore: false, error: null,
-  })
   const [showPDF, setShowPDF] = useState(false)
 
-  const fetchPage = useCallback(async (page: number, append: boolean) => {
-    if (!jobId) return
-    setTl(prev => ({ ...prev, loading: !append && page === 1, loadingMore: append, error: null }))
-    try {
-      const res  = await apiFetch(`/api/timeline/job/${encodeURIComponent(jobId)}?page=${page}&limit=${PAGE_LIMIT}`)
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    error,
+    refetch
+  } = useInfiniteQuery({
+    queryKey: ["job_timeline", jobId],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await apiFetch(`/api/timeline/job/${encodeURIComponent(jobId)}?page=${pageParam}&limit=${PAGE_LIMIT}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? `Error ${res.status}`)
       const entries: TLActivityEntry[] = data?.results ?? data ?? []
-      const total:   number            = data?.total   ?? entries.length
-      setTl(prev => ({
-        entries:     append ? [...prev.entries, ...entries] : entries,
-        total, page, loading: false, loadingMore: false, error: null,
-      }))
-    } catch (e: any) {
-      setTl(prev => ({ ...prev, loading: false, loadingMore: false, error: e?.message ?? t("error.loadFail") }))
-    }
-  }, [jobId, t])
+      const total: number = data?.total ?? entries.length
+      return { entries, total, nextCursor: entries.length === PAGE_LIMIT ? pageParam + 1 : undefined }
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: 1,
+    staleTime: 1000 * 60 * 5, // 5 min cache
+    enabled: !!jobId,
+  })
 
-  useEffect(() => { fetchPage(1, false) }, [fetchPage])
+  const entries = data?.pages.flatMap(page => page.entries) || []
+  const total = data?.pages[0]?.total || 0
+  const loading = isLoading && isFetching
+  const loadingMore = isFetchingNextPage
+  const fetchError = error ? (error as Error).message : null
 
-  const hasMore        = tl.entries.length < tl.total
-  const handleLoadMore = () => { if (!tl.loadingMore && hasMore) fetchPage(tl.page + 1, true) }
+  const hasMore = !!hasNextPage
+  const handleLoadMore = () => { if (!loadingMore && hasMore) fetchNextPage() }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -155,7 +164,7 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
           <div>
             <p className="text-sm font-semibold text-slate-800">{t("header.title")}</p>
             <p className="text-[11px] text-slate-400">
-              {tl.loading ? t("header.loading") : tl.total === 0 ? t("header.noEvents") : tl.total === 1 ? t("header.events", { count: 1 }) : t("header.eventsPlural", { count: tl.total })}
+              {loading ? t("header.loading") : total === 0 ? t("header.noEvents") : total === 1 ? t("header.events", { count: 1 }) : t("header.eventsPlural", { count: total })}
             </p>
           </div>
         </div>
@@ -163,12 +172,12 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
         <div className="flex items-center gap-2">
           {/* Refresh */}
           <button
-            onClick={() => fetchPage(1, false)}
-            disabled={tl.loading}
+            onClick={() => refetch()}
+            disabled={loading}
             title={t("header.refreshTooltip")}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${tl.loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching && !loadingMore ? "animate-spin" : ""}`} />
           </button>
 
           {/* PDF */}
@@ -187,11 +196,11 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
       </div>
 
       {/* ── Error ────────────────────────────────────────────────────────────── */}
-      {!tl.loading && tl.error && (
+      {!loading && fetchError && (
         <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-6 py-3">
           <span className="text-red-500">⚠</span>
-          <p className="flex-1 text-xs text-red-700">{tl.error}</p>
-          <button onClick={() => fetchPage(1, false)} className="text-[11px] font-semibold text-blue-600">
+          <p className="flex-1 text-xs text-red-700">{fetchError}</p>
+          <button onClick={() => refetch()} className="text-[11px] font-semibold text-blue-600">
             {t("error.retry")}
           </button>
         </div>
@@ -201,7 +210,7 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
       <div className="px-6 py-6">
 
         {/* Loading skeleton */}
-        {tl.loading && (
+        {loading && (
           <div className="flex flex-col gap-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ height: "72px", borderRadius: "10px", background: `linear-gradient(90deg, #F3F4F6 0%, #E5E7EB ${40 + i * 8}%, #F3F4F6 100%)`, animation: "tl-pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.1}s` }} />
@@ -210,7 +219,7 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
         )}
 
         {/* Empty */}
-        {!tl.loading && !tl.error && tl.entries.length === 0 && (
+        {!loading && !fetchError && entries.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
               <Activity className="h-7 w-7 text-slate-300" />
@@ -221,13 +230,13 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
         )}
 
         {/* Entries */}
-        {!tl.loading && tl.entries.length > 0 && (
+        {!loading && entries.length > 0 && (
           <div>
-            {tl.entries.map((entry, idx) => (
+            {entries.map((entry, idx) => (
               <TimelineItem
                 key={entry.ID_TLActivity}
                 entry={entry}
-                isLast={idx === tl.entries.length - 1 && !hasMore}
+                isLast={idx === entries.length - 1 && !hasMore}
                 animationDelay={idx < PAGE_LIMIT ? idx * 30 : 0}
               />
             ))}
@@ -237,22 +246,22 @@ export function JobTimelineTab({ jobId }: { jobId: string }) {
               <div className="flex justify-center pt-4">
                 <button
                   onClick={handleLoadMore}
-                  disabled={tl.loadingMore}
+                  disabled={loadingMore}
                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {tl.loadingMore ? (
+                  {loadingMore ? (
                     <><RefreshCw className="h-3 w-3 animate-spin" />{t("header.loading")}</>
                   ) : (
-                    t("loadMore.btn", { count: tl.total - tl.entries.length })
+                    t("loadMore.btn", { count: total - entries.length })
                   )}
                 </button>
               </div>
             )}
 
             {/* All-loaded indicator */}
-            {!hasMore && tl.entries.length > 0 && (
+            {!hasMore && entries.length > 0 && (
               <p className="pt-4 text-center text-[10px] text-slate-300">
-                {tl.total === 1 ? t("loadMore.allLoaded", { count: 1 }) : t("loadMore.allLoadedPlural", { count: tl.total })}
+                {total === 1 ? t("loadMore.allLoaded", { count: 1 }) : t("loadMore.allLoadedPlural", { count: total })}
               </p>
             )}
           </div>
