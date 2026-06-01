@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface DeleteChangeOrderDialogProps {
   open: boolean
@@ -56,7 +57,7 @@ export function DeleteChangeOrderDialog({
       setLoading(true)
 
       const url = `/api/change-order/${encodeURIComponent(changeOrderId)}?${qs.toString()}`
-      const res = await fetch(url, { method: "DELETE" })
+      const res = await apiFetch(url, { method: "DELETE" })
 
       if (!res.ok) {
         const msg = await res.text().catch(() => "")

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { MultiplierSelector } from "./MultiplierSelector"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface JobMultipliersManagerProps {
   jobId: string
@@ -72,7 +73,7 @@ export function JobMultipliersManager({
       await unlinkMultiplierFromJob(jobId, pendingMultiplier.ID_MultiplierR)
 
       // 2. Delete the multiplier record from the system
-      const res = await fetch(`/api/multipliers/${pendingMultiplier.ID_MultiplierR}`, {
+      const res = await apiFetch(`/api/multipliers/${pendingMultiplier.ID_MultiplierR}`, {
         method: "DELETE",
       })
       if (!res.ok) {

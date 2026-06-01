@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { ChangeOrdersSection } from "@/components/organisms/ChangeOrdersSection"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { apiFetch } from "@/lib/apiFetch"
 
 
 const LeadTechnicianPricingView = dynamic(
@@ -597,7 +598,7 @@ export function JobPricingTab({
     setSyncError(null)
     try {
       setSyncPhase("syncing")
-      const res = await fetch(`/api/qbo/sync-full-job/${code}`, { method: "POST" })
+      const res = await apiFetch(`/api/qbo/sync-full-job/${code}`, { method: "POST" })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.error ?? body?.detail ?? `Sync failed (HTTP ${res.status})`)

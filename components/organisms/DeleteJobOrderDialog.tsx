@@ -81,7 +81,7 @@ export function DeleteOrderDialog({
                     const ecId = ec?.ID_EstimateCost
                     if (!ecId) continue
 
-                    const res = await fetch(`/api/estimate/${encodeURIComponent(ecId)}`, {
+                    const res = await apiFetch(`/api/estimate/${encodeURIComponent(ecId)}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ ID_Order: null }),

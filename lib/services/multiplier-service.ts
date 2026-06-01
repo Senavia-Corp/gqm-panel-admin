@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/apiFetch"
 import type { Multiplier } from "@/lib/types"
 
 const MULTIPLIERS_API_URL = "/api/multipliers"
@@ -14,7 +15,7 @@ export async function fetchMultipliers(): Promise<Multiplier[]> {
   try {
     console.log("[v0] Fetching multipliers from API proxy")
 
-    const response = await fetch(`${MULTIPLIERS_API_URL}?page=1&limit=100`, {
+    const response = await apiFetch(`${MULTIPLIERS_API_URL}?page=1&limit=100`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -47,7 +48,7 @@ export async function createMultiplier(multiplierData: {
   try {
     console.log("[v0] Creating multiplier:", multiplierData)
 
-    const response = await fetch(MULTIPLIERS_API_URL, {
+    const response = await apiFetch(MULTIPLIERS_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -76,7 +77,7 @@ export async function linkMultiplierToJob(jobId: string, multiplierId: string): 
   try {
     console.log("[v0] Linking multiplier", multiplierId, "to job", jobId)
 
-    const response = await fetch(JOB_MULTIPLIERS_API_URL, {
+    const response = await apiFetch(JOB_MULTIPLIERS_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -105,7 +106,7 @@ export async function unlinkMultiplierFromJob(jobId: string, multiplierId: strin
   try {
     console.log("[v0] Unlinking multiplier", multiplierId, "from job", jobId)
 
-    const response = await fetch(JOB_MULTIPLIERS_API_URL, {
+    const response = await apiFetch(JOB_MULTIPLIERS_API_URL, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

@@ -27,7 +27,7 @@ function money(v: number) {
 async function patchJobForPodioSync(jobId: string, jobYear?: number) {
   const qs = new URLSearchParams({ sync_podio: "true" })
   if (jobYear) qs.set("year", String(jobYear))
-  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
+  const res = await apiFetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),

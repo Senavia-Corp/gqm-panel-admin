@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ExternalLink, RefreshCw } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/apiFetch"
 
 type Client = {
   ID_Client: string
@@ -55,7 +56,7 @@ export function CommunityDetailsModal({ open, onOpenChange, clientId }: Props) {
       setLoading(true)
       setError(null)
 
-      const res = await fetch(`/api/clients/${clientId}`, { cache: "no-store" })
+      const res = await apiFetch(`/api/clients/${clientId}`, { cache: "no-store" })
       if (!res.ok) throw new Error(`Failed to fetch community (${res.status})`)
 
       const data = (await res.json()) as Client

@@ -1,4 +1,5 @@
 import type { Document } from "@/lib/types"
+import { apiFetch } from "@/lib/apiFetch"
 
 export async function uploadDocument(file: File, jobId: string, tag = "general"): Promise<Document> {
   const formData = new FormData()
@@ -6,7 +7,7 @@ export async function uploadDocument(file: File, jobId: string, tag = "general")
   formData.append("jobId", jobId)
   formData.append("tag", tag)
 
-  const response = await fetch("/api/upload", {
+  const response = await apiFetch("/api/upload", {
     method: "POST",
     body: formData,
   })

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { createPortal } from "react-dom"
 import { Zap, ZapOff, CheckCircle2, Loader2, X, AlertTriangle } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface Props {
   open: boolean
@@ -28,7 +29,7 @@ export function PodioSyncAfterImportDialog({
       const qs = new URLSearchParams({ sync_podio: "true" })
       if (jobYear) qs.set("year", String(jobYear))
 
-      const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
+      const res = await apiFetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({}),

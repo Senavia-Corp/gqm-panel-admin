@@ -588,7 +588,7 @@ export function EditEstimateItemDialog({
 async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<void> {
   const qs = new URLSearchParams({ sync_podio: "true" })
   if (jobYear) qs.set("year", String(jobYear))
-  const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
+  const res = await apiFetch(`/api/jobs/${encodeURIComponent(jobId)}?${qs.toString()}`, {
     method:  "PATCH",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({}),
@@ -602,7 +602,7 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<vo
 async function patchOrderForPodioSync(orderId: string, jobYear?: number): Promise<void> {
   const qs = new URLSearchParams({ sync_podio: "true" })
   if (jobYear) qs.set("year", String(jobYear))
-  const res = await fetch(`/api/order/${encodeURIComponent(orderId)}?${qs.toString()}`, {
+  const res = await apiFetch(`/api/order/${encodeURIComponent(orderId)}?${qs.toString()}`, {
     method:  "PATCH",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({}),

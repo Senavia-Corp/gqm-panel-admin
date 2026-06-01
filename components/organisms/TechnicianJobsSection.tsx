@@ -13,6 +13,7 @@ import type { Technician, Job } from "@/lib/types"
 import { fetchJobs } from "@/lib/services/jobs-service"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { apiFetch } from "@/lib/apiFetch"
 
 interface TechnicianJobsSectionProps {
   technician: Technician
@@ -58,7 +59,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
     try {
       console.log("[v0] Fetching technician assigned job IDs for:", technician.ID_Technician)
 
-      const techResponse = await fetch(`/api/technician/${technician.ID_Technician}`)
+      const techResponse = await apiFetch(`/api/technician/${technician.ID_Technician}`)
       if (!techResponse.ok) {
         throw new Error("Failed to fetch technician data")
       }
