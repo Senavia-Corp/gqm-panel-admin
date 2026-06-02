@@ -47,7 +47,11 @@ function sortArchivedLast(list: JobDTO[]) {
   return [...list].sort((a, b) => {
     const aA = a.Job_status === "Archived"
     const bA = b.Job_status === "Archived"
-    return aA === bA ? 0 : aA ? 1 : -1
+    if (aA !== bA) return aA ? 1 : -1
+
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+    return dateB - dateA // newest first
   })
 }
 
