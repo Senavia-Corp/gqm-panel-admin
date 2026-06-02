@@ -55,7 +55,7 @@ export class ApiProvider {
 
     this.api.interceptors.response.use(
       (response) => {
-        console.log('[API RESPONSE]', response.status, response.config.url, response.data);
+        // console.log('[API RESPONSE]', response.status, response.config.url, response.data);
 
         return response;
       },

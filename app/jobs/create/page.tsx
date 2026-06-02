@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { fetchClients, createJob } from "@/lib/services/jobs-service"
 import type { JobType, JobStatus } from "@/lib/types"
@@ -55,7 +56,7 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<JobType, JobStatus[]> = {
     "Entered",
     "Stand By",
   ],
-  PAR: ["In Progress", "Completed PVI / POs", "Invoiced", "PAID", "Cancelled"],
+  PAR: ["In Progress", "Completed P. INV / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
 const PODIO_YEAR_OPTIONS = ["2026", "2025", "2024", "2023"]
@@ -86,6 +87,7 @@ const SERVICE_TYPE_OPTIONS = [
 export default function CreateJobPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
 
@@ -224,6 +226,7 @@ export default function CreateJobPage() {
         year: syncPodio && yearSync ? parseInt(yearSync, 10) : undefined,
       })
 
+      queryClient.invalidateQueries({ queryKey: ["jobs_list"] })
       toast({ title: "Success", description: `${t("jobCreatedSuccess")} (${createdJob?.ID_Jobs ?? "OK"})` })
       if (formData.jobType === "QID" && createdJob?.ID_Jobs) {
         router.push(`/jobs/${createdJob.ID_Jobs}?autoCreateTask=true`)
