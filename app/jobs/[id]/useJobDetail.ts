@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react"
 import type { JobDTO, UpdateJobRequest } from "@/lib/types"
 import { fetchJobById, updateJob } from "@/lib/services/jobs-service"
+import { useQueryClient } from "@tanstack/react-query"
 
 type ChangedFields = Set<string>
 type SaveOptions = { sync_podio?: boolean }
@@ -53,6 +54,7 @@ export function useJobDetail(jobId: string) {
   const [changedFields, setChangedFields] = useState<ChangedFields>(new Set())
   const [isLoading,     setIsLoading]     = useState(false)
   const [isSaving,      setIsSaving]      = useState(false)
+  const queryClient                       = useQueryClient()
 
   // ── Reload ──────────────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
@@ -93,6 +95,7 @@ export function useJobDetail(jobId: string) {
           sync_podio: opts?.sync_podio ?? false,
           year,
         })
+        queryClient.invalidateQueries({ queryKey: ["jobs_list"] })
         setChangedFields(new Set())
         await reload()
       } finally {
@@ -203,6 +206,7 @@ export function useJobDetail(jobId: string) {
           sync_podio: opts?.sync_podio ?? false,
           year,
         })
+        queryClient.invalidateQueries({ queryKey: ["jobs_list"] })
         setChangedFields(new Set())
         await reload()
       } finally {
