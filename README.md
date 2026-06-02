@@ -933,6 +933,23 @@ This adds the component to `components/ui/`.
 npm run lint
 ```
 
+### Versioning
+
+The application displays its current version (from `package.json`) at the bottom of the main Sidebar. To update this version easily, use the standard `npm version` commands. This will automatically bump the number in `package.json` and the UI will reflect it immediately:
+
+- **Patch** (e.g., bug fixes, `v0.1.0` -> `v0.1.1`):
+  ```bash
+  npm version patch
+  ```
+- **Minor** (e.g., new features, `v0.1.1` -> `v0.2.0`):
+  ```bash
+  npm version minor
+  ```
+- **Major** (e.g., breaking changes, `v0.2.0` -> `v1.0.0`):
+  ```bash
+  npm version major
+  ```
+
 ---
 
 ## Build & Deployment

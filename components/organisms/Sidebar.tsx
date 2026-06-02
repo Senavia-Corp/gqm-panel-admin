@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useSidebar } from "@/components/providers/SidebarContext"
 import { usePermissions } from "@/hooks/usePermissions"
+import packageJson from "../../package.json"
 import {
   LayoutDashboard,
   Briefcase,
@@ -175,6 +176,11 @@ function SidebarContent({
             </Link>
           )
         })}
+
+        {/* Version Indicator */}
+        <div className={`mt-4 text-center ${collapsed ? "text-[8px]" : "text-[10px]"} text-gray-400 font-medium`}>
+          v{packageJson.version}
+        </div>
       </div>
     </>
   )
