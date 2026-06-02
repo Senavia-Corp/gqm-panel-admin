@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,7 +110,9 @@ export default function CreateTechnicianPage() {
 
   const router  = useRouter()
   const [user, setUser]     = useState<any>(null)
-  const [saving, setSaving] = useState(false)
+  
+  const queryClient = useQueryClient()
+  const { errorModal, showError, closeError } = useErrorModal()
   
   const [subcontractors, setSubcontractors] = useState<any[]>([])
   const [loadingSubs, setLoadingSubs] = useState(true)
@@ -164,42 +168,51 @@ export default function CreateTechnicianPage() {
     return null
   }
 
-  const handleSubmit = async () => {
-    const err = validate()
-    if (err) { toast({ title: err, variant: "destructive" }); return }
-
-    setSaving(true)
-    try {
-      const payload: Record<string, any> = {
-        Name:               form.Name.trim(),
-        Email_Address:      form.Email_Address.trim(),
-        Password:           form.Password,
-        Type_of_technician: form.Type_of_technician,
-      }
-      if (form.Phone_Number.trim()) payload.Phone_Number = form.Phone_Number.trim()
-      if (form.Location.trim())     payload.Location     = form.Location.trim()
-      if (form.ID_Subcontractor !== "none") payload.ID_Subcontractor = form.ID_Subcontractor
-
+  const createMutation = useMutation({
+    mutationFn: async (payload: Record<string, any>) => {
       const res = await apiFetch("/api/technician", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payload),
-        cache:   "no-store",
       })
-
+      
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as any)?.detail ?? `Error ${res.status}`)
+        throw { 
+          message: data.error || data.detail || `Error ${res.status}`, 
+          detail: data.details || (typeof data.detail === 'string' ? data.detail : JSON.stringify(data)),
+          status: res.status 
+        }
       }
-
-      const created = await res.json()
+      return data
+    },
+    onSuccess: (created) => {
       toast({ title: t("techToastCreated"), description: t("techToastCreatedDesc", { name: created.Name ?? "New technician" }) })
+      queryClient.invalidateQueries({ queryKey: ["technicians"] })
       router.push(created.ID_Technician ? `/technicians/${created.ID_Technician}` : "/subcontractors")
-    } catch (e: any) {
-      toast({ title: t("techToastError"), description: e?.message, variant: "destructive" })
-    } finally {
-      setSaving(false)
+    },
+    onError: (err: any) => {
+      showError(err.message || t("techToastError"), err.detail, "/api/technician", err.status)
     }
+  })
+
+  const saving = createMutation.isPending
+
+  const handleSubmit = async () => {
+    const err = validate()
+    if (err) { toast({ title: err, variant: "destructive" }); return }
+
+    const payload: Record<string, any> = {
+      Name:               form.Name.trim(),
+      Email_Address:      form.Email_Address.trim(),
+      Password:           form.Password,
+      Type_of_technician: form.Type_of_technician,
+    }
+    if (form.Phone_Number.trim()) payload.Phone_Number = form.Phone_Number.trim()
+    if (form.Location.trim())     payload.Location     = form.Location.trim()
+    if (form.ID_Subcontractor !== "none") payload.ID_Subcontractor = form.ID_Subcontractor
+
+    createMutation.mutate(payload)
   }
 
   if (!user) return (
@@ -497,6 +510,16 @@ export default function CreateTechnicianPage() {
           setSubModalOpen(false)
         }}
         selectedId={form.ID_Subcontractor !== "none" ? form.ID_Subcontractor : undefined}
+      />
+      
+      <ErrorModal
+        open={errorModal.open}
+        onClose={closeError}
+        message={errorModal.message}
+        detail={errorModal.detail}
+        endpoint={errorModal.endpoint}
+        severity={errorModal.severity}
+        statusCode={errorModal.statusCode}
       />
     </div>
   )

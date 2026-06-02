@@ -7,8 +7,8 @@ import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 import { usePermissions } from "@/hooks/usePermissions"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -428,37 +428,25 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const t = useTranslations("clients")
-  const [items, setItems]               = useState<ParentMgmtCo[]>([])
   const [search, setSearch]             = useState("")
   const [page, setPage]                 = useState(1)
-  const [loading, setLoading]           = useState(true)
-  const [error, setError]               = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ParentMgmtCo | null>(null)
   const { hasPermission }               = usePermissions()
   const PER_PAGE = 10
-
-  const fetchAll = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      // Primer fetch para saber el total real
-      const first = await apiFetch("/api/parent_mgmt_co?page=1&limit=1", { cache: "no-store" })
-      if (!first.ok) throw new Error(`Error ${first.status}`)
-      const firstData = await first.json()
-      const total: number = firstData.total ?? 0
-
-      // Si hay registros, traerlos todos en una sola llamada
-      const limit = total > 0 ? total : 200
-      const r = await apiFetch(`/api/parent_mgmt_co?page=1&limit=${limit}`, { cache: "no-store" })
+  const { data, isLoading: loading, error: queryError, refetch: fetchAll } = useQuery({
+    queryKey: ["companies_all"],
+    queryFn: async ({ signal }) => {
+      // Fetch up to 1000 companies to cache them locally for fast filtering
+      const r = await apiFetch(`/api/parent_mgmt_co?page=1&limit=20`, { signal })
       if (!r.ok) throw new Error(`Error ${r.status}`)
       const d = await r.json()
-      setItems(d.results ?? [])
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load")
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
-    } finally { setLoading(false) }
-  }, [])
+      return (d.results ?? []) as ParentMgmtCo[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  const items = data || []
+  const error = queryError?.message || null
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase(); if (!q) return items
@@ -478,7 +466,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
     <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-red-100 bg-red-50">
       <AlertCircle className="h-8 w-8 text-red-400" />
       <p className="text-sm font-medium text-red-600">{error}</p>
-      <Button variant="outline" size="sm" onClick={fetchAll} className="gap-1.5">
+      <Button variant="outline" size="sm" onClick={() => fetchAll()} className="gap-1.5">
         <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
       </Button>
     </div>
@@ -693,7 +681,10 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
       <DeleteParentDialog
         open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
         item={deleteTarget}
-        onDeleted={(id) => { setItems((p) => p.filter((x) => x.ID_Community_Tracking !== id)); setDeleteTarget(null) }}
+        onDeleted={(id) => { 
+          fetchAll() 
+          setDeleteTarget(null) 
+        }}
       />
     </div>
   )
@@ -704,43 +695,33 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const t = useTranslations("clients")
   const PER_PAGE = 20
-  const [rows, setRows]                 = useState<CommunityRow[]>([])
-  const [total, setTotal]               = useState(0)
   const [page, setPage]                 = useState(1)
   const [search, setSearch]             = useState("")
   const dSearch                         = useDebounce(search, 350)
-  const [loading, setLoading]           = useState(true)
-  const [error, setError]               = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CommunityRow | null>(null)
   const { hasPermission }               = usePermissions()
-  const abortRef                        = useRef<AbortController | null>(null)
 
-  const fetchPage = useCallback(async (p: number, q: string) => {
-    abortRef.current?.abort()
-    abortRef.current = new AbortController()
-    setLoading(true); setError(null)
-    try {
-      const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
-      if (q) params.set("q", q)
-      const res = await apiFetch(`/api/clients/table?${params}`, {
-        cache: "no-store", signal: abortRef.current.signal,
-      })
+  const { data, isLoading: loading, error: queryError, refetch: fetchPage } = useQuery({
+    queryKey: ["communities", page, dSearch],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ page: String(page), limit: String(PER_PAGE) })
+      if (dSearch) params.set("q", dSearch)
+      const res = await apiFetch(`/api/clients/table?${params}`, { signal })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data = await res.json()
-      setRows(data.results ?? [])
-      setTotal(data.total ?? 0)
-    } catch (e: any) {
-      if (e?.name === "AbortError") return
-      setError(e?.message ?? t("failedLoad"))
-    } finally { setLoading(false) }
-  }, [])
+      const d = await res.json()
+      return d as { total: number; results: CommunityRow[] }
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => { fetchPage(page, dSearch) }, [page, dSearch, fetchPage])
+  const rows = data?.results ?? []
+  const total = data?.total ?? 0
+  const error = queryError?.message || null
+
   useEffect(() => { setPage(1) }, [dSearch])
 
   const handleDeleted = (id: string) => {
-    setRows((p) => p.filter((r) => r.ID_Client !== id))
-    setTotal((t) => t - 1)
+    fetchPage()
     setDeleteTarget(null)
   }
 
@@ -773,7 +754,7 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
         <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-red-100 bg-red-50">
           <AlertCircle className="h-7 w-7 text-red-400" />
           <p className="text-sm text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch)} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => fetchPage()} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
           </Button>
         </div>

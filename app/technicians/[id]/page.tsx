@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -169,7 +171,7 @@ function PageSkeleton({ user }: { user: any }) {
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-5xl space-y-4">
             <div className="h-16 animate-pulse rounded-2xl border border-slate-200 bg-white" />
@@ -200,9 +202,8 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const activeTab    = searchParams.get("tab") || "details"
 
   const [user, setUser]     = useState<any>(null)
-  const [technician, setTechnician] = useState<TechnicianFull | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { errorModal, showError, closeError } = useErrorModal()
   
   const [subcontractors, setSubcontractors] = useState<any[]>([])
 
@@ -211,7 +212,6 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
 
   // ── Edit state ─────────────────────────────────────────────────────────────
   const [editing, setEditing]   = useState(false)
-  const [saving,  setSaving]    = useState(false)
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set())
 
   const [form, setForm] = useState({
@@ -269,56 +269,69 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   }
 
   // ── Fetch technician ───────────────────────────────────────────────────────────
-  const fetchTechnician = useCallback(async () => {
-    setLoading(true); setLoadError(null)
-    try {
-      const res = await apiFetch(`/api/technician/${id}`, { cache: "no-store" })
+  const { data: technician, isLoading: loading, error: loadError, refetch } = useQuery<TechnicianFull>({
+    queryKey: ["technician", id],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/technician/${id}`)
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data: TechnicianFull = await res.json()
-      setTechnician(data)
-      initForm(data)
+      return res.json()
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Actualizar formulario cada vez que se recarguen los datos del técnico
+  useEffect(() => {
+    if (technician && !editing) {
+      initForm(technician)
       setChangedFields(new Set())
-    } catch (e: any) {
-      setLoadError(e?.message ?? t("techLoadError"))
-    } finally { setLoading(false) }
-  }, [id])
+    }
+  }, [technician, editing])
 
-  useEffect(() => { if (user) fetchTechnician() }, [user, fetchTechnician])
-
-  // ── Save details ───────────────────────────────────────────────────────────
-  const handleSave = async () => {
-    if (!technician) return
-    setSaving(true)
-    try {
-      const payload: Record<string, any> = {}
-      for (const k of Object.keys(form)) {
-        if (!SKIP_PATCH.has(k)) {
-          if (k === "ID_Subcontractor") {
-            payload[k] = form[k] === "none" ? null : form[k]
-          } else {
-            payload[k] = (form as any)[k].trim() || null
-          }
-        }
-      }
+  const updateMutation = useMutation({
+    mutationFn: async (payload: Record<string, any>) => {
       const res = await apiFetch(`/api/technician/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        cache: "no-store",
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as any)?.detail ?? `Error ${res.status}`)
+        throw { 
+          message: data.error || data.detail || `Error ${res.status}`, 
+          detail: data.details || (typeof data.detail === 'string' ? data.detail : JSON.stringify(data)),
+          status: res.status 
+        }
       }
-      
-      // refetch to get updated relations (e.g. subcontractor name)
-      await fetchTechnician()
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["technician", id] })
+      queryClient.invalidateQueries({ queryKey: ["technicians"] })
       setEditing(false); setChangedFields(new Set())
       toast({ title: t("toastSaved"), description: t("techUpdateSuccess") })
-    } catch (e: any) {
-      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
-    } finally { setSaving(false) }
+    },
+    onError: (err: any) => {
+      showError(err.message || t("toastError"), err.detail, `/api/technician/${id}`, err.status)
+    }
+  })
+
+  const handleSave = async () => {
+    if (!technician) return
+    const payload: Record<string, any> = {}
+    for (const k of Object.keys(form)) {
+      if (!SKIP_PATCH.has(k)) {
+        if (k === "ID_Subcontractor") {
+          payload[k] = form[k] === "none" ? null : form[k]
+        } else {
+          payload[k] = (form as any)[k].trim() || null
+        }
+      }
+    }
+    updateMutation.mutate(payload)
   }
+
+  const saving = updateMutation.isPending
 
   const handleCancel = () => {
     if (technician) initForm(technician)
@@ -367,7 +380,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     try {
       const res = await apiFetch(`/api/technician/${id}/permissions/${permId}`, { method: "POST", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      await fetchTechnician()
+      await refetch()
       toast({ title: t("toastPermLinked") })
     } catch (e: any) {
       toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
@@ -379,7 +392,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     try {
       const res = await apiFetch(`/api/technician/${id}/permissions/${permId}`, { method: "DELETE", cache: "no-store" })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      await fetchTechnician()
+      await refetch()
       toast({ title: t("toastPermRemoved") })
     } catch (e: any) {
       toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
@@ -406,15 +419,15 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 p-6">
           <button onClick={() => router.push("/subcontractors")} className="mb-4 flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
             <ArrowLeft className="h-4 w-4" /> {t("backToSubs")}
           </button>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
             <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">{t("techLoadError")}</h2></div>
-            <p className="mt-2 text-sm text-red-600">{loadError}</p>
-            <Button onClick={fetchTechnician} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> {t("retry")}</Button>
+            <p className="mt-2 text-sm text-red-600">{loadError?.message || String(loadError)}</p>
+            <Button onClick={() => refetch()} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> {t("retry")}</Button>
           </div>
         </main>
       </div>
@@ -428,7 +441,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
 
           {/* ── Sticky header ─────────────────────────────────────────────── */}
@@ -825,6 +838,16 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
           setSubModalOpen(false)
         }}
         selectedId={form.ID_Subcontractor !== "none" ? form.ID_Subcontractor : undefined}
+      />
+      
+      <ErrorModal
+        open={errorModal.open}
+        onClose={closeError}
+        message={errorModal.message}
+        detail={errorModal.detail}
+        endpoint={errorModal.endpoint}
+        severity={errorModal.severity}
+        statusCode={errorModal.statusCode}
       />
     </div>
   )

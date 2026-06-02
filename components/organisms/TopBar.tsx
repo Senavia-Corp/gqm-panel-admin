@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { LanguageToggle } from "@/components/atoms/LanguageToggle"
 import { Logo } from "@/components/atoms/Logo"
 import { useSidebar } from "@/components/providers/SidebarContext"
+import { useQuery } from "@tanstack/react-query"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,55 +44,52 @@ function getAvatarColor(name: string | null | undefined): { bg: string; text: st
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TopBar() {
-  const [member, setMember] = useState<MemberInfo | null>(null)
-  const [loadingMember, setLoadingMember] = useState(true)
+  const [localData, setLocalData] = useState<{ id: string | null; isTech: boolean; initialMember: MemberInfo | null }>({ id: null, isTech: false, initialMember: null })
   const [notifCount] = useState(3) // placeholder — wire up to real notif system when ready
   const router = useRouter()
   const { setIsOpen } = useSidebar()
 
   useEffect(() => {
-    const ud = (() => {
-      try {
-        const raw = localStorage.getItem("user_data")
-        return raw ? JSON.parse(raw) : null
-      } catch { return null }
-    })()
-
-    if (!ud) { setLoadingMember(false); return }
-
-    // Prioritize ud.role as it's the most reliable source for the current user's role
-    const userRole = ud.role || localStorage.getItem("user_type") || ud.user_type
-    const isTech = userRole === "LEAD_TECHNICIAN"
-    const memberId = ud.id || ud.user_id || localStorage.getItem("user_id") || ud.ID_Member || ud.ID_Technician
-
-    // Set initial data from localStorage immediately
-    setMember({
-      Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? null,
-      Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (isTech ? "Technician" : "Member"),
-      Email_Address: ud.Email_Address ?? ud.email ?? null,
-    })
-
-    if (!memberId) { setLoadingMember(false); return }
-
-    const endpoint = isTech 
-      ? `/api/technician/${memberId}` 
-      : `/api/members/${memberId}`
-
-    apiFetch(endpoint, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data) => {
-        // Unified mapping: check technician fields first, then member fields
-        setMember({
-          Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? null,
-          Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (isTech ? "Technician" : "Member"),
-          Email_Address: data.Email_Address ?? data.Email ?? data.email ?? null,
+    try {
+      const raw = localStorage.getItem("user_data")
+      const ud = raw ? JSON.parse(raw) : null
+      if (ud) {
+        const userRole = ud.role || localStorage.getItem("user_type") || ud.user_type
+        const isTech = userRole === "LEAD_TECHNICIAN"
+        const memberId = ud.id || ud.user_id || localStorage.getItem("user_id") || ud.ID_Member || ud.ID_Technician
+        
+        setLocalData({
+          id: memberId,
+          isTech,
+          initialMember: {
+            Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? null,
+            Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (isTech ? "Technician" : "Member"),
+            Email_Address: ud.Email_Address ?? ud.email ?? null,
+          }
         })
-      })
-      .catch((err) => {
-        console.warn("[TopBar] could not load info:", err)
-      })
-      .finally(() => setLoadingMember(false))
+      }
+    } catch {}
   }, [])
+
+  const { data: member, isLoading: queryLoading } = useQuery({
+    queryKey: ["topbar-member", localData.id, localData.isTech],
+    queryFn: async () => {
+      const endpoint = localData.isTech ? `/api/technician/${localData.id}` : `/api/members/${localData.id}`
+      const res = await apiFetch(endpoint)
+      if (!res.ok) throw new Error("Failed to load user info")
+      const data = await res.json()
+      return {
+        Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? null,
+        Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (localData.isTech ? "Technician" : "Member"),
+        Email_Address: data.Email_Address ?? data.Email ?? data.email ?? null,
+      } as MemberInfo
+    },
+    enabled: !!localData.id,
+    initialData: localData.initialMember || undefined,
+    staleTime: 5 * 60 * 1000
+  })
+
+  const loadingMember = !member && queryLoading
 
   const initials   = getInitials(member?.Member_Name)
   const avatarCols = getAvatarColor(member?.Member_Name)

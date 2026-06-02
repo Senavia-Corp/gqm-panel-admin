@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
+import { useQuery } from "@tanstack/react-query"
 import { SubcontractorManagementTable } from "@/components/organisms/SubcontractorManagementTable"
 import { DeleteSubcontractorDialog } from "@/components/organisms/DeleteSubcontractorDialog"
 import { Button } from "@/components/ui/button"
@@ -67,22 +68,30 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
   }, [])
 
   const isTech = user?.role === "LEAD_TECHNICIAN"
-  const [techSubId, setTechSubId] = useState<string | null>(null)
 
+  const { data: techData, isSuccess: isTechDataSuccess } = useQuery({
+    queryKey: ["technician", user?.id],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/technician/${user.id}`)
+      if (!res.ok) throw new Error("Failed to fetch tech sub")
+      return res.json()
+    },
+    enabled: !!(isTech && user?.id),
+    staleTime: 5 * 60 * 1000
+  })
 
-  const [rows, setRows]         = useState<Subcontractor[]>([])
-  const [total, setTotal]       = useState(0)
+  const techSubId = isTechDataSuccess 
+    ? (techData?.subcontractor?.ID_Subcontractor ? String(techData.subcontractor.ID_Subcontractor) : null) 
+    : null
+  const isTechReady = !isTech || isTechDataSuccess
+
   const [page, setPage]         = useState(1)
   const [search, setSearch]     = useState("")
   const [status, setStatus]     = useState("all")
   const dSearch                 = useDebounce(search, 350)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState<string | null>(null)
 
   const [deleteOpen, setDeleteOpen]   = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Subcontractor | null>(null)
-
-  const abortRef = useRef<AbortController | null>(null)
 
   const normalizeOrg = (org?: string | null) => {
     if (!org) return ""
@@ -92,58 +101,24 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
     return s.replace(/\\"/g, '"').trim()
   }
 
-  const fetchPage = useCallback(async (p: number, q: string, st: string) => {
-    abortRef.current?.abort()
-    abortRef.current = new AbortController()
+  const { data: listData, isLoading: loading, error: queryError, refetch: refetchPage } = useQuery<ListResponse>({
+    queryKey: ["subcontractors", page, dSearch, status],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ page: String(page), limit: String(PER_PAGE) })
+      if (dSearch)        params.set("q", dSearch)
+      if (status !== "all") params.set("status", status)
 
-    setLoading(true); setError(null)
-    try {
-      const params = new URLSearchParams({ page: String(p), limit: String(PER_PAGE) })
-      if (q)           params.set("q", q)
-      if (st !== "all") params.set("status", st)
-
-      const res = await apiFetch(`/api/subcontractors_table?${params}`, {
-        cache: "no-store",
-        signal: abortRef.current.signal,
-      })
+      const res = await apiFetch(`/api/subcontractors_table?${params}`, { signal })
       if (!res.ok) throw new Error(`Error ${res.status}`)
-      const data = (await res.json()) as ListResponse
-      setRows((data.results ?? []).map((s) => ({ ...s, Organization: normalizeOrg(s.Organization) })))
-      setTotal(data.total ?? 0)
-    } catch (e: any) {
-      if (e?.name === "AbortError") return
-      setError(e?.message ?? t("errorLoad"))
-    } finally { setLoading(false) }
-  }, [t])
+      return res.json()
+    },
+    enabled: isTechReady,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    if (isTech && user?.id) {
-      const fetchTechSub = async () => {
-        try {
-          const res = await apiFetch(`/api/technician/${user.id}`)
-          if (res.ok) {
-            const data = await res.json()
-            setTechSubId(data?.subcontractor?.ID_Subcontractor ? String(data.subcontractor.ID_Subcontractor) : null)
-          }
-        } catch (err) {
-          console.error("Failed to fetch tech sub ID:", err)
-        }
-      }
-      fetchTechSub()
-    }
-  }, [isTech, user?.id])
-
-  useEffect(() => {
-    if (isTech && !techSubId) {
-      // Don't fetch the whole list if we are tech and don't have our sub ID yet
-      if (techSubId === null) {
-        // Only if we finished fetching and it's still null, then we can show empty or handle
-      }
-      return
-    }
-    fetchPage(page, dSearch, status)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, dSearch, status, techSubId, isTech])
+  const rows = listData?.results?.map(s => ({ ...s, Organization: normalizeOrg(s.Organization) })) || []
+  const total = listData?.total || 0
+  const error = queryError?.message || null
 
   useEffect(() => { setPage(1) }, [dSearch, status])
 
@@ -159,7 +134,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
       )
       if (!res.ok) throw new Error(`Delete failed (${res.status})`)
       setDeleteOpen(false); setDeleteTarget(null)
-      fetchPage(page, dSearch, status)
+      refetchPage()
     } catch (e) {
       console.error("Error deleting subcontractor:", e)
     }
@@ -249,7 +224,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
         <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-xl border border-red-100 bg-red-50">
           <AlertCircle className="h-8 w-8 text-red-400" />
           <p className="text-sm font-medium text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => fetchPage(page, dSearch, status)} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => refetchPage()} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
           </Button>
         </div>
@@ -268,7 +243,7 @@ export function SubcontractorsTab({ hasPermission }: { hasPermission: (p: string
               from: showFrom,
               to: showTo,
               total: displayTotal,
-              span: (chunks) => <span className="font-semibold text-slate-800">{chunks}</span>
+              span: (chunks: React.ReactNode) => <span className="font-semibold text-slate-800">{chunks}</span>
             })}
           </p>
           <div className="flex items-center gap-2">
