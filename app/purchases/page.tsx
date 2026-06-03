@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -187,28 +188,13 @@ export default function PurchasesPage() {
   const t = useTranslations("purchases")
   const [user, setUser]   = useState<any>(null)
 
-  const [rows,    setRows]    = useState<PurchaseRow[]>([])
-  const [total,   setTotal]   = useState(0)
-  const [page,    setPage]    = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
-
-  const [search,       setSearch]       = useState("")
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("All")
-  const [toDelete,     setToDelete]     = useState<PurchaseRow | null>(null)
-
-  const STATUS_OPTIONS = [
-    { value: "All",         label: t("statusAll")        },
-    { value: "Pending",     label: t("statusPending")    },
-    { value: "In Review",   label: t("statusInReview")   },
-    { value: "Approved",    label: t("statusApproved")   },
-    { value: "In Progress", label: t("statusInProgress") },
-    { value: "Completed",   label: t("statusCompleted")  },
-    { value: "Cancelled",   label: t("statusCancelled")  },
-  ]
+  const [toDelete, setToDelete] = useState<PurchaseRow | null>(null)
 
   const debouncedSearch = useDebounce(search, 350)
-  const abortRef = useRef<AbortController | null>(null)
 
   // ── Auth ────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,42 +204,42 @@ export default function PurchasesPage() {
   }, [router])
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
-  const fetchRows = useCallback(async (p: number, q: string, status: string) => {
-    abortRef.current?.abort()
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["purchases_table", page, debouncedSearch, statusFilter],
+    queryFn: async () => {
+      const qs = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
+      if (debouncedSearch) qs.set("q", debouncedSearch)
+      if (statusFilter && statusFilter !== "All") qs.set("status", statusFilter)
 
-    setLoading(true); setError(null)
-    try {
-      const qs = new URLSearchParams({ page: String(p), limit: String(LIMIT) })
-      if (q)                    qs.set("q", q)
-      if (status && status !== "All") qs.set("status", status)
-
-      const res = await apiFetch(`/api/purchases/table?${qs}`, {
-        signal: ctrl.signal, cache: "no-store",
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const res = await apiFetch(`/api/purchases/table?${qs}`, { cache: "no-store" })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as any)?.detail || `Error ${res.status}`)
+      }
       const data = await res.json()
-      setRows(Array.isArray(data.results) ? data.results : [])
-      setTotal(typeof data.total === "number" ? data.total : 0)
-      setPage(p)
-    } catch (e: any) {
-      if (e?.name === "AbortError") return
-      setError(e?.message ?? "Failed to load purchases")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+      const results: PurchaseRow[] = Array.isArray(data.results) ? data.results : []
+      const totalCount = typeof data.total === "number" ? data.total : 0
+      return { results, totalCount }
+    },
+    enabled: !!user,
+    staleTime: 0,
+  })
 
-  useEffect(() => {
-    if (user) fetchRows(1, debouncedSearch, statusFilter)
-  }, [user, debouncedSearch, statusFilter, fetchRows])
+  const rows = data?.results || []
+  const total = data?.totalCount || 0
+  const loading = isLoading || isFetching
+  const errorMessage = error?.message ?? null
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
+  // reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, statusFilter])
+
   const handleDeleted = () => {
     setToDelete(null)
-    fetchRows(page, debouncedSearch, statusFilter)
+    queryClient.invalidateQueries({ queryKey: ["purchases_table"] })
   }
 
   if (!user) return null
@@ -364,7 +350,7 @@ export default function PurchasesPage() {
                   <div className="flex flex-col items-center gap-3 px-6 py-12">
                     <AlertCircle className="h-8 w-8 text-red-400" />
                     <p className="text-sm text-slate-600">{error}</p>
-                    <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
+                    <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 text-xs">
                       <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                     </Button>
                   </div>
@@ -471,7 +457,7 @@ export default function PurchasesPage() {
                             <div className="flex flex-col items-center gap-3">
                               <AlertCircle className="h-8 w-8 text-red-400" />
                               <p className="text-sm text-slate-600">{error}</p>
-                              <Button size="sm" variant="outline" onClick={() => fetchRows(page, debouncedSearch, statusFilter)} className="gap-1.5 text-xs">
+                              <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 text-xs">
                                 <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                               </Button>
                             </div>
@@ -596,7 +582,7 @@ export default function PurchasesPage() {
                   </p>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => fetchRows(page - 1, debouncedSearch, statusFilter)}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
                     >
@@ -604,7 +590,7 @@ export default function PurchasesPage() {
                     </button>
                     <span className="text-xs font-semibold text-slate-700">{page} / {totalPages}</span>
                     <button
-                      onClick={() => fetchRows(page + 1, debouncedSearch, statusFilter)}
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={page >= totalPages}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-40"
                     >

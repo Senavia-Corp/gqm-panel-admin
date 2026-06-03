@@ -17,6 +17,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { SupplierBrowserPanel, type SupplierEntry } from "@/components/organisms/SupplierBrowserPanel"
 import { LinkedSuppliersCard } from "@/components/organisms/LinkedSuppliersCard"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useQueryClient } from "@tanstack/react-query"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -941,6 +942,7 @@ export default function PurchaseDetailsPage() {
   const searchParams = useSearchParams()
   const returnTo = searchParams?.get("returnTo") ?? null
   const backUrl = returnTo ? decodeURIComponent(returnTo) : "/purchases"
+  const queryClient = useQueryClient()
 
   const [user, setUser] = useState<any>(null)
   const [purchase, setPurchase] = useState<Purchase | null>(null)
@@ -1027,6 +1029,14 @@ export default function PurchaseDetailsPage() {
   useEffect(() => {
     if (user && id) fetchPurchase(id)
   }, [user, id, fetchPurchase])
+
+  // Invalidate global queries whenever this purchase is modified locally
+  useEffect(() => {
+    if (purchase) {
+      queryClient.invalidateQueries({ queryKey: ["purchases_table"] })
+      queryClient.invalidateQueries({ queryKey: ["job_purchases"] })
+    }
+  }, [purchase, queryClient])
 
   // ── Patch purchase field ───────────────────────────────────────────────────
   const patchPurchase = useCallback(async (patch: Partial<Purchase>) => {

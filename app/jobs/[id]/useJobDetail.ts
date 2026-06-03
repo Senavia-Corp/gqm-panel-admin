@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import type { JobDTO, UpdateJobRequest } from "@/lib/types"
 import { fetchJobById, updateJob } from "@/lib/services/jobs-service"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 type ChangedFields = Set<string>
 type SaveOptions = { sync_podio?: boolean }
@@ -49,27 +49,49 @@ const CALCULATED_FIELDS = new Set([
 ])
 
 export function useJobDetail(jobId: string) {
-  const [job,           setJob]           = useState<JobDTO | null>(null)
-  const [originalJob,   setOriginalJob]   = useState<JobDTO | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data: cachedJob, isLoading: isQueryLoading, refetch } = useQuery({
+    queryKey: ["job_detail", jobId],
+    queryFn: () => fetchJobById(jobId),
+    enabled: !!jobId && jobId !== "create",
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  })
+
+  // Initialize from cache immediately if available to prevent flash of loader
+  const [job, setJob] = useState<JobDTO | null>(cachedJob ?? null)
+  const [originalJob, setOriginalJob] = useState<JobDTO | null>(cachedJob ?? null)
+  
   const [changedFields, setChangedFields] = useState<ChangedFields>(new Set())
-  const [isLoading,     setIsLoading]     = useState(false)
-  const [isSaving,      setIsSaving]      = useState(false)
-  const queryClient                       = useQueryClient()
+  const [isSaving, setIsSaving] = useState(false)
+  const [isManualLoading, setIsManualLoading] = useState(false)
+
+  // Sync state when query data arrives/changes (e.g., initial fetch completes)
+  useEffect(() => {
+    if (cachedJob && changedFields.size === 0) {
+      setJob(cachedJob)
+      setOriginalJob(cachedJob)
+    }
+  }, [cachedJob])
+
+  const isLoading = isQueryLoading || isManualLoading
 
   // ── Reload ──────────────────────────────────────────────────────────────────
   const reload = useCallback(async () => {
     if (!jobId || jobId === "create") return
-    setIsLoading(true)
+    setIsManualLoading(true)
     try {
-      const data = await fetchJobById(jobId)
-      setJob(data)
-      setOriginalJob(data)
-      setChangedFields(new Set())
+      const { data } = await refetch()
+      if (data) {
+        setJob(data)
+        setOriginalJob(data)
+        setChangedFields(new Set())
+      }
       return data
     } finally {
-      setIsLoading(false)
+      setIsManualLoading(false)
     }
-  }, [jobId])
+  }, [jobId, refetch])
 
   // ── Mark changed ─────────────────────────────────────────────────────────
   // Calculated fields are silently ignored — they cannot be "changed" by the user.

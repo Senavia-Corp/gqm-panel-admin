@@ -499,7 +499,7 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
       return { results, total }
     },
     enabled: !!jobId,
-    staleTime: 1000 * 60 * 5, // 5 min cache
+    staleTime: 0,
   })
 
   const purchases = data?.results || []
@@ -681,21 +681,26 @@ export function JobPurchasesTab({ jobId, userRole }: { jobId: string; userRole?:
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="relative">
           {loading && (
-            <div className="flex items-center gap-2 text-xs text-slate-400 pb-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> {tst("refreshing")}
+            <div className="absolute inset-0 z-10 flex items-start justify-center pt-24 rounded-xl bg-slate-50/40 backdrop-blur-[1px]">
+              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-emerald-600 shadow-md">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {tst("refreshing")}
+              </div>
             </div>
           )}
-          {grouped.map(({ section, purchases: sectionPurchases }) => (
-            <PurchaseSection
-              key={section.key}
-              section={section}
-              purchases={sectionPurchases}
-              onOpen={handleOpenPurchase}
-              onDelete={handleDelete}
-            />
-          ))}
+          <div className={`space-y-3 transition-all duration-300 ${loading ? "opacity-60 pointer-events-none animate-pulse" : ""}`}>
+            {grouped.map(({ section, purchases: sectionPurchases }) => (
+              <PurchaseSection
+                key={section.key}
+                section={section}
+                purchases={sectionPurchases}
+                onOpen={handleOpenPurchase}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
