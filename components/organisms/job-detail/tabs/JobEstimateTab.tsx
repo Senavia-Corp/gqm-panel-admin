@@ -28,6 +28,7 @@ type Props = {
   onItemsChanged?: (items: EstimateItem[]) => void
   jobYear?: number
   jobType?: string
+  isFetching?: boolean
 }
 
 export function JobEstimateTab({
@@ -46,6 +47,7 @@ export function JobEstimateTab({
   onItemsChanged,
   jobYear,
   jobType,
+  isFetching,
 }: Props) {
   const t = useTranslations("jobEstimate.general")
   const [activeTab, setActiveTab] = useState<EstimateTab>("general")
@@ -130,6 +132,7 @@ export function JobEstimateTab({
           onEditItem={onEditItem}
           jobYear={jobYear}
           jobType={jobType}
+          isFetching={isFetching}
         />
       ) : activeTab === "bdf" ? (
         <BDFManager

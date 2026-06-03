@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 import type { EstimateItem } from "@/lib/types"
+import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ export function EditEstimateItemDialog({
     Internal_Notes: initialItem?.Internal_Notes || "",
   }))
   const [errors, setErrors]       = useState<Partial<Record<keyof FormState, string>>>({})
+  const { errorModal, showError, closeError } = useErrorModal()
   const [loading, setLoading]     = useState(false)
   const [section, setSection]     = useState<"basic" | "costs">("basic")
   
@@ -227,6 +229,10 @@ export function EditEstimateItemDialog({
 
       // 1. PATCH the Estimate Cost
       const estimateIdStr = String((initialItem as any).ID_EstimateItem || (initialItem as any).ID_EstimateCost || (initialItem as any).ID_Estimate_Cost || (initialItem as any).id || "")
+      if (!estimateIdStr || estimateIdStr.startsWith("TEMP")) {
+        throw new Error("Cannot edit an unsaved estimate item. Please refresh or save first.")
+      }
+
       const res = await apiFetch(`/api/estimate/${estimateIdStr}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -278,7 +284,8 @@ export function EditEstimateItemDialog({
       onEdited(item)
       onOpenChange(false)
     } catch (e: any) {
-      toast.error(e?.message ?? t("failMsg"))
+      console.error("[EditEstimateItemDialog] Error saving item:", e)
+      showError(e.message || t("failMsg") || "Failed to update estimate item", "", "PATCH /api/estimate", 500)
     } finally {
       setLoading(false)
     }
@@ -578,6 +585,7 @@ export function EditEstimateItemDialog({
           </div>
         </div>
       </div>
+      <ErrorModal {...errorModal} onClose={closeError} />
     </div>,
     document.body
   )

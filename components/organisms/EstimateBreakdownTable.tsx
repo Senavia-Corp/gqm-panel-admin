@@ -30,6 +30,7 @@ interface EstimateBreakdownTableProps {
   onEditItem?: (item: EstimateItem) => void
   jobYear?: number
   jobType?: string
+  isFetching?: boolean
 }
 
 // Cost types that need Podio sync on delete
@@ -277,7 +278,7 @@ async function patchJobForPodioSync(jobId: string, jobYear?: number): Promise<vo
 export function EstimateBreakdownTable({
   items, onViewDetails, onCreateOrder, onItemsImported, jobId,
   hasSavedEstimates, onSaveEstimates, onDeleteAllEstimates, onCancelImport,
-  onDeleteItem, onEditItem, jobYear, jobType,
+  onDeleteItem, onEditItem, jobYear, jobType, isFetching,
 }: EstimateBreakdownTableProps) {
   const t = useTranslations("jobEstimate.general")
   const [search, setSearch]               = useState("")
@@ -586,8 +587,16 @@ export function EstimateBreakdownTable({
           </div>
         </div>
 
-        <div className="overflow-x-auto" style={{ maxHeight: "520px", overflowY: "auto" }}>
-          <table className="w-full min-w-[1100px]">
+        <div className="overflow-x-auto relative" style={{ maxHeight: "520px", overflowY: "auto" }}>
+          {isFetching && (
+            <div className="absolute inset-0 z-20 flex items-start justify-center pt-20 bg-white/50 backdrop-blur-[1px] pointer-events-none">
+              <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 shadow-md border border-slate-200">
+                <RefreshCcw className="h-4 w-4 animate-spin text-blue-500" />
+                <span className="text-sm font-semibold text-slate-700">{t("btnSaving") || "Actualizando..."}</span>
+              </div>
+            </div>
+          )}
+          <table className={`w-full min-w-[1100px] transition-opacity duration-300 ${isFetching ? "opacity-40" : "opacity-100"}`}>
             <thead className="sticky top-0 z-10 border-b border-slate-100 bg-white">
               <tr>
                 <th className="w-8 px-4 py-3" />

@@ -57,6 +57,8 @@ import { apiFetch } from "@/lib/apiFetch"
 import { PodioSyncAfterImportDialog } from "@/components/organisms/PodioSyncAfterImportDialog"
 import { useSearchParams } from "next/navigation"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { fetchJobById } from "@/lib/services/jobs-service"
 
 
 
@@ -178,6 +180,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const routeParams = useParams<{ id: string }>()
   const jobId = String(routeParams?.id ?? "")
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
 
   const { hasPermission } = usePermissions()
   const t = useTranslations("jobs")
@@ -226,6 +229,23 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
   const [orders, setOrders] = useState<SubcontractorOrder[]>([])
   const [syncPodio, setSyncPodio] = useState(true)
+
+  const { data: estimateQueryData, isFetching: isFetchingEstimates } = useQuery({
+    queryKey: ["job_estimate_costs", jobId],
+    queryFn: async () => {
+      const data = await fetchJobById(jobId)
+      if (!data) return { items: [], hasSaved: false }
+      return mapEstimateCostsFromJob(data)
+    },
+    enabled: !!jobId && jobId !== "create",
+  })
+
+  useEffect(() => {
+    if (estimateQueryData) {
+      setEstimateItems(estimateQueryData.items)
+      setHasSavedEstimates(estimateQueryData.hasSaved)
+    }
+  }, [estimateQueryData])
 
   const [podioSyncDialogOpen, setPodioSyncDialogOpen] = useState(false)
   const [importedBdfCount, setImportedBdfCount] = useState(0)
@@ -312,10 +332,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           const reloadedJob = await jobDetail.reload()
           const sourceJob = reloadedJob ?? jobDetail.job
           if (!sourceJob) return
-
-          const { items, hasSaved } = mapEstimateCostsFromJob(sourceJob)
-          setEstimateItems(items)
-          setHasSavedEstimates(hasSaved)
 
           loadTasks()
           setOrders(mockOrders.filter((order) => order.ID_Jobs === jobId))
@@ -855,6 +871,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       console.error("[estimate] failed items:", failed)
     }
 
+    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
     await jobDetail.reload()
 
     const skipped = skippedExisting + duplicates.length
@@ -912,6 +929,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     setEstimateItems([])
     setHasSavedEstimates(false)
+    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
     await jobDetail.reload()
 
     toast({ title: t("toastDeleted"), description: `${t("toastDeletedPrefix")} ${ids.length} ${t("toastDeletedSuffix")}` })
@@ -933,6 +951,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       throw new Error(raw || `Failed to delete (${res.status})`)
     }
 
+    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
     await jobDetail.reload()
   }
 
@@ -942,7 +961,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   const handleEstimateItemEdited = async (updatedItem: EstimateItem) => {
-    await jobDetail.reload()
+    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
+    // await jobDetail.reload()
     if (selectedEstimateItem && selectedEstimateItem.ID_EstimateItem === updatedItem.ID_EstimateItem) {
       setSelectedEstimateItem(updatedItem)
     }
@@ -1283,6 +1303,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onEditItem={handleEditEstimateItem}
             jobYear={resolveJobYearForPodioSync(job)}
             jobType={String((job as any)?.Job_type ?? "")}
+            isFetching={isFetchingEstimates}
           />
         </JobTabLayout>
       )
@@ -1352,7 +1373,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     )
   }
 
-  if (jobDetail.isLoading || !job) {
+  if (!job) {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
