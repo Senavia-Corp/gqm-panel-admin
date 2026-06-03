@@ -12,6 +12,7 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 import { CreateEstimateItemDialog } from "@/components/organisms/CreateEstimateItemDialog"
 import type { BDFStatus, EstimateItem } from "@/lib/types"
+import { useQueryClient } from "@tanstack/react-query"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ const FIELD_BASE =
 function money(v: number) {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD" })
 }
+
+const getId = (it: any) => String(it?.ID_EstimateItem || it?.ID_EstimateCost || it?.ID_Estimate_Cost || it?.id || "")
 
 async function patchJobForPodioSync(jobId: string, jobYear?: number) {
   const qs = new URLSearchParams({ sync_podio: "true" })
@@ -272,9 +275,12 @@ function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: 
     const parsed = parseFloat(amount)
     if (isNaN(parsed) || parsed < 0) { setAmountError("Must be a valid amount ≥ 0"); return }
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot edit an unsaved rent item."); return }
+    
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Status: "Approved", Client_price: parsed }),
       })
@@ -396,7 +402,10 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
         ? { Client_price: parsed, Description: description.trim() || null }
         : { Builder_cost: parsed, Client_price: parsed, Description: description.trim() || null }
 
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const id = getId(item)
+      if (!id || id.startsWith("TEMP")) { toast.error("Cannot edit an unsaved rent item."); return }
+      
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
@@ -503,9 +512,12 @@ function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved
 
   const handleUnapprove = async () => {
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot edit an unsaved rent item."); return }
+
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Status: "Estimated", Client_price: item.Builder_Cost }),
       })
@@ -578,9 +590,12 @@ function DeleteRentDialog({ open, item, onClose, jobId, jobYear, onDeleted }: De
 
   const handleDelete = async () => {
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot delete an unsaved rent item."); return }
+    
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, { method: "DELETE" })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
@@ -642,6 +657,7 @@ interface RentManagerProps {
 
 export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetails }: RentManagerProps) {
   const t = useTranslations("jobEstimate.rentManager")
+  const queryClient = useQueryClient()
   const rentItems = items.filter((i) => i.Cost_Type === "Rent")
 
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
@@ -657,11 +673,13 @@ export function RentManager({ jobId, jobYear, items, onItemsChanged, onViewDetai
   // Paid Fees (Rent): only Approved Rent Client_Price (confirmed spend)
   const totalPaidFees      = approvedItems.reduce((s, i) => s + i.Client_Price, 0)
 
-  const handleCreated    = (item: EstimateItem) => onItemsChanged([...items, item])
-  const handleApproved   = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleEdited     = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleUnapproved = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleDeleted    = (deleted: EstimateItem) => onItemsChanged(items.filter((i) => i.ID_EstimateItem !== deleted.ID_EstimateItem))
+  const notify = () => queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
+
+  const handleCreated    = (item: EstimateItem) => { onItemsChanged([...items, item]); notify() }
+  const handleApproved   = (updated: EstimateItem) => { onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i)); notify() }
+  const handleEdited     = (updated: EstimateItem) => { onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i)); notify() }
+  const handleUnapproved = (updated: EstimateItem) => { onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i)); notify() }
+  const handleDeleted    = (deleted: EstimateItem) => { onItemsChanged(items.filter((i) => getId(i) !== getId(deleted))); notify() }
 
   return (
     <div className="space-y-4">

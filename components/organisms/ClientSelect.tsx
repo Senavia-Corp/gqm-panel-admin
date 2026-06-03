@@ -100,7 +100,7 @@ function useClientTable(enabled: boolean) {
       return await res.json()
     },
     enabled: enabled,
-    staleTime: 1000 * 60 * 5, // Cache for 5 mins
+    staleTime: 1000 * 60 * 30, // Cache for 30 mins
   })
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1
@@ -109,7 +109,8 @@ function useClientTable(enabled: boolean) {
     query, setQuery,
     page, setPage,
     data: data || null, 
-    loading: isLoading || isFetching,
+    isLoading,
+    isFetching,
     error: null,
     totalPages,
     refetch: () => {},
@@ -137,7 +138,7 @@ function useSingleClient(id: string | undefined) {
       return await res2.json()
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5, // Cache for 5 mins
+    staleTime: 1000 * 60 * 30, // Cache for 30 mins
   })
 
   return client ?? null
@@ -354,8 +355,8 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto">
-          {table.loading ? (
+        <div className="max-h-80 overflow-y-auto relative">
+          {table.isLoading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
               <RefreshCcw className="h-4 w-4 animate-spin" /> {t("clientLoading")}
             </div>
@@ -377,7 +378,15 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
               {table.query && <p className="text-xs text-slate-300 mt-0.5">{t("clientTryDifferent")}</p>}
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className={`divide-y divide-slate-100 transition-opacity duration-300 ${table.isFetching ? "opacity-60 pointer-events-none" : ""}`}>
+              {table.isFetching && (
+                <div className="absolute inset-0 z-10 flex items-start justify-center pt-8 bg-slate-50/40 backdrop-blur-[1px]">
+                  <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-emerald-600 shadow-sm">
+                    <RefreshCcw className="h-3 w-3 animate-spin" />
+                    Actualizando...
+                  </div>
+                </div>
+              )}
               {table.data.results.map((row) => {
                 const isSelected = row.ID_Client === value
                 const email = getEmail(row.Email_Address)
@@ -465,14 +474,14 @@ export function ClientSelect({ value, onChange, initialClients = [], changed, di
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => table.setPage((p) => Math.max(1, p - 1))}
-              disabled={table.page === 1 || table.loading}
+              disabled={table.page === 1 || table.isLoading || table.isFetching}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" /> {t("clientPrev")}
             </button>
             <button
               onClick={() => table.setPage((p) => Math.min(table.totalPages, p + 1))}
-              disabled={table.page >= table.totalPages || table.loading}
+              disabled={table.page >= table.totalPages || table.isLoading || table.isFetching}
               className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
             >
               {t("clientNext")} <ChevronRight className="h-3.5 w-3.5" />

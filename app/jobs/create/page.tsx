@@ -56,7 +56,7 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<JobType, JobStatus[]> = {
     "Entered",
     "Stand By",
   ],
-  PAR: ["In Progress", "Completed P. INV / POs", "Invoiced", "PAID", "Cancelled"],
+  PAR: ["Scheduled / Work in Progress", "Completed P. INV / POs", "Invoiced", "PAID", "Cancelled"],
 }
 
 const PODIO_YEAR_OPTIONS = ["2026", "2025", "2024", "2023"]
