@@ -229,25 +229,47 @@ export function EditEstimateItemDialog({
 
       // 1. PATCH the Estimate Cost
       const estimateIdStr = String((initialItem as any).ID_EstimateItem || (initialItem as any).ID_EstimateCost || (initialItem as any).ID_Estimate_Cost || (initialItem as any).id || "")
+      
+      let updated: any = null
+
       if (!estimateIdStr || estimateIdStr.startsWith("TEMP")) {
-        throw new Error("Cannot edit an unsaved estimate item. Please refresh or save first.")
+        // Local edit for unsaved items
+        updated = {
+          ...initialItem,
+          ...payload,
+          Title: payload.Title,
+          Cost_Code: payload.Cost_code,
+          Category: payload.Category,
+          Parent_Group: payload.Parent_group,
+          Description: payload.Description,
+          Quantity: payload.Quatity,
+          Unit: payload.Unit,
+          Unit_Cost: payload.Unit_cost,
+          Cost_Type: payload.Cost_type,
+          Builder_Cost: payload.Builder_cost,
+          Client_Price: payload.Client_price,
+          Markup: payload.Markup,
+          Margin: payload.Margin,
+          Percent_Invoiced: payload.Percent_invoiced,
+          Internal_Notes: payload.Internal_Notes,
+        }
+      } else {
+        const res = await apiFetch(`/api/estimate/${estimateIdStr}`, {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(payload),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error((err as any)?.error ?? `Error ${res.status}`)
+        }
+
+        updated = await res.json()
       }
-
-      const res = await apiFetch(`/api/estimate/${estimateIdStr}`, {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as any)?.error ?? `Error ${res.status}`)
-      }
-
-      const updated = await res.json()
 
       // 2. Podio Syncs (if enabled and applicable)
-      if (syncPodio) {
+      if (syncPodio && (!estimateIdStr || !estimateIdStr.startsWith("TEMP"))) {
         // If it's attached to an Order, sync the order
         if (hasOrderAttached) {
           await patchOrderForPodioSync(initialItem.ID_Order as string, jobYear)

@@ -961,10 +961,26 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   const handleEstimateItemEdited = async (updatedItem: EstimateItem) => {
-    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
-    // await jobDetail.reload()
-    if (selectedEstimateItem && selectedEstimateItem.ID_EstimateItem === updatedItem.ID_EstimateItem) {
-      setSelectedEstimateItem(updatedItem)
+    // 1. Local optimistic update (essential for TEMP items)
+    setEstimateItems(prev => prev.map(item => {
+      const idA = String((item as any).ID_EstimateItem || (item as any).ID_EstimateCost || (item as any).id || "A")
+      const idB = String((updatedItem as any).ID_EstimateItem || (updatedItem as any).ID_EstimateCost || (updatedItem as any).id || "B")
+      return idA === idB ? updatedItem : item
+    }))
+
+    // 2. Only invalidate backend cache if it's a real saved item
+    const isTemp = String((updatedItem as any).ID_EstimateItem || "").startsWith("TEMP")
+    if (!isTemp) {
+      queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
+    }
+
+    // 3. Update currently selected item if it matches
+    if (selectedEstimateItem) {
+      const selId = String((selectedEstimateItem as any).ID_EstimateItem || (selectedEstimateItem as any).ID_EstimateCost || (selectedEstimateItem as any).id || "S")
+      const upId = String((updatedItem as any).ID_EstimateItem || (updatedItem as any).ID_EstimateCost || (updatedItem as any).id || "U")
+      if (selId === upId) {
+        setSelectedEstimateItem(updatedItem)
+      }
     }
   }
 
