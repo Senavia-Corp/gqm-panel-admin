@@ -41,6 +41,16 @@ type PurchaseRow = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const STATUS_OPTIONS = [
+  { value: "All", label: "All" },
+  { value: "Completed", label: "Completed" },
+  { value: "In Progress", label: "In Progress" },
+  { value: "Pending", label: "Pending" },
+  { value: "Cancelled", label: "Cancelled" },
+  { value: "In Review", label: "In Review" },
+  { value: "Approved", label: "Approved" },
+]
+
 const asStr = (v: unknown) => (v == null ? "" : String(v))
 
 function fmtMoney(v: number | null | undefined) {
