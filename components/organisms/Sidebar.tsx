@@ -61,10 +61,15 @@ const gqmMemberMenuItems: NavItem[] = [
   { icon: FileBadge,       labelKey: "rolesPermissions",   href: "/roles-permissions" },
 ]
 
+const subcontractorMenuItems: NavItem[] = [
+  { icon: LayoutDashboard, labelKey: "dashboard",      href: "/dashboard" },
+  { icon: Briefcase,       labelKey: "jobs",           href: "/jobs" },
+  { icon: Users,           labelKey: "subcontractors", href: "/subcontractors" },
+]
+
 const leadTechnicianMenuItems: NavItem[] = [
   { icon: LayoutDashboard, labelKey: "dashboard",    href: "/dashboard" },
   { icon: Briefcase,       labelKey: "jobs",         href: "/jobs" },
-  { icon: Users,           labelKey: "subcontractors", href: "/subcontractors" },
 ]
 
 const bottomItems: NavItem[] = [
@@ -191,6 +196,7 @@ function SidebarContent({
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const pathname = usePathname()
   const { isOpen, setIsOpen } = useSidebar()
 
@@ -199,6 +205,7 @@ export function Sidebar() {
     if (userData) {
       const user = JSON.parse(userData)
       setUserRole(user.role)
+      setUserId(localStorage.getItem("user_id") ?? user.id ?? user.user_id ?? user.ID_Member ?? user.ID_Technician ?? user.ID_Subcontractor)
     }
   }, [])
 
@@ -210,7 +217,16 @@ export function Sidebar() {
   const { hasPermission } = usePermissions()
 
   const menuItems = useMemo(() => {
-    const base = userRole === "LEAD_TECHNICIAN" ? leadTechnicianMenuItems : gqmMemberMenuItems
+    let base = gqmMemberMenuItems
+    if (userRole === "SUBCONTRACTOR") {
+      base = subcontractorMenuItems.map(item => 
+        item.href === "/subcontractors" && userId 
+          ? { ...item, href: `/subcontractors/${userId}` } 
+          : item
+      )
+    }
+    else if (userRole === "LEAD_TECHNICIAN") base = leadTechnicianMenuItems
+    
     return base.filter((item) => {
       if (item.href === "/members")              return hasPermission("member:read")
       if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")

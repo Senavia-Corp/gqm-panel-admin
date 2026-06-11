@@ -33,6 +33,15 @@ export const MODULE_ACTIONS = [
     ],
   },
   {
+    module: "Technicians",
+    actions: [
+      { id: "technician:read",   label: "Read",   desc: "View technician lists and details." },
+      { id: "technician:create", label: "Create", desc: "Register new technicians." },
+      { id: "technician:update", label: "Update", desc: "Edit technician profiles." },
+      { id: "technician:delete", label: "Delete", desc: "Delete technician records." },
+    ],
+  },
+  {
     module: "Clients / Communities",
     actions: [
       { id: "client:read",   label: "Read",   desc: "View clients and communities." },

@@ -96,6 +96,7 @@ export default function JobsPage() {
   }>({ open: false, job: null, suggestedYear: null })
 
   const isTechnician = user?.role === "LEAD_TECHNICIAN"
+  const isSubcontractor = user?.role === "SUBCONTRACTOR"
   const queryClient = useQueryClient()
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -107,11 +108,20 @@ export default function JobsPage() {
 
   // ── Core fetch ────────────────────────────────────────────────────────────
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["jobs_list", user?.id, isTechnician, filters],
+    queryKey: ["jobs_list", user?.id, isTechnician, isSubcontractor, filters],
     queryFn: async () => {
       if (!user) return { jobs: [], total: 0 }
       const currentFilters = toServiceFilters()
       
+      if (isSubcontractor) {
+        const { jobs: subJobs, total } = await fetchJobs(
+          filters.page,
+          itemsPerPage,
+          { ...currentFilters, subcontractorId: user.id }
+        )
+        return { jobs: sortArchivedLast(subJobs), total }
+      }
+
       if (isTechnician) {
         const techRes = await apiFetch(`/api/technician/${user.id}`, { cache: "no-store" })
         if (!techRes.ok) throw new Error("Failed to fetch technician data")

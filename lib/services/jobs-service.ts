@@ -92,6 +92,7 @@ export async function fetchJobs(
     if (filters?.dateFrom) params.set("date_from", filters.dateFrom)
     if (filters?.dateTo) params.set("date_to", filters.dateTo)
     if (filters?.subcontractorId) params.set("subcontractorId", filters.subcontractorId)
+    if ((filters as any)?.technicianId) params.set("technicianId", (filters as any).technicianId)
 
     const response = await apiFetch(`${JOBS_API_URL}?${params.toString()}`, {
       method: "GET",

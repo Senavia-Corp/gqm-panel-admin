@@ -320,6 +320,7 @@ export default function SubcontractorDetailsPage() {
     Email_Address: [""] as string[],
     Phone_Number: [""] as string[],
     Coverage_Area: [] as string[],
+    ID_Role: "",
   })
 
   const setField = (k: string, v: any) => {
@@ -366,6 +367,22 @@ export default function SubcontractorDetailsPage() {
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "Not started" | "Work-in-progress" | "Completed">("all")
   const [linkingSkillId, setLinkingSkillId] = useState<string | null>(null)
   const [unlinkingSkillId, setUnlinkingSkillId] = useState<string | null>(null)
+  const [roles, setRoles] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await apiFetch("/api/roles?limit=100")
+        if (res.ok) {
+          const data = await res.json()
+          setRoles(data.results || [])
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchRoles()
+  }, [])
 
   // ── Manage Skills state ────────────────────────────────────────────────────
   const [manageSkillsOpen, setManageSkillsOpen] = useState(false)
@@ -402,6 +419,7 @@ export default function SubcontractorDetailsPage() {
     Email_Address: parseArrayField(s.Email_Address),
     Phone_Number: parseArrayField(s.Phone_Number),
     Coverage_Area: Array.isArray(s.Coverage_Area) ? s.Coverage_Area : [],
+    ID_Role: s.ID_Role ?? s.role?.ID_Role ?? "",
   })
 
   // ── Fetch subcontractor ────────────────────────────────────────────────────
@@ -480,6 +498,7 @@ export default function SubcontractorDetailsPage() {
         Email_Address: serializeArrayField(form.Email_Address),
         Phone_Number: serializeArrayField(form.Phone_Number),
         Coverage_Area: form.Coverage_Area.length ? form.Coverage_Area : null,
+        ID_Role: form.ID_Role || null,
       }
       for (const [k, v] of Object.entries(allFields)) {
         if (!SKIP_ON_PATCH.has(k) && changedFields.has(k)) payload[k] = v
@@ -1105,6 +1124,28 @@ export default function SubcontractorDetailsPage() {
                           {editing
                             ? <Textarea value={form.Notes} onChange={(e) => setField("Notes", e.target.value)} className={`${inputCls} resize-none ${changedCls("Notes")}`} rows={3} placeholder={t("notesPlaceholder")} />
                             : <p className="whitespace-pre-wrap text-sm text-slate-700">{subc.Notes || <span className="italic text-slate-400">No notes</span>}</p>
+                          }
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    {/* ── Roles / Permissions ── */}
+                    <SectionCard icon={ShieldCheck} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("permissions", { defaultValue: "Permissions & Roles" })}>
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                          <FieldLabel>{t("role", { defaultValue: "Assigned Role" })}</FieldLabel>
+                          {editing
+                            ? <Select value={form.ID_Role || ""} onValueChange={(v) => setField("ID_Role", v)}>
+                                <SelectTrigger className={`${inputCls} ${changedCls("ID_Role")}`}>
+                                  <SelectValue placeholder={t("noRole", { defaultValue: "-- Select a role --" })} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {roles.map((r: any) => (
+                                    <SelectItem key={r.ID_Role} value={r.ID_Role}>{r.Name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            : <p className="text-sm text-slate-700">{subc.role?.Name || <span className="italic text-slate-400">{t("noRole", { defaultValue: "-- Select a role --" })}</span>}</p>
                           }
                         </div>
                       </div>

@@ -507,7 +507,7 @@ export interface UpdateClientRequest {
   Services_interested_in?: ServicesInterestedIn
 }
 
-export type UserRole = "GQM_MEMBER" | "LEAD_TECHNICIAN"
+export type UserRole = "GQM_MEMBER" | "LEAD_TECHNICIAN" | "SUBCONTRACTOR"
 
 export interface User {
   id: string

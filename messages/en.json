@@ -2769,6 +2769,7 @@
     "modules": {
       "Jobs": "Jobs",
       "Members": "Members",
+      "Technicians": "Technicians",
       "Subcontractors": "Subcontractors",
       "Clients / Communities": "Clients / Communities",
       "PMC (Parent Companies)": "PMC (Parent Companies)",
@@ -2786,6 +2787,10 @@
       "member:create": "Register new team members.",
       "member:update": "Edit member profiles.",
       "member:delete": "Remove members from the system.",
+      "technician:read": "View technician lists and details.",
+      "technician:create": "Register new technicians.",
+      "technician:update": "Edit technician profiles.",
+      "technician:delete": "Delete technician records.",
       "subcontractor:read": "View subcontractor lists and details.",
       "subcontractor:create": "Register new subcontractors.",
       "subcontractor:update": "Edit subcontractor profiles.",

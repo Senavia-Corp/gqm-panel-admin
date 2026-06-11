@@ -185,13 +185,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-    const isTech = userRole === "LEAD_TECHNICIAN"
-    const memberId = localStorage.getItem("user_id") ?? user?.id ?? user?.user_id ?? user?.ID_Member ?? user?.ID_Technician
+    const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
+    const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+    const memberId = localStorage.getItem("user_id") ?? user?.id ?? user?.user_id ?? user?.ID_Member ?? user?.ID_Technician ?? user?.ID_Subcontractor
     if (!memberId) { setIsLoading(false); return }
 
     void (async () => {
       try {
-        const endpoint = isTech ? `/api/technician/${memberId}` : `/api/members/${memberId}`
+        const endpoint = isTech ? `/api/technician/${memberId}` : isSubc ? `/api/subcontractors/${memberId}` : `/api/members/${memberId}`
         const res = await apiFetch(endpoint)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data: any = await res.json()
@@ -207,6 +208,18 @@ export default function ProfilePage() {
                 Address: data.Location || null,
                 podio_profile_id: null,
                 podio_item_id: null,
+              }
+          : isSubc
+            ? {
+                ID_Member: data.ID_Subcontractor,
+                ID_Subcontractor: data.ID_Subcontractor,
+                Member_Name: data.Name ?? data.Organization ?? null,
+                Company_Role: data.role?.Name ?? "Subcontractor",
+                Email_Address: data.Email_Address,
+                Phone_Number: data.Phone_Number || null,
+                Address: data.Address || null,
+                podio_profile_id: null,
+                podio_item_id: data.podio_item_id || null,
               }
           : data
 
@@ -239,7 +252,8 @@ export default function ProfilePage() {
     setIsSaving(true)
     try {
       const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-      const isTech = userRole === "LEAD_TECHNICIAN"
+      const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
+      const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
 
       const payload: Record<string, string> = isTech
         ? {
@@ -248,6 +262,13 @@ export default function ProfilePage() {
             Email_Address: editValues.Email_Address,
             Phone_Number: editValues.Phone_Number,
             Location: editValues.Address,
+          }
+        : isSubc
+        ? {
+            Name: editValues.Member_Name,
+            Email_Address: editValues.Email_Address,
+            Phone_Number: editValues.Phone_Number,
+            Address: editValues.Address,
           }
         : {
             Member_Name: editValues.Member_Name,
@@ -259,6 +280,8 @@ export default function ProfilePage() {
 
       const endpoint = isTech 
         ? `/api/technician/${profile.ID_Member}` 
+        : isSubc
+        ? `/api/subcontractors/${profile.ID_Member}`
         : `/api/members/${profile.ID_Member}`
 
       const res = await apiFetch(endpoint, {
@@ -295,10 +318,13 @@ export default function ProfilePage() {
     setIsSaving(true)
     try {
       const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-      const isTech = userRole === "LEAD_TECHNICIAN"
+      const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
+      const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
 
       const endpoint = isTech 
         ? `/api/technician/${profile.ID_Member}` 
+        : isSubc
+        ? `/api/subcontractors/${profile.ID_Member}`
         : `/api/members/${profile.ID_Member}`
 
       const res = await apiFetch(endpoint, {
@@ -340,7 +366,8 @@ export default function ProfilePage() {
   if (!user) return null
 
   const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-  const isTech = userRole === "LEAD_TECHNICIAN"
+  const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
+  const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
 
   return (
     <div className="flex h-screen bg-slate-50/80">
@@ -369,7 +396,7 @@ export default function ProfilePage() {
                   <AvatarInitials name={profile?.Member_Name ?? null} />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
-                      {isTech ? t("profile.header.titleTech") : t("profile.header.titleMember")}
+                      {isTech ? t("profile.header.titleTech") : isSubc ? "SUBCONTRACTOR" : t("profile.header.titleMember")}
                     </p>
                     <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
                       {profile?.Member_Name ?? "—"}
@@ -428,7 +455,7 @@ export default function ProfilePage() {
                       <span className="hidden sm:inline">{t("profile.tabs.opportunities")}</span>
                     </TabsTrigger>
                   )}
-                  {!isTech && (
+                  {(!isTech && !isSubc) && (
                     <>
                       <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">{t("profile.tabs.communities")}</TabsTrigger>
                       <TabsTrigger value="commissions" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
@@ -641,7 +668,7 @@ export default function ProfilePage() {
                   </TabsContent>
                 )}
 
-                {!isTech && (
+                {(!isTech && !isSubc) && (
                   <>
                     <TabsContent value="communities" className="mt-0">
                       <ProfileCommunities memberId={profile.ID_Member} />

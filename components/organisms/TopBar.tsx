@@ -44,7 +44,7 @@ function getAvatarColor(name: string | null | undefined): { bg: string; text: st
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TopBar() {
-  const [localData, setLocalData] = useState<{ id: string | null; isTech: boolean; initialMember: MemberInfo | null }>({ id: null, isTech: false, initialMember: null })
+  const [localData, setLocalData] = useState<{ id: string | null; roleType: "tech" | "member" | "subc"; initialMember: MemberInfo | null }>({ id: null, roleType: "member", initialMember: null })
   const [notifCount] = useState(3) // placeholder — wire up to real notif system when ready
   const router = useRouter()
   const { setIsOpen } = useSidebar()
@@ -55,15 +55,17 @@ export function TopBar() {
       const ud = raw ? JSON.parse(raw) : null
       if (ud) {
         const userRole = ud.role || localStorage.getItem("user_type") || ud.user_type
-        const isTech = userRole === "LEAD_TECHNICIAN"
-        const memberId = ud.id || ud.user_id || localStorage.getItem("user_id") || ud.ID_Member || ud.ID_Technician
+        const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
+        const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+        const roleType = isTech ? "tech" : isSubc ? "subc" : "member"
+        const memberId = ud.id || ud.user_id || localStorage.getItem("user_id") || ud.ID_Member || ud.ID_Technician || ud.ID_Subcontractor
         
         setLocalData({
           id: memberId,
-          isTech,
+          roleType,
           initialMember: {
-            Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? null,
-            Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (isTech ? "Technician" : "Member"),
+            Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? ud.Organization ?? null,
+            Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (roleType === "tech" ? "Technician" : roleType === "subc" ? "Subcontractor" : "Member"),
             Email_Address: ud.Email_Address ?? ud.email ?? null,
           }
         })
@@ -72,15 +74,15 @@ export function TopBar() {
   }, [])
 
   const { data: member, isLoading: queryLoading } = useQuery({
-    queryKey: ["topbar-member", localData.id, localData.isTech],
+    queryKey: ["topbar-member", localData.id, localData.roleType],
     queryFn: async () => {
-      const endpoint = localData.isTech ? `/api/technician/${localData.id}` : `/api/members/${localData.id}`
+      const endpoint = localData.roleType === "tech" ? `/api/technician/${localData.id}` : localData.roleType === "subc" ? `/api/subcontractors/${localData.id}` : `/api/members/${localData.id}`
       const res = await apiFetch(endpoint)
       if (!res.ok) throw new Error("Failed to load user info")
       const data = await res.json()
       return {
-        Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? null,
-        Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (localData.isTech ? "Technician" : "Member"),
+        Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? data.Organization ?? null,
+        Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (localData.roleType === "tech" ? "Technician" : localData.roleType === "subc" ? "Subcontractor" : "Member"),
         Email_Address: data.Email_Address ?? data.Email ?? data.email ?? null,
       } as MemberInfo
     },

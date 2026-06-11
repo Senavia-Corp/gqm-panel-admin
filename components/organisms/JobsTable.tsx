@@ -16,7 +16,7 @@ interface JobsTableProps {
   tableVariant?: JobsTableVariant
   onEdit?: (jobId: string) => void
   onDelete?: (job: JobDTO) => void
-  userRole?: "GQM_MEMBER" | "LEAD_TECHNICIAN"
+  userRole?: "GQM_MEMBER" | "LEAD_TECHNICIAN" | "SUBCONTRACTOR" | string
 }
 
 function safeDateLabel(dateString: string | null | undefined) {
@@ -159,13 +159,13 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     <Button
                       size="sm"
                       className={`h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold ${
-                        userRole === "GQM_MEMBER" && hasPermission("job:update")
+                        hasPermission("job:update")
                           ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }`}
                       onClick={() => onEdit?.(job.ID_Jobs ?? "")}
                     >
-                      {userRole === "GQM_MEMBER" && hasPermission("job:update") ? (
+                      {hasPermission("job:update") ? (
                         <><Pencil className="h-3.5 w-3.5" />{tCommon("edit")}</>
                       ) : (
                         <><Eye className="h-3.5 w-3.5" />{tCommon("view")}</>
@@ -173,7 +173,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     </Button>
                   </Link>
                 )}
-                {userRole === "GQM_MEMBER" && hasPermission("job:delete") && (
+                {hasPermission("job:delete") && (
                   <Button
                     size="sm"
                     className="h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
@@ -302,15 +302,15 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                           <Button
                             size="icon"
                             variant="ghost"
-                            className={`h-8 w-8 ${userRole === "GQM_MEMBER" && hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                            className={`h-8 w-8 ${hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                             onClick={() => onEdit?.(job.ID_Jobs ?? "")}
                           >
-                            {userRole === "GQM_MEMBER" && hasPermission("job:update") ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {hasPermission("job:update") ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </Link>
                       )}
 
-                      {userRole === "GQM_MEMBER" && hasPermission("job:delete") && (
+                      {hasPermission("job:delete") && (
                         <Button
                           size="icon"
                           variant="ghost"

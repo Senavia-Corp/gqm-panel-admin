@@ -50,7 +50,9 @@ export default function LoginPage() {
         localStorage.setItem("user_policies", JSON.stringify(data.user_data.policies))
       }
 
-      const role = data.user_type === "member" ? "GQM_MEMBER" : "LEAD_TECHNICIAN"
+      let role = "GQM_MEMBER"
+      if (data.user_type === "technician") role = "LEAD_TECHNICIAN"
+      if (data.user_type === "subcontractor") role = "SUBCONTRACTOR"
 
       let userData
       if (data.user_type === "member") {
@@ -63,6 +65,15 @@ export default function LoginPage() {
           avatar: "/placeholder.svg?height=40&width=40",
           phone: data.user_data.Phone_Number,
           address: data.user_data.Address,
+        }
+      } else if (data.user_type === "subcontractor") {
+        userData = {
+          id: data.user_data.ID_Subcontractor,
+          name: data.user_data.Name,
+          email: data.user_data.Email_Address,
+          role: role,
+          avatar: "/placeholder.svg?height=40&width=40",
+          phone: data.user_data.Phone_Number,
         }
       } else {
         // Map technician data to existing User format

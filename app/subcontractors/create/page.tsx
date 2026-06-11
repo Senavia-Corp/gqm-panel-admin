@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/use-toast"
 import {
   ArrowLeft, Plus, X, Loader2, User, Building2, Briefcase,
   Mail, Phone, Globe, MapPin, Map, ShieldCheck, GraduationCap,
-  ClipboardList, Save, Star, Wrench,
+  ClipboardList, Save, Star, Wrench, Shield, EyeOff, Eye
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,6 +36,9 @@ type FormState = {
   Specialty:                string
   Notes:                    string
   Coverage_Area:            string[]
+  Password:                 string
+  confirmPassword:          string
+  ID_Role:                  string
 }
 
 const COVERAGE_AREA_OPTIONS = [
@@ -130,6 +133,59 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
 
 export default function CreateSubcontractorPage() {
   const t = useTranslations("subcontractors")
+
+  function PasswordInput({ value, onChange, placeholder }: {
+    value: string; onChange: (v: string) => void; placeholder: string
+  }) {
+    const [show, setShow] = useState(false)
+    return (
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-md border px-3 py-2 pr-10 ${inputCls}`}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(s => !s)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    )
+  }
+
+  function PasswordStrength({ password }: { password: string }) {
+    if (!password) return null
+    const checks = [
+      { label: t("pwdLen", { defaultValue: "8+ chars" }), ok: password.length >= 8 },
+      { label: t("pwdUpper", { defaultValue: "1 uppercase" }), ok: /[A-Z]/.test(password) },
+      { label: t("pwdNum", { defaultValue: "1 number" }), ok: /[0-9]/.test(password) },
+    ]
+    const score = checks.filter(c => c.ok).length
+    const bar   = ["bg-red-400", "bg-amber-400", "bg-emerald-400"][score - 1] ?? "bg-slate-200"
+
+    return (
+      <div className="mt-2 space-y-1.5">
+        <div className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? bar : "bg-slate-100"}`} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {checks.map(c => (
+            <span key={c.label} className={`text-[11px] font-medium ${c.ok ? "text-emerald-600" : "text-slate-400"}`}>
+              {c.ok ? "✓" : "○"} {c.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser]           = useState<any>(null)
@@ -151,7 +207,32 @@ export default function CreateSubcontractorPage() {
     Specialty:                "",
     Notes:                    "",
     Coverage_Area:            [],
+    Password:                 "",
+    confirmPassword:          "",
+    ID_Role:                  "",
   })
+
+  const [roles, setRoles] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await apiFetch("/api/roles?limit=100")
+        if (res.ok) {
+          const data = await res.json()
+          const fetchedRoles = data.results || []
+          setRoles(fetchedRoles)
+          const defaultRole = fetchedRoles.find((r: any) => r.Name?.toLowerCase().includes("subcontractor"))
+          if (defaultRole) {
+            setForm(p => ({ ...p, ID_Role: defaultRole.ID_Role }))
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching roles", err)
+      }
+    }
+    fetchRoles()
+  }, [])
 
   const setField = (k: keyof FormState, v: any) => setForm((p) => ({ ...p, [k]: v }))
 
@@ -161,9 +242,11 @@ export default function CreateSubcontractorPage() {
     setUser(JSON.parse(u))
   }, [router])
 
-  const canSubmit = useMemo(() =>
-    clean(form.Name).length > 0 && clean(form.Organization).length > 0 && !submitting,
-    [form.Name, form.Organization, submitting]
+  const canSubmit = useMemo(() => {
+    const isBasicValid = clean(form.Name).length > 0 && clean(form.Organization).length > 0 && !submitting;
+    const isPasswordValid = form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) && form.Password === form.confirmPassword;
+    return isBasicValid && isPasswordValid;
+  }, [form.Name, form.Organization, form.Password, form.confirmPassword, submitting]
   )
 
   const addCoverageArea = (val?: string) => {
@@ -197,6 +280,8 @@ export default function CreateSubcontractorPage() {
         Specialty:                clean(form.Specialty)        || null,
         Coverage_Area:            form.Coverage_Area.length    ? form.Coverage_Area : null,
         Notes:                    form.Notes.trim()            || null,
+        Password:                 form.Password,
+        ID_Role:                  form.ID_Role                 || null,
       }
 
       const res = await apiFetch(`/api/subcontractors?sync_podio=${syncPodio}`, {
@@ -572,6 +657,53 @@ export default function CreateSubcontractorPage() {
                   className={`resize-none ${inputCls}`}
                   disabled={submitting}
                 />
+              </SectionCard>
+
+              {/* Password / Authentication */}
+              <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500" title={t("authentication", { defaultValue: "Authentication" })}>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel required>{t("password", { defaultValue: "Password" })}</FieldLabel>
+                    <PasswordInput
+                      value={form.Password}
+                      onChange={v => setField("Password", v)}
+                      placeholder="New password"
+                    />
+                    <PasswordStrength password={form.Password} />
+                  </div>
+                  <div>
+                    <FieldLabel required>{t("confirmPassword", { defaultValue: "Confirm Password" })}</FieldLabel>
+                    <PasswordInput
+                      value={form.confirmPassword}
+                      onChange={v => setField("confirmPassword", v)}
+                      placeholder="Repeat password"
+                    />
+                    {form.confirmPassword && (
+                      <p className={`mt-2 text-[11px] font-medium ${form.Password === form.confirmPassword ? "text-emerald-600" : "text-red-500"}`}>
+                        {form.Password === form.confirmPassword ? `✓ ${t("pwdMatch", { defaultValue: "Passwords match" })}` : `✗ ${t("pwdNoMatch", { defaultValue: "Passwords do not match" })}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </SectionCard>
+
+              {/* Roles / Permissions */}
+              <SectionCard icon={ShieldCheck} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("permissions", { defaultValue: "Permissions & Roles" })}>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel>{t("role", { defaultValue: "Assign Role" })}</FieldLabel>
+                    <select
+                      value={form.ID_Role}
+                      onChange={e => setField("ID_Role", e.target.value)}
+                      className={`w-full rounded-md border px-3 py-2 ${inputCls}`}
+                    >
+                      <option value="">{t("noRole", { defaultValue: "-- Select a role --" })}</option>
+                      {roles.map(r => (
+                        <option key={r.ID_Role} value={r.ID_Role}>{r.Name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </SectionCard>
 
               {/* Bottom action bar */}

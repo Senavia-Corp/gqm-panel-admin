@@ -141,7 +141,9 @@ export default function CreateTechnicianPage() {
     const searchParams = new URLSearchParams(window.location.search)
     const subIdParam = searchParams.get("subId")
     
-    if (parsedUser.role === "LEAD_TECHNICIAN" && subIdParam) {
+    if (parsedUser.role === "SUBCONTRACTOR" || parsedUser.user_type === "subcontractor") {
+      setField("ID_Subcontractor", localStorage.getItem("user_id") || "none")
+    } else if (parsedUser.role === "LEAD_TECHNICIAN" && subIdParam) {
       setField("ID_Subcontractor", subIdParam)
     }
 
@@ -342,12 +344,12 @@ export default function CreateTechnicianPage() {
                 <SectionCard icon={Users} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("techAssociation")}>
                   <div className="grid gap-5">
                     <div>
-                      <FieldLabel>{t("techColSub")} {user?.role === "LEAD_TECHNICIAN" ? "" : t("techOptional")}</FieldLabel>
+                      <FieldLabel>{t("techColSub")} {(user?.role === "LEAD_TECHNICIAN" || user?.role === "SUBCONTRACTOR") ? "" : t("techOptional")}</FieldLabel>
                       <div className="flex items-center gap-3">
                         <Button
                           variant="outline"
                           onClick={() => setSubModalOpen(true)}
-                          disabled={loadingSubs || user?.role === "LEAD_TECHNICIAN"}
+                          disabled={loadingSubs || user?.role === "LEAD_TECHNICIAN" || user?.role === "SUBCONTRACTOR"}
                           className={`flex-1 justify-between bg-slate-50 border-slate-200 hover:bg-slate-100 ${form.ID_Subcontractor !== "none" ? "text-slate-900" : "text-slate-400"}`}
                         >
                           <span className="truncate">
@@ -355,16 +357,16 @@ export default function CreateTechnicianPage() {
                               ? (subcontractors.find(s => s.ID_Subcontractor === form.ID_Subcontractor)?.Name || form.ID_Subcontractor)
                               : t("techSelectSub")}
                           </span>
-                          {user?.role !== "LEAD_TECHNICIAN" && <Users className="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />}
+                          {(user?.role !== "LEAD_TECHNICIAN" && user?.role !== "SUBCONTRACTOR") && <Users className="h-4 w-4 opacity-50 ml-2 flex-shrink-0" />}
                         </Button>
-                        {form.ID_Subcontractor !== "none" && user?.role !== "LEAD_TECHNICIAN" && (
+                        {form.ID_Subcontractor !== "none" && user?.role !== "LEAD_TECHNICIAN" && user?.role !== "SUBCONTRACTOR" && (
                           <Button variant="ghost" onClick={() => setField("ID_Subcontractor", "none")} className="text-slate-400 hover:text-red-500">
                             {t("techClear")}
                           </Button>
                         )}
                       </div>
                       <p className="mt-1.5 text-xs text-slate-500">
-                        {user?.role === "LEAD_TECHNICIAN" 
+                        {(user?.role === "LEAD_TECHNICIAN" || user?.role === "SUBCONTRACTOR")
                           ? t("techAutoAssoc")
                           : t("techAssocDesc")}
                       </p>
