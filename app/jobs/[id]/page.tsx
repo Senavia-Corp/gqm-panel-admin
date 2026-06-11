@@ -1067,9 +1067,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         { id: "details", label: t("tabDetails") },
         { id: "subcontractors", label: t("tabSubcontractors") },
         { id: "documents", label: t("tabDocuments") },
-        { id: "pricing", label: t("tabPricing") },
         { id: "tasks", label: t("tabTasks") },
-        { id: "timeline", label: t("tabTimeline") },
       ]
     }
 
@@ -1088,23 +1086,29 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     // Documents/Chat/Pricing/Estimate usually require full read
-    if (canReadDocs) {
+    if (canReadDocs || user.role === "SUBCONTRACTOR") {
       items.push({ id: "documents", label: t("tabDocuments") })
-      items.push({ id: "pricing", label: t("tabPricing") })
+      if (user.role !== "SUBCONTRACTOR") {
+        items.push({ id: "pricing", label: t("tabPricing") })
+      }
     }
 
-    if (canViewMembers) {
+    if (canViewMembers && user.role !== "SUBCONTRACTOR") {
       items.push({ id: "members", label: t("tabMembers") })
     }
 
-    if (canReadDocs) {
-      items.push({ id: "chat", label: t("tabLogbook") })
+    if (canReadDocs || user.role === "SUBCONTRACTOR") {
+      if (user.role !== "SUBCONTRACTOR") {
+        items.push({ id: "chat", label: t("tabLogbook") })
+      }
       items.push({ id: "tasks", label: t("tabTasks") })
-      items.push({ id: "estimate", label: t("tabEstimate") })
+      if (user.role !== "SUBCONTRACTOR") {
+        items.push({ id: "estimate", label: t("tabEstimate") })
+      }
     }
 
     // Purchases & Commissions
-    if (canReadDocs) {
+    if (canReadDocs && user.role !== "SUBCONTRACTOR") {
       items.push({ id: "purchases", label: t("tabPurchases") })
       items.push({ id: "commissions", label: t("tabCommissions") })
       items.push({ id: "timeline", label: t("tabTimeline") })
@@ -1121,6 +1125,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   const rightSidebar = useMemo(() => {
     if (!user || !job) return null
+    
+    const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
+    if (RESTRICTED_ROLES.includes(user.role)) return null
+    
     return <JobRightSidebar role={user.role} job={job as any} />
   }, [user, job])
 
@@ -1570,6 +1578,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         onTaskCreated={handleTaskCreated}
         prefill={taskPrefill}
         isRecommended={!!taskPrefill}
+        userRole={user?.role}
+        userSubId={user?.role === "SUBCONTRACTOR" ? user?.id : null}
       />
 
       <CompleteTaskOnStatusChangeDialog

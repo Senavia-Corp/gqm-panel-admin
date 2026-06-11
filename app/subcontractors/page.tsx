@@ -25,14 +25,17 @@ export default function SubcontractorsPage() {
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
-    setUser(JSON.parse(u))
+    const parsedUser = JSON.parse(u)
+    setUser(parsedUser)
+
+    if (parsedUser.role === "SUBCONTRACTOR" || parsedUser.role === "LEAD_TECHNICIAN") {
+      router.push("/dashboard")
+    }
   }, [router])
 
   if (!user) return null
 
-  const isTech = user.role === "LEAD_TECHNICIAN"
-
-  if (!hasPermission("subcontractor:read") && !isTech) {
+  if (!hasPermission("subcontractor:read")) {
     return (
       <div className="flex h-screen bg-slate-50">
         <Sidebar />

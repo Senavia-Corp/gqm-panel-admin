@@ -111,7 +111,7 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  if (user.role === "LEAD_TECHNICIAN") {
+  if (user.role === "LEAD_TECHNICIAN" || user.role === "SUBCONTRACTOR") {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />

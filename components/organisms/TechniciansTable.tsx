@@ -12,9 +12,11 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 interface TechniciansTableProps {
   technicians: Technician[]
   onViewDetails: (technician: Technician) => void
+  onLinkClick?: () => void
+  onUnlinkClick?: (technicianId: string) => void
 }
 
-export function TechniciansTable({ technicians, onViewDetails }: TechniciansTableProps) {
+export function TechniciansTable({ technicians, onViewDetails, onLinkClick, onUnlinkClick }: TechniciansTableProps) {
   const t = useTranslations("subcontractors")
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState<TechnicianType | "all">("all")
@@ -35,6 +37,15 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold">{t("tabTechnicians")}</h3>
+        {onLinkClick && (
+          <button
+            onClick={onLinkClick}
+            className="flex items-center gap-2 h-9 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm px-3 sm:px-4 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
+          >
+            <span className="hidden sm:inline">Link Technician</span>
+            <span className="sm:hidden ml-1.5">Link Tech</span>
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -69,6 +80,7 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
               <TableHead className="px-4">{t("email")}</TableHead>
               <TableHead className="px-4">{t("phoneNumber")}</TableHead>
               <TableHead className="px-4">{t("location")}</TableHead>
+              {onUnlinkClick && <TableHead className="px-4 w-16"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,6 +113,19 @@ export function TechniciansTable({ technicians, onViewDetails }: TechniciansTabl
                   <TableCell className="px-4 py-4">{technician.Email_Address || technician.Email}</TableCell>
                   <TableCell className="px-4 py-4">{technician.Phone_Number || technician.Phone_number}</TableCell>
                   <TableCell className="px-4 py-4">{technician.Location}</TableCell>
+                  {onUnlinkClick && (
+                    <TableCell className="px-4 py-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUnlinkClick(technician.ID_Technician)
+                        }}
+                        className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                      >
+                        Unlink
+                      </button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

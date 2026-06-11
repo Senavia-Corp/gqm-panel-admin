@@ -2775,7 +2775,9 @@
       "PMC (Parent Companies)": "PMC (Parent Companies)",
       "Purchases": "Purchases",
       "Commissions": "Commissions",
-      "Documents (Attachments)": "Documents (Attachments)"
+      "Documents (Attachments)": "Documents (Attachments)",
+      "Tasks": "Tasks",
+      "Certificates": "Certificates"
     },
     "actions": {
       "job:read": "Access to all job info including financial data.",
@@ -2822,7 +2824,15 @@
       "attachment:read_technicians": "View attachments in the Technicians folder only.",
       "attachment:create_technicians": "Upload files to the Technicians folder only.",
       "attachment:update_technicians": "Edit file metadata in the Technicians folder only.",
-      "attachment:delete_technicians": "Delete files from the Technicians folder only."
+      "attachment:delete_technicians": "Delete files from the Technicians folder only.",
+      "tasks:read": "View tasks and task lists.",
+      "tasks:create": "Create new tasks.",
+      "tasks:update": "Edit and change status of tasks.",
+      "tasks:delete": "Remove tasks from the system.",
+      "certificate:read": "View certificates and documentation.",
+      "certificate:create": "Upload and register new certificates.",
+      "certificate:update": "Edit certificate details and renewals.",
+      "certificate:delete": "Remove certificates from the system."
     }
   },
   "specialties": {

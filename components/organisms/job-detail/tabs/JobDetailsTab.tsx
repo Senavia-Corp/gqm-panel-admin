@@ -224,13 +224,12 @@ export function JobDetailsTab({
   isSaving = false,
   syncPodio = false,
 }: Props) {
-  const isTech = role === "LEAD_TECHNICIAN"
+  const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
+  const isRestrictedRole = RESTRICTED_ROLES.includes(role)
   
-  // Base readOnly coming from prop
-  // isRestrictedReadOnly is for fields that tech CANNOT edit
-  const isRestrictedReadOnly = readOnly || isTech 
-  // isActuallyReadOnly is for fields that tech CAN edit (Status, Additional Details)
-  const isActuallyReadOnly = readOnly
+  const isRestrictedReadOnly = readOnly || isRestrictedRole 
+  // We use isRestrictedReadOnly for all the green sections according to user instructions
+  const isActuallyReadOnly = readOnly || isRestrictedRole
 
   const { hasPermission } = usePermissions()
   const canReadClients = hasPermission("client:read")
@@ -270,7 +269,8 @@ export function JobDetailsTab({
     <div className="space-y-4">
 
       {/* ── 1. Client ─────────────────────────────────────────────────── */}
-      <SectionCard icon={Building2} title={t("detailSectionClient")}>
+      {!isRestrictedRole && (
+        <SectionCard icon={Building2} title={t("detailSectionClient")}>
         <ClientSelect
           value={currentClientId || ""}
           initialClients={clients}
@@ -299,6 +299,7 @@ export function JobDetailsTab({
           }}
         />
       </SectionCard>
+      )}
 
       {/* ── 2. Job Characteristics ─────────────────────────────────────── */}
       <SectionCard icon={Hash} title={t("detailSectionCharacteristics")}>
@@ -510,7 +511,7 @@ export function JobDetailsTab({
       </SectionCard>
 
       {/* ── 5. Building Department ────────────────────────────────────── */}
-      {patch ? (
+      {patch && !isRestrictedRole ? (
         <BuildingDeptSection
           job={job}
           isReadOnly={isRestrictedReadOnly}

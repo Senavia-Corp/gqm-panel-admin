@@ -302,6 +302,15 @@ export function LeadTechnicianDashboard() {
         const userId = localStorage.getItem("user_id")
         if (!userId) { setLoadingTech(false); return }
 
+        const userData = localStorage.getItem("user_data")
+        const role = userData ? JSON.parse(userData).role : null
+
+        if (role === "SUBCONTRACTOR") {
+          setSubcontractorId(userId)
+          setLoadingTech(false)
+          return
+        }
+
         const res = await apiFetch(`/api/technician/${userId}`, { cache: "no-store" })
         if (!res.ok) { setLoadingTech(false); return }
 

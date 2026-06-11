@@ -16,7 +16,7 @@ type Props = {
   namesMap?: Record<string, string>
 }
 
-export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
+export function JobTasksTab({ role, tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
   const t = useTranslations("jobTasks")
   const { data: memberNames = {} } = useQuery<Record<string, string>>({
     queryKey: ["members_names_map"],
@@ -71,28 +71,30 @@ export function JobTasksTab({ tasks, onCreateTask, onTaskOpen, onTaskStatusChang
           )}
         </div>
 
-        <button
-          onClick={onCreateTask}
-          style={{
-            display:      "flex",
-            alignItems:   "center",
-            gap:          "6px",
-            padding:      "9px 20px",
-            background:   "linear-gradient(135deg, #0B2E1E, #1A5C3A)",
-            color:        "#fff",
-            border:       "none",
-            borderRadius: "9px",
-            fontSize:     "13px",
-            fontWeight:   600,
-            cursor:       "pointer",
-            boxShadow:    "0 2px 6px rgba(11,46,30,0.25)",
-            transition:   "all 0.15s ease",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
-          onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-        >
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> {t("newTask")}
-        </button>
+        {role !== "LEAD_TECHNICIAN" && (
+          <button
+            onClick={onCreateTask}
+            style={{
+              display:      "flex",
+              alignItems:   "center",
+              gap:          "6px",
+              padding:      "9px 20px",
+              background:   "linear-gradient(135deg, #0B2E1E, #1A5C3A)",
+              color:        "#fff",
+              border:       "none",
+              borderRadius: "9px",
+              fontSize:     "13px",
+              fontWeight:   600,
+              cursor:       "pointer",
+              boxShadow:    "0 2px 6px rgba(11,46,30,0.25)",
+              transition:   "all 0.15s ease",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+          >
+            <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> {t("newTask")}
+          </button>
+        )}
       </div>
 
       {/* ── Progress bar ────────────────────────────────────────────────────── */}

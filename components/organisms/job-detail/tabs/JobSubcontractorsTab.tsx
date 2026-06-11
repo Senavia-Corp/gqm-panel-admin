@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react"
 import { SubcontractorsTable } from "@/components/organisms/SubcontractorsTable"
 import { SubcontractorDetails } from "@/components/organisms/SubcontractorDetails"
+import { LinkTechnicianModal } from "@/components/organisms/LinkTechnicianModal"
+import { TechniciansTable } from "@/components/organisms/TechniciansTable"
 import type { Subcontractor } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
 import { useQuery } from "@tanstack/react-query"
@@ -47,32 +49,71 @@ export function JobSubcontractorsTab({
   timelineEvents,
   syncPodio,
 }: Props) {
+  const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
+  const isRestrictedRole = RESTRICTED_ROLES.includes(role)
   const isTech = role === "LEAD_TECHNICIAN"
-  const { data: techSubId, isLoading: loadingTech } = useQuery<string | null>({
-    queryKey: ["technician_sub_id"],
+  const isSubcontractor = role === "SUBCONTRACTOR"
+  const [linkTechOpen, setLinkTechOpen] = useState(false)
+
+  const { data: userSubId, isLoading: loadingSubId } = useQuery<string | null>({
+    queryKey: ["restricted_sub_id"],
     queryFn: async () => {
       const userData = localStorage.getItem("user_data")
       if (!userData) return null
       const user = JSON.parse(userData)
-      const res = await apiFetch(`/api/technician/${user.id}`)
-      if (!res.ok) throw new Error("Failed to fetch tech")
-      const data = await res.json()
-      return data?.subcontractor?.ID_Subcontractor || null
+      
+      if (isSubcontractor) return user.id
+      
+      if (isTech) {
+        const res = await apiFetch(`/api/technician/${user.id}`)
+        if (!res.ok) throw new Error("Failed to fetch tech")
+        const data = await res.json()
+        return data?.subcontractor?.ID_Subcontractor || null
+      }
+      return null
     },
-    enabled: isTech,
+    enabled: isRestrictedRole,
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
   })
 
-  if (role !== "GQM_MEMBER" && role !== "LEAD_TECHNICIAN") return null
+  if (role !== "GQM_MEMBER" && role !== "LEAD_TECHNICIAN" && role !== "SUBCONTRACTOR") return null
   if (!job) return null
-  if (loadingTech) return <div className="p-8 text-center text-slate-400">Loading subcontractor information...</div>
+  if (loadingSubId) return <div className="p-8 text-center text-slate-400">Loading subcontractor information...</div>
 
   const jobId              = String(job?.ID_Jobs ?? job?.id ?? "")
   const jobPodioId         = job.podio_item_id
   const jobYearForPodioSync = resolveJobYearFromId(job)
 
+  const handleLinkTechnician = async (techId: string) => {
+    const res = await apiFetch("/api/job-technician", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId, technicianId: techId })
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data?.error || "Failed to link technician")
+    }
+    setLinkTechOpen(false)
+    await onReload?.()
+  }
+
+  const handleUnlinkTechnician = async (techId: string) => {
+    if (isRestrictedRole && !isSubcontractor) return // Guard
+    const res = await apiFetch("/api/job-technician", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId, technicianId: techId })
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data?.error || "Failed to unlink technician")
+    }
+    await onReload?.()
+  }
+
   const handleUnlink = async ({ subcontractorId, syncPodio }: { subcontractorId: string; syncPodio: boolean }) => {
-    if (isTech) return // Guard
+    if (isRestrictedRole) return // Guard
     const yearToSend = syncPodio ? jobYearForPodioSync : undefined
     if (syncPodio && !yearToSend) {
       throw new Error("Year is required when Sync Podio is enabled.")
@@ -89,11 +130,13 @@ export function JobSubcontractorsTab({
     await onReload?.()
   }
 
-  // Filter subcontractors for technicians
+  // Filter subcontractors for restricted roles
   const allSubcontractors = job?.subcontractors || []
-  const filteredSubcontractors = isTech 
-    ? allSubcontractors.filter((s: any) => s.ID_Subcontractor === techSubId)
+  const filteredSubcontractors = isRestrictedRole 
+    ? allSubcontractors.filter((s: any) => s.ID_Subcontractor === userSubId)
     : allSubcontractors
+
+  const linkedTechnicians = job?.technicians || []
 
   if (!selectedSubcontractor) {
     return (
@@ -102,10 +145,27 @@ export function JobSubcontractorsTab({
           jobId={jobId}
           onViewDetails={setSelectedSubcontractor}
           subcontractors={filteredSubcontractors}
-          onLinkClick={isTech ? undefined : onOpenLinkDialog}
-          onUnlink={isTech ? undefined : handleUnlink}
+          onLinkClick={isRestrictedRole ? undefined : onOpenLinkDialog}
+          onUnlink={isRestrictedRole ? undefined : handleUnlink}
         />
-        <JobOpportunitiesSection jobId={jobId} userRole={role} />
+
+        <div className="space-y-4">
+          <TechniciansTable
+            technicians={linkedTechnicians}
+            onViewDetails={() => {}}
+            onLinkClick={isSubcontractor ? () => setLinkTechOpen(true) : undefined}
+            onUnlinkClick={isSubcontractor ? handleUnlinkTechnician : undefined}
+          />
+        </div>
+
+        {!isRestrictedRole && <JobOpportunitiesSection jobId={jobId} userRole={role} />}
+
+        <LinkTechnicianModal
+          open={linkTechOpen}
+          onClose={() => setLinkTechOpen(false)}
+          onLink={handleLinkTechnician}
+          excludeIds={linkedTechnicians.map((t: any) => t.ID_Technician)}
+        />
       </div>
     )
   }

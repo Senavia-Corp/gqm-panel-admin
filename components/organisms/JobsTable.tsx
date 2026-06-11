@@ -132,16 +132,18 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
               </div>
 
               {/* Client */}
-              {client ? (
-                <div className="flex items-center gap-2.5">
-                  <ClientAvatar />
-                  <div>
-                    <p className="text-sm font-semibold leading-tight text-slate-800">{clientCommunity ?? t("colClient")}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">{clientId ?? "-"}</p>
+              {userRole !== "SUBCONTRACTOR" && userRole !== "LEAD_TECHNICIAN" && (
+                client ? (
+                  <div className="flex items-center gap-2.5">
+                    <ClientAvatar />
+                    <div>
+                      <p className="text-sm font-semibold leading-tight text-slate-800">{clientCommunity ?? t("colClient")}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">{clientId ?? "-"}</p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="text-sm italic text-slate-400">{t("clientNotAvailable")}</p>
+                ) : (
+                  <p className="text-sm italic text-slate-400">{t("clientNotAvailable")}</p>
+                )
               )}
 
               {/* Representative */}
@@ -194,11 +196,11 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
           <TableHeader>
             <TableRow>
               <TableHead className="px-6">{t("colJobId")}</TableHead>
-              <TableHead className="px-4">{t("colClient")}</TableHead>
+              {userRole !== "SUBCONTRACTOR" && userRole !== "LEAD_TECHNICIAN" && <TableHead className="px-4">{t("colClient")}</TableHead>}
               <TableHead className="px-4">{t("colRepresentative")}</TableHead>
               {!isPar && <TableHead className="px-4">{mid.key === "project" ? t("colProjectName") : t("colLocation")}</TableHead>}
-              {canReadFull && userRole !== "LEAD_TECHNICIAN" && <TableHead className="px-4">{t("colTargetPricing")}</TableHead>}
-              {canReadFull && userRole !== "LEAD_TECHNICIAN" && <TableHead className="px-4">{t("colTargetPct")}</TableHead>}
+              {canReadFull && userRole !== "LEAD_TECHNICIAN" && userRole !== "SUBCONTRACTOR" && <TableHead className="px-4">{t("colTargetPricing")}</TableHead>}
+              {canReadFull && userRole !== "LEAD_TECHNICIAN" && userRole !== "SUBCONTRACTOR" && <TableHead className="px-4">{t("colTargetPct")}</TableHead>}
               <TableHead className="px-4">{t("colStatus")}</TableHead>
               <TableHead className="px-6 text-right">{t("colActions")}</TableHead>
             </TableRow>
@@ -245,19 +247,21 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                   <TableCell className="px-6 py-4 font-medium text-sm">{job.ID_Jobs}</TableCell>
 
                   {/* Client */}
-                  <TableCell className="px-4 py-4">
-                    {client ? (
-                      <div className="flex items-center gap-3">
-                        <ClientAvatar />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{clientCommunity ?? t("colClient")}</span>
-                          <span className="text-xs text-muted-foreground">{clientId ?? "-"}</span>
+                  {userRole !== "SUBCONTRACTOR" && userRole !== "LEAD_TECHNICIAN" && (
+                    <TableCell className="px-4 py-4">
+                      {client ? (
+                        <div className="flex items-center gap-3">
+                          <ClientAvatar />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">{clientCommunity ?? t("colClient")}</span>
+                            <span className="text-xs text-muted-foreground">{clientId ?? "-"}</span>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400 italic">{t("clientNotAvailable")}</span>
-                    )}
-                  </TableCell>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">{t("clientNotAvailable")}</span>
+                      )}
+                    </TableCell>
+                  )}
 
                   {/* Representative */}
                   <TableCell className="px-4 py-4">
@@ -278,14 +282,14 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                   {!isPar && <TableCell className="px-4 py-4 font-medium">{midValue || "-"}</TableCell>}
 
                   {/* GQM Pricing (full access only) */}
-                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && (
+                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && userRole !== "SUBCONTRACTOR" && (
                     <TableCell className="px-4 py-4 font-medium text-slate-900">
                       {typeof job.Gqm_target_sold_pricing === "number"
                         ? `$${job.Gqm_target_sold_pricing.toLocaleString()}`
                         : job.Gqm_target_sold_pricing ?? "-"}
                     </TableCell>
                   )}
-                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && (
+                  {canReadFull && userRole !== "LEAD_TECHNICIAN" && userRole !== "SUBCONTRACTOR" && (
                     <TableCell className="px-4 py-4 font-medium text-slate-900">
                       {ConvertToPercentage(job.Gqm_target_return)}
                     </TableCell>

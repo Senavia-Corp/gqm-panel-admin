@@ -2752,7 +2752,9 @@
       "PMC (Parent Companies)": "PMC (Empresas Matrices)",
       "Purchases": "Compras",
       "Commissions": "Comisiones",
-      "Documents (Attachments)": "Documentos (Adjuntos)"
+      "Documents (Attachments)": "Documentos (Adjuntos)",
+      "Tasks": "Tareas",
+      "Certificates": "Certificados"
     },
     "actions": {
       "job:read": "Acceso a toda la información del trabajo, incluidos los datos financieros.",
@@ -2799,7 +2801,15 @@
       "attachment:read_technicians": "Ver adjuntos solo en la carpeta de Técnicos.",
       "attachment:create_technicians": "Subir archivos solo a la carpeta de Técnicos.",
       "attachment:update_technicians": "Editar metadatos de archivos solo en la carpeta de Técnicos.",
-      "attachment:delete_technicians": "Eliminar archivos solo de la carpeta de Técnicos."
+      "attachment:delete_technicians": "Eliminar archivos solo de la carpeta de Técnicos.",
+      "tasks:read": "Ver tareas y listas de tareas.",
+      "tasks:create": "Crear nuevas tareas.",
+      "tasks:update": "Editar y cambiar el estado de las tareas.",
+      "tasks:delete": "Eliminar tareas del sistema.",
+      "certificate:read": "Ver certificados y documentación.",
+      "certificate:create": "Subir y registrar nuevos certificados.",
+      "certificate:update": "Editar detalles de certificados y renovaciones.",
+      "certificate:delete": "Eliminar certificados del sistema."
     }
   },
   "specialties": {

@@ -97,4 +97,22 @@ export const MODULE_ACTIONS = [
       { id: "attachment:delete_technicians", label: "Delete – Technicians folder", desc: "Delete files from the Technicians folder only." },
     ],
   },
+  {
+    module: "Tasks",
+    actions: [
+      { id: "tasks:read",   label: "Read",   desc: "View tasks and task lists." },
+      { id: "tasks:create", label: "Create", desc: "Create new tasks." },
+      { id: "tasks:update", label: "Update", desc: "Edit and change status of tasks." },
+      { id: "tasks:delete", label: "Delete", desc: "Remove tasks from the system." },
+    ],
+  },
+  {
+    module: "Certificates",
+    actions: [
+      { id: "certificate:read",   label: "Read",   desc: "View certificates and documentation." },
+      { id: "certificate:create", label: "Create", desc: "Upload and register new certificates." },
+      { id: "certificate:update", label: "Update", desc: "Edit certificate details and renewals." },
+      { id: "certificate:delete", label: "Delete", desc: "Remove certificates from the system." },
+    ],
+  },
 ]

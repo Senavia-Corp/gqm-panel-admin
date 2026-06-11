@@ -242,19 +242,22 @@ export default function CreatePermissionPage() {
                                   type="button"
                                   onClick={() => toggleAction(sIdx, `${mod.actions[0].id.split(":")[0]}:*`)}
                                   className={`rounded px-1.5 py-0.5 text-[9px] font-bold transition-all ${
-                                    s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`)
+                                    s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`) || s.Action.includes("*")
                                       ? "bg-amber-100 text-amber-700"
                                       : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
                                   }`}
                                 >
                                   {t("form.btnAll")}
                                 </button>
-                                <span className="font-normal text-slate-400">({mod.actions.filter(a => s.Action.includes(a.id)).length})</span>
+                                <span className="font-normal text-slate-400">
+                                  ({s.Action.includes("*") || s.Action.includes(`${mod.actions[0].id.split(":")[0]}:*`) ? mod.actions.length : mod.actions.filter(a => s.Action.includes(a.id)).length})
+                                </span>
                               </div>
                             </h4>
                             <div className="space-y-1.5">
                               {mod.actions.map((act) => {
-                                const isChecked = s.Action.includes(act.id)
+                                const modPrefix = act.id.split(":")[0]
+                                const isChecked = s.Action.includes(act.id) || s.Action.includes(`${modPrefix}:*`) || s.Action.includes("*")
                                 return (
                                   <button
                                     key={act.id}

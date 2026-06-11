@@ -11,6 +11,7 @@ export async function GET(req: Request) {
     const rep             = url.searchParams.get("rep")
     const clientId        = url.searchParams.get("client_id")
     const subcontractorId = url.searchParams.get("subcontractor_id")
+    const technicianId    = url.searchParams.get("technician_id")
     const status          = url.searchParams.get("status")
     const page            = url.searchParams.get("page")             ?? "1"
     const limit           = url.searchParams.get("limit")            ?? "50"
@@ -26,6 +27,7 @@ export async function GET(req: Request) {
     if (rep)             qs.set("rep",              rep)
     if (clientId)        qs.set("client_id",        clientId)
     if (subcontractorId) qs.set("subcontractor_id", subcontractorId)
+    if (technicianId)    qs.set("technician_id",    technicianId)
     if (status)          qs.set("status",           status)
 
     const target = `${backend.replace(/\/$/, "")}/job_metrics/summary?${qs.toString()}`

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
+import { JobsTable } from "@/components/organisms/JobsTable"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
@@ -24,7 +25,7 @@ import {
   ArrowLeft, Save, X, Loader2, Mail, Phone, MapPin, User,
   ShieldCheck, Search, Plus, Link2, Unlink,
   RefreshCw, AlertCircle, CheckCircle, Eye, EyeOff,
-  ExternalLink, Wrench, Shield, Users
+  ExternalLink, Wrench, Shield, Users, Briefcase
 } from "lucide-react"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
@@ -208,7 +209,13 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const [subcontractors, setSubcontractors] = useState<any[]>([])
 
   const { hasPermission } = usePermissions()
-  const canUpdate = user?.role === "LEAD_TECHNICIAN" || hasPermission("technician:update")
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // ── Jobs state ─────────────────────────────────────────────────────────────
+  const [techJobs, setTechJobs] = useState<any[]>([])
+  const [loadingJobs, setLoadingJobs] = useState(false)
+  const [jobsFetched, setJobsFetched] = useState(false)
 
   // ── Edit state ─────────────────────────────────────────────────────────────
   const [editing, setEditing]   = useState(false)
@@ -248,13 +255,24 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
     setUser(JSON.parse(u))
-    
-    // Fetch subcontractors for dropdown
-    apiFetch("/api/subcontractors_table?limit=1000")
-      .then(res => res.json())
-      .then(data => setSubcontractors(data.results || []))
-      .catch(console.error)
+    setLoading(false)
   }, [router])
+
+  const fetchSubcontractors = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/subcontractors_table?limit=1000")
+      const data = await res.json()
+      setSubcontractors(data.results || [])
+    } catch (err: any) {
+      console.error("Failed to load subs", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user && user.role !== "LEAD_TECHNICIAN") {
+      fetchSubcontractors()
+    }
+  }, [user, fetchSubcontractors])
 
   const initForm = (t: TechnicianFull) => {
     const sId = t.ID_Subcontractor || t.subcontractor?.ID_Subcontractor || "none"
@@ -269,7 +287,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   }
 
   // ── Fetch technician ───────────────────────────────────────────────────────────
-  const { data: technician, isLoading: loading, error: loadError, refetch } = useQuery<TechnicianFull>({
+  const { data: technician, isLoading: loadingTech, error: queryError, refetch } = useQuery<TechnicianFull>({
     queryKey: ["technician", id],
     queryFn: async () => {
       const res = await apiFetch(`/api/technician/${id}`)
@@ -280,6 +298,42 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     staleTime: 5 * 60 * 1000,
   })
 
+  useEffect(() => {
+    if (queryError) setLoadError(queryError.message)
+  }, [queryError])
+
+  const fetchTechJobs = useCallback(async () => {
+    setLoadingJobs(true)
+    try {
+      const res = await apiFetch(`/api/metrics/jobs/summary?technician_id=${id}&limit=200`)
+      if (res.ok) {
+        const data = await res.json()
+        const mappedJobs = (data.jobs || []).map((j: any) => ({
+          ID_Jobs: j.job_id,
+          Job_status: j.status,
+          Job_type: j.type,
+          Project_name: j.location,
+          Project_location: j.location,
+          client: { name: j.client, Client_Community: j.client },
+          members: j.rep !== "—" ? [{ Member_Name: j.rep }] : [],
+          Gqm_target_sold_pricing: j.target,
+          Gqm_target_return: j.pct,
+          Date_assigned: j.date
+        }))
+        setTechJobs(mappedJobs)
+        setJobsFetched(true)
+      }
+    } catch(e) {
+      console.error(e)
+    } finally { setLoadingJobs(false) }
+  }, [id])
+
+  useEffect(() => {
+    if (activeTab === "jobs" && !jobsFetched && !loadingJobs) {
+      fetchTechJobs()
+    }
+  }, [activeTab, jobsFetched, loadingJobs, fetchTechJobs])
+
   // Actualizar formulario cada vez que se recarguen los datos del técnico
   useEffect(() => {
     if (technician && !editing) {
@@ -287,6 +341,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
       setChangedFields(new Set())
     }
   }, [technician, editing])
+
 
   const updateMutation = useMutation({
     mutationFn: async (payload: Record<string, any>) => {
@@ -413,7 +468,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
 
   // ── Guards ─────────────────────────────────────────────────────────────────
   if (!user) return null
-  if (loading) return <PageSkeleton user={user} />
+  if (loading || loadingTech) return <PageSkeleton user={user} />
 
   if (!technician) return (
     <div className="flex h-screen bg-slate-50">
@@ -426,7 +481,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
           </button>
           <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
             <div className="flex items-center gap-3"><AlertCircle className="h-5 w-5 text-red-500" /><h2 className="font-semibold text-red-800">{t("techLoadError")}</h2></div>
-            <p className="mt-2 text-sm text-red-600">{loadError?.message || String(loadError)}</p>
+            <p className="mt-2 text-sm text-red-600">{loadError || String(queryError)}</p>
             <Button onClick={() => refetch()} className="mt-4 gap-2" variant="outline"><RefreshCw className="h-4 w-4" /> {t("retry")}</Button>
           </div>
         </main>
@@ -435,6 +490,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   )
 
   const initials = (technician.Name ?? technician.ID_Technician).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "??"
+  const canUpdate = user?.role === "LEAD_TECHNICIAN" || hasPermission("technician:update")
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -501,6 +557,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                     <TabsList className="inline-flex h-auto gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {[
                         { value: "details",  labelFull: t("tabDetails"),             labelShort: t("tabDetails"),  count: null },
+                        { value: "jobs",     labelFull: t("tabJobs") || "Jobs",      labelShort: t("tabJobs") || "Jobs", count: null },
                         ...(user?.role !== "LEAD_TECHNICIAN" ? [{ value: "permissions", labelFull: t("tabPermissions"),      labelShort: t("tabPermissions"),    count: technician.permissions?.length ?? 0 }] : []),
                       ].map(({ value, labelFull, labelShort, count }) => (
                         <TabsTrigger key={value} value={value}
@@ -635,7 +692,26 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                     </SectionCard>
                   </TabsContent>
 
-                  {/* ── PERMISSIONS tab ───────────────────────────── */}
+                  {/* ── JOBS tab ────────────────────────────────────────── */}
+                  <TabsContent value="jobs" className="space-y-4">
+                    <SectionCard icon={Briefcase} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("tabJobs") || "Jobs"}>
+                      {loadingJobs ? (
+                        <div className="flex justify-center p-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                        </div>
+                      ) : techJobs.length > 0 ? (
+                        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                          <JobsTable jobs={techJobs} userRole="LEAD_TECHNICIAN" />
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
+                          <p className="text-sm text-slate-500">{t("noJobsFound") || "No jobs found"}</p>
+                        </div>
+                      )}
+                    </SectionCard>
+                  </TabsContent>
+
+                  {/* ── PERMISSIONS tab ───────────────────────────────────── */}
                   {user?.role !== "LEAD_TECHNICIAN" && (
                     <TabsContent value="permissions" className="space-y-4">
                       <SectionCard icon={CheckCircle} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("tabPermissions")}

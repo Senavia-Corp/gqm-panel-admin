@@ -44,6 +44,8 @@ interface CreateTaskDialogProps {
   prefill?: TaskPrefill
   isRecommended?: boolean
   defaultSubcId?: string  // Pre-selects this subcontractor and sets assignType to "subcontractor"
+  userRole?: string
+  userSubId?: string | null
 }
 
 const INITIAL_FORM = () => ({
@@ -120,6 +122,8 @@ export function CreateTaskDialog({
   prefill,
   isRecommended,
   defaultSubcId,
+  userRole,
+  userSubId,
 }: CreateTaskDialogProps) {
   const t = useTranslations("jobTasks")
   const [formData, setFormData] = useState(INITIAL_FORM())
@@ -135,7 +139,9 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (open) {
       const base = INITIAL_FORM()
-      const subcOverride = defaultSubcId ? { ID_Subcontractor: defaultSubcId } : {}
+      const isSub = userRole === "SUBCONTRACTOR"
+      const subcId = isSub ? userSubId : defaultSubcId
+      const subcOverride = subcId ? { ID_Subcontractor: subcId } : {}
       if (prefill) {
         setFormData({
           ...base,
@@ -147,7 +153,7 @@ export function CreateTaskDialog({
       } else {
         setFormData({ ...base, ...subcOverride })
       }
-      setAssignType(defaultSubcId ? "subcontractor" : "none")
+      setAssignType(subcId ? "subcontractor" : "none")
       setError(null)
       setFocusedField(null)
       setShowConfirmClose(false)
@@ -502,38 +508,40 @@ export function CreateTaskDialog({
             <SectionHeader icon={<UserCheck size={13} />} label={t("assignment")} />
 
             {/* Assignment type tabs */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-              {[
-                { key: "none" as AssignType,          label: t("unassignedType"),     icon: <Circle size={13} /> },
-                { key: "member" as AssignType,        label: t("gqmMember"),     icon: <Users size={13} /> },
-                { key: "subcontractor" as AssignType, label: t("subcontractor"),  icon: <Building2 size={13} /> },
-              ].map(opt => {
-                const active = assignType === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => handleAssignTypeChange(opt.key)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "8px 16px",
-                      border: `1.5px solid ${active ? "#059669" : "#E5E7EB"}`,
-                      borderRadius: "9px",
-                      background: active ? "#F0FDF4" : "#FAFAFA",
-                      color: active ? "#059669" : "#6B7280",
-                      fontSize: "12px",
-                      fontWeight: active ? 700 : 500,
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {opt.icon}
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
+            {userRole !== "SUBCONTRACTOR" && (
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+                {[
+                  { key: "none" as AssignType,          label: t("unassignedType"),     icon: <Circle size={13} /> },
+                  { key: "member" as AssignType,        label: t("gqmMember"),     icon: <Users size={13} /> },
+                  { key: "subcontractor" as AssignType, label: t("subcontractor"),  icon: <Building2 size={13} /> },
+                ].map(opt => {
+                  const active = assignType === opt.key
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => handleAssignTypeChange(opt.key)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "8px 16px",
+                        border: `1.5px solid ${active ? "#059669" : "#E5E7EB"}`,
+                        borderRadius: "9px",
+                        background: active ? "#F0FDF4" : "#FAFAFA",
+                        color: active ? "#059669" : "#6B7280",
+                        fontSize: "12px",
+                        fontWeight: active ? 700 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {opt.icon}
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Member select — all DB members */}
             {assignType === "member" && (
@@ -633,8 +641,9 @@ export function CreateTaskDialog({
                     <Select
                       value={formData.ID_Subcontractor}
                       onValueChange={v => setFormData(p => ({ ...p, ID_Subcontractor: v, ID_Technician: NONE }))}
+                      disabled={userRole === "SUBCONTRACTOR"}
                     >
-                      <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: "#fff" }}>
+                      <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: userRole === "SUBCONTRACTOR" ? "#F3F4F6" : "#fff" }}>
                         <SelectValue placeholder={t("selectSubcontractor")} />
                       </SelectTrigger>
                       <SelectContent>
