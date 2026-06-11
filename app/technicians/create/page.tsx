@@ -13,8 +13,9 @@ import { toast } from "@/components/ui/use-toast"
 import { apiFetch } from "@/lib/apiFetch"
 import {
   ArrowLeft, Save, Loader2, Eye, EyeOff,
-  User, Mail, Phone, MapPin, Shield, Users, Wrench
+  User, Mail, Phone, MapPin, Shield, Users, Wrench, ShieldCheck
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -117,6 +118,7 @@ export default function CreateTechnicianPage() {
   const [subcontractors, setSubcontractors] = useState<any[]>([])
   const [loadingSubs, setLoadingSubs] = useState(true)
   const [subModalOpen, setSubModalOpen] = useState(false)
+  const [allPerms, setAllPerms] = useState<any[]>([])
 
   const [form, setForm] = useState({
     Name:               "",
@@ -127,6 +129,7 @@ export default function CreateTechnicianPage() {
     ID_Subcontractor:   "none",
     Password:           "",
     confirmPassword:    "",
+    permissions:        [] as string[],
   })
 
   const setField = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
@@ -158,6 +161,12 @@ export default function CreateTechnicianPage() {
         console.error("Failed to load subcontractors", err)
         setLoadingSubs(false)
       })
+
+    // Fetch permissions
+    apiFetch("/api/permissions?limit=1000")
+      .then(res => res.json())
+      .then(data => setAllPerms(data.results || data || []))
+      .catch(err => console.error("Failed to load permissions", err))
   }, [router])
 
   const validate = (): string | null => {
@@ -188,7 +197,21 @@ export default function CreateTechnicianPage() {
       }
       return data
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
+      // Asignar permisos si hay seleccionados
+      if (form.permissions.length > 0 && created.ID_Technician) {
+        try {
+          await Promise.all(
+            form.permissions.map(permId =>
+              apiFetch(`/api/technician/${created.ID_Technician}/permissions/${permId}`, { method: "POST" })
+            )
+          )
+        } catch (e) {
+          console.error("Error linking permissions", e)
+          toast({ title: t("toastError"), description: "Some permissions could not be assigned", variant: "destructive" })
+        }
+      }
+
       toast({ title: t("techToastCreated"), description: t("techToastCreatedDesc", { name: created.Name ?? "New technician" }) })
       queryClient.invalidateQueries({ queryKey: ["technicians"] })
       router.push(created.ID_Technician ? `/technicians/${created.ID_Technician}` : "/subcontractors")
@@ -398,6 +421,31 @@ export default function CreateTechnicianPage() {
                           {form.Password === form.confirmPassword ? `✓ ${t("techPwdMatch")}` : `✗ ${t("techPwdNoMatch")}`}
                         </p>
                       )}
+                    </div>
+                  </div>
+                </SectionCard>
+
+                {/* Roles / Permissions */}
+                <SectionCard icon={ShieldCheck} iconBg="bg-blue-50" iconColor="text-blue-600" title={t("permissions", { defaultValue: "Permissions & Roles" })}>
+                  <div className="flex flex-col gap-3">
+                    <FieldLabel>{t("assignPermissions", { defaultValue: "Assign Permissions" })}</FieldLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
+                      {allPerms.map(p => (
+                        <label key={p.ID_Permission} className="flex items-center gap-2.5 rounded-lg border border-slate-200 p-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+                          <Checkbox
+                            checked={form.permissions.includes(p.ID_Permission)}
+                            onCheckedChange={(c) => {
+                              if (c) setField("permissions", [...form.permissions, p.ID_Permission] as any)
+                              else setField("permissions", (form.permissions.filter(x => x !== p.ID_Permission)) as any)
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-semibold text-slate-800 leading-tight">{p.Name}</p>
+                            {p.Description && <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{p.Description}</p>}
+                          </div>
+                        </label>
+                      ))}
+                      {allPerms.length === 0 && <p className="text-xs italic text-slate-400">{t("loadingPermissions", { defaultValue: "Loading..." })}</p>}
                     </div>
                   </div>
                 </SectionCard>
