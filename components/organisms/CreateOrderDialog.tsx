@@ -19,7 +19,21 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 const FIELD_BASE = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-200 transition-all"
 const FIELD_ERR  = "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-200"
 
-const getItemId = (i: any) => String(i?.ID_EstimateItem || i?.ID_EstimateCost || i?.ID_Estimate_Cost || i?.id || i?.ID || Math.random())
+const getItemId = (it: any) => {
+  if (!it) return ""
+  return String(
+    it.ID_EstimateItem || 
+    it.ID_EstimateCost || 
+    it.ID_Estimate_Cost || 
+    it.id || 
+    it.ID ||
+    it.id_estimatecost || 
+    it.id_estimate_cost || 
+    it.ID_ESTIMATECOST ||
+    (it.data && (it.data.ID_EstimateItem || it.data.ID_EstimateCost || it.data.id_estimatecost)) ||
+    ""
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function FL({ children, required }: { children: React.ReactNode; required?: boolean }) {

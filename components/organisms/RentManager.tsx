@@ -25,7 +25,20 @@ function money(v: number) {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD" })
 }
 
-const getId = (it: any) => String(it?.ID_EstimateItem || it?.ID_EstimateCost || it?.ID_Estimate_Cost || it?.id || "")
+const getId = (it: any) => {
+  if (!it) return ""
+  return String(
+    it.ID_EstimateItem || 
+    it.ID_EstimateCost || 
+    it.ID_Estimate_Cost || 
+    it.id || 
+    it.id_estimatecost || 
+    it.id_estimate_cost || 
+    it.ID_ESTIMATECOST ||
+    (it.data && (it.data.ID_EstimateItem || it.data.ID_EstimateCost || it.data.id_estimatecost)) ||
+    ""
+  )
+}
 
 async function patchJobForPodioSync(jobId: string, jobYear?: number) {
   const qs = new URLSearchParams({ sync_podio: "true" })
@@ -130,7 +143,7 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
   const [title, setTitle]             = useState("")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [errors, setErrors]           = useState<{ title?: string; amount?: string; description?: string }>({})
 
@@ -158,10 +171,17 @@ function CreateRentDialog({ open, onClose, jobId, jobYear, onCreated }: CreateRe
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       const created = await res.json()
+      
+      const newId = getId(created)
+      if (!newId || newId === "undefined") {
+        console.error("Failed to get ID from backend payload:", created)
+        throw new Error("El servidor no devolvió un ID válido.")
+      }
+
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
 
       const item: EstimateItem = {
-        ID_EstimateItem: created.ID_EstimateCost ?? "", ID_Jobs: jobId,
+        ID_EstimateItem: newId, ID_Jobs: jobId,
         Title: created.Title ?? title, Cost_Code: "RENT", Category: "",
         Parent_Group: "", Parent_Group_Description: "", Subgroup: "",
         Subgroup_Description: "", Option_Type: "", Line_Item_Type: "",
@@ -263,7 +283,7 @@ interface ApproveRentDialogProps {
 function ApproveRentDialog({ open, item, onClose, jobId, jobYear, onApproved }: ApproveRentDialogProps) {
   const t = useTranslations("jobEstimate.rentManager")
   const [amount, setAmount]           = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [amountError, setAmountError] = useState("")
 
@@ -378,7 +398,7 @@ function EditRentDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditR
   const t = useTranslations("jobEstimate.rentManager")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [amountError, setAmountError] = useState("")
 
@@ -505,7 +525,7 @@ interface UnapproveRentDialogProps {
 
 function UnapproveRentDialog({ open, item, onClose, jobId, jobYear, onUnapproved }: UnapproveRentDialogProps) {
   const t = useTranslations("jobEstimate.rentManager")
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [loading, setLoading]     = useState(false)
 
   const handleClose = () => { if (!loading) { setSyncPodio(false); onClose() } }
@@ -583,7 +603,7 @@ interface DeleteRentDialogProps {
 
 function DeleteRentDialog({ open, item, onClose, jobId, jobYear, onDeleted }: DeleteRentDialogProps) {
   const t = useTranslations("jobEstimate.rentManager")
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [loading, setLoading]     = useState(false)
 
   const handleClose = () => { if (!loading) { setSyncPodio(false); onClose() } }

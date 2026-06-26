@@ -675,6 +675,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setEstimateItems(items)
   }
 
+  const handleItemsChanged = async (updatedItems: EstimateItem[]) => {
+    setEstimateItems(updatedItems)
+    await jobDetail.reload()
+    queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
+  }
+
   const ESTIMATE_POOL_LIMIT = 2
   const ESTIMATE_RETRY_MAX = 3
 
@@ -972,6 +978,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     const isTemp = String((updatedItem as any).ID_EstimateItem || "").startsWith("TEMP")
     if (!isTemp) {
       queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
+      await jobDetail.reload()
     }
 
     // 3. Update currently selected item if it matches
@@ -1037,6 +1044,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       // Backend now handles attaching items, formulas, and syncing atomically!
       await jobDetail.reload()
+      queryClient.invalidateQueries({ queryKey: ["job_estimate_costs", jobId] })
 
       toast({ title: tCommon("success"), description: `Order "${orderName}" created successfully.` })
 
@@ -1319,6 +1327,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             onSelectItem={setSelectedEstimateItem}
             hasSavedEstimates={hasSavedEstimates}
             onItemsImported={handleItemsImported}
+            onItemsChanged={handleItemsChanged}
             onCreateOrder={() => setIsCreateOrderOpen(true)}
             onSaveEstimates={handleSaveEstimates}
             onDeleteAllEstimates={handleDeleteAllEstimates}

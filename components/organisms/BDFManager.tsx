@@ -26,6 +26,21 @@ function money(v: number) {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD" })
 }
 
+const getId = (it: any) => {
+  if (!it) return ""
+  return String(
+    it.ID_EstimateItem || 
+    it.ID_EstimateCost || 
+    it.ID_Estimate_Cost || 
+    it.id || 
+    it.id_estimatecost || 
+    it.id_estimate_cost || 
+    it.ID_ESTIMATECOST ||
+    (it.data && (it.data.ID_EstimateItem || it.data.ID_EstimateCost || it.data.id_estimatecost)) ||
+    ""
+  )
+}
+
 async function patchJobForPodioSync(jobId: string, jobYear?: number) {
   const qs = new URLSearchParams({ sync_podio: "true" })
   if (jobYear) qs.set("year", String(jobYear))
@@ -130,7 +145,7 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
   const [title, setTitle]             = useState("")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [errors, setErrors]           = useState<{ title?: string; amount?: string; description?: string }>({})
 
@@ -162,8 +177,13 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
       const created = await res.json()
       if (syncPodio) await patchJobForPodioSync(jobId, jobYear)
 
+      const newId = getId(created)
+      if (!newId) {
+        throw new Error("Backend did not return an ID. Response: " + JSON.stringify(created).slice(0, 100))
+      }
+
       const item: EstimateItem = {
-        ID_EstimateItem: created.ID_EstimateCost ?? "", ID_Jobs: jobId,
+        ID_EstimateItem: newId, ID_Jobs: jobId,
         Title: created.Title ?? title, Cost_Code: "BDF", Category: "",
         Parent_Group: "", Parent_Group_Description: "", Subgroup: "",
         Subgroup_Description: "", Option_Type: "", Line_Item_Type: "",
@@ -271,7 +291,7 @@ interface ApproveBDFDialogProps {
 function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: ApproveBDFDialogProps) {
   const t = useTranslations("jobEstimate.bdfManager")
   const [amount, setAmount]           = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [amountError, setAmountError] = useState("")
 
@@ -283,9 +303,11 @@ function ApproveBDFDialog({ open, item, onClose, jobId, jobYear, onApproved }: A
     const parsed = parseFloat(amount)
     if (isNaN(parsed) || parsed < 0) { setAmountError(t("errInvalidAmount")); return }
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot approve an unsaved item."); return }
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         // Only update Status and Client_price. Builder_cost stays as the original estimate.
         body: JSON.stringify({ Status: "Approved", Client_price: parsed }),
@@ -387,7 +409,7 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
   const t = useTranslations("jobEstimate.bdfManager")
   const [amount, setAmount]           = useState("")
   const [description, setDescription] = useState("")
-  const [syncPodio, setSyncPodio]     = useState(false)
+  const [syncPodio, setSyncPodio]     = useState(true)
   const [loading, setLoading]         = useState(false)
   const [amountError, setAmountError] = useState("")
 
@@ -405,13 +427,15 @@ function EditBDFDialog({ open, item, onClose, jobId, jobYear, onEdited }: EditBD
     const parsed = parseFloat(amount)
     if (isNaN(parsed) || parsed < 0) { setAmountError(t("errInvalidAmount")); return }
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot edit an unsaved item."); return }
     setLoading(true)
     try {
       const patch = isApproved
         ? { Client_price: parsed, Description: description.trim() || null }
         : { Builder_cost: parsed, Client_price: parsed, Description: description.trim() || null }
 
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
       })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
@@ -511,16 +535,18 @@ interface UnapproveBDFDialogProps {
 
 function UnapproveBDFDialog({ open, item, onClose, jobId, jobYear, onUnapproved }: UnapproveBDFDialogProps) {
   const t = useTranslations("jobEstimate.bdfManager")
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [loading, setLoading]     = useState(false)
 
   const handleClose = () => { if (!loading) { setSyncPodio(false); onClose() } }
 
   const handleUnapprove = async () => {
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot edit an unsaved item."); return }
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, {
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         // Reset to Estimated: restore Client_price = Builder_cost (the original estimate)
         body: JSON.stringify({ Status: "Estimated", Client_price: item.Builder_Cost }),
@@ -587,16 +613,19 @@ interface DeleteBDFDialogProps {
 
 function DeleteBDFDialog({ open, item, onClose, jobId, jobYear, onDeleted }: DeleteBDFDialogProps) {
   const t = useTranslations("jobEstimate.bdfManager")
-  const [syncPodio, setSyncPodio] = useState(false)
+  const [syncPodio, setSyncPodio] = useState(true)
   const [loading, setLoading]     = useState(false)
 
   const handleClose = () => { if (!loading) { setSyncPodio(false); onClose() } }
 
   const handleDelete = async () => {
     if (!item) return
+    const id = getId(item)
+    if (!id || id.startsWith("TEMP")) { toast.error("Cannot delete an unsaved item."); return }
+
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/estimate/${encodeURIComponent(item.ID_EstimateItem)}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/estimate/${encodeURIComponent(id)}`, { method: "DELETE" })
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error ?? `Error ${res.status}`) }
       if (syncPodio) {
         try { await patchJobForPodioSync(jobId, jobYear) }
@@ -675,10 +704,10 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
   const totalApproved      = approvedItems.reduce((s, i) => s + i.Client_Price, 0)
 
   const handleCreated    = (item: EstimateItem) => onItemsChanged([...items, item])
-  const handleApproved   = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleEdited     = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleUnapproved = (updated: EstimateItem) => onItemsChanged(items.map((i) => i.ID_EstimateItem === updated.ID_EstimateItem ? updated : i))
-  const handleDeleted    = (deleted: EstimateItem) => onItemsChanged(items.filter((i) => i.ID_EstimateItem !== deleted.ID_EstimateItem))
+  const handleApproved   = (updated: EstimateItem) => onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i))
+  const handleEdited     = (updated: EstimateItem) => onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i))
+  const handleUnapproved = (updated: EstimateItem) => onItemsChanged(items.map((i) => getId(i) === getId(updated) ? updated : i))
+  const handleDeleted    = (deleted: EstimateItem) => onItemsChanged(items.filter((i) => getId(i) !== getId(deleted)))
 
   return (
     <div className="space-y-4">
@@ -770,7 +799,7 @@ export function BDFManager({ jobId, jobYear, items, onItemsChanged, onViewDetail
               {bdfItems.map((item) => {
                 const isApproved = item.Status === "Approved"
                 return (
-                  <tr key={item.ID_EstimateItem} className="hover:bg-slate-50 transition-colors">
+                  <tr key={getId(item)} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
                       <span className="text-sm font-medium text-slate-800">{item.Title}</span>
                     </td>
