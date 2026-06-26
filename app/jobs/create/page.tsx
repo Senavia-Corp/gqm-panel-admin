@@ -205,13 +205,14 @@ export default function CreateJobPage() {
     setLoading(true)
 
     try {
-      const payload = {
+      const payload: any = {
         Job_type:                    formData.jobType,
         Job_status:                  formData.status,
         Project_name:                formData.projectName           || null,
         Project_location:            formData.projectLocation        || null,
         Date_assigned:               formData.dateAssigned           || null,
-        Date_assigned_end:           formData.dateAssignedEnd        || null,
+        Date_assigned_end:           formData.jobType === "QID" ? null : (formData.dateAssignedEnd || null),
+        Estimated_completion_date:   formData.jobType === "QID" ? (formData.dateAssignedEnd || null) : null,
         Estimated_start_date:        formData.estimatedStartDate     || null,
         Estimated_start_date_end:    formData.estimatedStartDateEnd  || null,
         Estimated_project_duration:  formData.estimatedDuration      || null,
