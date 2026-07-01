@@ -89,6 +89,7 @@ interface CreateOrderDialogProps {
   defaultSyncPodio: boolean
   jobYearForPodioSync?: number
   jobId?: string
+  jobPodioId?: string
   existingOrdersCount?: number
   bills?: FinancialDocument[]
   onCreateOrder: (orderName: string, subcontractorId: string, selectedItems: string[], syncPodio: boolean, billId?: string) => Promise<void>
@@ -103,6 +104,7 @@ export function CreateOrderDialog({
   defaultSyncPodio,
   jobYearForPodioSync,
   jobId,
+  jobPodioId,
   existingOrdersCount = 0,
   bills = [],
   onCreateOrder,
@@ -199,6 +201,19 @@ export function CreateOrderDialog({
     setErrors(newErrs)
 
     if (Object.keys(newErrs).length > 0) return
+
+    const sub = subcontractors.find((s) => s.ID_Subcontractor === selectedSubcontractor)
+    if (sub && Array.isArray((sub as any).orders)) {
+      const ordersInThisJob = (sub as any).orders.filter((o: any) => 
+        // Filter by either jobPodioId or verify the estimate costs link to this jobId
+        (jobPodioId && o.job_podio_id === jobPodioId) || 
+        (Array.isArray(o.estimate_costs) && o.estimate_costs.some((ec: any) => ec.ID_Jobs === jobId))
+      )
+      if (ordersInThisJob.length > 0) {
+        toast.error("This technician already has an order in this job. Please edit the existing one instead of creating a new one.")
+        return
+      }
+    }
 
     if (selectedItems.length === 0) {
       toast.error(t("noFreeItems"))

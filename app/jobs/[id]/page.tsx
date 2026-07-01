@@ -1548,6 +1548,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         defaultSyncPodio={syncPodio}
         jobYearForPodioSync={resolveJobYearForPodioSync(job)}
         jobId={String((job as any)?.ID_Jobs ?? "")}
+        jobPodioId={String((job as any)?.podio_item_id ?? "")}
         existingOrdersCount={(job as any)?.subcontractors?.flatMap((s: any) => s.orders ?? []).length ?? 0}
         bills={(job as any)?.financial_docs || []}
         onSubcontractorLinked={() => jobDetail.reload()}
