@@ -1179,19 +1179,13 @@ export default function PurchaseDetailsPage() {
     const items = orders.flatMap(o => o.porder_items ?? [])
     const totalQuoted = items.reduce((a, it) => a + asNumber(it.Quote_value), 0)
     const totalPurchased = items.reduce((a, it) => a + asNumber(it.Purchase_value), 0)
-    const totalMixed = items.reduce((a, it) => {
-      const p = asNumber(it.Purchase_value)
-      const q = asNumber(it.Quote_value)
-      return a + (p > 0 ? p : q)
-    }, 0)
     const totalSpendingDb = asNumber(purchase?.Total_spending)
-    const hasMismatch = totalSpendingDb > 0 && Math.abs(totalSpendingDb - totalMixed) > 0.01
+    const hasMismatch = totalSpendingDb > 0 && Math.abs(totalSpendingDb - totalPurchased) > 0.01
     return {
       ordersCount: orders.length,
       itemsCount: items.length,
       totalQuoted,
       totalPurchased,
-      totalMixed,
       totalSpendingDb,
       totalSaved: totalQuoted - totalPurchased,
       hasMismatch,
