@@ -111,10 +111,9 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<string, string[]> = {
     "Cancelled",
     "Completed P. INV / POs",
     "Invoiced",
-    "HOLD",
-    "PAID",
+    "Hold",
+    "Paid",
     "Warranty",
-    "Archived",
   ],
   PTL: [
     "Received-Stand By",
@@ -123,10 +122,14 @@ const STATUS_OPTIONS_BY_JOB_TYPE: Record<string, string[]> = {
     "Invoiced",
     "Paid",
     "Cancelled",
-    "Entered",
-    "Stand By",
   ],
-  PAR: ["Scheduled / Work in Progress", "Completed P. INV / POs", "Invoiced", "PAID", "Cancelled"],
+  PAR: [
+    "Scheduled / Work in Progress",
+    "Completed P. INV / POs",
+    "Invoiced",
+    "Paid",
+    "Cancelled",
+  ],
 }
 
 // ── Job type → header color ────────────────────────────────────────────────

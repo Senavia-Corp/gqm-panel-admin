@@ -51,12 +51,13 @@ export type JobStatus =
   | "Invoiced"
   | "HOLD"
   | "PAID"
+  | "Hold"
+  | "Paid"
   | "Warranty"
   // PTL statuses (real Podio values)
   | "Received-Stand By"
   | "Stand By"
   | "Entered"
-  | "Paid"
   // PAR statuses
   | "In Progress"
   | "Completed PVI / POs"
