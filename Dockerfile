@@ -9,7 +9,7 @@ WORKDIR /app
 # Install dependencies based on the preferred package manager
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 RUN \
-  if [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
+  if [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm i --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \
   elif [ -f yarn.lock ]; then yarn --frozen-lockfile; \
   else echo "Lockfile not found." && exit 1; \
@@ -22,11 +22,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN \
-  if [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
+  if [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm run build; \
   elif [ -f package-lock.json ]; then npm run build; \
   elif [ -f yarn.lock ]; then yarn build; \
   else echo "Lockfile not found." && exit 1; \
@@ -49,7 +48,6 @@ RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
