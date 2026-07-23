@@ -433,11 +433,11 @@ export default function JobsPanel({
     const all = data?.recent_purchases ?? []
     const pending = all.filter(p => {
       const s = p.status.toUpperCase()
-      return s !== "COMPLETED" && s !== "CANCELLED" && (p.amount === 0)
+      return s !== "COMPLETED" && s !== "CANCELLED"
     })
     const completed = all.filter(p => {
       const s = p.status.toUpperCase()
-      return s === "COMPLETED" || p.amount > 0
+      return s === "COMPLETED"
     })
     return { pendingPurchases: pending, completedPurchases: completed }
   }, [data])

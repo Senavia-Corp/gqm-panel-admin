@@ -343,11 +343,14 @@ export default function ClientsPanel({ jobTab, yearTab }: Props) {
                       {t("topClientsByRevenue")}
                     </h3>
                     <HorizontalBarChart
-                      data={items.slice(0, 10).map(i => ({
-                        label: i.client.name,
-                        value: i.dashboard_stats.dollars_paid,
-                        badge: i.dashboard_stats.paid_jobs_count ? `${i.dashboard_stats.paid_jobs_count} ${t("paid")}` : undefined
-                      }))}
+                      data={[...items]
+                        .sort((a, b) => b.dashboard_stats.dollars_paid - a.dashboard_stats.dollars_paid)
+                        .slice(0, 10)
+                        .map(i => ({
+                          label: i.client.name,
+                          value: i.dashboard_stats.dollars_paid,
+                          badge: i.dashboard_stats.paid_jobs_count ? `${i.dashboard_stats.paid_jobs_count} ${t("paid")}` : undefined
+                        }))}
                       primaryLabel={t("statDollarsPaid")}
                       height={items.length > 5 ? 400 : 250}
                     />
