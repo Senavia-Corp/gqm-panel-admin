@@ -213,7 +213,20 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
     run()
   }, [selectedId, yearTab])
 
-  const top10 = useMemo(() => members.slice(0, 10), [members])
+  // ME-1: el título promete "Ranking by number of paid jobs" — se ordena por
+  // # de pagados (desempate por $) en vez de heredar el orden por $ de la lista.
+  // De paso top10[0] pasa a tener el máximo real y la barra ya no desborda.
+  const top10 = useMemo(
+    () =>
+      [...members]
+        .sort(
+          (a, b) =>
+            (b.summary?.paid_count ?? 0) - (a.summary?.paid_count ?? 0) ||
+            (b.summary?.paid_usd ?? 0) - (a.summary?.paid_usd ?? 0)
+        )
+        .slice(0, 10),
+    [members]
+  )
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
