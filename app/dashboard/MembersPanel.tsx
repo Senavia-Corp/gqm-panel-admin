@@ -371,20 +371,23 @@ export default function MembersPanel({ jobTab, yearTab }: Props) {
             {top10.length === 0 && !isLoading ? (
               <p className="text-white/70 text-sm">{t("noData")}</p>
             ) : (
-              top10.map((m) => {
+              top10.map((m, i) => {
                 const paid   = m.summary?.paid_count ?? 0
                 const max    = top10[0]?.summary?.paid_count ?? 1
                 const pct    = max > 0 ? Math.round((paid / max) * 100) : 0
                 const avatar = getAvatarTheme(m.member.id)
+                // ME-1: la posición/medalla sale del orden por # de pagados de
+                // ESTE bloque, no del m.rank del backend (que ordena por $).
+                const displayRank = i + 1
                 return (
                   <div
                     key={m.member.id}
                     className="grid items-center gap-2 sm:gap-3 [grid-template-columns:32px_minmax(0,1fr)_64px] sm:[grid-template-columns:44px_200px_1fr]"
                   >
                     <div className="flex justify-center">
-                      {m.rank <= 3
-                        ? medalIcon(m.rank)
-                        : <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/10 text-white text-xs flex items-center justify-center">{m.rank}</div>}
+                      {displayRank <= 3
+                        ? medalIcon(displayRank)
+                        : <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/10 text-white text-xs flex items-center justify-center">{displayRank}</div>}
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                       <div className={["h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0", avatar.bg].join(" ")}>
