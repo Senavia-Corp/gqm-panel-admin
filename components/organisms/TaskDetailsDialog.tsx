@@ -52,10 +52,14 @@ interface TaskDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   task: Task | null
-  onTaskSave: () => void
-  onTaskDelete: (taskId: string) => void
-  onTaskStatusChange: (taskId: string, newStatus: string) => void
+  onTaskSave?: () => void
+  onTaskDelete?: (taskId: string) => void
+  onTaskStatusChange?: (taskId: string, newStatus: string) => void
   jobData?: any
+  // Firmas alternativas usadas por jobs/[id] y subcontractors/[id] (REG-103)
+  onSave?: () => void | Promise<void>
+  onDelete?: () => void | Promise<void>
+  technicians?: any
 }
 
 // ── Clean {"value"} DB artifact from org names ────────────────────────────────
@@ -330,7 +334,7 @@ const memberId = toForm(task.ID_Member)
 
       setIsEditMode(false)
       setEditedFields(new Set())
-      onTaskSave()
+      onTaskSave?.()
     } catch (e: any) {
       setSaveError(e.message ?? t("failedToSave"))
     } finally {
@@ -351,8 +355,8 @@ const memberId = toForm(task.ID_Member)
       }
       setShowDeleteConfirm(false)
       onOpenChange(false)
-      onTaskDelete(task.ID_Tasks)
-      onTaskSave()
+      onTaskDelete?.(task.ID_Tasks)
+      onTaskSave?.()
     } catch (e: any) {
       setSaveError(e.message ?? t("failedToDelete"))
       setShowDeleteConfirm(false)

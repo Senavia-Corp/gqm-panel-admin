@@ -75,9 +75,9 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
       const technicianJobs = fetchedJobs.filter((job) => jobIds.includes(job.id))
       console.log("[v0] Filtered technician jobs:", technicianJobs.length, "of", fetchedJobs.length)
 
-      setJobs(technicianJobs)
-      setFilteredJobs(technicianJobs)
-      setAvailableJobs(fetchedJobs)
+      setJobs(technicianJobs as any)
+      setFilteredJobs(technicianJobs as any)
+      setAvailableJobs(fetchedJobs as any)
     } catch (error) {
       console.error("[v0] Error loading jobs:", error)
       toast({

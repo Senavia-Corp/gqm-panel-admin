@@ -75,7 +75,7 @@ export function DeleteSubcontractorDialog({
             {t.rich("deleteDesc", {
               name: subcontractorName,
               id: subcontractorId,
-              span: (chunks) => <span className="font-semibold">{chunks}</span>
+              span: (chunks: React.ReactNode) => <span className="font-semibold">{chunks}</span>
             })}
           </DialogDescription>
         </DialogHeader>
@@ -106,7 +106,7 @@ export function DeleteSubcontractorDialog({
             <Label htmlFor="confirm-delete">
               {t.rich("confirmDeleteType", {
                 text: t("confirmWord"),
-                span: (chunks) => <span className="font-mono font-semibold">{chunks}</span>
+                span: (chunks: React.ReactNode) => <span className="font-mono font-semibold">{chunks}</span>
               })}
             </Label>
             <Input

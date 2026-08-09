@@ -393,11 +393,11 @@ export function LeadTechnicianDashboard() {
       {view === "opportunities" ? (
         <OpportunitiesPanel subcontractorId={subcontractorId} isTechnician={true} />
       ) : view === "tasks" ? (
-        <WeeklyTasksPanel subcontractorId={subcontractorId} hidePersonFilters />
+        <WeeklyTasksPanel subcontractorId={subcontractorId ?? ""} hidePersonFilters />
       ) : view === "certificates" ? (
-        <TechCertificatesPanel subcontractorId={subcontractorId} />
+        <TechCertificatesPanel subcontractorId={subcontractorId ?? ""} />
       ) : view === "performance" ? (
-        <TechPerformancePanel subcontractorId={subcontractorId} />
+        <TechPerformancePanel subcontractorId={subcontractorId ?? ""} />
       ) : (
         <>
           {/* ── Filters (year + job type + status) ── */}

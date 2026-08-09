@@ -132,7 +132,7 @@ export function SubcontractorsTable({
       })
       setUnlinkDialogOpen(false)
       setSubcontractorToUnlink(null)
-      fetchAllOrders() // refresh totals after unlinking (though orders should be gone too)
+      fetchSubcontractorTotals() // refresh totals after unlinking (though orders should be gone too)
     } catch (error) {
       console.error("Error unlinking subcontractor:", error)
     } finally {

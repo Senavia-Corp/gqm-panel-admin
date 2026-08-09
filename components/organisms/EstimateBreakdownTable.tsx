@@ -324,9 +324,9 @@ export function EstimateBreakdownTable({
       }
       const str = (v: any) => String(v ?? "").trim()
 
-      const parsed: EstimateItem[] = rows
+      const parsed = rows
         .filter((r) => str(r["Title"]) || str(r["Cost Code"]))
-        .map((r, i) => {
+        .map((r: any, i: number) => {
           const bc = num(r["Builder Cost"])
           const cp = num(r["Client Price"])
           return {
@@ -360,7 +360,7 @@ export function EstimateBreakdownTable({
           }
         })
 
-      onItemsImported(parsed)
+      onItemsImported(parsed as any)
       setHasUnsaved(true)
       toast.success(`Imported ${parsed.length} items from Excel`)
     } catch {

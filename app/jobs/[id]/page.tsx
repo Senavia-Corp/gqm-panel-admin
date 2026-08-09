@@ -1330,7 +1330,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           <div className="lg:col-span-2">
             <Technicians role={user.role} job={job} jobId={jobId} LeadTechnicianTechniciansView={LeadTechnicianTechniciansView} />
           </div>
-          <div className="space-y-6">{technicianSidebar}</div>
+          <div className="space-y-6">{rightSidebar}</div>
         </div>
       )
     }

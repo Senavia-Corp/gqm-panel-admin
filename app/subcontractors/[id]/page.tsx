@@ -63,6 +63,7 @@ type SubcTechnician = {
 }
 
 type SubcFull = Subcontractor & {
+  ID_Role?: string | null
   technicians?: SubcTechnician[]
   tasks?: any[]
   attachments?: any[]

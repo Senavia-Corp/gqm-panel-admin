@@ -234,7 +234,7 @@ export function TechniciansTab({ hasPermission }: { hasPermission: (p: string) =
                     {tech.subcontractor ? (
                       <p className="text-sm font-medium text-slate-700 flex items-center gap-1">
                         <Users className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="truncate max-w-[150px] block" title={tech.subcontractor.Name}>
+                        <span className="truncate max-w-[150px] block" title={tech.subcontractor?.Name ?? ""}>
                            {tech.subcontractor.Name}
                         </span>
                       </p>

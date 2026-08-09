@@ -29,7 +29,7 @@ interface JobMultipliersManagerProps {
   jobId: string
   formulaPricing: number
   multipliers: Multiplier[]
-  onMultipliersChanged: () => Promise<void>
+  onMultipliersChanged: () => void | Promise<void>
   onAdjPricingCalculated: (adjPricing: number) => void
 }
 

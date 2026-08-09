@@ -219,7 +219,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
               <div className="mb-6 flex items-start justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={technician.Avatar || "/placeholder.svg"} alt={technician.Name} />
+                    <AvatarImage src={technician.Avatar || "/placeholder.svg"} alt={technician.Name ?? ""} />
                     <AvatarFallback className="bg-gqm-yellow text-gqm-green-dark text-2xl font-semibold">
                       {(technician.Name || t("unnamed")).split(" ")
                         .map((n) => n[0])

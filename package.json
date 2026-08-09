@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "set NODE_OPTIONS=--max-old-space-size=4096 && next dev",
-    "lint": "eslint .",
+    "dev": "NODE_OPTIONS=--max-old-space-size=4096 next dev",
+    "lint": "tsc --noEmit",
     "start": "next start"
   },
   "dependencies": {

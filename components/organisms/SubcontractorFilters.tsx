@@ -48,7 +48,7 @@ export function SubcontractorFilters({
       <div className="flex gap-4">
         <SearchBar placeholder="Search subcontractors..." onChange={onSearch} className="flex-1" />
 
-        <Select onValueChange={onFilterStatus}>
+        <Select onValueChange={(v) => onFilterStatus?.(v as any)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -59,7 +59,7 @@ export function SubcontractorFilters({
           </SelectContent>
         </Select>
 
-        <Select onValueChange={onFilterCompliance}>
+        <Select onValueChange={(v) => onFilterCompliance?.(v as any)}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="GQM Compliance" />
           </SelectTrigger>
@@ -70,7 +70,7 @@ export function SubcontractorFilters({
           </SelectContent>
         </Select>
 
-        <Select onValueChange={onFilterTraining}>
+        <Select onValueChange={(v) => onFilterTraining?.(v as any)}>
           <SelectTrigger className="w-[220px]">
             <SelectValue placeholder="Best Service Training" />
           </SelectTrigger>

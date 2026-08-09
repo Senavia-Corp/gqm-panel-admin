@@ -1,6 +1,7 @@
 "use client"
 
 import { InfoTooltip } from "./InfoTooltip"
+import type { LucideIcon } from "lucide-react"
 
 interface KpiCardProps {
   title: string

@@ -146,6 +146,7 @@ export interface Client {
 
 export interface JobDTO {
   // PKs / Identificadores
+  id?: string  // alias legacy (REG-103)
   ID_Jobs: string | null
   podio_item_id: string | null
   ID_Client?: string | null
@@ -241,6 +242,10 @@ export type UpdateJobRequest = Partial<Pick<
   | "Date_assigned"
   | "Estimated_start_date"
   | "Estimated_project_duration"
+  | "Date_Received"
+  | "Estimated_completion_date"
+  | "Ptl_Superintendent"
+  | "Ptl_property_id"
   | "ID_Client"
   | "Gqm_formula_pricing"
   | "Gqm_adj_formula_pricing"
@@ -350,10 +355,16 @@ export interface Technician {
   tasks?: any[]
   Password?: string
   Avatar?: string
+  // Aliases legacy usados por componentes viejos (REG-103)
+  Type?: string | null
+  Email?: string | null
+  Phone_number?: string | null
+  subcontractor?: { ID_Subcontractor?: string; Name?: string | null } | null
 }
 
 export interface Subcontractor {
   ID_Subcontractor: string
+  State?: string | null  // alias legacy (REG-103)
   Organization: string | null
   Name: string | null
   Email_Address: string | null
@@ -696,6 +707,7 @@ export interface OpportunityApplicant {
 }
 
 export interface Opportunity {
+  applicants_count?: number
   ID_Opportunities: string
   Project_name: string | null
   Description: string | null

@@ -43,7 +43,7 @@ function getAvatarColor(name: string | null | undefined): { bg: string; text: st
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function TopBar() {
+export function TopBar({ user: _user }: { user?: any } = {}) {
   const [localData, setLocalData] = useState<{ id: string | null; roleType: "tech" | "member" | "subc"; initialMember: MemberInfo | null }>({ id: null, roleType: "member", initialMember: null })
   const [notifCount] = useState(3) // placeholder — wire up to real notif system when ready
   const router = useRouter()

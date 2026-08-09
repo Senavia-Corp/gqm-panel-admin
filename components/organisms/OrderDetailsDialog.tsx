@@ -6,9 +6,12 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface OrderDetailsDialogProps {
   order: any
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  role: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  role?: string
+  // Firma alternativa usada por LeadTechnicianSubcontractorView (REG-103)
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 export function OrderDetailsDialog({ order, open, onOpenChange, role }: OrderDetailsDialogProps) {

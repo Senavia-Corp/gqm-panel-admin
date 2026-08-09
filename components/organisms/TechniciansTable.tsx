@@ -23,7 +23,7 @@ export function TechniciansTable({ technicians, onViewDetails, onLinkClick, onUn
 
   const filteredTechnicians = technicians.filter((tech) => {
     const matchesSearch =
-      tech.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tech.Name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (tech.Email_Address || tech.Email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       tech.ID_Technician.toLowerCase().includes(searchTerm.toLowerCase())
 

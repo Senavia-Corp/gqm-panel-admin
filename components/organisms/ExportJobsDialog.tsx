@@ -141,7 +141,7 @@ export function ExportJobsDialog({ isOpen, onOpenChange, filters }: ExportJobsDi
       // Mapear filtros de UI a filtros de Export (snake_case)
       const exportFilters: JobExportFilters = {
         statuses: filters.status && filters.status !== "all" ? [filters.status] : undefined,
-        job_types: filters.type && filters.type !== "ALL" ? [filters.type] : undefined,
+        job_types: filters.type && (filters.type as string) !== "ALL" ? [filters.type] : undefined,
         member_ids: filters.memberId ? [filters.memberId] : undefined,
         client_id: filters.clientId || undefined,
         parent_mgmt_co_id: filters.parentMgmtCoId || undefined,

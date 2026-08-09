@@ -5,7 +5,7 @@ interface StatusBadgeProps {
   className?: string
 }
 
-const statusStyles: Record<JobStatus, string> = {
+const statusStyles: Record<string, string> = {
   "Assigned/P. Quote": "bg-blue-600 text-white",
   "Waiting for Approval": "bg-amber-400 text-black",
   "Scheduled / Work in Progress": "bg-green-600 text-white",

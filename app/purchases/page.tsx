@@ -359,7 +359,7 @@ export default function PurchasesPage() {
                 ) : error ? (
                   <div className="flex flex-col items-center gap-3 px-6 py-12">
                     <AlertCircle className="h-8 w-8 text-red-400" />
-                    <p className="text-sm text-slate-600">{error}</p>
+                    <p className="text-sm text-slate-600">{String(error?.message ?? error)}</p>
                     <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 text-xs">
                       <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                     </Button>
@@ -466,7 +466,7 @@ export default function PurchasesPage() {
                           <td colSpan={8} className="px-6 py-12 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <AlertCircle className="h-8 w-8 text-red-400" />
-                              <p className="text-sm text-slate-600">{error}</p>
+                              <p className="text-sm text-slate-600">{String(error?.message ?? error)}</p>
                               <Button size="sm" variant="outline" onClick={() => refetch()} className="gap-1.5 text-xs">
                                 <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
                               </Button>

@@ -28,7 +28,7 @@ export function DeleteTechnicianDialog({ open, onOpenChange, technicianName, onC
           <AlertDialogDescription>
             {t.rich("deleteTechConfirmDesc", {
               name: technicianName,
-              nameTag: (chunks) => <strong>{chunks}</strong>,
+              nameTag: (chunks: React.ReactNode) => <strong>{chunks}</strong>,
             })}
           </AlertDialogDescription>
         </AlertDialogHeader>

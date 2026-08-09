@@ -16,7 +16,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
   
   const isLeader = technician.Type === "Leader" || technician.Type_of_technician === "Leader"
   
-  const initials = technician.Name.split(" ").filter(Boolean).slice(0, 2).map(n => n[0].toUpperCase()).join("") || "T"
+  const initials = (technician.Name ?? "").split(" ").filter(Boolean).slice(0, 2).map(n => n[0].toUpperCase()).join("") || "T"
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:shadow-md">

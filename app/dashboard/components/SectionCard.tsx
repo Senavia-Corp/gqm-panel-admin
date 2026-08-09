@@ -3,6 +3,7 @@
 import React from "react"
 
 interface SectionCardProps {
+  Icon?: React.ComponentType<{ className?: string }>
   title: string
   subtitle?: string
   action?: React.ReactNode
@@ -14,7 +15,7 @@ interface SectionCardProps {
  * Standard white card used for every dashboard section.
  * Matches the existing GQM design language (black border, rounded-xl, shadow).
  */
-export function SectionCard({ title, subtitle, action, children, className = "" }: SectionCardProps) {
+export function SectionCard({ title, subtitle, action, children, className = "", Icon: _Icon }: SectionCardProps) {
   return (
     <div className={["rounded-xl border-2 border-black bg-white shadow-sm", className].join(" ")}>
       <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
