@@ -150,7 +150,12 @@ export default function LoginPage() {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <div className="text-right">
-              <Button type="button" variant="link" className="text-sm">
+              <Button
+                type="button"
+                variant="link"
+                className="text-sm"
+                onClick={() => router.push("/forgot-password")}
+              >
                 Forgot Password?
               </Button>
             </div>
@@ -159,13 +164,6 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
-
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">Don't you have an account? </span>
-            <Button variant="link" className="p-0 underline">
-              Sign up
-            </Button>
-          </div>
         </div>
       </div>
     </div>
