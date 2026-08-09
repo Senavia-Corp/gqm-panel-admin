@@ -1,9 +1,8 @@
 // app/api/job-member/route.ts
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_API_URL = process.env.PYTHON_API_BASE_URL
-  ? `${process.env.PYTHON_API_BASE_URL}job_member`
-  : "https://6qh4h0kx-80.use.devtunnels.ms/job_member"
+const PYTHON_API_URL = `${getBackendUrl()}/job_member`
 
 function parseBool(v: unknown, fallback = false) {
   if (typeof v === "boolean") return v

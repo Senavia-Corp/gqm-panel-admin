@@ -5,8 +5,9 @@
 // and unlinking = PATCH /member/:id { ID_Role: null }
 
 import { NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const MEMBER_API = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"}/member`
+const MEMBER_API = `${getBackendUrl()}/member`
 
 type Ctx = { params: Promise<{ id: string; roleId: string }> }
 

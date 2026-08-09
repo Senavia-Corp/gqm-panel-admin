@@ -2,8 +2,9 @@
 // Wraps Python: POST/DELETE /permission_member/permission/:pid/member/:mid
 
 import { NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PERM_API = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"}/permission_member`
+const PERM_API = `${getBackendUrl()}/permission_member`
 
 type Ctx = { params: Promise<{ id: string; permId: string }> }
 

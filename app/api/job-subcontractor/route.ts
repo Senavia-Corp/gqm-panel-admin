@@ -1,7 +1,8 @@
 // app/api/job-subcontractor/route.ts
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms/"
+const PYTHON_BASE_URL = `${getBackendUrl()}/`
 const PYTHON_API_URL  = `${PYTHON_BASE_URL}job_subcontractor`
 const TIMEOUT_MS      = 120_000
 

@@ -38,12 +38,10 @@ export default function LoginPage() {
         return
       }
 
-      localStorage.setItem("access_token", data.access_token)
-      localStorage.setItem("refresh_token", data.refresh_token)
-      localStorage.setItem("token_type", data.token_type)
+      // Sesión httpOnly (REG-108): los tokens quedaron en cookies del
+      // servidor; aquí solo estado de UI no sensible.
       localStorage.setItem("user_id", data.user_id)
       localStorage.setItem("user_type", data.user_type)
-      localStorage.setItem("login_time", Date.now().toString()) // Store login time for token expiry
 
       // Save IAM policies if returned by the backend login endpoint
       if (data.user_data?.policies) {

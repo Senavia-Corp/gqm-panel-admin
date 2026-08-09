@@ -1,7 +1,8 @@
 // app/api/metrics/timeline/reports/pdf/route.ts
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms/"
+const PYTHON_BASE_URL = `${getBackendUrl()}/`
 const TIMEOUT_MS      = 60_000   // PDF generation can take a few seconds
 
 function jsonError(message: string, status = 500) {

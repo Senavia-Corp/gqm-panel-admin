@@ -1,15 +1,18 @@
 import { logout } from "./auth-utils"
 
-// Singleton to track and share the refresh token request if multiple requests fail at the same time
+// Singleton to track and share the refresh request if multiple requests fail at the same time
 let refreshPromise: Promise<boolean> | null = null
 
 /**
- * Drop-in replacement for fetch() that automatically injects
- * headers and handles token expiration (401) by attempting a refresh.
+ * Drop-in replacement for fetch() para llamadas same-origin al proxy /api.
+ *
+ * Sesión httpOnly (REG-108): los tokens viven en cookies que el navegador
+ * adjunta solo; el middleware inyecta Authorization hacia el backend. Ante un
+ * 401 se intenta UN refresh (cookie gqm_rt) y se reintenta la petición.
  */
 export async function apiFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   // Smart Redirect: If a technician ID (starting with TEC) is being fetched from the members endpoint,
   // redirect it to the technician endpoint to avoid 404 errors.
@@ -21,18 +24,10 @@ export async function apiFetch(
   const userId = _getUserId()
   const headers = new Headers(options.headers)
 
-  // Inject user id if available and not already set
   if (userId && !headers.has("X-User-Id")) {
     headers.set("X-User-Id", userId)
   }
 
-  // Inject the JWT authorization token from localStorage
-  const token = localStorage.getItem("access_token")
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`)
-  }
-
-  // Default Content-Type for JSON bodies
   if (
     options.body &&
     typeof options.body === "string" &&
@@ -41,45 +36,18 @@ export async function apiFetch(
     headers.set("Content-Type", "application/json")
   }
 
-  // 1. First Attempt
+  // 1. First attempt (cookies same-origin viajan solas)
   let response = await fetch(finalUrl, { ...options, headers })
 
-  // 2. Handle 401 Unauthorized - Possible token expiration
+  // 2. 401 → refresh de sesión por cookie y un único reintento
   if (response.status === 401) {
-    const refreshToken = localStorage.getItem("refresh_token")
-
-    // If we don't even have a refresh token, just logout immediately
-    if (!refreshToken) {
-      logout()
-      return response
-    }
-
-    try {
-      // 3. Attempt to refresh the token (or wait if another request is already refreshing)
-      const success = await _getRefreshPromise(refreshToken)
-
-      if (success) {
-        // 4. Update the Authorization header with the new token
-        const newToken = localStorage.getItem("access_token")
-        if (newToken) {
-          headers.set("Authorization", `Bearer ${newToken}`)
-          
-          // 5. Retry the original request
-          response = await fetch(finalUrl, { ...options, headers })
-          
-          // If still 401 after refresh, then the refresh token might be actually invalid
-          if (response.status === 401) {
-            logout()
-          }
-        } else {
-          logout()
-        }
-      } else {
-        // Refresh failed (likely refresh token expired)
+    const refreshed = await _getRefreshPromise()
+    if (refreshed) {
+      response = await fetch(finalUrl, { ...options, headers })
+      if (response.status === 401) {
         logout()
       }
-    } catch (error) {
-      console.error("[apiFetch] Error during token refresh:", error)
+    } else {
       logout()
     }
   }
@@ -90,27 +58,15 @@ export async function apiFetch(
 /**
  * Ensures only one refresh request is active at a time.
  */
-async function _getRefreshPromise(refreshToken: string): Promise<boolean> {
+async function _getRefreshPromise(): Promise<boolean> {
   if (refreshPromise) {
     return refreshPromise
   }
 
   refreshPromise = (async () => {
     try {
-      const resp = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      })
-
-      if (resp.ok) {
-        const data = await resp.json()
-        if (data.access_token) {
-          localStorage.setItem("access_token", data.access_token)
-          return true
-        }
-      }
-      return false
+      const resp = await fetch("/api/auth/refresh", { method: "POST" })
+      return resp.ok
     } catch (err) {
       console.error("[apiFetch] Refresh fetch failed:", err)
       return false

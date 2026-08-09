@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const BASE = (process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms").replace(/\/$/, "")
+const BASE = (getBackendUrl()).replace(/\/$/, "")
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)

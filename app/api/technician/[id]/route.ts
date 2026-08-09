@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
 // Use the same environment variable as the rest of the app for consistency
 const getBaseUrl = () => {
-  const url = process.env.PYTHON_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://6qh4h0kx-80.use.devtunnels.ms"
+  const url = getBackendUrl()
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
 

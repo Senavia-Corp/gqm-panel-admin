@@ -1,7 +1,9 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
 
-// const API_URL_CALLBACK = 'http://192.168.100.44:3000/api/v1'
-const API_URL_CALLBACK = `${process.env.NEXT_PUBLIC_PYTHON_API_BASE_URL}`
+// Sesión httpOnly (REG-108): nada de llamadas directas al backend desde el
+// navegador — todo pasa por el proxy same-origin /api/backend, donde el
+// middleware inyecta Authorization desde la cookie.
+const API_URL_CALLBACK = "/api/backend"
 
 export class ApiProvider {
   private static instance: ApiProvider;
@@ -42,12 +44,8 @@ export class ApiProvider {
         if (config.data instanceof FormData) {
           config.headers['Content-Type'] = 'multipart/form-data';
         }
-        const accessToken = localStorage.getItem("access_token")
-        // Se agrega el token al header
-        const token = accessToken;
-        if (token) {
-          config.headers['Authorization'] = `Bearer ${token}`;
-        }
+        // Auth por cookie httpOnly same-origin; el middleware inyecta el
+        // Authorization hacia el backend.
         return config;
       },
       (error) => Promise.reject(error)

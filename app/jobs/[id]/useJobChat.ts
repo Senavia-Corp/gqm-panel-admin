@@ -29,14 +29,8 @@ interface UseJobChatReturn {
 }
 
 // ─── Token helper ─────────────────────────────────────────────────────────────
-
-function getAccessToken(): string | null {
-  try {
-    return localStorage.getItem("access_token")
-  } catch {
-    return null
-  }
-}
+// Sesión httpOnly: la cookie viaja sola en llamadas same-origin y el
+// middleware inyecta Authorization hacia el backend.
 
 function getCurrentUserId(): string | null {
   try {
@@ -52,11 +46,7 @@ function getCurrentUserId(): string | null {
 }
 
 function authHeaders(): Record<string, string> {
-  const token = getAccessToken()
-  return {
-    "Content-Type":  "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-  }
+  return { "Content-Type": "application/json" }
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────

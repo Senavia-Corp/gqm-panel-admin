@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"
+const PYTHON_API_BASE_URL = getBackendUrl()
 
 type RouteContext = {
   params: Promise<{ id: string }>

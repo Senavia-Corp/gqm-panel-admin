@@ -22,7 +22,7 @@ import type { User } from "@/lib/types"
 import { LeadTechnicianDashboard } from "@/components/organisms/LeadTechnicianDashboard"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { logout } from "@/lib/auth-utils"
+import { isAuthenticated, logout } from "@/lib/auth-utils"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -62,9 +62,10 @@ export default function DashboardPage() {
   }, [canReadJobs, canReadClients, canReadMembers])
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("access_token")
-    const userData    = localStorage.getItem("user_data")
-    if (!accessToken || !userData) { logout(); return }
+    // Sesión httpOnly: el token no es visible desde JS; la cookie legible
+    // gqm_role señala sesión activa (el middleware ya protege la ruta).
+    const userData = localStorage.getItem("user_data")
+    if (!isAuthenticated() || !userData) { logout(); return }
     try { setUser(JSON.parse(userData)) } catch { logout() }
   }, [router])
 

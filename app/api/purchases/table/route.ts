@@ -1,7 +1,8 @@
 // app/api/purchases/table/route.ts
 import { NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const API = `${process.env.PYTHON_API_BASE_URL ?? "https://6qh4h0kx-80.use.devtunnels.ms"}/purchase`
+const API = `${getBackendUrl()}/purchase`
 
 export async function GET(req: Request) {
   try {
