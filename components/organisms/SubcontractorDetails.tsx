@@ -29,7 +29,6 @@ import {
 } from "lucide-react"
 import { TechniciansTable } from "./TechniciansTable"
 import { TechnicianDetails } from "./TechnicianDetails"
-import { mockChangeOrders } from "@/lib/mock-data/change-orders"
 import { OrderDetailsDialog } from "./OrderDetailsDialog"
 import { CreateChangeOrderDialog } from "@/components/organisms/CreateChangeOrderDialog"
 import { Pencil, Trash2 } from "lucide-react"

@@ -1,16 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+// REG-025: conectado al backend real (antes 100% mock).
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Save, Plus, X } from "lucide-react"
-import { mockOrders, mockEstimateItems } from "@/lib/mock-data/estimates"
-import type { SubcontractorOrder, EstimateItem } from "@/lib/types"
+import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
+
+interface ApiEstimateCost {
+  ID_EstimateCost: string
+  Title: string | null
+  Cost_type: string | null
+  Builder_cost: number | null
+  Client_price: number | null
+  ID_Jobs: string | null
+  ID_Order: string | null
+}
+
+interface ApiOrder {
+  ID_Order: string
+  Title: string | null
+  Formula: number | null
+  Adj_formula: number | null
+  job_podio_id: string | null
+  Notes: string | null
+  estimate_costs?: ApiEstimateCost[]
+}
 
 export default function OrderDetailPage({
   params,
@@ -18,82 +37,126 @@ export default function OrderDetailPage({
   params: { id: string; orderId: string }
 }) {
   const router = useRouter()
-  const [order, setOrder] = useState<SubcontractorOrder | null>(null)
+  const [order, setOrder] = useState<ApiOrder | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [orderName, setOrderName] = useState("")
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
-  const [availableItems, setAvailableItems] = useState<EstimateItem[]>([])
-  const [showAddItems, setShowAddItems] = useState(false)
-  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
+  const [availableItems, setAvailableItems] = useState<ApiEstimateCost[]>([])
+  const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const resp = await apiFetch(`/api/order/${encodeURIComponent(params.orderId)}`)
+      if (!resp.ok) throw new Error(`(${resp.status})`)
+      const data: ApiOrder = await resp.json()
+      setOrder(data)
+      setOrderName(data.Title ?? "")
+
+      const jobId = data.estimate_costs?.[0]?.ID_Jobs
+      if (jobId) {
+        const av = await apiFetch(
+          `/api/estimate?job_id=${encodeURIComponent(jobId)}&unassigned=true`,
+        )
+        if (av.ok) {
+          const items = await av.json()
+          setAvailableItems(Array.isArray(items) ? items : (items?.results ?? []))
+        }
+      } else {
+        setAvailableItems([])
+      }
+    } catch (e) {
+      console.error("[order-detail] load error:", e)
+      setError("Order not found")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const foundOrder = mockOrders.find((o) => o.ID_Order === params.orderId)
-    if (foundOrder) {
-      setOrder(foundOrder)
-      setOrderName(foundOrder.Order_Name)
-      setSelectedItems(new Set(foundOrder.Items.map((i) => i.ID_EstimateItem)))
-
-      // Get available items: from same job, not already in other orders
-      const jobItems = mockEstimateItems.filter((item) => item.ID_Jobs === foundOrder.ID_Jobs)
-      const itemsInOtherOrders = mockOrders
-        .filter((o) => o.ID_Order !== params.orderId && o.ID_Jobs === foundOrder.ID_Jobs)
-        .flatMap((o) => o.Items.map((i) => i.ID_EstimateItem))
-
-      const available = jobItems.filter((item) => !itemsInOtherOrders.includes(item.ID_EstimateItem))
-      setAvailableItems(available)
-    }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.orderId])
 
-  if (!order) {
-    return <div>Loading...</div>
-  }
-
-  const handleFieldChange = (field: string, value: any) => {
-    setEditedFields((prev) => new Set(prev).add(field))
-    if (field === "Order_Name") {
-      setOrderName(value)
+  const handleSave = async () => {
+    if (!order) return
+    setSaving(true)
+    try {
+      if (orderName !== (order.Title ?? "")) {
+        const resp = await apiFetch(`/api/order/${encodeURIComponent(order.ID_Order)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ Title: orderName }),
+        })
+        if (!resp.ok) throw new Error(`PATCH (${resp.status})`)
+      }
+      for (const itemId of selectedToAdd) {
+        const resp = await apiFetch(`/api/estimate/${encodeURIComponent(itemId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ ID_Order: order.ID_Order }),
+        })
+        if (!resp.ok) throw new Error(`item ${itemId} (${resp.status})`)
+      }
+      setSelectedToAdd(new Set())
+      await load()
+    } catch (e) {
+      console.error("[order-detail] save error:", e)
+      window.alert("Could not save changes")
+    } finally {
+      setSaving(false)
     }
   }
 
-  const handleToggleItem = (itemId: string) => {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId)
-      } else {
-        newSet.add(itemId)
-      }
-      setEditedFields((fields) => new Set(fields).add("Items"))
-      return newSet
+  const handleRemoveItem = async (itemId: string) => {
+    if (!window.confirm("Remove this item from the order?")) return
+    const resp = await apiFetch(`/api/estimate/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ID_Order: null }),
     })
+    if (resp.ok) await load()
+    else window.alert(`Could not remove item (${resp.status})`)
   }
 
-  const currentItems = availableItems.filter((item) => selectedItems.has(item.ID_EstimateItem))
-  const formula = currentItems.reduce((sum, item) => sum + item.Builder_Cost, 0)
-  const adjFormula = formula // + change orders (not implemented yet)
-
-  const handleSave = () => {
-    console.log("[v0] Saving order changes:", {
-      orderId: params.orderId,
-      orderName,
-      selectedItems: Array.from(selectedItems),
-    })
-    setEditedFields(new Set())
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
+
+  if (!order) {
+    return (
+      <div className="space-y-4 py-12 text-center">
+        <p className="text-muted-foreground">{error || "Order not found"}</p>
+        <Button variant="outline" onClick={() => router.push(`/subcontractors/${params.id}/orders`)}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
+        </Button>
+      </div>
+    )
+  }
+
+  const hasChanges = orderName !== (order.Title ?? "") || selectedToAdd.size > 0
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
-          onClick={() => router.push(`/subcontractors/${params.id}?tab=orders`)}
+          onClick={() => router.push(`/subcontractors/${params.id}/orders`)}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Orders
         </Button>
-        {editedFields.size > 0 && (
-          <Button onClick={handleSave} className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90">
-            <Save className="h-4 w-4" />
+        {hasChanges && (
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Changes
           </Button>
         )}
@@ -104,159 +167,103 @@ export default function OrderDetailPage({
         <p className="text-muted-foreground mt-1">Order ID: {order.ID_Order}</p>
       </div>
 
-      {/* Order Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Order Information</CardTitle>
-            <Badge
-              className={
-                order.Status === "Approved"
-                  ? "bg-green-500 hover:bg-green-600"
-                  : order.Status === "Draft"
-                    ? "bg-yellow-500 hover:bg-yellow-600"
-                    : ""
-              }
-            >
-              {order.Status}
-            </Badge>
-          </div>
+          <CardTitle>Order Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label className="mb-2 block font-bold">Order Name</Label>
-              <Input
-                value={orderName}
-                onChange={(e) => handleFieldChange("Order_Name", e.target.value)}
-                className={editedFields.has("Order_Name") ? "border-yellow-500 ring-2 ring-yellow-200" : ""}
-              />
+              <Input value={orderName} onChange={(e) => setOrderName(e.target.value)} />
             </div>
             <div>
-              <Label className="mb-2 block font-bold">Job ID</Label>
-              <Input value={order.ID_Jobs} disabled className="bg-gray-50" />
+              <Label className="mb-2 block font-bold">Job (Podio ID)</Label>
+              <Input value={order.job_podio_id ?? "—"} disabled className="bg-gray-50" />
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <Label className="mb-2 block text-sm font-medium text-blue-900">Formula</Label>
-              <div className="text-2xl font-bold text-blue-900">${formula.toFixed(2)}</div>
-              <p className="text-xs text-blue-700 mt-1">Sum of all item builder costs</p>
+            <div>
+              <Label className="mb-2 block font-bold">Formula</Label>
+              <Input value={`$${(order.Formula ?? 0).toFixed(2)}`} disabled className="bg-gray-50" />
             </div>
-            <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-              <Label className="mb-2 block text-sm font-medium text-green-900">Adj. Formula</Label>
-              <div className="text-2xl font-bold text-green-900">${adjFormula.toFixed(2)}</div>
-              <p className="text-xs text-green-700 mt-1">Formula + approved change orders</p>
+            <div>
+              <Label className="mb-2 block font-bold">Adj. Formula</Label>
+              <Input
+                value={`$${(order.Adj_formula ?? order.Formula ?? 0).toFixed(2)}`}
+                disabled
+                className="bg-gray-50"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Order Items */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Order Items ({currentItems.length})</CardTitle>
-            <Button onClick={() => setShowAddItems(!showAddItems)} variant="outline" className="gap-2">
-              {showAddItems ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {showAddItems ? "Cancel" : "Add/Remove Items"}
-            </Button>
-          </div>
+          <CardTitle>Items ({order.estimate_costs?.length ?? 0})</CardTitle>
         </CardHeader>
         <CardContent>
-          {showAddItems && (
-            <div className="mb-6 p-4 rounded-lg bg-gray-50 border space-y-3">
-              <h3 className="font-semibold text-sm">Select items from estimate:</h3>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {availableItems.map((item) => (
-                  <div
-                    key={item.ID_EstimateItem}
-                    className="flex items-start gap-3 p-3 rounded-md border bg-white hover:bg-gray-50"
-                  >
-                    <Checkbox
-                      checked={selectedItems.has(item.ID_EstimateItem)}
-                      onCheckedChange={() => handleToggleItem(item.ID_EstimateItem)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.Title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.Description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Cost Code: {item.Cost_Code} • Builder Cost: ${item.Builder_Cost.toFixed(2)}
-                      </p>
-                    </div>
+          {order.estimate_costs?.length ? (
+            <div className="divide-y rounded-md border">
+              {order.estimate_costs.map((item) => (
+                <div key={item.ID_EstimateCost} className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">{item.Title ?? item.ID_EstimateCost}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.Cost_type ?? "—"} · ${(item.Builder_cost ?? 0).toFixed(2)}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleRemoveItem(item.ID_EstimateCost)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">No items in this order.</p>
           )}
-
-          <div className="rounded-md border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">Title</th>
-                    <th className="px-4 py-3 text-left font-medium">Cost Code</th>
-                    <th className="px-4 py-3 text-left font-medium">Description</th>
-                    <th className="px-4 py-3 text-right font-medium">Qty</th>
-                    <th className="px-4 py-3 text-right font-medium">Unit Cost</th>
-                    <th className="px-4 py-3 text-right font-medium">Builder Cost</th>
-                    <th className="px-4 py-3 text-right font-medium">Markup</th>
-                    <th className="px-4 py-3 text-right font-medium">Client Price</th>
-                    <th className="px-4 py-3 text-right font-medium">Profit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {currentItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                        No items selected
-                      </td>
-                    </tr>
-                  ) : (
-                    currentItems.map((item) => (
-                      <tr key={item.ID_EstimateItem} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">{item.Title}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.Cost_Code}</td>
-                        <td className="px-4 py-3 max-w-xs truncate" title={item.Description}>
-                          {item.Description}
-                        </td>
-                        <td className="px-4 py-3 text-right">{item.Quantity}</td>
-                        <td className="px-4 py-3 text-right">${item.Unit_Cost.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right font-semibold">${item.Builder_Cost.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right">
-                          {item.Markup_Type === "%" ? `${item.Markup}%` : `$${item.Markup.toFixed(2)}`}
-                        </td>
-                        <td className="px-4 py-3 text-right">${item.Client_Price.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-green-600 font-semibold">${item.Profit.toFixed(2)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                {currentItems.length > 0 && (
-                  <tfoot className="bg-gray-50 font-semibold">
-                    <tr>
-                      <td colSpan={5} className="px-4 py-3 text-right">
-                        Totals:
-                      </td>
-                      <td className="px-4 py-3 text-right">${formula.toFixed(2)}</td>
-                      <td className="px-4 py-3"></td>
-                      <td className="px-4 py-3 text-right">
-                        ${currentItems.reduce((sum, item) => sum + item.Client_Price, 0).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-green-600">
-                        ${currentItems.reduce((sum, item) => sum + item.Profit, 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {availableItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add items from this job</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y rounded-md border">
+              {availableItems.map((item) => (
+                <label
+                  key={item.ID_EstimateCost}
+                  className="flex cursor-pointer items-center gap-3 px-4 py-3"
+                >
+                  <Checkbox
+                    checked={selectedToAdd.has(item.ID_EstimateCost)}
+                    onCheckedChange={(checked) => {
+                      setSelectedToAdd((prev) => {
+                        const next = new Set(prev)
+                        if (checked) next.add(item.ID_EstimateCost)
+                        else next.delete(item.ID_EstimateCost)
+                        return next
+                      })
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">{item.Title ?? item.ID_EstimateCost}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.Cost_type ?? "—"} · ${(item.Builder_cost ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

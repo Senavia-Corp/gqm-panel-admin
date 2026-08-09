@@ -1,65 +1,48 @@
 "use client"
 
-import { useState, useEffect } from "react"
+// REG-027: conectado al backend real (antes 100% mock).
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Plus, ChevronRight, MoreVertical, Trash2 } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
-import type { Task, TaskStatus, Technician } from "@/lib/types"
-import { TimelineItem } from "@/components/molecules/TimelineItem"
+import { apiFetch } from "@/lib/apiFetch"
+import { fetchJobById } from "@/lib/services/jobs-service"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
-import { mockSubcontractors } from "@/lib/mock-data/subcontractors"
-import { fetchJobById } from "@/lib/services/jobs-service"
+import { use } from "react"
 
-const TASK_STATUSES: { value: TaskStatus; label: string; color: string }[] = [
-  { value: "completed", label: "Completed", color: "bg-green-500 hover:bg-green-600" },
-  { value: "assigned", label: "Assigned", color: "bg-blue-500 hover:bg-blue-600" },
-  { value: "pending", label: "Pending", color: "bg-yellow-500 hover:bg-yellow-600" },
-  { value: "in_process", label: "In Process", color: "bg-purple-500 hover:bg-purple-600" },
-  { value: "under_review", label: "Under Review", color: "bg-orange-500 hover:bg-orange-600" },
-  { value: "closed", label: "Closed", color: "bg-gray-500 hover:bg-gray-600" },
-]
-
-// Mock timeline events
-const mockTimelineEvents = [
-  { id: "1", activity: "Task Created", date: "2025-01-15", user: "Admin User" },
-  { id: "2", activity: "Status Updated", date: "2025-01-14", user: "John Doe" },
-  { id: "3", activity: "Task Assigned", date: "2025-01-13", user: "Admin User" },
-]
-
-// Mock tasks data
-const generateMockTasks = (jobId: string, technicianId: string): Task[] => {
-  const tasks: Task[] = []
-  const statuses: TaskStatus[] = ["completed", "assigned", "pending", "in_process", "under_review", "closed"]
-
-  statuses.forEach((status, statusIndex) => {
-    for (let i = 0; i < 3; i++) {
-      tasks.push({
-        ID_Task: `TSK${statusIndex}${i}${Math.floor(Math.random() * 1000)}`,
-        Title: `Task ${statusIndex * 3 + i + 1}`,
-        Description: `Description for task ${statusIndex * 3 + i + 1}`,
-        Status: status,
-        Assignment_date: new Date().toISOString(),
-        Completion_date: status === "completed" || status === "closed" ? new Date().toISOString() : null,
-        ID_Jobs: jobId,
-        assignedMembers: [],
-        assignedTechnicians: [],
-        attachments: [],
-      })
-    }
-  })
-
-  return tasks
+interface ApiTask {
+  ID_Tasks: string
+  Name: string | null
+  Task_description: string | null
+  Task_status: string | null
+  Designation_date: string | null
+  Delivery_date: string | null
+  Priority: string | null
+  ID_Jobs: string | null
+  ID_Technician: string | null
 }
+
+const TASK_STATUSES = [
+  { value: "Not Started", color: "bg-yellow-500 hover:bg-yellow-600" },
+  { value: "In Progress", color: "bg-blue-500 hover:bg-blue-600" },
+  { value: "Completed", color: "bg-green-500 hover:bg-green-600" },
+]
 
 function TechnicianTasksClient({
   params,
@@ -69,141 +52,127 @@ function TechnicianTasksClient({
   const t = useTranslations("subcontractors")
   const router = useRouter()
   const { toast } = useToast()
-  const [user, setUser] = useState<{ name: string; role: string; avatar: string } | null>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [tasks, setTasks] = useState<ApiTask[]>([])
+  const [loading, setLoading] = useState(true)
+  const [jobName, setJobName] = useState("")
+  const [selectedTask, setSelectedTask] = useState<ApiTask | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [technician, setTechnician] = useState<Technician | null>(null)
-  const [jobName, setJobName] = useState<string>("")
-  const [subcontractorName, setSubcontractorName] = useState<string>("")
-
-  // Form state for creating new task
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDescription, setNewTaskDescription] = useState("")
+  const [editedTaskStatus, setEditedTaskStatus] = useState("")
+  const [busy, setBusy] = useState(false)
 
-  // Form state for editing task
-  const [editedTaskStatus, setEditedTaskStatus] = useState<TaskStatus | "">("")
+  const loadTasks = async () => {
+    setLoading(true)
+    try {
+      const resp = await apiFetch(
+        `/api/tasks/job/${encodeURIComponent(params.jobId)}?tech_id=${encodeURIComponent(params.technicianId)}`,
+      )
+      const data = resp.ok ? await resp.json() : []
+      setTasks(Array.isArray(data) ? data : (data?.results ?? []))
+    } catch (e) {
+      console.error("[tasks] load error:", e)
+      setTasks([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-
-    loadData()
+    fetchJobById(params.jobId)
+      .then((job: any) => job && setJobName(job.Project_name ?? job.projectName ?? ""))
+      .catch(() => {})
+    loadTasks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, params.technicianId, params.jobId])
-
-  const loadData = async () => {
-    const subcontractor = mockSubcontractors.find((s) => s.ID_Subcontractor === params.id)
-    if (subcontractor) {
-      setSubcontractorName(subcontractor.Name)
-      const tech = subcontractor.technicians?.find((t) => t.ID_Technician === params.technicianId)
-      if (tech) {
-        setTechnician(tech)
-      }
-    }
-
-    const job = await fetchJobById(params.jobId)
-    if (job) {
-      setJobName(job.projectName)
-    }
-
-    const mockTasks = generateMockTasks(params.jobId, params.technicianId)
-    setTasks(mockTasks)
-  }
 
   const handleBack = () => {
     router.push(`/subcontractors/${params.id}/technicians/${params.technicianId}`)
   }
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task)
-    setEditedTaskStatus(task.Status)
-    setIsDetailsOpen(true)
-  }
-
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     if (!newTaskTitle.trim()) {
-      toast({
-        title: t("error"),
-        description: t("taskTitleRequired"),
-        variant: "destructive",
-      })
+      toast({ title: t("error"), description: t("taskTitleRequired"), variant: "destructive" })
       return
     }
-
-    const newTask: Task = {
-      ID_Task: `TSK${Math.floor(10000 + Math.random() * 90000)}`,
-      Title: newTaskTitle,
-      Description: newTaskDescription,
-      Status: "pending",
-      Assignment_date: new Date().toISOString(),
-      Completion_date: null,
-      ID_Jobs: params.jobId,
-      assignedMembers: [],
-      assignedTechnicians: technician ? [technician] : [],
-      attachments: [],
+    setBusy(true)
+    try {
+      const resp = await apiFetch("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          Name: newTaskTitle,
+          Task_description: newTaskDescription || null,
+          Task_status: "Not Started",
+          ID_Jobs: params.jobId,
+          ID_Technician: params.technicianId,
+        }),
+      })
+      if (!resp.ok) throw new Error(`(${resp.status})`)
+      setNewTaskTitle("")
+      setNewTaskDescription("")
+      setIsCreateOpen(false)
+      await loadTasks()
+      toast({ title: t("success"), description: t("taskCreatedSuccess") })
+    } catch (e) {
+      console.error("[tasks] create error:", e)
+      toast({ title: t("error"), description: String(e), variant: "destructive" })
+    } finally {
+      setBusy(false)
     }
-
-    setTasks([...tasks, newTask])
-    setNewTaskTitle("")
-    setNewTaskDescription("")
-    setIsCreateOpen(false)
-
-    toast({
-      title: t("success"),
-      description: t("taskCreatedSuccess"),
-    })
   }
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter((t) => t.ID_Task !== taskId))
-    setIsDetailsOpen(false)
-    toast({
-      title: t("success"),
-      description: t("taskDeletedSuccess"),
-    })
+  const handleDeleteTask = async (taskId: string) => {
+    setBusy(true)
+    try {
+      const resp = await apiFetch(`/api/tasks?task_id=${encodeURIComponent(taskId)}`, {
+        method: "DELETE",
+      })
+      if (!resp.ok) throw new Error(`(${resp.status})`)
+      setIsDetailsOpen(false)
+      await loadTasks()
+      toast({ title: t("success"), description: t("taskDeletedSuccess") })
+    } catch (e) {
+      toast({ title: t("error"), description: String(e), variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const handleStatusChange = () => {
+  const handleStatusChange = async () => {
     if (!selectedTask || !editedTaskStatus) return
-
-    const updatedTasks = tasks.map((t) =>
-      t.ID_Task === selectedTask.ID_Task
-        ? {
-            ...t,
-            Status: editedTaskStatus,
-            Completion_date:
-              editedTaskStatus === "completed" || editedTaskStatus === "closed"
-                ? new Date().toISOString()
-                : t.Completion_date,
-          }
-        : t,
-    )
-    setTasks(updatedTasks)
-    setSelectedTask({ ...selectedTask, Status: editedTaskStatus })
-
-    toast({
-      title: t("success"),
-      description: t("taskStatusUpdated", { status: t(editedTaskStatus) }),
-    })
+    setBusy(true)
+    try {
+      const resp = await apiFetch("/api/tasks", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ID_Tasks: selectedTask.ID_Tasks,
+          Task_status: editedTaskStatus,
+        }),
+      })
+      if (!resp.ok) throw new Error(`(${resp.status})`)
+      setSelectedTask({ ...selectedTask, Task_status: editedTaskStatus })
+      await loadTasks()
+      toast({
+        title: t("success"),
+        description: t("taskStatusUpdated", { status: editedTaskStatus }),
+      })
+    } catch (e) {
+      toast({ title: t("error"), description: String(e), variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const getTasksByStatus = (status: TaskStatus) => {
-    return tasks.filter((task) => task.Status === status)
-  }
-
-  const getStatusConfig = (status: TaskStatus) => {
-    return TASK_STATUSES.find((s) => s.value === status)!
-  }
+  const getTasksByStatus = (status: string) =>
+    tasks.filter((task) => (task.Task_status ?? "Not Started") === status)
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} />
+        <TopBar />
 
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
@@ -211,218 +180,171 @@ function TechnicianTasksClient({
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t("backToTech")}
             </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <span>{t("subcontractors")}</span>
               <span>|</span>
-              <span>{t("technicianDocumentation")}</span>
+              <span>{jobName || params.jobId}</span>
               <span>|</span>
-              <span>{jobName || t("jobNamePlaceholder")}</span>
-              <span>|</span>
-              <span className="text-foreground font-medium">{t("tabTasks")}</span>
+              <span className="font-medium text-foreground">{t("tabTasks")}</span>
             </div>
-            <h1 className="text-3xl font-bold">{t("tabTasks")}</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold">{t("tabTasks")}</h1>
+              <Button
+                onClick={() => setIsCreateOpen(true)}
+                className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
+              >
+                <Plus className="h-4 w-4" />
+                {t("addTask")}
+              </Button>
+            </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Main Content */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    {TASK_STATUSES.map((statusConfig) => {
-                      const statusTasks = getTasksByStatus(statusConfig.value)
-                      return (
-                        <div key={statusConfig.value} className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <Badge className={`${statusConfig.color} text-white`}>{t(statusConfig.value)}</Badge>
-                            <span className="text-lg font-semibold">{statusTasks.length}</span>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="ml-auto"
-                                  onClick={() => {
-                                    setIsCreateOpen(true)
-                                  }}
-                                >
-                                  <Plus className="mr-1 h-4 w-4" />
-                                  {t("addTask")}
-                                </Button>
-                              </DialogTrigger>
-                            </Dialog>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-muted-foreground">{t("name")}</div>
-                            {statusTasks.map((task) => (
-                              <div
-                                key={task.ID_Task}
-                                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
-                                onClick={() => handleTaskClick(task)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <ChevronRight className="h-4 w-4 text-green-500" />
-                                  <span className="text-sm">{task.Title}</span>
-                                </div>
-                              </div>
-                            ))}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full text-muted-foreground"
-                              onClick={() => setIsCreateOpen(true)}
-                            >
-                              <Plus className="mr-1 h-4 w-4" />
-                              {t("addTask")}
-                            </Button>
-                          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {TASK_STATUSES.map((statusConfig) => {
+                    const statusTasks = getTasksByStatus(statusConfig.value)
+                    return (
+                      <div key={statusConfig.value} className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Badge className={`${statusConfig.color} text-white`}>
+                            {statusConfig.value}
+                          </Badge>
+                          <span className="text-lg font-semibold">{statusTasks.length}</span>
                         </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t("timeline")}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {mockTimelineEvents.map((event) => (
-                    <TimelineItem
-                      key={event.id}
-                      activity={event.activity}
-                      date={new Date(event.date).toLocaleDateString()}
-                    />
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("createTask")}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>{t("taskTitle")}</Label>
-                  <Input
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder={t("enterTaskTitle")}
-                  />
-                </div>
-                <div>
-                  <Label>{t("taskDescription")}</Label>
-                  <Textarea
-                    value={newTaskDescription}
-                    onChange={(e) => setNewTaskDescription(e.target.value)}
-                    placeholder={t("enterTaskDescription")}
-                    rows={4}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                  {t("cancel")}
-                </Button>
-                <Button onClick={handleCreateTask} className="bg-gqm-green hover:bg-gqm-green/90 text-white">
-                  {t("createTask")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>{t("taskDetails")}</DialogTitle>
-              </DialogHeader>
-              {selectedTask && (
-                <div className="space-y-4">
-                  <div>
-                    <Label className="font-bold">{t("taskTitle")}</Label>
-                    <p className="text-base mt-1">{selectedTask.Title}</p>
-                  </div>
-                  <div>
-                    <Label className="font-bold">{t("taskDescription")}</Label>
-                    <p className="text-base mt-1">{selectedTask.Description || t("noDescriptionProvided")}</p>
-                  </div>
-                  <div>
-                    <Label className="font-bold">{t("status")}</Label>
-                    <Select
-                      value={editedTaskStatus}
-                      onValueChange={(value) => setEditedTaskStatus(value as TaskStatus)}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TASK_STATUSES.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            {t(status.value)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-bold">{t("assignmentDate")}</Label>
-                      <p className="text-base mt-1">{new Date(selectedTask.Assignment_date).toLocaleDateString()}</p>
-                    </div>
-                    {selectedTask.Completion_date && (
-                      <div>
-                        <Label className="font-bold">{t("completionDate")}</Label>
-                        <p className="text-base mt-1">{new Date(selectedTask.Completion_date).toLocaleDateString()}</p>
+                        {statusTasks.length ? (
+                          <div className="divide-y rounded-md border">
+                            {statusTasks.map((task) => (
+                              <button
+                                key={task.ID_Tasks}
+                                className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                                onClick={() => {
+                                  setSelectedTask(task)
+                                  setEditedTaskStatus(task.Task_status ?? "Not Started")
+                                  setIsDetailsOpen(true)
+                                }}
+                              >
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {task.Name ?? task.ID_Tasks}
+                                  </p>
+                                  {task.Task_description && (
+                                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                                      {task.Task_description}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {task.Delivery_date ?? ""}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">—</p>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="font-bold">{t("assignedTechnician")}</Label>
-                    <p className="text-base mt-1">{technician?.Name || "N/A"}</p>
-                  </div>
+                    )
+                  })}
                 </div>
-              )}
-              <DialogFooter className="flex justify-between">
-                <Button variant="destructive" onClick={() => selectedTask && handleDeleteTask(selectedTask.ID_Task)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t("deleteTask")}
-                </Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-                    {t("close")}
-                  </Button>
-                  <Button
-                    onClick={handleStatusChange}
-                    disabled={!editedTaskStatus || editedTaskStatus === selectedTask?.Status}
-                    className="bg-gqm-green hover:bg-gqm-green/90 text-white"
-                  >
-                    {t("saveChanges")}
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </CardContent>
+            </Card>
+          )}
         </main>
       </div>
+
+      {/* Detalles / edición */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedTask?.Name ?? selectedTask?.ID_Tasks}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {selectedTask?.Task_description || "—"}
+            </p>
+            <div>
+              <Label className="mb-2 block">{t("status")}</Label>
+              <Select value={editedTaskStatus} onValueChange={setEditedTaskStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TASK_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <Button
+              variant="ghost"
+              className="gap-2 text-red-600 hover:text-red-700"
+              disabled={busy}
+              onClick={() => selectedTask && handleDeleteTask(selectedTask.ID_Tasks)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={handleStatusChange}
+              disabled={busy || editedTaskStatus === (selectedTask?.Task_status ?? "Not Started")}
+              className="bg-gqm-green text-white hover:bg-gqm-green/90"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("saveChanges")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Crear */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("addTask")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-2 block">{t("taskTitle")}</Label>
+              <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-2 block">{t("taskDescription")}</Label>
+              <Textarea
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreateTask}
+              disabled={busy}
+              className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {t("addTask")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-export default async function TechnicianTasksPage({
+export default function TechnicianTasksPage({
   params,
 }: {
   params: Promise<{ id: string; technicianId: string; jobId: string }>
 }) {
-  const resolvedParams = await params
+  const resolvedParams = use(params)
   return <TechnicianTasksClient params={resolvedParams} />
 }

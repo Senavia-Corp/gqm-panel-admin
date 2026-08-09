@@ -10,14 +10,13 @@ import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
 
-import { mockTimelineEvents } from "@/lib/mock-data"
 import { updateJob } from "@/lib/services/jobs-service"
 import { fetchClients } from "@/lib/services/clients-service"
 import { useToast } from "@/hooks/use-toast"
 
 import { JobRightSidebar } from "@/components/organisms/JobRightSidebar"
 
-import type { Subcontractor, Document, Task, EstimateItem, SubcontractorOrder } from "@/lib/types"
+import type { Subcontractor, Document, Task, EstimateItem, TimelineEvent } from "@/lib/types"
 import { CostDialog } from "@/components/organisms/CostDialog"
 import { AddMemberDialog } from "@/components/organisms/AddMemberDialog"
 import { CreateOrderDialog } from "@/components/organisms/CreateOrderDialog"
@@ -30,7 +29,6 @@ import { EditEstimateItemDialog } from "@/components/organisms/EditEstimateItemD
 import { useJobDetail } from "./useJobDetail"
 import { mapEstimateCostsFromJob, mapEstimateItemToCreatePayload } from "@/lib/mappers/estimate.mapper"
 
-import { mockOrders } from "@/lib/mock-data/estimates"
 import type { Cost } from "@/components/organisms/CostBreakdownTable"
 
 import { JobTabLayout } from "@/components/organisms/job-detail/JobTabLayout"
@@ -230,7 +228,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [estimateItems, setEstimateItems] = useState<EstimateItem[]>([])
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
-  const [orders, setOrders] = useState<SubcontractorOrder[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
   const [syncPodio, setSyncPodio] = useState(true)
 
   const { data: estimateQueryData, isFetching: isFetchingEstimates } = useQuery({
@@ -322,6 +320,24 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
+  const loadTimeline = async () => {
+    try {
+      const resp = await apiFetch(`/api/timeline/job/${encodeURIComponent(jobId)}`)
+      const data = resp.ok ? await resp.json() : []
+      const rows = Array.isArray(data) ? data : (data?.results ?? [])
+      setTimelineEvents(
+        rows.map((r: any) => ({
+          id: String(r.ID_TLActivity ?? r.id ?? ""),
+          activity: r.Action ?? r.Description ?? "Activity",
+          date: r.Action_datetime ?? "",
+          user: r.member?.Member_Name ?? "",
+        })),
+      )
+    } catch {
+      setTimelineEvents([])
+    }
+  }
+
   // ---------------------------
   // reload job
   // ---------------------------
@@ -337,7 +353,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           if (!sourceJob) return
 
           loadTasks()
-          setOrders(mockOrders.filter((order) => order.ID_Jobs === jobId))
+          loadTimeline()
         } catch (err) {
           console.error("[jobs] reload error:", err)
           setLoadError(err instanceof Error ? err.message : "Unexpected error loading job")
@@ -1212,7 +1228,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             setSelectedSubcontractor={setSelectedSubcontractor}
             onOpenLinkDialog={() => setLinkSubcontractorOpen(true)}
             onReload={jobDetail.reload}
-            timelineEvents={mockTimelineEvents}
+            timelineEvents={timelineEvents}
             syncPodio={syncPodio}
             jobYear={resolveJobYearForPodioSync(job)}
             jobPodioId={job.podio_item_id}

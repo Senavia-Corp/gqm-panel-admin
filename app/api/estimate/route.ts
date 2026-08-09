@@ -36,3 +36,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 })
   }
 }
+export async function GET(request: NextRequest) {
+  try {
+    const incoming = new URL(request.url)
+    const url = new URL(`${API_BASE_URL}/estimate/`)
+    incoming.searchParams.forEach((v, k) => url.searchParams.set(k, v))
+    const headers: Record<string, string> = {}
+    const auth = request.headers.get("authorization")
+    if (auth) headers["Authorization"] = auth
+    const response = await fetch(url.toString(), { headers, cache: "no-store" })
+    const body = await response.json().catch(() => [])
+    return NextResponse.json(body, { status: response.status })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Proxy error" }, { status: 500 })
+  }
+}

@@ -45,8 +45,12 @@ export async function GET(request: NextRequest) {
       pythonUrl = new URL(`${PYTHON_API_URL}/order/job/${encodeURIComponent(jobPodioId)}`)
     } else if (jobId) {
       pythonUrl = new URL(`${PYTHON_API_URL}/order/job-id/${encodeURIComponent(jobId)}`)
+    } else if (subcontractorId) {
+      // Todas las órdenes de un subcontratista (REG-024)
+      pythonUrl = new URL(`${PYTHON_API_URL}/order/`)
+      pythonUrl.searchParams.set("subcontractor_id", subcontractorId)
     } else {
-      return NextResponse.json({ detail: "Missing job identifier." }, { status: 400 })
+      return NextResponse.json({ detail: "Missing job or subcontractor identifier." }, { status: 400 })
     }
 
     const skipKeys = new Set(["jobId","id_job","ID_Jobs","job_podio_id","jobPodioId","podio_id","podioId","ID_Subcontractor","id_subcontractor","subcontractor","subcontractorId"])

@@ -1,4 +1,3 @@
-import { mockClients } from "@/lib/mock-data"
 import { apiFetch } from "@/lib/apiFetch"
 import type { JobDTO, JobsPaginatedResponse, UpdateJobRequest, JobType, JobFilters, JobExportRequest } from "@/lib/types"
 
@@ -146,25 +145,10 @@ export async function fetchClients(): Promise<Client[]> {
     if (!Array.isArray(rawClients)) throw new Error("API returned invalid clients format")
     return rawClients.map(normalizeClient)
   } catch (error) {
+    // REG-078/REG-088: sin fallback a datos falsos — el error se propaga y
+    // la UI lo muestra (antes se rendereaba "Sample Community" en silencio).
     console.error("[jobs-service] fetchClients error:", error)
-    return mockClients.map((c) =>
-      normalizeClient({
-        Address: c.address,
-        Client_Community: "Sample Community",
-        Client_Status: c.status,
-        Email_Address: c.email,
-        ID_Client: c.id,
-        Parent_Company: c.companyName,
-        Parent_Mgmt_Company: c.companyName,
-        Phone_Number: c.phone,
-        Prop_Manager: c.name,
-        Website: "",
-        jobs: [],
-        property_manager: [],
-        property_mgmt_co: null,
-        ID_Community_Tracking: null,
-      })
-    )
+    throw error
   }
 }
 

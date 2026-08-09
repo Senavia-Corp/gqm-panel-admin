@@ -60,3 +60,18 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
     return NextResponse.json({ detail: "Proxy error", error: e?.message ?? String(e) }, { status: 500 })
   }
 }
+export async function GET(request: NextRequest, ctx: Ctx) {
+  const { id } = await ctx.params
+  try {
+    const headers: Record<string, string> = {}
+    const auth = request.headers.get("authorization")
+    if (auth) headers["Authorization"] = auth
+    const response = await fetch(`${PYTHON_API_URL}/order/${encodeURIComponent(id)}`, {
+      headers, cache: "no-store",
+    })
+    const body = await response.json().catch(() => ({}))
+    return NextResponse.json(body, { status: response.status })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Proxy error" }, { status: 500 })
+  }
+}

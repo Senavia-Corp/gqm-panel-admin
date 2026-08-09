@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+// REG-026: conectado al backend real (antes 100% mock).
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,10 +9,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Plus } from "lucide-react"
-import { mockEstimateItems, mockOrders } from "@/lib/mock-data/estimates"
-import { mockJobs } from "@/lib/mock-data/jobs"
-import type { EstimateItem } from "@/lib/types"
+import { ArrowLeft, Loader2, Plus } from "lucide-react"
+import { apiFetch } from "@/lib/apiFetch"
+
+interface ApiJob {
+  ID_Jobs: string
+  Project_name: string | null
+  podio_item_id: string | null
+}
+
+interface ApiEstimateCost {
+  ID_EstimateCost: string
+  Title: string | null
+  Cost_type: string | null
+  Builder_cost: number | null
+}
 
 export default function CreateOrderPage({
   params,
@@ -20,47 +32,85 @@ export default function CreateOrderPage({
 }) {
   const router = useRouter()
   const [orderName, setOrderName] = useState("")
+  const [jobs, setJobs] = useState<ApiJob[]>([])
   const [selectedJobId, setSelectedJobId] = useState("")
+  const [availableItems, setAvailableItems] = useState<ApiEstimateCost[]>([])
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
-  const [availableItems, setAvailableItems] = useState<EstimateItem[]>([])
+  const [loadingItems, setLoadingItems] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    if (selectedJobId) {
-      // Get items from selected job that aren't in other orders
-      const jobItems = mockEstimateItems.filter((item) => item.ID_Jobs === selectedJobId)
-      const itemsInOrders = mockOrders
-        .filter((o) => o.ID_Jobs === selectedJobId)
-        .flatMap((o) => o.Items.map((i) => i.ID_EstimateItem))
+    ;(async () => {
+      try {
+        const resp = await apiFetch("/api/jobs?limit=200")
+        if (!resp.ok) throw new Error(`(${resp.status})`)
+        const data = await resp.json()
+        const list = Array.isArray(data) ? data : (data?.results ?? [])
+        setJobs(list)
+      } catch (e) {
+        console.error("[create-order] jobs error:", e)
+        setError("Could not load jobs")
+      }
+    })()
+  }, [])
 
-      const available = jobItems.filter((item) => !itemsInOrders.includes(item.ID_EstimateItem))
-      setAvailableItems(available)
+  useEffect(() => {
+    if (!selectedJobId) return
+    ;(async () => {
+      setLoadingItems(true)
       setSelectedItems(new Set())
-    }
+      try {
+        const resp = await apiFetch(
+          `/api/estimate?job_id=${encodeURIComponent(selectedJobId)}&unassigned=true`,
+        )
+        const data = resp.ok ? await resp.json() : []
+        setAvailableItems(Array.isArray(data) ? data : (data?.results ?? []))
+      } finally {
+        setLoadingItems(false)
+      }
+    })()
   }, [selectedJobId])
 
   const handleToggleItem = (itemId: string) => {
     setSelectedItems((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId)
-      } else {
-        newSet.add(itemId)
-      }
-      return newSet
+      const next = new Set(prev)
+      if (next.has(itemId)) next.delete(itemId)
+      else next.add(itemId)
+      return next
     })
   }
 
-  const selectedItemDetails = availableItems.filter((item) => selectedItems.has(item.ID_EstimateItem))
-  const totalBuilderCost = selectedItemDetails.reduce((sum, item) => sum + item.Builder_Cost, 0)
+  const selectedDetails = availableItems.filter((i) => selectedItems.has(i.ID_EstimateCost))
+  const totalBuilderCost = selectedDetails.reduce((sum, i) => sum + (i.Builder_cost ?? 0), 0)
+  const selectedJob = jobs.find((j) => j.ID_Jobs === selectedJobId)
 
-  const handleCreate = () => {
-    console.log("[v0] Creating order:", {
-      orderName,
-      subcontractorId: params.id,
-      jobId: selectedJobId,
-      items: Array.from(selectedItems),
-    })
-    router.push(`/subcontractors/${params.id}?tab=orders`)
+  const handleCreate = async () => {
+    if (!orderName || !selectedJobId) return
+    setCreating(true)
+    setError("")
+    try {
+      const resp = await apiFetch("/api/order", {
+        method: "POST",
+        body: JSON.stringify({
+          Title: orderName,
+          ID_Subcontractor: params.id,
+          job_podio_id: selectedJob?.podio_item_id ?? null,
+          estimate_cost_ids: Array.from(selectedItems),
+        }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        setError(data.detail || data.error || `Could not create order (${resp.status})`)
+        return
+      }
+      router.push(`/subcontractors/${params.id}/orders`)
+    } catch (e) {
+      console.error("[create-order] error:", e)
+      setError("Could not create order")
+    } finally {
+      setCreating(false)
+    }
   }
 
   return (
@@ -68,7 +118,7 @@ export default function CreateOrderPage({
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
-          onClick={() => router.push(`/subcontractors/${params.id}?tab=orders`)}
+          onClick={() => router.push(`/subcontractors/${params.id}/orders`)}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -78,7 +128,9 @@ export default function CreateOrderPage({
 
       <div>
         <h1 className="text-3xl font-bold">Create New Order</h1>
-        <p className="text-muted-foreground mt-1">Create a new order by selecting a job and items from its estimate</p>
+        <p className="text-muted-foreground mt-1">
+          Create a new order by selecting a job and items from its estimate
+        </p>
       </div>
 
       <Card>
@@ -102,76 +154,76 @@ export default function CreateOrderPage({
                 <SelectValue placeholder="Choose a job..." />
               </SelectTrigger>
               <SelectContent>
-                {mockJobs.map((job) => (
-                  <SelectItem key={job.id} value={job.id}>
-                    {job.id} - {job.projectName}
+                {jobs.map((job) => (
+                  <SelectItem key={job.ID_Jobs} value={job.ID_Jobs}>
+                    {job.ID_Jobs}
+                    {job.Project_name ? ` — ${job.Project_name}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {selectedJobId && (
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <Label className="mb-2 block text-sm font-medium text-blue-900">Total Builder Cost (Formula)</Label>
-              <div className="text-2xl font-bold text-blue-900">${totalBuilderCost.toFixed(2)}</div>
-              <p className="text-xs text-blue-700 mt-1">{selectedItems.size} items selected</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {selectedJobId && (
         <Card>
           <CardHeader>
-            <CardTitle>Select Items from Estimate</CardTitle>
+            <CardTitle>Estimate items ({availableItems.length} available)</CardTitle>
           </CardHeader>
           <CardContent>
-            {availableItems.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  No available items in this job's estimate, or all items are already assigned to orders
-                </p>
+            {loadingItems ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+            ) : availableItems.length ? (
+              <div className="divide-y rounded-md border">
                 {availableItems.map((item) => (
-                  <div
-                    key={item.ID_EstimateItem}
-                    className="flex items-start gap-3 p-3 rounded-md border hover:bg-gray-50"
+                  <label
+                    key={item.ID_EstimateCost}
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3"
                   >
                     <Checkbox
-                      checked={selectedItems.has(item.ID_EstimateItem)}
-                      onCheckedChange={() => handleToggleItem(item.ID_EstimateItem)}
-                      className="mt-1"
+                      checked={selectedItems.has(item.ID_EstimateCost)}
+                      onCheckedChange={() => handleToggleItem(item.ID_EstimateCost)}
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.Title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{item.Description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>Code: {item.Cost_Code}</span>
-                        <span>Qty: {item.Quantity}</span>
-                        <span className="font-semibold">Builder Cost: ${item.Builder_Cost.toFixed(2)}</span>
-                      </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{item.Title ?? item.ID_EstimateCost}</p>
+                      <p className="text-xs text-muted-foreground">{item.Cost_type ?? "—"}</p>
                     </div>
-                  </div>
+                    <span className="text-sm font-semibold">
+                      ${(item.Builder_cost ?? 0).toFixed(2)}
+                    </span>
+                  </label>
                 ))}
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No unassigned estimate items in this job.
+              </p>
+            )}
+
+            {selectedItems.size > 0 && (
+              <div className="mt-4 flex items-center justify-between border-t pt-4">
+                <p className="text-sm text-muted-foreground">
+                  {selectedItems.size} item(s) selected
+                </p>
+                <p className="text-sm font-semibold">Total: ${totalBuilderCost.toFixed(2)}</p>
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => router.push(`/subcontractors/${params.id}?tab=orders`)}>
-          Cancel
-        </Button>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex justify-end">
         <Button
           onClick={handleCreate}
-          disabled={!orderName || !selectedJobId || selectedItems.size === 0}
+          disabled={!orderName || !selectedJobId || creating}
           className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
         >
-          <Plus className="h-4 w-4" />
+          {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Create Order
         </Button>
       </div>
