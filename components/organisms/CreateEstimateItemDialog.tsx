@@ -173,7 +173,7 @@ export function CreateEstimateItemDialog({
         Category:         form.Category.trim() || null,
         Parent_group:     form.Parent_Group.trim() || null,
         Description:      form.Description.trim() || null,
-        Quatity:          parseFloat(form.Quantity) || 0,
+        Quantity:          parseFloat(form.Quantity) || 0,
         Unit:             form.Unit.trim() || null,
         Unit_cost:        parseFloat(form.Unit_Cost) || 0,
         Cost_type:        forcedCostType ?? form.Cost_Type ?? null,

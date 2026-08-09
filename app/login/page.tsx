@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Logo } from "@/components/atoms/Logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label"
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useTranslations("auth")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -33,7 +35,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || "Invalid email or password")
+        setError(data.error || t("invalidCredentials"))
         setLoading(false)
         return
       }
@@ -94,7 +96,7 @@ export default function LoginPage() {
       router.push("/dashboard")
     } catch (err) {
       console.error("[v0] Login error:", err)
-      setError("An error occurred during login")
+      setError(t("genericError"))
       setLoading(false)
     }
   }
@@ -117,12 +119,12 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center bg-white p-8">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-tight">Welcome Back</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t("welcomeBack")}</h1>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -135,7 +137,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -156,12 +158,12 @@ export default function LoginPage() {
                 className="text-sm"
                 onClick={() => router.push("/forgot-password")}
               >
-                Forgot Password?
+                {t("forgotPassword")}
               </Button>
             </div>
 
             <Button type="submit" className="w-full bg-gqm-green-dark hover:bg-gqm-green" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? t("signingIn") : t("signIn")}
             </Button>
           </form>
         </div>

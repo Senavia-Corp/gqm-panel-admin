@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
+  const t = useTranslations("auth")
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -25,12 +27,12 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       })
       if (resp.status === 429) {
-        setError("Too many attempts, try again in a minute")
+        setError(t("tooManyAttempts"))
       } else {
         setSent(true)
       }
     } catch {
-      setError("An error occurred, please try again")
+      setError(t("genericError"))
     } finally {
       setLoading(false)
     }
@@ -40,25 +42,25 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-white p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Forgot Password</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("forgotTitle")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter your email and we&apos;ll send you a reset link.
+            {t("forgotSubtitle")}
           </p>
         </div>
 
         {sent ? (
           <div className="space-y-6 text-center">
             <p className="text-sm">
-              If the email exists, a reset link was sent. Check your inbox.
+              {t("resetSent")}
             </p>
             <Button variant="link" onClick={() => router.push("/login")}>
-              Back to sign in
+              {t("backToSignIn")}
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -73,12 +75,12 @@ export default function ForgotPasswordPage() {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <Button type="submit" className="w-full bg-gqm-green-dark hover:bg-gqm-green" disabled={loading}>
-              {loading ? "Sending..." : "Send reset link"}
+              {loading ? t("sending") : t("sendResetLink")}
             </Button>
 
             <div className="text-center">
               <Button type="button" variant="link" className="text-sm" onClick={() => router.push("/login")}>
-                Back to sign in
+                {t("backToSignIn")}
               </Button>
             </div>
           </form>

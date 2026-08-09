@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Loader2, Save } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface ApiEstimateCost {
   ID_EstimateCost: string
@@ -37,6 +38,7 @@ export default function OrderDetailPage({
   params: { id: string; orderId: string }
 }) {
   const router = useRouter()
+  const t = useTranslations("subcontractors")
   const [order, setOrder] = useState<ApiOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -131,7 +133,7 @@ export default function OrderDetailPage({
       <div className="space-y-4 py-12 text-center">
         <p className="text-muted-foreground">{error || "Order not found"}</p>
         <Button variant="outline" onClick={() => router.push(`/subcontractors/${params.id}/orders`)}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("backToOrders")}
         </Button>
       </div>
     )
@@ -148,7 +150,7 @@ export default function OrderDetailPage({
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Orders
+          {t("backToOrders")}
         </Button>
         {hasChanges && (
           <Button
@@ -157,24 +159,24 @@ export default function OrderDetailPage({
             className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Changes
+            {t("saveChanges")}
           </Button>
         )}
       </div>
 
       <div>
-        <h1 className="text-3xl font-bold">Order Details</h1>
+        <h1 className="text-3xl font-bold">{t("orderDetails")}</h1>
         <p className="text-muted-foreground mt-1">Order ID: {order.ID_Order}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Order Information</CardTitle>
+          <CardTitle>{t("orderInformation")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <Label className="mb-2 block font-bold">Order Name</Label>
+              <Label className="mb-2 block font-bold">{t("orderName")}</Label>
               <Input value={orderName} onChange={(e) => setOrderName(e.target.value)} />
             </div>
             <div>
@@ -218,13 +220,13 @@ export default function OrderDetailPage({
                     className="text-red-600 hover:text-red-700"
                     onClick={() => handleRemoveItem(item.ID_EstimateCost)}
                   >
-                    Remove
+                    {t("removeItem")}
                   </Button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">No items in this order.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("noItemsInOrder")}</p>
           )}
         </CardContent>
       </Card>
@@ -232,7 +234,7 @@ export default function OrderDetailPage({
       {availableItems.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Add items from this job</CardTitle>
+            <CardTitle>{t("addItemsFromJob")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="divide-y rounded-md border">

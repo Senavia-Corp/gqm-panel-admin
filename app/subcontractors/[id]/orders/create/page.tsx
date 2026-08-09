@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Loader2, Plus } from "lucide-react"
 import { apiFetch } from "@/lib/apiFetch"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 interface ApiJob {
   ID_Jobs: string
@@ -31,6 +32,7 @@ export default function CreateOrderPage({
   params: { id: string }
 }) {
   const router = useRouter()
+  const t = useTranslations("subcontractors")
   const [orderName, setOrderName] = useState("")
   const [jobs, setJobs] = useState<ApiJob[]>([])
   const [selectedJobId, setSelectedJobId] = useState("")
@@ -122,24 +124,24 @@ export default function CreateOrderPage({
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Orders
+          {t("backToOrders")}
         </Button>
       </div>
 
       <div>
-        <h1 className="text-3xl font-bold">Create New Order</h1>
+        <h1 className="text-3xl font-bold">{t("createNewOrder")}</h1>
         <p className="text-muted-foreground mt-1">
-          Create a new order by selecting a job and items from its estimate
+          {t("createOrderSubtitle")}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Order Information</CardTitle>
+          <CardTitle>{t("orderInformation")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Label className="mb-2 block font-bold">Order Name</Label>
+            <Label className="mb-2 block font-bold">{t("orderName")}</Label>
             <Input
               placeholder="e.g., Kitchen Renovation Package"
               value={orderName}
@@ -148,10 +150,10 @@ export default function CreateOrderPage({
           </div>
 
           <div>
-            <Label className="mb-2 block font-bold">Select Job</Label>
+            <Label className="mb-2 block font-bold">{t("selectJob")}</Label>
             <Select value={selectedJobId} onValueChange={setSelectedJobId}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a job..." />
+                <SelectValue placeholder={t("chooseJob")} />
               </SelectTrigger>
               <SelectContent>
                 {jobs.map((job) => (
@@ -199,7 +201,7 @@ export default function CreateOrderPage({
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No unassigned estimate items in this job.
+                {t("noUnassignedItems")}
               </p>
             )}
 
@@ -224,7 +226,7 @@ export default function CreateOrderPage({
           className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Create Order
+          {t("createNewOrder")}
         </Button>
       </div>
     </div>

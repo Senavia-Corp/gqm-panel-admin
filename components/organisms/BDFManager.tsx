@@ -168,7 +168,7 @@ function CreateBDFDialog({ open, onClose, jobId, jobYear, existingCount, onCreat
         Title: title.trim(), Cost_code: "BDF", Cost_type: "BDF",
         Description: description.trim(),
         Builder_cost: parsed, Client_price: parsed,
-        Status: "Estimated", Quatity: 1, Unit_cost: parsed, ID_Jobs: jobId,
+        Status: "Estimated", Quantity: 1, Unit_cost: parsed, ID_Jobs: jobId,
       }
       const res = await apiFetch("/api/estimate", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),

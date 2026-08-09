@@ -2,6 +2,7 @@
 
 import React, { use, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
@@ -378,6 +379,7 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
 
 export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsPageProps) {
   const router = useRouter()
+  const t = useTranslations("clients")
   const { id: parentMgmtCoId } = use(params)
 
   const [user, setUser] = useState<any>(null)
@@ -542,7 +544,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
           <main className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-              <p className="text-sm text-slate-500">Cargando compañía…</p>
+              <p className="text-sm text-slate-500">{t("loadingCompany")}</p>
             </div>
           </main>
         </div>
@@ -917,8 +919,8 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                   {associatedClientsCount === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
                       <Users className="h-8 w-8 text-slate-300" />
-                      <p className="text-sm font-medium text-slate-500">Sin communities asociadas</p>
-                      <p className="text-xs text-slate-400">Las communities aparecerán aquí una vez vinculadas.</p>
+                      <p className="text-sm font-medium text-slate-500">{t("noCommunities")}</p>
+                      <p className="text-xs text-slate-400">{t("communitiesHint")}</p>
                     </div>
                   ) : clients.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">

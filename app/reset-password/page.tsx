@@ -6,9 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 
 function ResetPasswordForm() {
   const router = useRouter()
+  const t = useTranslations("auth")
   const token = useSearchParams().get("token") ?? ""
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -20,11 +22,11 @@ function ResetPasswordForm() {
     e.preventDefault()
     setError("")
     if (password.length < 8) {
-      setError("Password must be at least 8 characters")
+      setError(t("passwordMin"))
       return
     }
     if (password !== confirm) {
-      setError("Passwords do not match")
+      setError(t("passwordMismatch"))
       return
     }
     setLoading(true)
@@ -36,12 +38,12 @@ function ResetPasswordForm() {
       })
       const data = await resp.json()
       if (!resp.ok) {
-        setError(data.error || "Invalid or expired reset link")
+        setError(data.error || t("invalidResetLink"))
       } else {
         setDone(true)
       }
     } catch {
-      setError("An error occurred, please try again")
+      setError(t("genericError"))
     } finally {
       setLoading(false)
     }
@@ -51,27 +53,27 @@ function ResetPasswordForm() {
     <div className="flex min-h-screen items-center justify-center bg-white p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Reset Password</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("resetTitle")}</h1>
         </div>
 
         {done ? (
           <div className="space-y-6 text-center">
-            <p className="text-sm">Your password was updated.</p>
+            <p className="text-sm">{t("passwordUpdated")}</p>
             <Button
               className="w-full bg-gqm-green-dark hover:bg-gqm-green"
               onClick={() => router.push("/login")}
             >
-              Sign in
+              {t("signIn")}
             </Button>
           </div>
         ) : !token ? (
           <p className="text-center text-sm text-red-600">
-            Missing reset token — use the link from your email.
+            {t("missingToken")}
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="password">New password</Label>
+              <Label htmlFor="password">{t("newPassword")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -82,7 +84,7 @@ function ResetPasswordForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm password</Label>
+              <Label htmlFor="confirm">{t("confirmPassword")}</Label>
               <Input
                 id="confirm"
                 type="password"
@@ -96,7 +98,7 @@ function ResetPasswordForm() {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <Button type="submit" className="w-full bg-gqm-green-dark hover:bg-gqm-green" disabled={loading}>
-              {loading ? "Updating..." : "Update password"}
+              {loading ? t("updating") : t("updatePassword")}
             </Button>
           </form>
         )}

@@ -593,7 +593,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   <span className="flex items-center gap-1"><Icon className="h-3 w-3" />{label}</span>
                 </th>
               ))}
-              <th className="py-3 pl-3 pr-5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">Actions</th>
+              <th className="py-3 pl-3 pr-5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">

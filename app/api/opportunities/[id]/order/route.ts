@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 const BASE = process.env.PYTHON_API_BASE_URL ?? ""
-const OPP_BASE = `${BASE}/oppotunities`
+const OPP_BASE = `${BASE}/opportunities`
 const TIMEOUT_MS = 120_000
 
 function jsonError(message: string, status = 500, extra?: Record<string, unknown>) {

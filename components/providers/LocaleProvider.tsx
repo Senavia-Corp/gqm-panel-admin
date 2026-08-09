@@ -37,12 +37,19 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en")
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) as Locale | null
+    // REG-138: cookie primero (la ve el SSR), localStorage como legado
+    const fromCookie = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${STORAGE_KEY}=`))
+      ?.split("=")[1] as Locale | undefined
+    const saved = fromCookie ?? (localStorage.getItem(STORAGE_KEY) as Locale | null)
     if (saved === "en" || saved === "es") setLocaleState(saved)
   }, [])
 
   const setLocale = (newLocale: Locale) => {
     localStorage.setItem(STORAGE_KEY, newLocale)
+    // Cookie legible por el server (i18n/request.ts) → SSR coherente (REG-138)
+    document.cookie = `${STORAGE_KEY}=${newLocale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
     setLocaleState(newLocale)
   }
 
