@@ -27,7 +27,11 @@ export function middleware(request: NextRequest) {
 
   // ── API: chokepoint de Authorization ────────────────────────────────────
   if (pathname.startsWith("/api/")) {
-    if (pathname.startsWith("/api/auth/")) return NextResponse.next()
+    // Solo el ciclo de sesión es público; el resto de /api/auth (p.ej. /can)
+    // necesita el Authorization inyectado como cualquier otra ruta.
+    const PUBLIC_API = ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
+      "/api/auth/forgot-password", "/api/auth/reset-password"]
+    if (PUBLIC_API.some((p) => pathname === p)) return NextResponse.next()
     if (!token) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }

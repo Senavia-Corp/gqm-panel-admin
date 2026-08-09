@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useSidebar } from "@/components/providers/SidebarContext"
+import { logout } from "@/lib/auth-utils"
 import { usePermissions } from "@/hooks/usePermissions"
 import packageJson from "../../package.json"
 import {
@@ -98,13 +99,8 @@ function SidebarContent({
   const t = useTranslations("navigation")
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token")
-    localStorage.removeItem("refresh_token")
-    localStorage.removeItem("token_type")
-    localStorage.removeItem("user_id")
-    localStorage.removeItem("user_type")
-    localStorage.removeItem("user_data")
-    localStorage.removeItem("login_time")
+    // Sesión httpOnly: borra cookies server-side + estado de UI y redirige
+    logout()
   }
 
   return (
@@ -165,7 +161,13 @@ function SidebarContent({
               href={isDisabled ? "#" : item.href}
               className={isDisabled ? "pointer-events-none" : ""}
               onClick={(e) => {
-                if (isLogout) handleLogout()
+                if (isLogout) {
+                  // logout() borra cookies y redirige él mismo: cancelar el
+                  // Link para no navegar a /login antes de borrar la sesión
+                  e.preventDefault()
+                  handleLogout()
+                  return
+                }
                 if (!isDisabled) onNavigate?.()
               }}
             >

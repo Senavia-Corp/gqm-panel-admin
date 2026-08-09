@@ -3,7 +3,6 @@ import { NextResponse } from "next/server"
 
 import { getBackendUrl } from "@/lib/api-utils"
 
-const ACCESS_MAX_AGE = 60 * 60
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60
 
 export async function POST() {
@@ -39,7 +38,7 @@ export async function POST() {
     const secure = process.env.NODE_ENV === "production"
     const res = NextResponse.json({ ok: true })
     res.cookies.set("gqm_at", data.access_token, {
-      httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: ACCESS_MAX_AGE,
+      httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: REFRESH_MAX_AGE,
     })
     if (data.refresh_token) {
       res.cookies.set("gqm_rt", data.refresh_token, {

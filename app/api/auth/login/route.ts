@@ -4,7 +4,6 @@ import { getBackendUrl } from "@/lib/api-utils"
 import { roleSlugFrom } from "@/lib/role-map"
 
 // TTLs alineados con el API (ACCESS_TOKEN_EXPIRES_MIN=60, REFRESH=7d)
-const ACCESS_MAX_AGE = 60 * 60
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60
 
 export async function POST(request: Request) {
@@ -36,7 +35,11 @@ export async function POST(request: Request) {
     const res = NextResponse.json({ ...safe, role })
     const secure = process.env.NODE_ENV === "production"
     res.cookies.set("gqm_at", access_token, {
-      httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: ACCESS_MAX_AGE,
+      // La cookie vive lo que la ventana de refresh: su presencia solo
+      // gatea el middleware; la validez real la impone el exp del JWT
+      // (401 → refresh silencioso en apiFetch). Con maxAge=1h, navegar
+      // tras una hora inactiva mataba la sesión aunque gqm_rt siguiera viva.
+      httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: REFRESH_MAX_AGE,
     })
     res.cookies.set("gqm_rt", refresh_token, {
       httpOnly: true, sameSite: "lax", secure, path: "/api/auth", maxAge: REFRESH_MAX_AGE,
