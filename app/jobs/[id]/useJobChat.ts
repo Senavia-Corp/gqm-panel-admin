@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { apiFetch } from "@/lib/apiFetch"
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ChatMessageData {
@@ -75,7 +77,9 @@ export function useJobChat({
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/chat/job/${encodeURIComponent(jobId)}`, {
+      // apiFetch: refresh-on-401 — sin él, el polling moría en silencio al
+      // expirar el access token (hallazgo del review final)
+      const res = await apiFetch(`/api/chat/job/${encodeURIComponent(jobId)}`, {
         headers: authHeaders(),
         cache:   "no-store",
       })
@@ -102,7 +106,7 @@ export function useJobChat({
     if (!jobId) return
     try {
       const qs  = lastIdRef.current ? `?desde_id=${encodeURIComponent(lastIdRef.current)}` : ""
-      const res = await fetch(`/api/chat/job/${encodeURIComponent(jobId)}${qs}`, {
+      const res = await apiFetch(`/api/chat/job/${encodeURIComponent(jobId)}${qs}`, {
         headers: authHeaders(),
         cache:   "no-store",
       })
@@ -179,7 +183,7 @@ export function useJobChat({
 
     setIsSending(true)
     try {
-      const res = await fetch(`/api/chat/job/${encodeURIComponent(jobId)}`, {
+      const res = await apiFetch(`/api/chat/job/${encodeURIComponent(jobId)}`, {
         method:  "POST",
         headers: authHeaders(),
         body:    JSON.stringify({ content: trimmed }),

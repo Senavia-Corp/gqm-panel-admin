@@ -21,12 +21,9 @@ export async function apiFetch(
     finalUrl = url.replace("/api/members/", "/api/technician/")
   }
 
-  const userId = _getUserId()
+  // La identidad la deriva el backend del JWT (g.current_user); el header
+  // X-User-Id era falsificable desde devtools y ya no se envía ni se lee.
   const headers = new Headers(options.headers)
-
-  if (userId && !headers.has("X-User-Id")) {
-    headers.set("X-User-Id", userId)
-  }
 
   if (
     options.body &&
@@ -76,18 +73,4 @@ async function _getRefreshPromise(): Promise<boolean> {
   })()
 
   return refreshPromise
-}
-
-function _getUserId(): string | null {
-  try {
-    const directId = localStorage.getItem("user_id")
-    if (directId) return directId
-
-    const raw = localStorage.getItem("user_data")
-    if (!raw) return null
-    const user = JSON.parse(raw)
-    return user?.id ?? user?.ID_Member ?? null
-  } catch {
-    return null
-  }
 }
