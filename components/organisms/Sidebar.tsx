@@ -236,7 +236,13 @@ export function Sidebar() {
       if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
       if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
       if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
-      if (item.href === "/roles-permissions")   return hasPermission("iam_pm:read")
+      if (item.href === "/roles-permissions") {
+        // Mismo criterio que FULL_ADMIN_ONLY del middleware (cookie gqm_role):
+        // el chequeo viejo usaba el vocabulario fósil iam_pm:read y mostraba
+        // el enlace a roles que el middleware luego rebotaba al dashboard.
+        return typeof document !== "undefined" &&
+          /(?:^|;\s*)gqm_role=full_admin(?:;|\s|$)/.test(document.cookie)
+      }
       return true
     })
   }, [userRole, hasPermission])
