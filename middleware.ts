@@ -57,6 +57,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Las páginas públicas (forgot/reset) son accesibles también con sesión
+  if (isPublic) return NextResponse.next()
+
   const role = (request.cookies.get("gqm_role")?.value || "gqm_member") as RoleSlug
 
   if (
