@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "https://localhost:80/"
+const PYTHON_BASE_URL = `${getBackendUrl()}/`
 const COMMISSION_DETAIL_BASE = `${PYTHON_BASE_URL}commission_detail`
 
 const DEFAULT_PAGE = "1"

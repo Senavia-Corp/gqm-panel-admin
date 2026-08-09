@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const BASE = process.env.PYTHON_API_BASE_URL ?? ""
+const BASE = getBackendUrl()
 const TIMEOUT_MS = 120_000
 
 function jsonError(message: string, status = 500, extra?: Record<string, unknown>) {

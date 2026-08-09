@@ -5,8 +5,9 @@
  * Reenvía: page, limit, status, q
  */
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const BASE = process.env.PYTHON_API_BASE_URL ?? ""
+const BASE = getBackendUrl()
 
 export async function GET(request: NextRequest) {
   try {

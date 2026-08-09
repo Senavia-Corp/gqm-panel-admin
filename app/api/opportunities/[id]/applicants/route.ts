@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const BASE = process.env.PYTHON_API_BASE_URL ?? ""
+const BASE = getBackendUrl()
 const OPP_BASE = `${BASE}/opportunities`
 const TIMEOUT_MS = 120_000
 

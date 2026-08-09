@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBackendUrl } from "@/lib/api-utils"
 
-const PYTHON_BASE_URL = process.env.PYTHON_API_BASE_URL ?? "http://localhost:8000/"
+const PYTHON_BASE_URL = `${getBackendUrl()}/`
 const COMMISSION_EXCEL_URL = `${PYTHON_BASE_URL}commission/excel`
 
 export async function GET(request: NextRequest) {
