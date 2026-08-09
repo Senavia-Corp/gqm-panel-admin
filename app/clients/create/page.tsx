@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "@/components/providers/LocaleProvider"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,7 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
   icon: React.ElementType
   onChange: (v: string[]) => void
 }) {
+  const t = useTranslations("clients")
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-2.5">
@@ -45,7 +47,7 @@ function ArrayInputField({ values, placeholder, icon: Icon, onChange }: {
       ))}
       <button type="button" onClick={() => onChange([...items, ""])}
         className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
-        <Plus className="h-3 w-3" /> Add another
+        <Plus className="h-3 w-3" /> {t("addAnother")}
       </button>
     </div>
   )
@@ -90,6 +92,7 @@ const textareaCls = `${inputCls} resize-none`
 // ─── Podio Sync Toggle ────────────────────────────────────────────────────────
 
 function PodioSyncToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const t = useTranslations("clients")
   return (
     <button
       type="button"
@@ -113,13 +116,10 @@ function PodioSyncToggle({ value, onChange }: { value: boolean; onChange: (v: bo
       {/* Text */}
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold transition-colors ${value ? "text-violet-800" : "text-slate-600"}`}>
-          {value ? "Sincronización con Podio activada" : "Sincronizar con Podio"}
+          {value ? t("pcoSyncOnTitle") : t("pcoSyncOffTitle")}
         </p>
         <p className={`mt-0.5 text-xs transition-colors ${value ? "text-violet-600" : "text-slate-400"}`}>
-          {value
-            ? "Este registro se creará simultáneamente en Podio"
-            : "El registro se creará solo en la base de datos local"
-          }
+          {value ? t("pcoSyncOnDesc") : t("pcoSyncOffDesc")}
         </p>
       </div>
 
@@ -149,6 +149,7 @@ const US_STATES = [
 
 export default function CreateParentCoPage() {
   const router = useRouter()
+  const t = useTranslations("clients")
   const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [syncPodio, setSyncPodio] = useState(true)
@@ -185,7 +186,7 @@ export default function CreateParentCoPage() {
 
   const handleSubmit = async () => {
     if (!form.Property_mgmt_co.trim()) {
-      toast({ title: "Campo requerido", description: "El nombre de la compañía es obligatorio.", variant: "destructive" })
+      toast({ title: t("pcoToastRequired"), description: t("pcoToastNameRequired"), variant: "destructive" })
       return
     }
 
@@ -213,12 +214,14 @@ export default function CreateParentCoPage() {
 
       const created = await res.json()
       toast({
-        title: "Compañía creada",
-        description: `${form.Property_mgmt_co} fue creada exitosamente${syncPodio ? " y sincronizada con Podio" : ""}.`,
+        title: t("pcoToastCreated"),
+        description: syncPodio
+          ? t("pcoToastCreatedDescPodio", { name: form.Property_mgmt_co })
+          : t("pcoToastCreatedDesc", { name: form.Property_mgmt_co }),
       })
       router.push(`/clients/${created.ID_Community_Tracking}`)
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message ?? "No se pudo crear la compañía.", variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message ?? t("pcoToastCreateError"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -240,13 +243,11 @@ export default function CreateParentCoPage() {
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
               <Shield className="h-10 w-10" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900">Access Denied</h1>
-            <p className="mt-2 max-w-sm text-slate-500">
-              You do not have the <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">parent_mgmt_co:create</code> permission required to access this resource.
-            </p>
+            <h1 className="text-2xl font-black text-slate-900">{t("accessDenied")}</h1>
+            <p className="mt-2 max-w-sm text-slate-500">{t("pcoAccessDeniedCreate")}</p>
             <Button onClick={() => router.back()} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Go Back
+              {t("goBack")}
             </Button>
           </main>
         </div>
@@ -274,8 +275,8 @@ export default function CreateParentCoPage() {
                     <Building2 className="h-4 w-4 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">Nueva Compañía Padre</h1>
-                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">Completa los datos para registrar la compañía</p>
+                    <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">{t("pcoCreateTitle")}</h1>
+                    <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">{t("pcoCreateSubtitle")}</p>
                   </div>
                 </div>
               </div>
@@ -283,13 +284,13 @@ export default function CreateParentCoPage() {
               <div className="flex flex-shrink-0 items-center gap-2">
                 {syncPodio && (
                   <span className="hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 sm:flex">
-                    <Zap className="h-3 w-3" /> Podio activo
+                    <Zap className="h-3 w-3" /> {t("pcoPodioActive")}
                   </span>
                 )}
                 {/* Cancel — text on desktop, icon-only on mobile */}
                 <Button variant="outline" onClick={() => router.back()} disabled={saving}
                   className="hidden h-9 gap-1.5 rounded-xl text-sm sm:flex">
-                  Cancelar
+                  {t("btnCancel")}
                 </Button>
                 <Button variant="outline" onClick={() => router.back()} disabled={saving}
                   size="icon" className="h-8 w-8 rounded-xl border-slate-200 sm:hidden">
@@ -299,8 +300,8 @@ export default function CreateParentCoPage() {
                 <Button onClick={handleSubmit} disabled={saving}
                   className="hidden h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 shadow-sm shadow-emerald-200 sm:flex">
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…</>
-                    : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("pcoSaving")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("pcoBtnCreate")}</>
                   }
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving} size="icon"
@@ -318,36 +319,36 @@ export default function CreateParentCoPage() {
             <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} />
 
             {/* ── 1. Identidad ── */}
-            <Section icon={Building2} title="Identidad de la Compañía"
+            <Section icon={Building2} title={t("pcoIdentitySection")}
               accent="text-emerald-700 bg-emerald-50/60">
               <div className="grid gap-5">
                 <div className="grid gap-5 md:grid-cols-3">
                   <div className="md:col-span-2">
-                    <Field label="Nombre de la Compañía" required>
+                    <Field label={t("pcoFieldName")} required>
                       <Input value={form.Property_mgmt_co}
                         onChange={(e) => set("Property_mgmt_co", e.target.value)}
-                        placeholder="ej. Suncoast Property Management" className={inputCls} />
+                        placeholder={t("pcoNamePlaceholder")} className={inputCls} />
                     </Field>
                   </div>
-                  <Field label="Abreviatura" hint="Código corto identificador">
+                  <Field label={t("pcoFieldAbbrev")} hint={t("pcoAbbrevHint")}>
                     <Input value={form.Company_abbrev}
                       onChange={(e) => set("Company_abbrev", e.target.value.toUpperCase())}
-                      placeholder="ej. SPM" className={`font-mono tracking-wider ${inputCls}`} maxLength={10} />
+                      placeholder={t("pcoAbbrevPlaceholder")} className={`font-mono tracking-wider ${inputCls}`} maxLength={10} />
                   </Field>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
-                  <Field label="Estado">
+                  <Field label={t("pcoFieldState")}>
                     <Select value={form.State || "none"} onValueChange={(v) => set("State", v === "none" ? "" : v)}>
                       <SelectTrigger className={inputCls}>
-                        <SelectValue placeholder="Seleccionar estado…" />
+                        <SelectValue placeholder={t("pcoStatePlaceholder")} />
                       </SelectTrigger>
                       <SelectContent className="max-h-64">
-                        <SelectItem value="none">— Ninguno —</SelectItem>
+                        <SelectItem value="none">{t("pcoStateNone")}</SelectItem>
                         {US_STATES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Sitio Web">
+                  <Field label={t("fieldWebsite")}>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <Input value={form.Website} onChange={(e) => set("Website", e.target.value)}
@@ -359,55 +360,53 @@ export default function CreateParentCoPage() {
             </Section>
 
             {/* ── 2. Ubicación ── */}
-            <Section icon={MapPin} title="Ubicación" accent="text-blue-700 bg-blue-50/60">
-              <Field label="Dirección de la Oficina Principal">
+            <Section icon={MapPin} title={t("pcoLocationSection")} accent="text-blue-700 bg-blue-50/60">
+              <Field label={t("pcoFieldHq")}>
                 <Textarea value={form.Main_office_hq}
                   onChange={(e) => set("Main_office_hq", e.target.value)}
-                  placeholder="Dirección completa de la sede principal" rows={2} className={textareaCls} />
+                  placeholder={t("pcoHqPlaceholder")} rows={2} className={textareaCls} />
               </Field>
             </Section>
 
             {/* ── 3. Contacto ── */}
-            <Section icon={Mail} title="Información de Contacto" accent="text-violet-700 bg-violet-50/60">
+            <Section icon={Mail} title={t("contactSection")} accent="text-violet-700 bg-violet-50/60">
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Email de Oficina">
+                <Field label={t("pcoFieldOfficeEmail")}>
                   <ArrayInputField values={form.Main_office_email} icon={Mail}
-                    placeholder="oficina@compañia.com"
+                    placeholder={t("pcoOfficeEmailPlaceholder")}
                     onChange={(v) => set("Main_office_email", v)} />
                 </Field>
-                <Field label="Teléfono de Oficina">
+                <Field label={t("pcoFieldOfficePhone")}>
                   <ArrayInputField values={form.Main_office_number} icon={Phone}
-                    placeholder="(555) 000-0000"
+                    placeholder={t("pcoPhonePlaceholder")}
                     onChange={(v) => set("Main_office_number", v)} />
                 </Field>
               </div>
             </Section>
 
             {/* ── 4. Notas ── */}
-            <Section icon={FileText} title="Notas Adicionales" accent="text-slate-600 bg-slate-50">
-              <Field label="Notas">
+            <Section icon={FileText} title={t("notesSection")} accent="text-slate-600 bg-slate-50">
+              <Field label={t("fieldNotes")}>
                 <Textarea value={form.Notes}
                   onChange={(e) => set("Notes", e.target.value)}
-                  placeholder="Cualquier información adicional sobre esta compañía…"
+                  placeholder={t("pcoNotesPlaceholder")}
                   rows={3} className={textareaCls} />
               </Field>
             </Section>
 
             {/* ── Bottom bar ── */}
             <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-sm text-slate-400">
-                Los campos con <span className="text-red-400">*</span> son obligatorios
-              </p>
+              <p className="text-sm text-slate-400">{t("requiredFields")}</p>
               <div className="flex items-center gap-2.5">
                 <Button variant="outline" onClick={() => router.back()} disabled={saving}
                   className="flex-1 h-9 rounded-xl text-sm sm:flex-none">
-                  Cancelar
+                  {t("btnCancel")}
                 </Button>
                 <Button onClick={handleSubmit} disabled={saving}
                   className="flex-1 h-9 gap-2 rounded-xl bg-emerald-600 text-sm hover:bg-emerald-700 sm:flex-none">
                   {saving
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Creando…</>
-                    : <><Save className="h-3.5 w-3.5" /> Crear Compañía</>
+                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("creating")}</>
+                    : <><Save className="h-3.5 w-3.5" /> {t("pcoBtnCreate")}</>
                   }
                 </Button>
               </div>

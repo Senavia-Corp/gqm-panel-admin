@@ -53,6 +53,7 @@ export function serializeArrayField(values: string[]): string {
 function PodioSyncToggle({ value, onChange, danger }: {
   value: boolean; onChange: (v: boolean) => void; danger?: boolean
 }) {
+  const t = useTranslations("clients")
   const activeColor = danger
     ? "border-red-400 bg-gradient-to-r from-red-50 to-rose-50"
     : "border-violet-400 bg-gradient-to-r from-violet-50 to-indigo-50"
@@ -80,15 +81,12 @@ function PodioSyncToggle({ value, onChange, danger }: {
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold transition-colors ${value ? textActive : "text-slate-600"}`}>
           {value
-            ? (danger ? "También eliminar de Podio: ON" : "Sincronizar con Podio: ON")
-            : (danger ? "También eliminar de Podio: OFF" : "Sincronizar con Podio: OFF")
+            ? (danger ? t("pcoDelPodioOn") : t("syncPodioOn"))
+            : (danger ? t("pcoDelPodioOff") : t("syncPodioOff"))
           }
         </p>
         <p className={`text-xs transition-colors ${value ? subActive : "text-slate-400"}`}>
-          {danger
-            ? "El item de Podio también será eliminado"
-            : "Los cambios se propagarán a Podio"
-          }
+          {danger ? t("pcoDelPodioDesc") : t("pcoEditSyncDesc")}
         </p>
       </div>
       <div className={`relative flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-all duration-200 ${
@@ -154,6 +152,7 @@ function ArrayEditField({
   onChange: (serialized: string) => void
   changed?: boolean
 }) {
+  const t = useTranslations("clients")
   const [items, setItems] = React.useState<string[]>(() => {
     const parsed = parseArrayField(raw)
     return parsed.length > 0 ? parsed : [""]
@@ -208,7 +207,7 @@ function ArrayEditField({
         onClick={handleAdd}
         className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50 transition-colors"
       >
-        <Plus className="h-3 w-3" /> Add another
+        <Plus className="h-3 w-3" /> {t("addAnother")}
       </button>
     </div>
   )
@@ -317,6 +316,8 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
   open: boolean; onOpenChange: (v: boolean) => void
   item: ParentMgmtCo | null; onDeleted: () => void
 }) {
+  const t = useTranslations("clients")
+  const tc = useTranslations("common")
   const [syncPodio, setSyncPodio] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -335,11 +336,13 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
       onDeleted()
       onOpenChange(false)
       toast({
-        title: "Compañía eliminada",
-        description: `${item.Property_mgmt_co ?? item.ID_Community_Tracking} eliminada${syncPodio ? " y removida de Podio" : ""}.`,
+        title: t("pcoToastDeleted"),
+        description: syncPodio
+          ? t("pcoToastDeletedDescPodio", { name: item.Property_mgmt_co ?? item.ID_Community_Tracking })
+          : t("pcoToastDeletedDesc", { name: item.Property_mgmt_co ?? item.ID_Community_Tracking }),
       })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message, variant: "destructive" })
+      toast({ title: t("toastError"), description: e?.message, variant: "destructive" })
     } finally { setDeleting(false) }
   }
 
@@ -347,12 +350,12 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar Compañía Padre</AlertDialogTitle>
+          <AlertDialogTitle>{t("pcoDeleteTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            ¿Estás seguro de que deseas eliminar{" "}
+            {t("pcoDeleteConfirmPrefix")}{" "}
             <span className="font-semibold text-slate-800">
               {item?.Property_mgmt_co ?? item?.ID_Community_Tracking}
-            </span>? Esta acción no se puede deshacer.
+            </span>? {tc("actionCannotBeUndone")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -364,10 +367,10 @@ function DeleteParentDialog({ open, onOpenChange, item, onDeleted }: {
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
           <AlertDialogAction onClick={doDelete} disabled={deleting}
             className="bg-red-600 hover:bg-red-700">
-            {deleting ? "Eliminando…" : "Eliminar"}
+            {deleting ? t("pcoDeleting") : t("pcoDelete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -438,7 +441,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       console.error("Error fetching parent mgmt co:", error)
       setParentMgmtCo(null)
       setLoadError(error?.message ?? "Failed to load parent mgmt co data")
-      toast({ title: "Error", description: "Failed to load parent management company data", variant: "destructive" })
+      toast({ title: t("toastError"), description: t("pcoLoadErrorDesc"), variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -507,14 +510,14 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
       setSyncPodio(false)  // ✅ Reset del toggle tras guardar
 
       toast({
-        title: "Success",
-        description: `Parent management company updated successfully${syncPodio ? " and synced with Podio" : ""}`,
+        title: t("pcoToastUpdatedTitle"),
+        description: syncPodio ? t("pcoToastUpdatedDescPodio") : t("pcoToastUpdatedDesc"),
       })
     } catch (error: any) {
       console.error("Error updating parent mgmt co:", error)
       toast({
-        title: "Error",
-        description: error?.message ?? "Failed to update parent management company",
+        title: t("toastError"),
+        description: error?.message ?? t("pcoToastUpdateError"),
         variant: "destructive",
       })
     }
@@ -561,16 +564,16 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
           <main className="flex flex-1 items-center justify-center p-6">
             <div className="w-full max-w-md overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
               <div className="border-b border-red-100 bg-red-50/60 px-6 py-4">
-                <h1 className="text-base font-bold text-red-700">No se pudo cargar la compañía</h1>
+                <h1 className="text-base font-bold text-red-700">{t("pcoLoadErrorTitle")}</h1>
               </div>
               <div className="p-6">
-                <p className="text-sm text-slate-500">{loadError ?? "Error desconocido."}</p>
+                <p className="text-sm text-slate-500">{loadError ?? t("pcoUnknownError")}</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button variant="outline" onClick={() => router.push("/clients")} className="gap-2 rounded-xl">
-                    <ArrowLeft className="h-4 w-4" /> Volver
+                    <ArrowLeft className="h-4 w-4" /> {t("goBack")}
                   </Button>
                   <Button onClick={fetchParentMgmtCoData} className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700">
-                    <RefreshCw className="h-4 w-4" /> Reintentar
+                    <RefreshCw className="h-4 w-4" /> {t("retry")}
                   </Button>
                 </div>
               </div>
@@ -591,13 +594,11 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-50 text-red-600 shadow-sm shadow-red-100">
               <Shield className="h-10 w-10" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900">Acceso denegado</h1>
-            <p className="mt-2 max-w-sm text-slate-500">
-              No tienes el permiso <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-red-600 text-xs">parent_mgmt_co:read</code> necesario.
-            </p>
+            <h1 className="text-2xl font-black text-slate-900">{t("accessDenied")}</h1>
+            <p className="mt-2 max-w-sm text-slate-500">{t("pcoAccessDeniedRead")}</p>
             <Button onClick={() => router.push("/clients")} variant="outline" className="mt-8 gap-2 rounded-xl group transition-all hover:bg-slate-100">
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Volver a Clientes
+              {t("goBackToClients")}
             </Button>
           </main>
         </div>
@@ -628,7 +629,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <h1 className="truncate text-base font-bold text-slate-900 leading-none sm:text-lg">
-                      {parentMgmtCo.Property_mgmt_co ?? <span className="italic text-slate-400">Sin nombre</span>}
+                      {parentMgmtCo.Property_mgmt_co ?? <span className="italic text-slate-400">{t("pcoNoName")}</span>}
                     </h1>
                     {parentMgmtCo.Company_abbrev && (
                       <span className="hidden shrink-0 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-800 sm:inline-flex">
@@ -649,7 +650,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
               <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2">
                 {isEditing && syncPodio && (
                   <span className="hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 sm:flex">
-                    <Zap className="h-3 w-3" /> Podio activo
+                    <Zap className="h-3 w-3" /> {t("pcoPodioActive")}
                   </span>
                 )}
                 {canDelete && !isEditing && (
@@ -664,7 +665,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                     <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}
                       className="h-8 gap-1.5 rounded-lg border-slate-200 text-xs text-slate-600 hover:border-emerald-300 hover:text-emerald-700">
                       <Edit3 className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Editar</span>
+                      <span className="hidden sm:inline">{t("btnEdit")}</span>
                     </Button>
                   ) : (
                     <>
@@ -672,13 +673,13 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                         onClick={() => { setIsEditing(false); setEditedFields(new Set()); setFormData(parentMgmtCo ?? {}); setSyncPodio(false) }}
                         className="h-8 gap-1.5 rounded-lg border-slate-200 text-xs">
                         <X className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Cancelar</span>
+                        <span className="hidden sm:inline">{t("btnCancel")}</span>
                       </Button>
                       <Button size="sm" onClick={handleSaveChanges}
                         disabled={editedFields.size === 0}
                         className="h-8 gap-1.5 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700 disabled:opacity-50">
                         <Save className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Guardar</span>
+                        <span className="hidden sm:inline">{t("btnSave")}</span>
                       </Button>
                     </>
                   )
@@ -695,33 +696,33 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
               <div className="min-w-0 space-y-4 sm:space-y-5 lg:col-span-2">
 
                 {/* Identity */}
-                <Section icon={Building2} title="Identidad de la Compañía" accent="text-emerald-700 bg-emerald-50/60">
+                <Section icon={Building2} title={t("pcoIdentitySection")} accent="text-emerald-700 bg-emerald-50/60">
                   {isEditing && (
                     <div className="mb-4 sm:mb-5">
                       <PodioSyncToggle value={syncPodio} onChange={setSyncPodio} />
                     </div>
                   )}
                   <div className="grid gap-4 sm:gap-5">
-                    <Field label="Nombre de la Compañía" required>
+                    <Field label={t("pcoFieldName")} required>
                       {isEditing ? (
                         <Input
                           value={formData.Property_mgmt_co ?? ""}
                           onChange={(e) => handleFieldChange("Property_mgmt_co", e.target.value)}
-                          placeholder="ej. Suncoast Property Management"
+                          placeholder={t("pcoNamePlaceholder")}
                           className={`${inputCls} ${editedFields.has("Property_mgmt_co") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
                         />
                       ) : (
-                        <FieldValue value={parentMgmtCo.Property_mgmt_co} placeholder="Sin nombre" />
+                        <FieldValue value={parentMgmtCo.Property_mgmt_co} placeholder={t("pcoNoName")} />
                       )}
                     </Field>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="Abreviatura" hint="Código corto identificador">
+                      <Field label={t("pcoFieldAbbrev")} hint={t("pcoAbbrevHint")}>
                         {isEditing ? (
                           <Input
                             value={formData.Company_abbrev ?? ""}
                             onChange={(e) => handleFieldChange("Company_abbrev", e.target.value.toUpperCase())}
-                            placeholder="ej. SPM"
+                            placeholder={t("pcoAbbrevPlaceholder")}
                             maxLength={10}
                             className={`font-mono tracking-wider ${inputCls} ${editedFields.has("Company_abbrev") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
                           />
@@ -731,22 +732,22 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                               {parentMgmtCo.Company_abbrev}
                             </span>
                           ) : (
-                            <FieldValue value={null} placeholder="Sin abreviatura" />
+                            <FieldValue value={null} placeholder={t("pcoNoAbbrev")} />
                           )
                         )}
                       </Field>
 
-                      <Field label="Estado">
+                      <Field label={t("pcoFieldState")}>
                         {isEditing ? (
                           <Select
                             value={formData.State || "none"}
                             onValueChange={(v) => handleFieldChange("State", v === "none" ? "" : v)}
                           >
                             <SelectTrigger className={`${inputCls} ${editedFields.has("State") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}>
-                              <SelectValue placeholder="Seleccionar estado…" />
+                              <SelectValue placeholder={t("pcoStatePlaceholder")} />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
-                              <SelectItem value="none">— Ninguno —</SelectItem>
+                              <SelectItem value="none">{t("pcoStateNone")}</SelectItem>
                               {US_STATES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                             </SelectContent>
                           </Select>
@@ -756,37 +757,37 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                               {parentMgmtCo.State}
                             </span>
                           ) : (
-                            <FieldValue value={null} placeholder="Sin estado" />
+                            <FieldValue value={null} placeholder={t("pcoNoState")} />
                           )
                         )}
                       </Field>
                     </div>
 
-                    <Field label="Dirección de Oficina Principal">
+                    <Field label={t("pcoFieldHq")}>
                       {isEditing ? (
                         <Textarea
                           value={formData.Main_office_hq ?? ""}
                           onChange={(e) => handleFieldChange("Main_office_hq", e.target.value)}
                           rows={2}
-                          placeholder="Dirección completa de la sede principal"
+                          placeholder={t("pcoHqPlaceholder")}
                           className={`${textareaCls} ${editedFields.has("Main_office_hq") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
                         />
                       ) : (
-                        <FieldValue value={parentMgmtCo.Main_office_hq} placeholder="Sin dirección" icon={MapPin} />
+                        <FieldValue value={parentMgmtCo.Main_office_hq} placeholder={t("pcoNoAddress")} icon={MapPin} />
                       )}
                     </Field>
                   </div>
                 </Section>
 
                 {/* Contact */}
-                <Section icon={Mail} title="Información de Contacto" accent="text-violet-700 bg-violet-50/60">
+                <Section icon={Mail} title={t("contactSection")} accent="text-violet-700 bg-violet-50/60">
                   <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
-                    <Field label="Email de Oficina">
+                    <Field label={t("pcoFieldOfficeEmail")}>
                       {isEditing ? (
                         <ArrayEditField
                           raw={formData.Main_office_email}
                           icon={Mail}
-                          placeholder="email@ejemplo.com"
+                          placeholder={t("emailPlaceholder")}
                           changed={editedFields.has("Main_office_email")}
                           onChange={(val) => handleFieldChange("Main_office_email", val)}
                         />
@@ -795,11 +796,11 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                           raw={parentMgmtCo.Main_office_email}
                           icon={Mail}
                           linkPrefix="mailto:"
-                          emptyLabel="Sin email"
+                          emptyLabel={t("pcoNoEmail")}
                         />
                       )}
                     </Field>
-                    <Field label="Teléfono de Oficina">
+                    <Field label={t("pcoFieldOfficePhone")}>
                       {isEditing ? (
                         <ArrayEditField
                           raw={formData.Main_office_number}
@@ -813,7 +814,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                           raw={parentMgmtCo.Main_office_number}
                           icon={Phone}
                           linkPrefix="tel:"
-                          emptyLabel="Sin teléfono"
+                          emptyLabel={t("pcoNoPhone")}
                         />
                       )}
                     </Field>
@@ -821,28 +822,28 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                 </Section>
 
                 {/* President Contact */}
-                <Section icon={Users} title="Contacto del Presidente" accent="text-amber-700 bg-amber-50/60">
+                <Section icon={Users} title={t("pcoPresidentSection")} accent="text-amber-700 bg-amber-50/60">
                   <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
-                    <Field label="Nombre" hint="Presidente / CEO de la compañía">
+                    <Field label={t("pcoPresidentName")} hint={t("pcoPresidentHint")}>
                       {isEditing ? (
                         <Input
                           value={formData.President_Name ?? ""}
                           onChange={(e) => handleFieldChange("President_Name", e.target.value)}
-                          placeholder="ej. John Smith"
+                          placeholder={t("pcoPresidentNamePlaceholder")}
                           className={`${inputCls} ${editedFields.has("President_Name") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
                         />
                       ) : (
-                        <FieldValue value={parentMgmtCo.President_Name} placeholder="Sin nombre" icon={Users} />
+                        <FieldValue value={parentMgmtCo.President_Name} placeholder={t("pcoNoName")} icon={Users} />
                       )}
                     </Field>
 
-                    <Field label="Correo Electrónico">
+                    <Field label={t("pcoPresidentEmail")}>
                       {isEditing ? (
                         <Input
                           type="email"
                           value={formData.President_Email ?? ""}
                           onChange={(e) => handleFieldChange("President_Email", e.target.value)}
-                          placeholder="presidente@ejemplo.com"
+                          placeholder={t("pcoPresidentEmailPlaceholder")}
                           className={`${inputCls} ${editedFields.has("President_Email") ? "border-amber-400 ring-2 ring-amber-200" : ""}`}
                         />
                       ) : (
@@ -855,12 +856,12 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                             {parentMgmtCo.President_Email}
                           </a>
                         ) : (
-                          <FieldValue value={null} placeholder="Sin correo" />
+                          <FieldValue value={null} placeholder={t("pcoNoEmailAddr")} />
                         )
                       )}
                     </Field>
 
-                    <Field label="Teléfono">
+                    <Field label={t("pcoFieldPhone")}>
                       {isEditing ? (
                         <Input
                           type="tel"
@@ -879,7 +880,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                             {parentMgmtCo.President_Phone}
                           </a>
                         ) : (
-                          <FieldValue value={null} placeholder="Sin teléfono" />
+                          <FieldValue value={null} placeholder={t("pcoNoPhone")} />
                         )
                       )}
                     </Field>
@@ -889,7 +890,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                 {/* Associated Communities */}
                 <Section
                   icon={Users}
-                  title="Communities Asociadas"
+                  title={t("pcoCommunitiesSection")}
                   accent="text-blue-700 bg-blue-50/60"
                   badge={
                     <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white">
@@ -902,7 +903,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                       <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Buscar por nombre, ID, dirección…"
+                        placeholder={t("searchCommunities")}
                         value={communitySearch}
                         onChange={(e) => setCommunitySearch(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
@@ -925,9 +926,9 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                   ) : clients.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
                       <Search className="h-6 w-6 text-slate-300" />
-                      <p className="text-sm font-medium text-slate-500">Sin resultados para "{communitySearch}"</p>
+                      <p className="text-sm font-medium text-slate-500">{t("pcoNoSearchResults", { q: communitySearch })}</p>
                       <button onClick={() => setCommunitySearch("")} className="text-xs text-emerald-600 hover:underline">
-                        Limpiar búsqueda
+                        {t("clearSearch")}
                       </button>
                     </div>
                   ) : (
@@ -946,7 +947,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                 {/* Quick summary */}
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5 sm:py-3.5">
-                    <h3 className="text-sm font-semibold text-slate-700">Resumen rápido</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">{t("pcoSummaryTitle")}</h3>
                   </div>
                   <div className="divide-y divide-slate-50 px-4 sm:px-5">
                     {([
@@ -959,7 +960,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                         ),
                       },
                       parentMgmtCo.Company_abbrev ? {
-                        label: "Abreviatura",
+                        label: t("pcoFieldAbbrev"),
                         value: (
                           <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-800">
                             {parentMgmtCo.Company_abbrev}
@@ -967,7 +968,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                         ),
                       } : null,
                       parentMgmtCo.State ? {
-                        label: "Estado",
+                        label: t("pcoFieldState"),
                         value: (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                             {parentMgmtCo.State}
@@ -994,7 +995,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                       <div className="flex items-center justify-between gap-3 py-2.5">
                         <span className="flex items-center gap-1.5 text-xs text-slate-500">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                          Active since
+                          {t("pcoActiveSince")}
                         </span>
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-300" />
                       </div>
@@ -1005,7 +1006,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                         <div className="flex items-center justify-between gap-3 py-2.5">
                           <span className="flex items-center gap-1.5 text-xs text-slate-500">
                             <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                            Active since
+                            {t("pcoActiveSince")}
                           </span>
                           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
                             {dateFmt}
@@ -1030,9 +1031,9 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
                         <div className="flex items-center gap-2">
                           <Briefcase className="h-4 w-4 text-slate-400" />
-                          <h3 className="text-sm font-semibold text-slate-700">Oldest job</h3>
+                          <h3 className="text-sm font-semibold text-slate-700">{t("pcoOldestJob")}</h3>
                         </div>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Reference</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t("pcoReference")}</span>
                       </div>
 
                       <div className="space-y-3 p-4 sm:p-5">
@@ -1089,7 +1090,7 @@ export default function ParentMgmtCoDetailsPage({ params }: ParentMgmtCoDetailsP
                           onClick={() => router.push(`/jobs/${oldestJob.ID_Jobs}`)}
                           className="group flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition-all hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
                         >
-                          View job
+                          {t("pcoViewJob")}
                           <ExternalLink className="h-3.5 w-3.5 text-slate-400 transition-colors group-hover:text-violet-500" />
                         </button>
                       </div>
