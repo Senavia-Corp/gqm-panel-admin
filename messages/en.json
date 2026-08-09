@@ -1843,7 +1843,11 @@
     "pricingMulUnlinkError": "Failed to unlink multiplier",
     "pricingMulDeletedTitle": "Multiplier deleted",
     "pricingMulDeletedDesc": "The multiplier range has been removed from the system.",
-    "pricingMulDeleteError": "Failed to delete multiplier"
+    "pricingMulDeleteError": "Failed to delete multiplier",
+    "deleteConflictTitle": "This job has linked records",
+    "deleteConflictHint": "Deleting it in cascade will also remove its orders, change orders and financial documents.",
+    "deleteConflictNoPerm": "You need the job:force_delete permission (Full Admin) to delete it in cascade.",
+    "deleteForceButton": "Delete in cascade"
   },
   "jobMembers": {
     "tabTitle": "Members",

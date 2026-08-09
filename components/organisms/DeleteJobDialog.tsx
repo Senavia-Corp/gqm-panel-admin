@@ -15,11 +15,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Trash2, AlertTriangle } from "lucide-react"
+import { usePermissions } from "@/hooks/usePermissions"
+import { DeleteJobConflictError } from "@/lib/services/jobs-service"
 
 interface DeleteJobDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (opts: { syncPodio: boolean; year?: number }) => Promise<void> | void
+  onConfirm: (opts: { syncPodio: boolean; year?: number; force?: boolean }) => Promise<void> | void
   jobId: string
 
   // ✅ nuevos
@@ -40,6 +42,10 @@ export function DeleteJobDialog({
 
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+  // 409 del API: el job tiene hijos → modo cascada (force)
+  const [conflictDetail, setConflictDetail] = useState<string | null>(null)
+  const { hasPermission } = usePermissions()
+  const canForce = hasPermission("job:force_delete")
 
   const [syncPodio, setSyncPodio] = useState<boolean>(defaultSyncPodio)
   const [year, setYear] = useState<string>(suggestedYear ? String(suggestedYear) : "")
@@ -48,6 +54,7 @@ export function DeleteJobDialog({
     if (!open) return
     setConfirmText("")
     setIsDeleting(false)
+    setConflictDetail(null)
     setSyncPodio(defaultSyncPodio)
     setYear(suggestedYear ? String(suggestedYear) : "")
   }, [open, defaultSyncPodio, suggestedYear])
@@ -61,13 +68,18 @@ export function DeleteJobDialog({
 
   const canDelete = confirmText.toLowerCase() === "delete" && !isDeleting && yearIsValid
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (force = false) => {
     if (!canDelete) return
 
     setIsDeleting(true)
     try {
-      await onConfirm({ syncPodio, year: syncPodio ? yearNum : undefined })
+      await onConfirm({ syncPodio, year: syncPodio ? yearNum : undefined, force })
       onOpenChange(false)
+    } catch (err) {
+      if (err instanceof DeleteJobConflictError) {
+        setConflictDetail(err.detail)  // el diálogo queda abierto en modo cascada
+      }
+      // otros errores: la página ya mostró su toast; el diálogo queda abierto
     } finally {
       setIsDeleting(false)
     }
@@ -93,6 +105,17 @@ export function DeleteJobDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {conflictDetail && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-800">
+                {t("deleteConflictTitle")}
+              </p>
+              <p className="mt-1 font-mono text-xs text-amber-700">{conflictDetail}</p>
+              <p className="mt-2 text-xs text-amber-700">
+                {canForce ? t("deleteConflictHint") : t("deleteConflictNoPerm")}
+              </p>
+            </div>
+          )}
           <div className="rounded-lg bg-red-50 p-4">
             <p className="text-sm font-medium text-red-800">⚠️ {t("deleteWarningTitle")}</p>
             <p className="mt-2 text-sm text-red-700">
@@ -153,10 +176,19 @@ export function DeleteJobDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDeleting}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={handleConfirm} disabled={!canDelete} className="bg-red-600 hover:bg-red-700">
-            <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? t("deletingButton") : t("deletePermButton")}
-          </Button>
+          {conflictDetail && canForce ? (
+            <Button onClick={() => handleConfirm(true)} disabled={!canDelete}
+              className="bg-red-600 hover:bg-red-700">
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isDeleting ? t("deletingButton") : t("deleteForceButton")}
+            </Button>
+          ) : (
+            <Button onClick={() => handleConfirm(false)} disabled={!canDelete || !!conflictDetail}
+              className="bg-red-600 hover:bg-red-700">
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isDeleting ? t("deletingButton") : t("deletePermButton")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

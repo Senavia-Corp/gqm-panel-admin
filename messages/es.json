@@ -1843,7 +1843,11 @@
     "pricingMulUnlinkError": "Error al desvincular el multiplicador",
     "pricingMulDeletedTitle": "Multiplicador eliminado",
     "pricingMulDeletedDesc": "El rango de multiplicador ha sido eliminado del sistema.",
-    "pricingMulDeleteError": "Error al eliminar el multiplicador"
+    "pricingMulDeleteError": "Error al eliminar el multiplicador",
+    "deleteConflictTitle": "Este job tiene registros vinculados",
+    "deleteConflictHint": "Eliminarlo en cascada borrará también sus orders, change orders y documentos financieros.",
+    "deleteConflictNoPerm": "Necesitas el permiso job:force_delete (Full Admin) para eliminarlo en cascada.",
+    "deleteForceButton": "Eliminar en cascada"
   },
   "jobMembers": {
     "tabTitle": "Miembros",

@@ -160,7 +160,18 @@ type CreateJobOptions = { sync_podio?: boolean; year?: number }
 // Derive it from the Job ID first numeric digit: QID5xxx→2025, PTL6xxx→2026.
 type UpdateJobOptions = { sync_podio?: boolean; year?: number }
 
-type DeleteJobOptions = { sync_podio?: boolean; year?: number }
+type DeleteJobOptions = { sync_podio?: boolean; year?: number; force?: boolean }
+
+/** 409 del API: el job tiene orders/COs/findocs vinculados — reintentar con
+ * force=true (requiere job:force_delete). `detail` trae los conteos. */
+export class DeleteJobConflictError extends Error {
+  detail: string
+  constructor(detail: string) {
+    super(detail)
+    this.name = "DeleteJobConflictError"
+    this.detail = detail
+  }
+}
 
 export async function createJob(
   payload: Partial<JobDTO> & { Job_type: JobType },
@@ -225,6 +236,7 @@ export async function deleteJob(
   const qs = new URLSearchParams()
   qs.set("sync_podio", sync ? "true" : "false")
   if (sync && opts?.year) qs.set("year", String(opts.year))
+  if (opts?.force) qs.set("force", "true")
 
   const response = await apiFetch(
     `${JOBS_API_URL}/${encodeURIComponent(idJob)}?${qs.toString()}`,
@@ -233,6 +245,11 @@ export async function deleteJob(
 
   if (!response.ok) {
     const err = await response.text().catch(() => "")
+    if (response.status === 409) {
+      let detail = err
+      try { detail = JSON.parse(err)?.detail ?? err } catch {}
+      throw new DeleteJobConflictError(detail)
+    }
     throw new Error(`deleteJob failed (${response.status}): ${err}`)
   }
   const text = await response.text().catch(() => "")

@@ -8,7 +8,7 @@ import { TopBar } from "@/components/organisms/TopBar"
 import { JobFilters } from "@/components/organisms/JobFilters"
 import { JobsTable } from "@/components/organisms/JobsTable"
 import { DeleteJobDialog } from "@/components/organisms/DeleteJobDialog"
-import { fetchJobs, deleteJob } from "@/lib/services/jobs-service"
+import { fetchJobs, deleteJob, DeleteJobConflictError } from "@/lib/services/jobs-service"
 import type { JobDTO, JobStatus, JobType } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -164,20 +164,23 @@ export default function JobsPage() {
   const handleDelete = (job: JobDTO) =>
     setDeleteDialog({ open: true, job, suggestedYear: extractPodioYearFromJob(job) })
 
-  const handleDeleteConfirm = async (opts: { syncPodio: boolean; year?: number }) => {
+  const handleDeleteConfirm = async (opts: { syncPodio: boolean; year?: number; force?: boolean }) => {
     const job = deleteDialog.job
     if (!job?.ID_Jobs) {
       toast({ title: "Error", description: t("missingId"), variant: "destructive" })
       return
     }
     try {
-      await deleteJob(job.ID_Jobs, { sync_podio: opts.syncPodio, year: opts.year })
+      await deleteJob(job.ID_Jobs, { sync_podio: opts.syncPodio, year: opts.year, force: opts.force })
       toast({ title: "Success", description: `${t("deletedSuccess").replace("{id}", job.ID_Jobs)}` })
       queryClient.invalidateQueries({ queryKey: ["jobs_list"] })
       setDeleteDialog({ open: false, job: null, suggestedYear: null })
     } catch (err) {
+      // 409 (registros vinculados): el diálogo lo maneja mostrando el modo cascada
+      if (err instanceof DeleteJobConflictError) throw err
       console.error("[jobs] Error deleting job:", err)
       toast({ title: "Error", description: t("deletedError"), variant: "destructive" })
+      throw err  // el diálogo queda abierto en vez de cerrarse con el job sin borrar
     }
   }
 
