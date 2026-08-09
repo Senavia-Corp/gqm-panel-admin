@@ -19,9 +19,9 @@ function jsonError(message: string, status = 500) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { job_id: string } }
+  { params }: { params: Promise<{ job_id: string }> }
 ) {
-  const { job_id }    = params
+  const { job_id }    = await params
   const { searchParams } = request.nextUrl
   const techId        = searchParams.get("tech_id") ?? "ALL"
 
