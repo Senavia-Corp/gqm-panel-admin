@@ -46,8 +46,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // suppressHydrationWarning: extensiones del navegador (LanguageTool añade
+  // data-lt-installed) mutan <html> antes de hidratar y React lo reporta
+  // como mismatch; solo silencia atributos de ESTE nodo, no de los hijos.
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
         <ReactQueryProvider>
           <LocaleProvider>
