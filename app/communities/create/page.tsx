@@ -434,9 +434,23 @@ export default function CreateCommunityPage() {
               <div className="flex flex-shrink-0 items-center gap-2">
                 {/* Podio toggle */}
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-emerald-200 hover:text-emerald-700 sm:gap-2.5 sm:px-3">
+                    {/* role/aria-checked/tabIndex: era un <div onClick> puro,
+                        invisible para lector de pantalla y no alcanzable por
+                        teclado. Su estado (useState(true)) ya era correcto; lo
+                        que faltaba era exponerlo. */}
                     <div
+                      role="switch"
+                      aria-checked={syncPodio}
+                      aria-label={t("syncPodio")}
+                      tabIndex={0}
                       className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                       onClick={() => setSyncPodio((v) => !v)}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault()
+                          setSyncPodio((v) => !v)
+                        }
+                      }}
                     >
                       <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${syncPodio ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </div>
