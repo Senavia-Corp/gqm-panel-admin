@@ -2840,7 +2840,8 @@
       "certificate:create": "Upload and register new certificates.",
       "certificate:update": "Edit certificate details and renewals.",
       "certificate:delete": "Remove certificates from the system."
-    }
+    },
+    "fullAccessExceptLabel": "Full access except:"
   },
   "specialties": {
     "spec_Doors": "Doors",

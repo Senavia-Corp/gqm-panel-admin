@@ -21,36 +21,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { PolicySummary } from "@/components/organisms/roles-permissions/PolicySummary"
 
 const ITEMS_PER_PAGE = 10
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-function PolicySummary({ document }: { document?: IAMDocument }) {
-  const t = useTranslations("roles_permissions")
-  if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
-
-  const allActions = document.Statement.flatMap(s => s.Action)
-  if (allActions.includes("*")) {
-    return <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">{t("fullAccessLabel")}</span>
-  }
-
-  const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
-  
-  return (
-    <div className="flex flex-wrap gap-1">
-      {modules.map(m => {
-        const isFullModule = allActions.includes(`${m}:*`)
-        return (
-          <span key={m} className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold lowercase ${
-            isFullModule ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"
-          }`}>
-            {m}{isFullModule ? ":*" : ""}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
 
 function ActivePill({ active }: { active?: boolean | null }) {
   const t = useTranslations("roles_permissions")

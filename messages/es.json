@@ -2840,7 +2840,8 @@
       "certificate:create": "Subir y registrar nuevos certificados.",
       "certificate:update": "Editar detalles de certificados y renovaciones.",
       "certificate:delete": "Eliminar certificados del sistema."
-    }
+    },
+    "fullAccessExceptLabel": "Acceso total excepto:"
   },
   "specialties": {
     "spec_Doors": "Puertas",

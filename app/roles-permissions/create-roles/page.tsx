@@ -12,6 +12,7 @@ import { Search, Plus, X, ArrowLeft, Users, Shield, CheckCircle2, AlertCircle, C
 import type { Permission, IAMDocument, IAMStatement } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { PolicySummary } from "@/components/organisms/roles-permissions/PolicySummary"
 
 type PermissionLite = {
   ID_Permission: string
@@ -77,22 +78,6 @@ type PermissionListResponse =
 const ITEMS_PER_PAGE = 20
 const asString = (v: unknown) => (v == null ? "" : String(v))
 
-function PolicySummary({ document }: { document?: IAMDocument | null }) {
-  const t = useTranslations("roles_permissions")
-  if (!document || !document.Statement || document.Statement.length === 0) return <span className="text-slate-400">—</span>
-  const allActions = document.Statement.flatMap(s => s.Action)
-  if (allActions.includes("*")) return <span className="text-[10px] font-bold text-emerald-600">{t("roles.btnFullAccess")}</span>
-  const modules = Array.from(new Set(allActions.map(a => a.split(":")[0]).filter(Boolean)))
-  return (
-    <div className="flex flex-wrap gap-1">
-      {modules.map(m => (
-        <span key={m} className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 lowercase border border-slate-200">
-          {m}
-        </span>
-      ))}
-    </div>
-  )
-}
 
 export default function CreateRolePage() {
   const router = useRouter()
