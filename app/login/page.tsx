@@ -50,7 +50,17 @@ export default function LoginPage() {
         localStorage.setItem("user_policies", JSON.stringify(data.user_data.policies))
       }
 
-      let role = "GQM_MEMBER"
+      // El rol real viene del backend (data.role = slug del modelo de 4
+      // roles, el mismo de la cookie gqm_role). Antes se fijaba GQM_MEMBER
+      // para todo member, así que un Full Admin veía «GQM_MEMBER» en el
+      // header y la etiqueta no se corregía nunca (TopBar la cachea 5 min).
+      const ROLE_LABEL: Record<string, string> = {
+        full_admin:    "FULL_ADMIN",
+        gqm_member:    "GQM_MEMBER",
+        technical:     "LEAD_TECHNICIAN",
+        subcontractor: "SUBCONTRACTOR",
+      }
+      let role = ROLE_LABEL[data.role as string] ?? "GQM_MEMBER"
       if (data.user_type === "technician") role = "LEAD_TECHNICIAN"
       if (data.user_type === "subcontractor") role = "SUBCONTRACTOR"
 
