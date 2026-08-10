@@ -201,6 +201,7 @@ export function Sidebar() {
   const [userId, setUserId] = useState<string | null>(null)
   const pathname = usePathname()
   const { isOpen, setIsOpen } = useSidebar()
+  const t = useTranslations("navigation")
 
   useEffect(() => {
     const userData = localStorage.getItem("user_data")
@@ -267,6 +268,8 @@ export function Sidebar() {
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
+          aria-expanded={!collapsed}
           className="absolute -right-3 top-20 z-10 h-6 w-6 rounded-full border bg-white shadow-md"
         >
           {collapsed ? (

@@ -13,7 +13,6 @@ import type { JobDTO, JobStatus, JobType } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layers, ClipboardList, Wrench, Briefcase, RefreshCw } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useJobFilters } from "@/hooks/useJobFilters"
@@ -208,27 +207,42 @@ export default function JobsPage() {
           <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-bold sm:text-3xl">{t("title")}</h1>
 
+            {/* Filtro de tipo de job.
+                Antes era Radix Tabs, pero SIN TabsContent: cada TabsTrigger
+                emitia aria-controls="radix-…-content-{ALL,QID,PTL,PAR}"
+                apuntando a ids que no existen (axe: aria-valid-attr-value,
+                critico). Y no es un tabbed interface — es un filtro que cambia
+                una lista que vive fuera de este subarbol. El patron accesible
+                para eso son botones de alternancia con aria-pressed, no tabs.
+                Mismas clases: el aspecto no cambia. */}
             <div className="flex justify-start sm:flex-1 sm:justify-center">
-              <Tabs value={filters.tab} onValueChange={(v) => handlers.setTab(v as any)}>
-                <TabsList className="h-9 rounded-xl border bg-white p-1 shadow-sm sm:h-10">
-                  {(["ALL", "QID", "PTL", "PAR"] as JobsTab[]).map((tab) => {
-                    const Icon = { ALL: Layers, QID: ClipboardList, PTL: Wrench, PAR: Briefcase }[tab]
-                    return (
-                      <TabsTrigger
-                        key={tab}
-                        value={tab}
-                        className="h-7 rounded-lg px-2.5 text-xs font-semibold data-[state=active]:bg-gqm-green-dark data-[state=active]:text-white sm:h-8 sm:px-6 sm:text-sm"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">{tab === "ALL" ? t("tabAll") : tab}</span>
-                          <span className="sm:hidden text-[11px] font-bold">{tab === "ALL" ? t("tabAll") : tab}</span>
-                        </span>
-                      </TabsTrigger>
-                    )
-                  })}
-                </TabsList>
-              </Tabs>
+              <div
+                role="group"
+                aria-label={t("title")}
+                className="flex h-9 items-center gap-0 rounded-xl border bg-white p-1 shadow-sm sm:h-10"
+              >
+                {(["ALL", "QID", "PTL", "PAR"] as JobsTab[]).map((tab) => {
+                  const Icon = { ALL: Layers, QID: ClipboardList, PTL: Wrench, PAR: Briefcase }[tab]
+                  const active = filters.tab === tab
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => handlers.setTab(tab)}
+                      className={`inline-flex h-7 items-center justify-center whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold transition-all sm:h-8 sm:px-6 sm:text-sm ${
+                        active ? "bg-gqm-green-dark text-white" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">{tab === "ALL" ? t("tabAll") : tab}</span>
+                        <span className="sm:hidden text-[11px] font-bold">{tab === "ALL" ? t("tabAll") : tab}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="hidden sm:flex items-center gap-3">

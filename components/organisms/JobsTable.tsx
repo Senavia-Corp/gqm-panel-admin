@@ -303,9 +303,15 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     <div className="flex justify-end gap-2">
                       {(userRole === "LEAD_TECHNICIAN" || hasPermission("job:update") || hasPermission("job:read") || hasPermission("job:read_basics")) && (
                         <Link href={`/jobs/${job.ID_Jobs}`}>
+                          {/* aria-label: solo hay un icono dentro, asi que sin
+                              etiqueta ni el boton ni el <a> que lo envuelve
+                              tienen nombre accesible (button-name + link-name).
+                              Lleva el ID del job para que 10 filas no suenen
+                              todas igual en un lector de pantalla. */}
                           <Button
                             size="icon"
                             variant="ghost"
+                            aria-label={`${hasPermission("job:update") ? tCommon("edit") : tCommon("view")} ${job.ID_Jobs ?? ""}`}
                             className={`h-8 w-8 ${hasPermission("job:update") ? "bg-gqm-yellow text-gqm-green-dark hover:bg-gqm-yellow/80" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                             onClick={() => onEdit?.(job.ID_Jobs ?? "")}
                           >
@@ -321,6 +327,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                           className="h-8 w-8 bg-red-500 text-white hover:bg-red-600"
                           onClick={() => onDelete?.(job)}
                           title={t("deleteJobTitle")}
+                          aria-label={`${t("deleteJobTitle")} ${job.ID_Jobs ?? ""}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -176,7 +176,10 @@ export function AdvancedJobFilters({
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
               <Select value={year} onValueChange={onYearChange}>
-                <SelectTrigger className="h-9 w-[120px] border-none bg-transparent focus:ring-0 shadow-none font-semibold text-slate-700 sm:h-10 sm:w-[140px]">
+                <SelectTrigger
+                  aria-label={t("selectYear")}
+                  className="h-9 w-[120px] border-none bg-transparent focus:ring-0 shadow-none font-semibold text-slate-700 sm:h-10 sm:w-[140px]"
+                >
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-slate-400" />
                     <SelectValue placeholder={t("allYears")} />
@@ -389,7 +392,14 @@ function FilterSelect({ label, icon, value, onValueChange, disabled, placeholder
         <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">{label}</label>
       </div>
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/30 group-focus-within:bg-white transition-all shadow-none hover:bg-slate-50">
+        {/* aria-label es OBLIGATORIO aqui: role="combobox" NO toma su nombre
+            del contenido (a diferencia de role="button"), asi que el texto
+            visible del valor no cuenta como nombre accesible. Y el <label> de
+            arriba es decorativo — no esta asociado con htmlFor/id. */}
+        <SelectTrigger
+          aria-label={label}
+          className="h-10 rounded-xl border-slate-200 bg-slate-50/30 group-focus-within:bg-white transition-all shadow-none hover:bg-slate-50"
+        >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[300px]">

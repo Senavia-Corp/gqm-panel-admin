@@ -428,6 +428,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const t = useTranslations("clients")
+  const tCommon = useTranslations("common")
   const [search, setSearch]             = useState("")
   const [page, setPage]                 = useState(1)
   const [deleteTarget, setDeleteTarget] = useState<ParentMgmtCo | null>(null)
@@ -644,13 +645,17 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                   </td>
                   <td className="py-3.5 pl-3 pr-5 text-right">
                     <div className="flex justify-end gap-1.5">
+                      {/* aria-label: solo hay un icono dentro; sin etiqueta el
+                          boton no tiene nombre accesible (axe button-name). */}
                       <Button variant="ghost" size="icon"
+                        aria-label={`${tCommon("view")} ${row.ID_Community_Tracking ?? ""}`}
                         className="h-8 w-8 rounded-lg bg-amber-500 text-white shadow-sm hover:bg-amber-600"
                         onClick={() => router.push(`/clients/${row.ID_Community_Tracking}`)}>
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
                       {hasPermission("parent_mgmt_co:delete") && (
                         <Button variant="ghost" size="icon"
+                          aria-label={`${tCommon("delete")} ${row.ID_Community_Tracking ?? ""}`}
                           className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
                           onClick={() => setDeleteTarget(row)}>
                           <Trash2 className="h-3.5 w-3.5" />
@@ -694,6 +699,7 @@ function CompaniesTab({ router }: { router: ReturnType<typeof useRouter> }) {
 
 function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
   const t = useTranslations("clients")
+  const tCommon = useTranslations("common")
   const PER_PAGE = 20
   const [page, setPage]                 = useState(1)
   const [search, setSearch]             = useState("")
@@ -911,11 +917,13 @@ function CommunitiesTab({ router }: { router: ReturnType<typeof useRouter> }) {
                     <td className="py-3.5 pl-3 pr-5 text-right">
                       <div className="flex justify-end gap-1.5">
                         <Button variant="ghost" size="icon"
+                          aria-label={`${tCommon("view")} ${row.ID_Client ?? ""}`}
                           className="h-8 w-8 rounded-lg bg-amber-500 text-white shadow-sm hover:bg-amber-600"
                           onClick={() => router.push(`/communities/${row.ID_Client}`)}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon"
+                          aria-label={`${tCommon("delete")} ${row.ID_Client ?? ""}`}
                           className="h-8 w-8 rounded-lg bg-slate-800 text-white shadow-sm transition-colors hover:bg-red-600"
                           onClick={() => setDeleteTarget(row)}>
                           <Trash2 className="h-3.5 w-3.5" />

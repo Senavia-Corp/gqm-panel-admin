@@ -101,7 +101,9 @@
     "logout": "Log out",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "menu": "Menu"
+    "menu": "Menu",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "clients": {
     "title": "Client Management",

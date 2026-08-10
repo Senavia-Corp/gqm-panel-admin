@@ -101,7 +101,9 @@
     "logout": "Cerrar sesión",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
-    "menu": "Menú"
+    "menu": "Menú",
+    "collapseSidebar": "Contraer barra lateral",
+    "expandSidebar": "Expandir barra lateral"
   },
   "clients": {
     "title": "Gestión de Clientes",
