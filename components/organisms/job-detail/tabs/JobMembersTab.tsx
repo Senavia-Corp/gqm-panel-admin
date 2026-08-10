@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Mail, Phone, MapPin, Trash2, Link2, Users, UserCheck, Building2 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import type { UserRole } from "@/lib/types"
+import { esPersonalInterno } from "@/lib/types"
 
 type Props = {
   role: UserRole
@@ -122,7 +123,7 @@ function MemberCard({
           </div>
 
           {/* Unlink button */}
-          {role === "GQM_MEMBER" && (
+          {esPersonalInterno(role) && (
             <button
               onClick={onUnlink}
               className="shrink-0 rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-400 transition-all hover:bg-red-100 hover:text-red-600"
@@ -207,7 +208,9 @@ export function JobMembersTab({ role, job, onOpenLinkMember, onRequestUnlinkMemb
   const t = useTranslations("jobMembers")
   const members = Array.isArray(job?.members) ? job.members : []
   const rows = expandMembers(members)
-  const canManage = role === "GQM_MEMBER"
+  // Antes era `role === "GQM_MEMBER"`: dejaba a FULL_ADMIN sin gestionar
+  // miembros en el detalle del job.
+  const canManage = esPersonalInterno(role)
 
   return (
     <div className="space-y-5">

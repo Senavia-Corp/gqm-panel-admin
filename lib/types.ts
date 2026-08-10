@@ -519,7 +519,13 @@ export interface UpdateClientRequest {
   Services_interested_in?: ServicesInterestedIn
 }
 
-export type UserRole = "GQM_MEMBER" | "LEAD_TECHNICIAN" | "SUBCONTRACTOR"
+// FULL_ADMIN faltaba: el tipo venia del modelo antiguo de 3 roles, de antes
+// del de 4 de la Fase 1. Por eso ningun gate lo contemplaba.
+export type UserRole = "FULL_ADMIN" | "GQM_MEMBER" | "LEAD_TECHNICIAN" | "SUBCONTRACTOR"
+
+/** Personal interno de GQM (admin u operativo), frente a los roles de portal. */
+export const esPersonalInterno = (role?: string | null): boolean =>
+  role === "FULL_ADMIN" || role === "GQM_MEMBER"
 
 export interface User {
   id: string

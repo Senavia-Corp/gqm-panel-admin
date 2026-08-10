@@ -10,6 +10,7 @@ import { JobsTable } from "@/components/organisms/JobsTable"
 import { DeleteJobDialog } from "@/components/organisms/DeleteJobDialog"
 import { fetchJobs, deleteJob, DeleteJobConflictError } from "@/lib/services/jobs-service"
 import type { JobDTO, JobStatus, JobType } from "@/lib/types"
+import { esPersonalInterno } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -298,12 +299,20 @@ export default function JobsPage() {
                 onResetFilters={handlers.resetFilters}
                 isTechnician={isTechnician}
 
+                // El gate era `user?.role === "GQM_MEMBER"`, asi que un FULL_ADMIN
+                // NO veia el boton de crear. Regresion de e335903: ese commit
+                // arreglo (bien) la etiqueta del header —antes todo member salia
+                // como GQM_MEMBER— y al pasar full_admin a "FULL_ADMIN" dejo
+                // fuera a los gates que comparaban con el literal viejo.
+                // La autoridad es la politica, no la etiqueta: hasPermission ya
+                // da exactamente los cuatro roles bien (admin y member tienen
+                // job:create; subcontratista y tecnico no).
                 onAddNew={
-                  user?.role === "GQM_MEMBER" && hasPermission("job:create")
+                  hasPermission("job:create")
                     ? () => router.push("/jobs/create")
                     : undefined
                 }
-                onExportClick={user?.role === "GQM_MEMBER" ? () => setIsExportOpen(true) : undefined}
+                onExportClick={esPersonalInterno(user?.role) ? () => setIsExportOpen(true) : undefined}
               />
 
               {displayedJobs.length === 0 ? (
@@ -328,7 +337,7 @@ export default function JobsPage() {
                           <Button variant="outline" onClick={() => window.location.reload()}>{t("reloadPage")}</Button>
                         </>
                       ) : (
-                        user?.role === "GQM_MEMBER" && hasPermission("job:create") && totalJobs === 0 && (
+                        hasPermission("job:create") && totalJobs === 0 && (
                           <>
                             <Button onClick={() => router.push("/jobs/create")} className="bg-gqm-green hover:bg-gqm-green-dark">
                               {t("createFirstJob")}

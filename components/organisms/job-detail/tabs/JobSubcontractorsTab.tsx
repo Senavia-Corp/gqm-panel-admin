@@ -9,6 +9,7 @@ import type { Subcontractor } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
 import { useQuery } from "@tanstack/react-query"
 import { JobOpportunitiesSection } from "./JobOpportunitiesSection"
+import { esPersonalInterno } from "@/lib/types"
 
 type Props = {
   role: string
@@ -76,7 +77,9 @@ export function JobSubcontractorsTab({
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
   })
 
-  if (role !== "GQM_MEMBER" && role !== "LEAD_TECHNICIAN" && role !== "SUBCONTRACTOR") return null
+  // FULL_ADMIN no estaba en la lista, asi que a un Full Admin esta pestaña le
+  // salia COMPLETAMENTE EN BLANCO (verificado en el desplegado).
+  if (!esPersonalInterno(role) && role !== "LEAD_TECHNICIAN" && role !== "SUBCONTRACTOR") return null
   if (!job) return null
   if (loadingSubId) return <div className="p-8 text-center text-slate-400">Loading subcontractor information...</div>
 
