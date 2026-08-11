@@ -149,6 +149,8 @@ export interface JobDTO {
   id?: string  // alias legacy (REG-103)
   ID_Jobs: string | null
   podio_item_id: string | null
+  /** A qué app-año de Podio pertenece el item. Lo persiste el API; no se adivina. */
+  podio_app_year?: number | null
   ID_Client?: string | null
 
   // Core fields

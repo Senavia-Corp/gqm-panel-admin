@@ -30,17 +30,24 @@ type YearFilter = "ALL" | "2026" | "2025" | "2024" | "2023"
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// A qué app-año de Podio pertenece el job. Alimenta el `?year=` con el que el
+// API borra el item en Podio, así que equivocarse aquí borra en la app del año
+// equivocado.
+//
+// Antes se adivinaba desde las fechas: mal en 88 jobs de producción, y `null`
+// en los 510 PTL, que tienen `Date_assigned` NULL al 100 %. Ahora sale del
+// campo que el API persiste, con el mismo fallback canónico que usa el backend
+// (`src/utils/job_app_year.py`): primer dígito **después** del prefijo de 3
+// letras, que es lo único que cubre tanto `QID50001` como `QID-I60001`.
 function extractPodioYearFromJob(job: any): number | null {
-  const jobType = String(job?.Job_type ?? job?.job_type ?? "").toUpperCase()
-  const raw = jobType === "PTL"
-    ? job?.Estimated_start_date
-    : job?.Date_assigned ?? job?.Estimated_start_date
-  if (!raw) return null
-  const s = String(raw)
-  const m = s.match(/\b(\d{4})\b/)
-  if (m) { const y = Number(m[1]); if (Number.isFinite(y)) return y }
-  const d = new Date(s)
-  return Number.isNaN(d.getTime()) ? null : d.getUTCFullYear()
+  const persistido = job?.podio_app_year
+  if (typeof persistido === "number" && Number.isFinite(persistido)) return persistido
+
+  const idJobs = String(job?.ID_Jobs ?? job?.idJobs ?? "").trim()
+  const digito = idJobs.slice(3).match(/[0-9]/)?.[0]
+  if (digito && digito >= "3" && digito <= "6") return 2020 + Number(digito)
+
+  return null
 }
 
 function sortArchivedLast(list: JobDTO[]) {
@@ -147,6 +154,10 @@ export default function JobsPage() {
     },
     enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 min cache
+    // El QueryClient se crea sin opciones, así que hereda retry: 3 con backoff:
+    // un 500 tardaría ~7 s en pintar el error y se percibiría como que la
+    // pantalla se colgó. Ahora que fetchJobs relanza, un reintento basta.
+    retry: 1,
   })
 
   const displayedJobs = data?.jobs ?? []

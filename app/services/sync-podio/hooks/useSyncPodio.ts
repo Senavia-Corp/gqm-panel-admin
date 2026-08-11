@@ -21,6 +21,18 @@ export const useFailedSyncs = () => {
   })
 }
 
+/** El censo pega a Podio (12 peticiones): no se refresca solo, se pide. */
+export const useParidad = (enabled: boolean) => {
+  return useQuery({
+    queryKey: ["paridadPodio"],
+    queryFn: () => syncPodioService.getParidad(),
+    enabled,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  })
+}
+
 export const useResyncFailedSync = () => {
   const queryClient = useQueryClient()
 

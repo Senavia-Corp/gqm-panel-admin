@@ -109,8 +109,17 @@ export async function fetchJobs(
     }
     return { jobs: data.results ?? [], total: data.total ?? 0 }
   } catch (error) {
+    // Se relanza a propósito. Antes devolvía { jobs: [], total: 0 }, así que un
+    // 500 o una caída de red se veían EXACTAMENTE igual que una base vacía: el
+    // panel pintaba "0 trabajos" y nadie se enteraba. Eso hace imposible
+    // verificar la paridad — el número que el cliente compara contra Podio
+    // podría ser un error de red disfrazado de cero.
+    //
+    // La UI de error ya existe (app/jobs/page.tsx deriva `loadError` y pinta un
+    // estado con botón de reintento); estaba muerta porque nunca le llegaba un
+    // error. Mismo criterio que `fetchClients`, que ya relanzaba.
     console.error("[jobs-service] fetchJobs error:", error)
-    return { jobs: [], total: 0 }
+    throw error
   }
 }
 

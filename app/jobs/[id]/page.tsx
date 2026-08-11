@@ -229,7 +229,11 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [estimateItems, setEstimateItems] = useState<EstimateItem[]>([])
   const [hasSavedEstimates, setHasSavedEstimates] = useState(false)
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
-  const [syncPodio, setSyncPodio] = useState(true)
+  // Por defecto NO se escribe en Podio al guardar. Venía en `true`, así que
+  // durante la ventana de reconciliación cada guardado intentaría una escritura
+  // saliente contra las apps que se están contando. Quien quiera propagar a
+  // Podio lo enciende a mano.
+  const [syncPodio, setSyncPodio] = useState(false)
 
   const { data: estimateQueryData, isFetching: isFetchingEstimates } = useQuery({
     queryKey: ["job_estimate_costs", jobId],

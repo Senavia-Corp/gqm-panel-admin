@@ -11,8 +11,10 @@ import {
 import {
   useFailedSyncs,
   useResyncFailedSync,
-  useDeleteFailedSync
+  useDeleteFailedSync,
+  useParidad
 } from "@/app/services/sync-podio/hooks/useSyncPodio"
+import { ParidadPanel } from "./ParidadPanel"
 
 interface SyncModalProps {
   open: boolean
@@ -24,7 +26,8 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
   const resyncMutation = useResyncFailedSync()
   const deleteMutation = useDeleteFailedSync()
 
-  const [activeTab, setActiveTab] = useState<"unresolved" | "resolved">("unresolved")
+  const [activeTab, setActiveTab] = useState<"unresolved" | "resolved" | "paridad">("unresolved")
+  const paridad = useParidad(open && activeTab === "paridad")
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [errorMap, setErrorMap] = useState<Record<number, string>>({})
 
@@ -132,11 +135,29 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
               </Badge>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("paridad")}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "paridad"
+                ? "border-blue-600 text-blue-600 bg-blue-50/50"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Cloud className="h-4 w-4" />
+            Parity
+          </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-4 bg-slate-50">
-          {isLoading ? (
+          {activeTab === "paridad" ? (
+            <ParidadPanel
+              data={paridad.data}
+              isLoading={paridad.isFetching}
+              error={paridad.error as Error | null}
+              onRefetch={() => paridad.refetch()}
+            />
+          ) : isLoading ? (
             <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-8 w-8 text-slate-300 animate-spin" />
             </div>
