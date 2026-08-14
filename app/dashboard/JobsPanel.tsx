@@ -49,7 +49,8 @@ interface KpiSummary {
   total_final_sold:    number
   total_premium:       number
   avg_final_pct:       number   // 0–1
-  avg_target_ret:      number   // 0–1
+  avg_target_ret:      number | null   // 0–1; null = no había filas que promediar
+  avg_target_ret_n:    number   // tamaño del denominador del promedio
   final_vs_quoted_pct: number
   pct_label:           string
 }
@@ -265,7 +266,10 @@ const fmtK = (v: number) => {
   if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}k`
   return fmt.format(v)
 }
-const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`
+// null/undefined = el backend no tenía filas que promediar. `null * 100` es 0 en
+// JS, así que sin esta guarda un dato ausente se pintaba como un «0.0%» real.
+const fmtPct = (v: number | null | undefined) =>
+  v == null ? "—" : `${(v * 100).toFixed(1)}%`
 const PAGE_SIZE = 50
 
 // ─── Props ───────────────────────────────────────────────────────────────────
