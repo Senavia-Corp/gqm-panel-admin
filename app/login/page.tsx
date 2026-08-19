@@ -69,9 +69,15 @@ export default function LoginPage() {
         // Map member data to existing User format
         userData = {
           id: data.user_data.ID_Member,
-          name: data.user_data.Acc_Rep,
+          // Member_Name es el campo real del modelo. Antes se leía Acc_Rep, que
+          // no existe ni en MemberModel ni en la tabla: quedaba undefined, la
+          // clave desaparecía al serializar y el TopBar caía a «GQM User».
+          name: data.user_data.Member_Name,
           email: data.user_data.Email_Address,
           role: role,
+          // Cargo de empresa, distinto del rol de sesión. Sin él el TopBar
+          // acababa pintando la etiqueta de rol donde va el puesto.
+          companyRole: data.user_data.Company_Role,
           avatar: "/placeholder.svg?height=40&width=40",
           phone: data.user_data.Phone_Number,
           address: data.user_data.Address,

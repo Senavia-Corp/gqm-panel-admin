@@ -237,6 +237,10 @@ export function Sidebar() {
       if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
       if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
       if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
+      // Comisiones no tenía gate alguno: caía en el `return true` de abajo y
+      // la veía todo el mundo. El control real es el Deny de commission:* en
+      // la política del rol; esto solo evita ofrecer un enlace a un 403.
+      if (item.href === "/commissions")         return hasPermission("commission:read")
       if (item.href === "/roles-permissions") {
         // Mismo criterio que FULL_ADMIN_ONLY del middleware (cookie gqm_role):
         // el chequeo viejo usaba el vocabulario fósil iam_pm:read y mostraba

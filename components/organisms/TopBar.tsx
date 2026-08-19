@@ -65,7 +65,9 @@ export function TopBar({ user: _user }: { user?: any } = {}) {
           roleType,
           initialMember: {
             Member_Name:   ud.Name ?? ud.name ?? ud.Member_Name ?? ud.Organization ?? null,
-            Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.role ?? (roleType === "tech" ? "Technician" : roleType === "subc" ? "Subcontractor" : "Member"),
+            // Nunca ud.role: es la etiqueta de sesión («FULL_ADMIN»), no un
+            // cargo. Ponerla aquí es lo que imprimía «GQM_MEMBER» bajo el nombre.
+            Company_Role:  ud.Type_of_technician ?? ud.type_of_technician ?? ud.companyRole ?? ud.Company_Role ?? (roleType === "tech" ? "Technician" : roleType === "subc" ? "Subcontractor" : "Member"),
             Email_Address: ud.Email_Address ?? ud.email ?? null,
           }
         })
@@ -82,12 +84,16 @@ export function TopBar({ user: _user }: { user?: any } = {}) {
       const data = await res.json()
       return {
         Member_Name:   data.Name ?? data.name ?? data.Member_Name ?? data.Organization ?? null,
-        Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? data.role ?? (localData.roleType === "tech" ? "Technician" : localData.roleType === "subc" ? "Subcontractor" : "Member"),
+        Company_Role:  data.Type_of_technician ?? data.type_of_technician ?? data.Company_Role ?? data.Role_in_Company ?? (localData.roleType === "tech" ? "Technician" : localData.roleType === "subc" ? "Subcontractor" : "Member"),
         Email_Address: data.Email_Address ?? data.Email ?? data.email ?? null,
       } as MemberInfo
     },
     enabled: !!localData.id,
     initialData: localData.initialMember || undefined,
+    // Sin esto, initialData nace con dataUpdatedAt = ahora y el staleTime de 5
+    // min impide la primera lectura real: la cabecera se quedaba con lo que
+    // hubiera en localStorage aunque estuviera obsoleto.
+    initialDataUpdatedAt: 0,
     staleTime: 5 * 60 * 1000
   })
 
