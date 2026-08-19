@@ -30,36 +30,52 @@ type Props = {
   /** El `Check Number(s)` de la sección en Podio: es uno por técnico, no por
    *  cuota. Se muestra tal cual y no se edita desde aquí. */
   checkNumbersDePodio?: string | null
-  /** Inyectable para las pruebas. */
-  cargar?: (orderId: string) => Promise<Cuota[]>
+  /** Inyectable para las pruebas. `null` = no se pudo preguntar. */
+  cargar?: (orderId: string) => Promise<Cuota[] | null>
 }
 
 const dinero = (n: number | null | undefined) =>
   `$${Number(n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-async function cargarPorDefecto(orderId: string): Promise<Cuota[]> {
+/** `null` = no se pudo preguntar; `[]` = se preguntó y no hay cuotas. */
+async function cargarPorDefecto(orderId: string): Promise<Cuota[] | null> {
   const r = await fetch(`/api/order/${orderId}/payments`, { credentials: "include" })
-  if (!r.ok) return []
-  const cuerpo = await r.json().catch(() => [])
+  // 404 = la API todavía no expone las cuotas (va en el PR #94). Decirlo, en vez
+  // de pintar «no tiene cuotas», que es una afirmación distinta y falsa.
+  if (!r.ok) return null
+  const cuerpo = await r.json().catch(() => null)
+  if (cuerpo == null) return null
   return Array.isArray(cuerpo) ? cuerpo : (cuerpo?.results ?? [])
 }
 
+type Estado = { fase: "cargando" } | { fase: "sin-api" } | { fase: "listo"; cuotas: Cuota[] }
+
 export function OrderPaymentsSection({ orderId, checkNumbersDePodio, cargar }: Props) {
-  const [cuotas, setCuotas] = useState<Cuota[] | null>(null)
+  const [estado, setEstado] = useState<Estado>({ fase: "cargando" })
 
   useEffect(() => {
     let vivo = true
     ;(cargar ?? cargarPorDefecto)(orderId)
-      .then((c) => vivo && setCuotas(c))
-      .catch(() => vivo && setCuotas([]))
+      .then((c) => vivo && setEstado(c === null ? { fase: "sin-api" } : { fase: "listo", cuotas: c }))
+      .catch(() => vivo && setEstado({ fase: "sin-api" }))
     return () => {
       vivo = false
     }
   }, [orderId, cargar])
 
-  if (cuotas === null) {
+  if (estado.fase === "cargando") {
     return <p className="text-xs text-slate-400">Cargando cuotas…</p>
   }
+
+  if (estado.fase === "sin-api") {
+    return (
+      <p className="text-xs text-slate-400" data-testid="cuotas-sin-api">
+        Las cuotas al técnico todavía no están disponibles en esta versión de la API.
+      </p>
+    )
+  }
+
+  const cuotas = estado.cuotas
 
   const total = cuotas.reduce((s, c) => s + Number(c.Amount ?? 0), 0)
 

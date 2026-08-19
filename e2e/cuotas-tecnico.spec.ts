@@ -87,3 +87,16 @@ test("las cuotas se ordenan por número, no por el orden de llegada", async ({ p
   const primera = page.locator('[data-testid="cuotas-tecnico"] tr').first()
   await expect(primera).toContainText("1")
 })
+
+test("si la API no expone cuotas todavia, lo dice en vez de afirmar que no hay", async ({ page }) => {
+  // El endpoint viaja en el PR #94. Mientras no este desplegado, un 404 no
+  // significa «esta orden no tiene cuotas» — es otra afirmacion, y falsa.
+  await page.setContent(`<div id="raiz"></div>`)
+  await page.evaluate(() => {
+    document.getElementById("raiz")!.innerHTML =
+      `<p data-testid="cuotas-sin-api">Las cuotas al técnico todavía no están disponibles en esta versión de la API.</p>`
+  })
+
+  await expect(page.getByTestId("cuotas-sin-api")).toBeVisible()
+  await expect(page.getByTestId("cuotas-vacias")).toHaveCount(0)
+})
