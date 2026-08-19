@@ -2,6 +2,7 @@
 
 // REG-025: conectado al backend real (antes 100% mock).
 import { useEffect, useState } from "react"
+import { OrderPaymentsSection } from "@/components/organisms/OrderPaymentsSection"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,7 @@ interface ApiOrder {
   Title: string | null
   Formula: number | null
   Adj_formula: number | null
+  Podio_check_numbers?: string | null
   job_podio_id: string | null
   Notes: string | null
   estimate_costs?: ApiEstimateCost[]
@@ -195,6 +197,15 @@ export default function OrderDetailPage({
                 className="bg-gray-50"
               />
             </div>
+          </div>
+
+          {/* Cuotas al tecnico: antes invisibles en el panel pese a estar en
+              la base, y con tope de tres cuando QID admite once. */}
+          <div className="mt-6">
+            <OrderPaymentsSection
+              orderId={order.ID_Order}
+              checkNumbersDePodio={order.Podio_check_numbers}
+            />
           </div>
         </CardContent>
       </Card>
