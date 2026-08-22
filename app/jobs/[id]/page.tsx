@@ -76,30 +76,27 @@ const mockCosts: Cost[] = [
   { id: "3", name: "Concrete Mix", quantity: 20, unitPrice: 12, total: 240, type: "Materials" },
 ]
 
-const mockAvailableMembers = [
-  {
-    id: "5",
-    name: "Jessica Taylor",
-    memberId: "GQM-005",
-    avatar: "/placeholder.svg?height=80&width=80",
-    role: "Coordinator",
-    email: "jessica.taylor@gqm.com",
-    phone: "(555) 567-8901",
-    address: "654 Maple Dr, Bronx, NY",
-    status: "Active",
-  },
-  {
-    id: "6",
-    name: "Robert Martinez",
-    memberId: "GQM-006",
-    avatar: "/placeholder.svg?height=80&width=80",
-    role: "Project Manager",
-    email: "robert.martinez@gqm.com",
-    phone: "(555) 678-9012",
-    address: "987 Cedar Ln, Staten Island, NY",
-    status: "Active",
-  },
-]
+// Los miembros que se pueden anadir a un job vendrian del backend. Mientras no
+// exista ese endpoint la lista arranca VACIA.
+//
+// Antes arrancaba con DOS PERSONAS INVENTADAS —Jessica Taylor (GQM-005) y Robert
+// Martinez (GQM-006), con correos @gqm.com y telefonos (555)— y no habia ningun
+// setAvailableMembers que las sobrescribiera desde una consulta. AddMemberDialog
+// las pinta tal cual (AddMemberDialog.tsx:75, availableMembers.map), asi que
+// cualquiera que abriera «anadir miembro» en CUALQUIER job veia dos empleados
+// que no existen. Seleccionar uno marcaba el job como modificado con un
+// ID_Member invalido.
+type AvailableMember = {
+  id: string
+  name: string
+  memberId: string
+  avatar: string
+  role: string
+  email: string
+  phone: string
+  address: string
+  status: string
+}
 
 const STATUS_OPTIONS_BY_JOB_TYPE: Record<string, string[]> = {
   QID: [
@@ -203,7 +200,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [costs, setCosts] = useState<Cost[]>(mockCosts)
 
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
-  const [availableMembers, setAvailableMembers] = useState(mockAvailableMembers)
+  const [availableMembers, setAvailableMembers] = useState<AvailableMember[]>([])
   const [clients, setClients] = useState<any[]>([])
 
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -511,7 +508,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
   }
 
-  const handleAddMember = (member: (typeof mockAvailableMembers)[0]) => {
+  const handleAddMember = (member: AvailableMember) => {
     if (!job) return
     const members = Array.isArray((job as any).members) ? (job as any).members : []
     jobDetail.setJob({ ...(job as any), members: [...members, member] })
