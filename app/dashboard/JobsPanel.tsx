@@ -183,8 +183,15 @@ interface MemberPipelineItem {
   name:        string
   company_role:string | null
   job_count:   number
-  total_quoted:number
-  jobs:        Array<{ job_id: string; client: string; status: string; date: string; amount: number }>
+  total_quoted:number | null   // null = ninguna de sus cotizaciones tiene monto
+  jobs:        Array<{ job_id: string; client: string; status: string; date: string; amount: number | null }>
+}
+
+interface PipelineMeta {
+  // lista con un tipo concreto, {tipo: estados[]} con ALL
+  statuses:   string[] | Record<string, string[]> | null
+  reason:     string | null
+  unassigned: number
 }
 
 // ─── Sub-Components ─────────────────────────────────────────────────────────
@@ -301,6 +308,8 @@ export default function JobsPanel({
 
   const [pipeline, setPipeline]         = useState<MemberPipelineItem[]>([])
   const [pipelineLoading, setPipelineLoading] = useState(true)
+  const [pipelineError, setPipelineError] = useState(false)
+  const [pipelineMeta, setPipelineMeta]   = useState<PipelineMeta | null>(null)
 
   const [timeView, setTimeView]         = useState<"monthly" | "quarterly">("monthly")
 
@@ -352,21 +361,45 @@ export default function JobsPanel({
     const run = async () => {
       try {
         setPipelineLoading(true)
+        setPipelineError(false)
         const qs = new URLSearchParams({ type: jobTab })
         if (yearTab !== "ALL") qs.set("year", yearTab)
         const res = await apiFetch(`/api/metrics/jobs/member-pipeline?${qs}`)
         if (!res.ok) throw new Error(`status ${res.status}`)
         const d = await res.json()
-        setPipeline(d.members ?? d ?? [])
+        setPipeline(d.members ?? [])
+        setPipelineMeta({
+          statuses:   d.pipeline_statuses ?? null,
+          reason:     d.reason ?? null,
+          unassigned: d.unassigned_count ?? 0,
+        })
       } catch (e) {
         console.error("[JobsPanel] pipeline fetch error:", e)
+        // Un fallo de red no es un pipeline vacio: antes los dos pintaban el
+        // mismo EmptyState y el error se volvia invisible.
         setPipeline([])
+        setPipelineMeta(null)
+        setPipelineError(true)
       } finally {
         setPipelineLoading(false)
       }
     }
     run()
   }, [jobTab, yearTab])
+
+  // El subtitulo dice QUE estados trae la respuesta. El texto fijo prometia
+  // «pendientes/cotizados» y la tabla ensenaba Waiting for Approval y HOLD.
+  const pipelineSubtitle = useMemo(() => {
+    const ps = pipelineMeta?.statuses
+    const lista = !ps
+      ? []
+      : Array.isArray(ps)
+        ? ps
+        : Array.from(new Set(Object.values(ps).flat()))
+    return lista.length > 0
+      ? t("sectionPipelinePerMemberSub", { statuses: lista.join(" · ") })
+      : t("sectionPipelinePerMemberSubNone")
+  }, [pipelineMeta, t])
 
   // ── Derived chart data ────────────────────────────────────────────────────
   const monthlyChartData = useMemo(
@@ -1063,10 +1096,14 @@ export default function JobsPanel({
       {/* ── 7. P/Quote Pipeline per Member ───────────────────────────────── */}
       <SectionCard
         title={t("sectionPipelinePerMember")}
-        subtitle={t("sectionPipelinePerMemberSub")}
+        subtitle={pipelineSubtitle}
       >
         {pipelineLoading ? (
-          <TableSkeleton rows={5} cols={4} />
+          <TableSkeleton rows={5} cols={5} />
+        ) : pipelineError ? (
+          <EmptyState message={t("errorPipelineFailed")} />
+        ) : pipelineMeta?.reason === "no_quote_stage" ? (
+          <EmptyState message={t("pipelineNoQuoteStage")} />
         ) : pipeline.length === 0 ? (
           <EmptyState message={t("errorNoPQuoteJobs")} />
         ) : (
@@ -1083,7 +1120,7 @@ export default function JobsPanel({
                       {m.job_count} {t("colJobs").toLowerCase()}
                     </span>
                     <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 font-semibold">
-                      {fmtK(m.total_quoted)}
+                      {m.total_quoted != null ? fmtK(m.total_quoted) : "—"}
                     </span>
                   </div>
                 </div>
@@ -1101,7 +1138,7 @@ export default function JobsPanel({
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate">{j.client}</span>
-                            <span className="font-semibold tabular-nums shrink-0">{fmtK(j.amount)}</span>
+                            <span className="font-semibold tabular-nums shrink-0">{j.amount != null ? fmtK(j.amount) : "—"}</span>
                           </div>
                           <span className="text-muted-foreground tabular-nums">{j.date}</span>
                         </div>
@@ -1131,7 +1168,7 @@ export default function JobsPanel({
                               <td className="py-1">{j.client}</td>
                               <td className="py-1"><StatusBadge status={j.status} /></td>
                               <td className="py-1 tabular-nums">{j.date}</td>
-                              <td className="py-1 text-right tabular-nums font-semibold">{fmtK(j.amount)}</td>
+                              <td className="py-1 text-right tabular-nums font-semibold">{j.amount != null ? fmtK(j.amount) : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1142,6 +1179,12 @@ export default function JobsPanel({
               </div>
             ))}
           </div>
+        )}
+
+        {!pipelineLoading && !pipelineError && !!pipelineMeta && pipelineMeta.unassigned > 0 && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            {t("pipelineUnassigned", { count: pipelineMeta.unassigned })}
+          </p>
         )}
       </SectionCard>
 
