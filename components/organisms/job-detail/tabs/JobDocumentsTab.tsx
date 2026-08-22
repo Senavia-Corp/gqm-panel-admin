@@ -25,6 +25,21 @@ const FILE_FILTERS = [
   { id: "documents", icon: FileText  },
 ] as const
 
+// Años cuyos adjuntos NO llegan de Podio. Medido en produccion el 21-ago-2026:
+//
+//   2023 · 2.212 jobs →     0 adjuntos   las apps de 2023 no tienen NI UN hook
+//   2024 · 1.719 jobs →     0 adjuntos   tienen hooks, pero sin `file.change`
+//   2025 · 2.130 jobs →    90 adjuntos   4%: los hooks se anadieron tarde
+//   2026 · 1.564 jobs → 2.348 adjuntos   cobertura normal
+//
+// Sin esta lista, el estado vacio afirma «no se ha subido ninguno» para el
+// 51,6% de la cartera — y es FALSO: los ficheros existen en Podio, solo que
+// nunca se sincronizaron. Es el mismo error que la vista de cuotas: confundir
+// «no hay» con «no se pudo preguntar».
+//
+// ACTUALIZAR cuando se registren los hooks que faltan.
+const ANIOS_SIN_SYNC_DE_ADJUNTOS = [2023, 2024, 2025]
+
 const IMAGE_FMTS    = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
 const VIDEO_FMTS    = ["mp4", "mov", "avi", "mkv", "webm"]
 const DOCUMENT_FMTS = ["pdf", "doc", "docx", "xls", "xlsx", "txt"]
@@ -182,6 +197,10 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
                 ? t("docNoFilesYet")
                 : `${allAttachments.length} ${allAttachments.length !== 1 ? t("docFilePlural") : t("docFileSingular")} ${t("docAcrossAllFolders")}`}
             </p>
+            {allAttachments.length === 0 && jobYear !== undefined
+              && ANIOS_SIN_SYNC_DE_ADJUNTOS.includes(jobYear) && (
+              <p className="mt-0.5 text-xs text-amber-600">{t("docYearNotSynced")}</p>
+            )}
           </div>
         </div>
 
