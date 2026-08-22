@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useQuery } from "@tanstack/react-query"
 import type { Task } from "@/lib/types"
+import { usePermissions } from "@/hooks/usePermissions"
 
 type Props = {
   role:           string
@@ -17,6 +18,10 @@ type Props = {
 }
 
 export function JobTasksTab({ role, tasks, onCreateTask, onTaskOpen, onTaskStatusChange, namesMap = {} }: Props) {
+  // T-15: el gating iba por string de rol leído de localStorage (editable
+  // desde devtools). El permiso es la única fuente fiable.
+  const { hasPermission } = usePermissions()
+  const puedeCrear = hasPermission("tasks:create")
   const t = useTranslations("jobTasks")
   const { data: memberNames = {} } = useQuery<Record<string, string>>({
     queryKey: ["members_names_map"],
@@ -71,7 +76,7 @@ export function JobTasksTab({ role, tasks, onCreateTask, onTaskOpen, onTaskStatu
           )}
         </div>
 
-        {role !== "LEAD_TECHNICIAN" && (
+        {puedeCrear && (
           <button
             onClick={onCreateTask}
             style={{
@@ -133,21 +138,24 @@ export function JobTasksTab({ role, tasks, onCreateTask, onTaskOpen, onTaskStatu
           <p style={{ fontSize: "12px", marginBottom: "20px" }}>
             {t("createFirstTask")}
           </p>
-          <button
-            onClick={onCreateTask}
-            style={{
-              padding:      "9px 24px",
-              background:   "#0B2E1E",
-              color:        "#fff",
-              border:       "none",
-              borderRadius: "8px",
-              fontSize:     "13px",
-              fontWeight:   600,
-              cursor:       "pointer",
-            }}
-          >
-            + {t("createTask")}
-          </button>
+          {/* T-05: gemelo del botón de cabecera, pero este iba SIN guarda */}
+          {puedeCrear && (
+            <button
+              onClick={onCreateTask}
+              style={{
+                padding:      "9px 24px",
+                background:   "#0B2E1E",
+                color:        "#fff",
+                border:       "none",
+                borderRadius: "8px",
+                fontSize:     "13px",
+                fontWeight:   600,
+                cursor:       "pointer",
+              }}
+            >
+              + {t("createTask")}
+            </button>
+          )}
         </div>
       ) : (
         <TaskBoard
