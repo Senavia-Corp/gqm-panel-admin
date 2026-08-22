@@ -127,8 +127,10 @@ function AssigneeChip({ task, namesMap = {}, t }: { task: Task; namesMap?: Recor
 
 export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
   const t = useTranslations("jobTasks")
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.ID_Tasks })
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id: task.ID_Tasks })
 
   const style = {
     transform:  CSS.Transform.toString(transform),
@@ -179,6 +181,10 @@ export function TaskCard({ task, onOpen, namesMap = {} }: TaskCardProps) {
         {/* Row 1: drag handle + title + priority badge */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "6px" }}>
           <button
+            // T-28: sin setActivatorNodeRef, dnd-kit compara el objetivo del
+            // keydown contra el nodo de setNodeRef (la tarjeta), no contra este
+            // asa, y descarta la pulsación → el kanban era inoperable por teclado.
+            ref={setActivatorNodeRef}
             {...listeners}
             onClick={e => e.stopPropagation()}
             style={{
