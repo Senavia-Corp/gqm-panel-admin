@@ -12,12 +12,14 @@ export const MODULE_ACTIONS = [
       { id: "job:create",      label: "Create",      desc: "Create new job records." },
       { id: "job:update",      label: "Update",      desc: "Edit existing job information." },
       { id: "job:delete",      label: "Delete",      desc: "Delete job records." },
+      { id: "job:force_delete", label: "Force Delete", desc: "Delete a job even when it has linked financial documents." },
     ],
   },
   {
     module: "Members",
     actions: [
-      { id: "member:read",   label: "Read",   desc: "View the team member list and details." },
+      { id: "member:read",        label: "Read",        desc: "View the team member list and details." },
+      { id: "member:read_basics", label: "Read Basics", desc: "View only member names and company roles (no email or phone); enough to assign members to jobs and tasks." },
       { id: "member:create", label: "Create", desc: "Register new team members." },
       { id: "member:update", label: "Update", desc: "Edit member profiles." },
       { id: "member:delete", label: "Delete", desc: "Remove members from the system." },
@@ -113,6 +115,24 @@ export const MODULE_ACTIONS = [
       { id: "certificate:create", label: "Create", desc: "Upload and register new certificates." },
       { id: "certificate:update", label: "Update", desc: "Edit certificate details and renewals." },
       { id: "certificate:delete", label: "Delete", desc: "Remove certificates from the system." },
+    ],
+  },
+  {
+    module: "Multipliers",
+    actions: [
+      { id: "multiplier:read",   label: "Read",   desc: "View pricing multipliers." },
+      { id: "multiplier:create", label: "Create", desc: "Create pricing multipliers and add them to jobs." },
+      { id: "multiplier:update", label: "Update", desc: "Edit pricing multipliers." },
+      { id: "multiplier:delete", label: "Delete", desc: "Remove pricing multipliers from jobs and from the system." },
+    ],
+  },
+  {
+    module: "Building Departments",
+    actions: [
+      { id: "bldg_dept:read",   label: "Read",   desc: "View building departments." },
+      { id: "bldg_dept:create", label: "Create", desc: "Register new building departments." },
+      { id: "bldg_dept:update", label: "Update", desc: "Edit building department information." },
+      { id: "bldg_dept:delete", label: "Delete", desc: "Delete building department records." },
     ],
   },
 ]

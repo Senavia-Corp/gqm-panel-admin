@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import Link from "next/link"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useCan } from "@/hooks/useCan"
 
 type JobsTableVariant = "ALL" | JobType
 
@@ -91,6 +92,9 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
   const isQid = tableVariant === "QID"
   const mid = getMidColumnConfig(tableVariant)
   const { hasPermission } = usePermissions()
+  // Borrar job: lo decide el servidor (/auth/can); el criterio paralelo por
+  // etiqueta de rol en app/jobs/page.tsx se retira.
+  const { can } = useCan(["job:delete"])
   const canReadFull = hasPermission("job:read")
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
@@ -175,7 +179,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                     </Button>
                   </Link>
                 )}
-                {hasPermission("job:delete") && (
+                {can("job:delete") && (
                   <Button
                     size="sm"
                     className="h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
@@ -320,7 +324,7 @@ export function JobsTable({ jobs, tableVariant = "ALL", onEdit, onDelete, userRo
                         </Link>
                       )}
 
-                      {hasPermission("job:delete") && (
+                      {can("job:delete") && (
                         <Button
                           size="icon"
                           variant="ghost"

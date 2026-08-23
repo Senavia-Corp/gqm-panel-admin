@@ -14,11 +14,13 @@ import type { RoleSlug } from "@/lib/role-map"
  */
 
 const PUBLIC_PAGES = ["/login", "/forgot-password", "/reset-password"]
-const FULL_ADMIN_ONLY = ["/roles-permissions"]
+const FULL_ADMIN_ONLY = ["/roles-permissions", "/members", "/commissions"]
 // Prefijos permitidos para los roles de portal (además de /profile)
 const PORTAL_PREFIXES: Record<string, string[]> = {
   subcontractor: ["/subcontractors", "/profile"],
   technical: ["/subcontractors", "/technicians", "/profile"],
+  // Member sin rol: solo su perfil (sin bucle, /profile está permitido)
+  none: ["/profile"],
 }
 
 export function middleware(request: NextRequest) {
@@ -64,7 +66,19 @@ export function middleware(request: NextRequest) {
   // Las páginas públicas (forgot/reset) son accesibles también con sesión
   if (isPublic) return NextResponse.next()
 
-  const role = (request.cookies.get("gqm_role")?.value || "gqm_member") as RoleSlug
+  // Cookie de rol AUSENTE (sesión vieja, cookie caducada o borrada) ≠ rol
+  // `none`: antes se degradaba en silencio a gqm_member; ahora se cierra la
+  // sesión. `none` solo si la cookie lo dice (member sin ID_Role).
+  const roleCookie = request.cookies.get("gqm_role")?.value
+  if (!roleCookie) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.search = ""
+    const res = NextResponse.redirect(url)
+    res.cookies.delete("gqm_at")
+    return res
+  }
+  const role = roleCookie as RoleSlug
 
   if (
     role !== "full_admin" &&

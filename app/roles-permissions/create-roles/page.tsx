@@ -11,6 +11,7 @@ import { Search, Plus, X, ArrowLeft, Users, Shield, CheckCircle2, AlertCircle, C
 
 import type { Permission, IAMDocument, IAMStatement } from "@/lib/types"
 import { apiFetch } from "@/lib/apiFetch"
+import { MODULE_ACTIONS } from "@/lib/permissions-modules"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { PolicySummary } from "@/components/organisms/roles-permissions/PolicySummary"
 
@@ -21,55 +22,6 @@ type PermissionLite = {
   Document?: IAMDocument | null
   Active?: boolean | null
 }
-
-const MODULE_ACTIONS = [
-  {
-    module: "Jobs",
-    actions: [
-      { id: "job:read", label: "Full Read" },
-      { id: "job:read_basics", label: "Read Basics" },
-      { id: "job:create", label: "Create" },
-      { id: "job:update", label: "Update" },
-      { id: "job:delete", label: "Delete" },
-    ]
-  },
-  {
-    module: "Members",
-    actions: [
-      { id: "member:read", label: "Read" },
-      { id: "member:create", label: "Create" },
-      { id: "member:update", label: "Update" },
-      { id: "member:delete", label: "Delete" },
-    ]
-  },
-  {
-    module: "Subcontractors",
-    actions: [
-      { id: "subcontractor:read", label: "Read" },
-      { id: "subcontractor:create", label: "Create" },
-      { id: "subcontractor:update", label: "Update" },
-      { id: "subcontractor:delete", label: "Delete" },
-    ]
-  },
-  {
-    module: "Clients / Communities",
-    actions: [
-      { id: "client:read", label: "Read" },
-      { id: "client:create", label: "Create" },
-      { id: "client:update", label: "Update" },
-      { id: "client:delete", label: "Delete" },
-    ]
-  },
-  {
-    module: "PMC (Parent Companies)",
-    actions: [
-      { id: "parent_mgmt_co:read", label: "Read" },
-      { id: "parent_mgmt_co:create", label: "Create" },
-      { id: "parent_mgmt_co:update", label: "Update" },
-      { id: "parent_mgmt_co:delete", label: "Delete" },
-    ]
-  },
-]
 
 type PermissionListResponse =
   | { results: PermissionLite[]; total?: number; page?: number; limit?: number }

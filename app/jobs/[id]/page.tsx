@@ -1102,7 +1102,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     // Standard logic for GQM_MEMBER and others
     const canReadDocs = hasPermission("job:read")
     const canViewSubcontractors = hasPermission("subcontractor:read")
-    const canViewMembers = hasPermission("member:read")
+    // member:read_basics (proyección sin PII) basta para ver y vincular miembros
+    const canViewMembers = hasPermission("member:read") || hasPermission("member:read_basics")
 
     const items = [
       { id: "details", label: t("tabDetails") },

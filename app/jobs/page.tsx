@@ -368,7 +368,7 @@ export default function JobsPage() {
                   <JobsTable
                     jobs={displayedJobs}
                     tableVariant={filters.tab}
-                    onDelete={user?.role !== "LEAD_TECHNICIAN" ? handleDelete : undefined}
+                    onDelete={handleDelete}
                     userRole={user?.role}
                   />
 

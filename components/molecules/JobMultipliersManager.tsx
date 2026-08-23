@@ -24,6 +24,7 @@ import {
 import { MultiplierSelector } from "./MultiplierSelector"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
+import { useCan } from "@/hooks/useCan"
 
 interface JobMultipliersManagerProps {
   jobId: string
@@ -41,6 +42,9 @@ export function JobMultipliersManager({
   onAdjPricingCalculated,
 }: JobMultipliersManagerProps) {
   const t = useTranslations("jobs")
+  // Recurso `multiplier` propio en el API: sin el permiso, ni el botón Add ni
+  // la papelera (que desvincula Y borra del catálogo) se ofrecen.
+  const { can } = useCan(["multiplier:create", "multiplier:delete"])
   const [pendingMultiplier, setPendingMultiplier]   = useState<Multiplier | null>(null)
   const [actionLoading, setActionLoading]           = useState(false)
   const [showAddMultiplier, setShowAddMultiplier]   = useState(false)
@@ -108,15 +112,17 @@ export function JobMultipliersManager({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t("pricingMulTitle")}</CardTitle>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAddMultiplier(!showAddMultiplier)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t("pricingMulAddBtn")}
-        </Button>
+        {can("multiplier:create") && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAddMultiplier(!showAddMultiplier)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {t("pricingMulAddBtn")}
+          </Button>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -170,14 +176,16 @@ export function JobMultipliersManager({
                       </p>
                     )}
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPendingMultiplier(multiplier)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {can("multiplier:delete") && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setPendingMultiplier(multiplier)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               )
             })}

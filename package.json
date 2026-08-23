@@ -1,12 +1,13 @@
 {
   "name": "my-v0-project",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "NODE_OPTIONS=--max-old-space-size=4096 next dev",
     "lint": "tsc --noEmit",
-    "start": "next start"
+    "start": "next start",
+    "test:rbac": "playwright test tests/rbac"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -72,6 +73,7 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^18",

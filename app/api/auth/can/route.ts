@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
         })
         const data = await response.json()
         return NextResponse.json(data, { status: response.status })
-    } catch {
-        return NextResponse.json({ results: {} }, { status: 200 })
+    } catch (error) {
+        // Antes devolvía 200 con results vacío: el llamador no podía
+        // distinguir «denegado» de «el backend no contesta».
+        console.error("[api/auth/can] Error:", error)
+        return NextResponse.json({ error: "Permission service unavailable" }, { status: 502 })
     }
 }
