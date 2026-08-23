@@ -132,6 +132,10 @@ export function CreateTaskDialog({
   const [error, setError] = useState<string | null>(null)
   const [allMembers, setAllMembers] = useState<{ id: string; name: string; role: string }[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
+  // Si la carga falla, la lista quedaba vacía y en silencio: indistinguible de
+  // «no hay miembros». Guardamos el fallo para poder decirlo y reintentar.
+  const [membersError, setMembersError] = useState(false)
+  const [reintentoMiembros, setReintentoMiembros] = useState(0)
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const [showConfirmClose, setShowConfirmClose] = useState(false)
 
@@ -182,10 +186,16 @@ export function CreateTaskDialog({
   // Fetch all GQM members when dialog opens
   useEffect(() => {
     if (!open) return
+    let cancelado = false
     setLoadingMembers(true)
+    setMembersError(false)
     apiFetch("/api/members?page=1&limit=200")
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`members ${r.status}`)
+        return r.json()
+      })
       .then(data => {
+        if (cancelado) return
         const results: any[] = data?.results ?? data?.items ?? (Array.isArray(data) ? data : [])
         setAllMembers(results.map(m => ({
           id: m.ID_Member,
@@ -193,9 +203,15 @@ export function CreateTaskDialog({
           role: m.Company_Role || "",
         })))
       })
-      .catch(() => setAllMembers([]))
-      .finally(() => setLoadingMembers(false))
-  }, [open])
+      .catch(e => {
+        if (cancelado) return
+        console.error("[tareas] no se pudieron cargar los miembros", e)
+        setAllMembers([])
+        setMembersError(true)
+      })
+      .finally(() => { if (!cancelado) setLoadingMembers(false) })
+    return () => { cancelado = true }
+  }, [open, reintentoMiembros])
 
   function nullable(v: string): string | null {
     return v === NONE || v === "" ? null : v
@@ -556,7 +572,18 @@ export function CreateTaskDialog({
                     <Users size={12} color="#059669" /> {t("selectMember")}
                   </span>
                 </FieldLabel>
-                {loadingMembers ? (
+                {membersError ? (
+                  <div style={{ fontSize: "13px", color: "#B91C1C", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "9px", padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                    <span>{t("membersLoadFailed")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setReintentoMiembros(n => n + 1)}
+                      style={{ border: "1px solid #FECACA", background: "#fff", color: "#B91C1C", borderRadius: "7px", padding: "4px 10px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      {t("retry")}
+                    </button>
+                  </div>
+                ) : loadingMembers ? (
                   <div style={{ fontSize: "13px", color: "#9CA3AF", padding: "10px 0", display: "flex", alignItems: "center", gap: "8px" }}>
                     <div className="animate-spin" style={{ width: "14px", height: "14px", border: "2px solid #E5E7EB", borderTopColor: "#059669", borderRadius: "50%" }} />
                     {t("loadingMembers")}

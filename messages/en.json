@@ -2002,7 +2002,9 @@
     "taskPrefillSchedule": "Schedule/Manage {jobId}",
     "taskPrefillInvoice": "Upload Invoice for {jobId}",
     "locale": "en",
-    "unassignedLabel": "Unassigned"
+    "unassignedLabel": "Unassigned",
+    "membersLoadFailed": "Couldn't load members.",
+    "retry": "Retry"
   },
   "members": {
     "title": "GQM Members",
