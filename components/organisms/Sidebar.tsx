@@ -7,6 +7,7 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useSidebar } from "@/components/providers/SidebarContext"
 import { logout } from "@/lib/auth-utils"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useCan } from "@/hooks/useCan"
 import packageJson from "../../package.json"
 import {
   LayoutDashboard,
@@ -218,6 +219,9 @@ export function Sidebar() {
   }, [pathname, setIsOpen])
 
   const { hasPermission } = usePermissions()
+  // Miembros y comisiones: lo decide el servidor (/auth/can), no la copia
+  // local de políticas, para que el menú coincida con lo que el API permite.
+  const { can } = useCan(["member:read", "commission:read"])
 
   const menuItems = useMemo(() => {
     let base = gqmMemberMenuItems
@@ -231,7 +235,7 @@ export function Sidebar() {
     else if (userRole === "LEAD_TECHNICIAN") base = leadTechnicianMenuItems
     
     return base.filter((item) => {
-      if (item.href === "/members")              return hasPermission("member:read")
+      if (item.href === "/members")              return can("member:read")
       if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
       if (item.href === "/subcontractors")      return hasPermission("subcontractor:read")
       if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
@@ -240,7 +244,7 @@ export function Sidebar() {
       // Comisiones no tenía gate alguno: caía en el `return true` de abajo y
       // la veía todo el mundo. El control real es el Deny de commission:* en
       // la política del rol; esto solo evita ofrecer un enlace a un 403.
-      if (item.href === "/commissions")         return hasPermission("commission:read")
+      if (item.href === "/commissions")         return can("commission:read")
       if (item.href === "/roles-permissions") {
         // Mismo criterio que FULL_ADMIN_ONLY del middleware (cookie gqm_role):
         // el chequeo viejo usaba el vocabulario fósil iam_pm:read y mostraba
@@ -250,7 +254,7 @@ export function Sidebar() {
       }
       return true
     })
-  }, [userRole, hasPermission])
+  }, [userRole, hasPermission, can])
 
   return (
     <>

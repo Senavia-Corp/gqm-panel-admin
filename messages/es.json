@@ -2796,7 +2796,9 @@
       "Commissions": "Comisiones",
       "Documents (Attachments)": "Documentos (Adjuntos)",
       "Tasks": "Tareas",
-      "Certificates": "Certificados"
+      "Certificates": "Certificados",
+      "Multipliers": "Multiplicadores",
+      "Building Departments": "Departamentos de Construcción"
     },
     "actions": {
       "job:read": "Acceso a toda la información del trabajo, incluidos los datos financieros.",
@@ -2851,7 +2853,17 @@
       "certificate:read": "Ver certificados y documentación.",
       "certificate:create": "Subir y registrar nuevos certificados.",
       "certificate:update": "Editar detalles de certificados y renovaciones.",
-      "certificate:delete": "Eliminar certificados del sistema."
+      "certificate:delete": "Eliminar certificados del sistema.",
+      "job:force_delete": "Eliminar un trabajo aunque tenga documentos financieros vinculados.",
+      "member:read_basics": "Ver solo nombres y cargos de los miembros (sin correo ni teléfono); suficiente para asignar miembros a trabajos y tareas.",
+      "multiplier:read": "Ver multiplicadores de precio.",
+      "multiplier:create": "Crear multiplicadores de precio y añadirlos a trabajos.",
+      "multiplier:update": "Editar multiplicadores de precio.",
+      "multiplier:delete": "Quitar multiplicadores de precio de los trabajos y del sistema.",
+      "bldg_dept:read": "Ver departamentos de construcción.",
+      "bldg_dept:create": "Registrar nuevos departamentos de construcción.",
+      "bldg_dept:update": "Editar la información de los departamentos de construcción.",
+      "bldg_dept:delete": "Eliminar registros de departamentos de construcción."
     },
     "fullAccessExceptLabel": "Acceso total excepto:"
   },

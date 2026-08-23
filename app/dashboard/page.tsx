@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const { hasPermission } = usePermissions()
   const canReadJobs    = hasPermission("job:read")
   const canReadClients = hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
-  const canReadMembers = hasPermission("member:read")
+  const canReadMembers = hasPermission("member:read") || hasPermission("member:read_basics")
 
   useEffect(() => {
     if (!canReadJobs) {

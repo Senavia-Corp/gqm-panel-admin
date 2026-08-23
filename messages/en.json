@@ -2796,7 +2796,9 @@
       "Commissions": "Commissions",
       "Documents (Attachments)": "Documents (Attachments)",
       "Tasks": "Tasks",
-      "Certificates": "Certificates"
+      "Certificates": "Certificates",
+      "Multipliers": "Multipliers",
+      "Building Departments": "Building Departments"
     },
     "actions": {
       "job:read": "Access to all job info including financial data.",
@@ -2851,7 +2853,17 @@
       "certificate:read": "View certificates and documentation.",
       "certificate:create": "Upload and register new certificates.",
       "certificate:update": "Edit certificate details and renewals.",
-      "certificate:delete": "Remove certificates from the system."
+      "certificate:delete": "Remove certificates from the system.",
+      "job:force_delete": "Delete a job even when it has linked financial documents.",
+      "member:read_basics": "View only member names and company roles (no email or phone); enough to assign members to jobs and tasks.",
+      "multiplier:read": "View pricing multipliers.",
+      "multiplier:create": "Create pricing multipliers and add them to jobs.",
+      "multiplier:update": "Edit pricing multipliers.",
+      "multiplier:delete": "Remove pricing multipliers from jobs and from the system.",
+      "bldg_dept:read": "View building departments.",
+      "bldg_dept:create": "Register new building departments.",
+      "bldg_dept:update": "Edit building department information.",
+      "bldg_dept:delete": "Delete building department records."
     },
     "fullAccessExceptLabel": "Full access except:"
   },
