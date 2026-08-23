@@ -1178,7 +1178,8 @@
     "chooseJob": "Elige un job...",
     "selectJob": "Seleccionar job",
     "estimateItems": "Items del estimate",
-    "createOrderSubtitle": "Crea una orden eligiendo un job e items de su estimate"
+    "createOrderSubtitle": "Crea una orden eligiendo un job e items de su estimate",
+    "confirmDeleteTask": "¿Borrar esta tarea? No se puede deshacer."
   },
   "jobs": {
     "title": "Trabajos",
@@ -1660,7 +1661,7 @@
     "docPodioSectionLabel": "Sincronizar Podio",
     "docTitle": "Documentos",
     "docNoFilesYet": "Sin archivos sincronizados",
-    "docYearNotSynced": "Los adjuntos de este a\u00f1o todav\u00eda no se sincronizan desde Podio \u2014 cons\u00faltalos directamente en Podio.",
+    "docYearNotSynced": "Los adjuntos de este año todavía no se sincronizan desde Podio — consúltalos directamente en Podio.",
     "docFileSingular": "archivo",
     "docFilePlural": "archivos",
     "docAcrossAllFolders": "en todas las carpetas",
@@ -1999,7 +2000,9 @@
     "exitAnyway": "Salir de todos modos",
     "taskPrefillProposal": "Enviar propuesta para {jobId}",
     "taskPrefillSchedule": "Programar/Gestionar {jobId}",
-    "taskPrefillInvoice": "Subir factura para {jobId}"
+    "taskPrefillInvoice": "Subir factura para {jobId}",
+    "locale": "es",
+    "unassignedLabel": "Sin asignar"
   },
   "members": {
     "title": "Miembros GQM",

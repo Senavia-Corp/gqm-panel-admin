@@ -35,6 +35,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { usePermissions } from "@/hooks/usePermissions"
 
 // ── Sentinel — never pass "" to Radix Select ──────────────────────────────────
 const NONE = "__none__"
@@ -184,7 +185,19 @@ export function TaskDetailsDialog({
   onTaskDelete,
   onTaskStatusChange,
   jobData,
+  // T-14: `app/jobs/[id]` y `app/subcontractors/[id]` pasan estas dos (REG-103)
+  // y nunca se recogían, así que sus refrescos no corrían: tras guardar o
+  // borrar, la lista de fondo se quedaba con datos viejos.
+  onSave,
+  onDelete,
 }: TaskDetailsDialogProps) {
+  const avisarGuardado = onTaskSave ?? onSave
+  const avisarBorrado = onTaskDelete ?? onDelete
+  // T-13: este diálogo no tenía gating de ningún tipo — cualquier rol que lo
+  // abriera veía Editar y Borrar, y el API respondía 403 al pulsarlos.
+  const { hasPermission } = usePermissions()
+  const puedeEditar = hasPermission("tasks:update")
+  const puedeBorrar = hasPermission("tasks:delete")
   const t = useTranslations("jobTasks")
   const [isEditMode,        setIsEditMode]        = useState(false)
   const [editedFields,      setEditedFields]      = useState<Set<string>>(new Set())
@@ -334,7 +347,7 @@ const memberId = toForm(task.ID_Member)
 
       setIsEditMode(false)
       setEditedFields(new Set())
-      onTaskSave?.()
+      avisarGuardado?.()
     } catch (e: any) {
       setSaveError(e.message ?? t("failedToSave"))
     } finally {
@@ -355,8 +368,8 @@ const memberId = toForm(task.ID_Member)
       }
       setShowDeleteConfirm(false)
       onOpenChange(false)
-      onTaskDelete?.(task.ID_Tasks)
-      onTaskSave?.()
+      avisarBorrado?.(task.ID_Tasks)
+      avisarGuardado?.()
     } catch (e: any) {
       setSaveError(e.message ?? t("failedToDelete"))
       setShowDeleteConfirm(false)
@@ -888,6 +901,7 @@ const memberId = toForm(task.ID_Member)
             style={{ borderTop: "1px solid #F3F4F6", background: "#FAFAFA" }}
           >
             {/* Delete button */}
+            {puedeBorrar && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
               disabled={isDeleting || isSaving}
@@ -900,6 +914,7 @@ const memberId = toForm(task.ID_Member)
             >
               <Trash2 size={13} /> {t("deleteTask")}
             </button>
+            )}
 
             {/* Edit / Save-Cancel */}
             <div className="flex flex-wrap gap-2">
@@ -937,7 +952,7 @@ const memberId = toForm(task.ID_Member)
                       </>
                     ) : (
                       <>
-                        <Save size={13} /> Save Changes
+                        <Save size={13} /> {t("saveChanges")}
                         {editedFields.size > 0 && (
                           <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "10px", padding: "0 6px", fontSize: "11px" }}>
                             {editedFields.size}
@@ -947,7 +962,7 @@ const memberId = toForm(task.ID_Member)
                     )}
                   </button>
                 </>
-              ) : (
+              ) : puedeEditar ? (
                 <button
                   onClick={() => setIsEditMode(true)}
                   style={{
@@ -958,7 +973,7 @@ const memberId = toForm(task.ID_Member)
                 >
                   <Pencil size={13} /> {t("editTask")}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </DialogContent>

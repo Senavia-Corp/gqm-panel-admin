@@ -1178,7 +1178,8 @@
     "chooseJob": "Choose a job...",
     "selectJob": "Select Job",
     "estimateItems": "Estimate items",
-    "createOrderSubtitle": "Create a new order by selecting a job and items from its estimate"
+    "createOrderSubtitle": "Create a new order by selecting a job and items from its estimate",
+    "confirmDeleteTask": "Delete this task? This cannot be undone."
   },
   "jobs": {
     "title": "Jobs",
@@ -1660,7 +1661,7 @@
     "docPodioSectionLabel": "Podio Sync",
     "docTitle": "Documents",
     "docNoFilesYet": "No synced files",
-    "docYearNotSynced": "Attachments for this year are not synced from Podio yet \u2014 check them directly in Podio.",
+    "docYearNotSynced": "Attachments for this year are not synced from Podio yet — check them directly in Podio.",
     "docFileSingular": "file",
     "docFilePlural": "files",
     "docAcrossAllFolders": "across all folders",
@@ -1999,7 +2000,9 @@
     "exitAnyway": "Exit anyway",
     "taskPrefillProposal": "Send Proposal for {jobId}",
     "taskPrefillSchedule": "Schedule/Manage {jobId}",
-    "taskPrefillInvoice": "Upload Invoice for {jobId}"
+    "taskPrefillInvoice": "Upload Invoice for {jobId}",
+    "locale": "en",
+    "unassignedLabel": "Unassigned"
   },
   "members": {
     "title": "GQM Members",

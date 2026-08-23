@@ -183,11 +183,6 @@ const PRIORITY_CONFIG: Record<
   string,
   { dot: string; badge: string; key: string }
 > = {
-  Critical: {
-    dot: "bg-red-500",
-    badge: "bg-red-100 text-red-700 border border-red-200",
-    key: "priorityCritical",
-  },
   High: {
     dot: "bg-orange-500",
     badge: "bg-orange-100 text-orange-700 border border-orange-200",
@@ -1081,7 +1076,6 @@ export default function WeeklyTasksPanel({
   // Priority sort + client-side filters
   const filteredTasks = useMemo(() => {
     const order: Record<string, number> = {
-      Critical: 0,
       High: 1,
       Medium: 2,
       Low: 3,
@@ -1132,9 +1126,7 @@ export default function WeeklyTasksPanel({
     const inProg = tasks.filter((t) =>
       t.Task_status?.toLowerCase().includes("progress")
     ).length
-    const high = tasks.filter((t) =>
-      ["Critical", "High"].includes(t.Priority ?? "")
-    ).length
+    const high = tasks.filter((t) => t.Priority === "High").length
     return { total: tasks.length, completed, inProg, high }
   }, [tasks])
 

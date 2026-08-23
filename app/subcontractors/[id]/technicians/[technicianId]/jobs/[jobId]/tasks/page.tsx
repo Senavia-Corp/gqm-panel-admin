@@ -25,6 +25,7 @@ import { fetchJobById } from "@/lib/services/jobs-service"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { use } from "react"
+import { usePermissions } from "@/hooks/usePermissions"
 
 interface ApiTask {
   ID_Tasks: string
@@ -39,8 +40,8 @@ interface ApiTask {
 }
 
 const TASK_STATUSES = [
-  { value: "Not Started", color: "bg-yellow-500 hover:bg-yellow-600" },
-  { value: "In Progress", color: "bg-blue-500 hover:bg-blue-600" },
+  { value: "Not started", color: "bg-yellow-500 hover:bg-yellow-600" },
+  { value: "Work-in-progress", color: "bg-blue-500 hover:bg-blue-600" },
   { value: "Completed", color: "bg-green-500 hover:bg-green-600" },
 ]
 
@@ -50,6 +51,11 @@ function TechnicianTasksClient({
   params: { id: string; technicianId: string; jobId: string }
 }) {
   const t = useTranslations("subcontractors")
+  // T-16: esta página no tenía gating de ningún tipo: un técnico sin
+  // tasks:create veía «Add Task», y el borrado no pedía confirmación.
+  const { hasPermission } = usePermissions()
+  const puedeCrear = hasPermission("tasks:create")
+  const puedeBorrar = hasPermission("tasks:delete")
   const router = useRouter()
   const { toast } = useToast()
   const [tasks, setTasks] = useState<ApiTask[]>([])
@@ -103,7 +109,7 @@ function TechnicianTasksClient({
         body: JSON.stringify({
           Name: newTaskTitle,
           Task_description: newTaskDescription || null,
-          Task_status: "Not Started",
+          Task_status: "Not started",
           ID_Jobs: params.jobId,
           ID_Technician: params.technicianId,
         }),
@@ -123,6 +129,8 @@ function TechnicianTasksClient({
   }
 
   const handleDeleteTask = async (taskId: string) => {
+    // T-16: era el único borrado del sistema sin confirmación
+    if (!window.confirm(t("confirmDeleteTask"))) return
     setBusy(true)
     try {
       const resp = await apiFetch(`/api/tasks?task_id=${encodeURIComponent(taskId)}`, {
@@ -165,7 +173,7 @@ function TechnicianTasksClient({
   }
 
   const getTasksByStatus = (status: string) =>
-    tasks.filter((task) => (task.Task_status ?? "Not Started") === status)
+    tasks.filter((task) => (task.Task_status ?? "Not started") === status)
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -189,13 +197,15 @@ function TechnicianTasksClient({
             </div>
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold">{t("tabTasks")}</h1>
-              <Button
-                onClick={() => setIsCreateOpen(true)}
-                className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
-              >
-                <Plus className="h-4 w-4" />
-                {t("addTask")}
-              </Button>
+              {puedeCrear && (
+                <Button
+                  onClick={() => setIsCreateOpen(true)}
+                  className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t("addTask")}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -225,7 +235,7 @@ function TechnicianTasksClient({
                                 className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
                                 onClick={() => {
                                   setSelectedTask(task)
-                                  setEditedTaskStatus(task.Task_status ?? "Not Started")
+                                  setEditedTaskStatus(task.Task_status ?? "Not started")
                                   setIsDetailsOpen(true)
                                 }}
                               >
@@ -285,17 +295,19 @@ function TechnicianTasksClient({
             </div>
           </div>
           <DialogFooter className="flex items-center justify-between sm:justify-between">
-            <Button
-              variant="ghost"
-              className="gap-2 text-red-600 hover:text-red-700"
-              disabled={busy}
-              onClick={() => selectedTask && handleDeleteTask(selectedTask.ID_Tasks)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {puedeBorrar ? (
+              <Button
+                variant="ghost"
+                className="gap-2 text-red-600 hover:text-red-700"
+                disabled={busy}
+                onClick={() => selectedTask && handleDeleteTask(selectedTask.ID_Tasks)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : <span />}
             <Button
               onClick={handleStatusChange}
-              disabled={busy || editedTaskStatus === (selectedTask?.Task_status ?? "Not Started")}
+              disabled={busy || editedTaskStatus === (selectedTask?.Task_status ?? "Not started")}
               className="bg-gqm-green text-white hover:bg-gqm-green/90"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("saveChanges")}

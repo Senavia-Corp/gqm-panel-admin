@@ -78,7 +78,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Completed": return "border-emerald-500 text-emerald-700 bg-emerald-50"
-      case "In Progress": return "border-blue-500 text-blue-700 bg-blue-50"
+      case "Work-in-progress": return "border-blue-500 text-blue-700 bg-blue-50"
       default: return "border-slate-200 text-slate-600 bg-slate-50"
     }
   }

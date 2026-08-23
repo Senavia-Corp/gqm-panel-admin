@@ -800,7 +800,13 @@ export function SubcontractorCertificatesTab({
       const subcRes = await apiFetch("/api/tasks", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...base, ID_Subcontractor: cert.ID_Subcontractor }),
-      }).catch(() => null)
+      }).catch((e) => {
+        // T-09: este .catch devolvía null sin más, así que un fallo del POST
+        // no se marcaba en el dedupe y se reintentaba en cada montaje, sin
+        // que nadie se enterara. El dedupe de verdad ya vive en el servidor.
+        console.error("[certificados] no se pudo crear la tarea del certificado", e)
+        return null
+      })
 
       if (subcRes?.ok) {
         if (typeof window !== "undefined") localStorage.setItem(dedupKey, todayIso())
