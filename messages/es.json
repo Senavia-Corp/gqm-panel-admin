@@ -2002,7 +2002,9 @@
     "taskPrefillSchedule": "Programar/Gestionar {jobId}",
     "taskPrefillInvoice": "Subir factura para {jobId}",
     "locale": "es",
-    "unassignedLabel": "Sin asignar"
+    "unassignedLabel": "Sin asignar",
+    "membersLoadFailed": "No se pudieron cargar los miembros.",
+    "retry": "Reintentar"
   },
   "members": {
     "title": "Miembros GQM",
