@@ -2,6 +2,7 @@
 
 // REG-026: conectado al backend real (antes 100% mock).
 import { useEffect, useState } from "react"
+import { mensajeDeError } from "@/lib/errores-api"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -103,7 +104,7 @@ export default function CreateOrderPage({
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
-        setError(data.detail || data.error || `Could not create order (${resp.status})`)
+        setError(mensajeDeError(data, undefined, `Could not create order (${resp.status})`))
         return
       }
       router.push(`/subcontractors/${params.id}/orders`)

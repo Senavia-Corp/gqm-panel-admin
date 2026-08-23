@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { mensajeDeError } from "@/lib/errores-api"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { Save, RefreshCcw, Zap, ZapOff, Calendar, Hash } from "lucide-react"
@@ -1059,7 +1060,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json().catch(() => ({}))
-        throw new Error((errorData as any)?.error || (errorData as any)?.detail || "Failed to create order")
+        // G6: antes esto mostraba el `detail` crudo del backend —en español, con
+        // la UI internacionalizada— o «Failed to create order» cuando el backend
+        // devolvia un 500 generico. El codigo dice que paso y que hacer.
+        throw new Error(mensajeDeError(errorData as any, undefined, "Failed to create order"))
       }
 
       // Backend now handles attaching items, formulas, and syncing atomically!

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { BarChart3, Building2, Home } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { EstimateBreakdownTable } from "@/components/organisms/EstimateBreakdownTable"
@@ -55,6 +55,23 @@ export function JobEstimateTab({
   const bdfCount  = items.filter((i) => i.Cost_Type === "BDF").length
   const rentCount = items.filter((i) => i.Cost_Type === "Rent").length
 
+  // H4 · Sólo QID tiene destino en Podio para los BD fees y los alquileres.
+  // Metidos en un PTL o un PAR entraban en el precio de la app y no salían a
+  // Podio: el precio se desviaba en silencio (medido: PTL +400, PAR +900). La
+  // API ya los rechaza con 422; esto cierra la puerta antes de que el usuario
+  // llegue a un error. Mismo patrón que `EstimateBreakdownTable`.
+  const esQID = String(jobType ?? "").toUpperCase().startsWith("QID")
+  const pestanasVisibles = useMemo<EstimateTab[]>(
+    () => (esQID ? ["general", "bdf", "rent"] : ["general"]),
+    [esQID],
+  )
+
+  // Si el tipo de job cambia y la pestaña activa deja de existir, se vuelve a
+  // «general». Sin esto, el contenido se seguiría pintando sin su pestaña.
+  useEffect(() => {
+    if (!pestanasVisibles.includes(activeTab)) setActiveTab("general")
+  }, [pestanasVisibles, activeTab])
+
   return (
     <div className="space-y-4">
       {/* ── Sub-tab bar ────────────────────────────────────────────────── */}
@@ -71,6 +88,7 @@ export function JobEstimateTab({
             <BarChart3 className="h-3.5 w-3.5" />
             {t("tabGeneral")}
           </button>
+          {pestanasVisibles.includes("bdf") && (
           <button
             onClick={() => setActiveTab("bdf")}
             className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
@@ -89,6 +107,8 @@ export function JobEstimateTab({
               </span>
             )}
           </button>
+          )}
+          {pestanasVisibles.includes("rent") && (
           <button
             onClick={() => setActiveTab("rent")}
             className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
@@ -107,6 +127,7 @@ export function JobEstimateTab({
               </span>
             )}
           </button>
+          )}
         </div>
       )}
 
@@ -134,7 +155,7 @@ export function JobEstimateTab({
           jobType={jobType}
           isFetching={isFetching}
         />
-      ) : activeTab === "bdf" ? (
+      ) : activeTab === "bdf" && esQID ? (
         <BDFManager
           jobId={jobId}
           jobYear={jobYear}
@@ -142,13 +163,33 @@ export function JobEstimateTab({
           onItemsChanged={onItemsChanged ?? onItemsImported}
           onViewDetails={onSelectItem}
         />
-      ) : (
+      ) : activeTab === "rent" && esQID ? (
+        /* Ojo: antes esto era el `else` del ternario, así que ocultar la
+           pestaña NO habría bastado — el RentManager se habría seguido
+           pintando sin pestaña visible. Ahora es un caso explícito. */
         <RentManager
           jobId={jobId}
           jobYear={jobYear}
           items={items}
           onItemsChanged={onItemsChanged ?? onItemsImported}
           onViewDetails={onSelectItem}
+        />
+      ) : (
+        <EstimateBreakdownTable
+          items={items}
+          onViewDetails={onSelectItem}
+          onCreateOrder={onCreateOrder}
+          onItemsImported={onItemsImported}
+          jobId={jobId}
+          hasSavedEstimates={hasSavedEstimates}
+          onSaveEstimates={onSaveEstimates}
+          onDeleteAllEstimates={onDeleteAllEstimates}
+          onCancelImport={onCancelImport}
+          onDeleteItem={onDeleteItem}
+          onEditItem={onEditItem}
+          jobYear={jobYear}
+          jobType={jobType}
+          isFetching={isFetching}
         />
       )}
     </div>
