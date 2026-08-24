@@ -18,7 +18,7 @@ import { Layers, ClipboardList, Wrench, Briefcase, RefreshCw } from "lucide-reac
 import { usePermissions } from "@/hooks/usePermissions"
 import { useJobFilters } from "@/hooks/useJobFilters"
 import { apiFetch } from "@/lib/apiFetch"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { AdvancedJobFilters } from "@/components/organisms/AdvancedJobFilters"
 import { ExportJobsDialog } from "@/components/organisms/ExportJobsDialog"
 import { SyncStatusButton } from "@/components/organisms/SyncStatusButton"
@@ -114,17 +114,28 @@ export default function JobsPage() {
   }, [router])
 
   // ── Core fetch ────────────────────────────────────────────────────────────
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["jobs_list", user?.id, isTechnician, isSubcontractor, filters],
+  // El objeto que de verdad viaja al API. `toServiceFilters()` usa
+  // `appliedSearch` —lo que confirmó Analyze/Enter—, nunca `searchInput`, así
+  // que su VALOR no cambia mientras el usuario teclea.
+  //
+  // Aquí antes iba `filters` entero. React Query compara la key POR VALOR, así
+  // que cada tecla estrenaba key, dejaba `data` en undefined, y el guard de
+  // carga de más abajo desmontaba la tarjeta con el <input> dentro: el foco
+  // moría en cada letra. Regresión de 6532782, que colapsó en `filters` un
+  // array de dependencias que enumeraba `filters.appliedSearch` a mano.
+  const serviceFilters = toServiceFilters()
+
+  const { data, isPending, isFetching, error, refetch } = useQuery({
+    // `page` va SUELTO: toServiceFilters() no lo devuelve. Si se olvida, la
+    // paginación sirve siempre la página 1 sin dar error.
+    queryKey: ["jobs_list", user?.id, isTechnician, isSubcontractor, filters.page, serviceFilters],
     queryFn: async () => {
       if (!user) return { jobs: [], total: 0 }
-      const currentFilters = toServiceFilters()
-      
       if (isSubcontractor) {
         const { jobs: subJobs, total } = await fetchJobs(
           filters.page,
           itemsPerPage,
-          { ...currentFilters, subcontractorId: user.id }
+          { ...serviceFilters, subcontractorId: user.id }
         )
         return { jobs: sortArchivedLast(subJobs), total }
       }
@@ -140,7 +151,7 @@ export default function JobsPage() {
         const { jobs: subJobs, total } = await fetchJobs(
           filters.page,
           itemsPerPage,
-          { ...currentFilters, subcontractorId: subId }
+          { ...serviceFilters, subcontractorId: subId }
         )
         return { jobs: sortArchivedLast(subJobs), total }
       }
@@ -148,7 +159,7 @@ export default function JobsPage() {
       const { jobs: jobsData, total } = await fetchJobs(
         filters.page,
         itemsPerPage,
-        currentFilters
+        serviceFilters
       )
       return { jobs: sortArchivedLast(jobsData), total }
     },
@@ -158,12 +169,16 @@ export default function JobsPage() {
     // un 500 tardaría ~7 s en pintar el error y se percibiría como que la
     // pantalla se colgó. Ahora que fetchJobs relanza, un reintento basta.
     retry: 1,
+    // Sin esto, cada cambio de key (Analyze, Año, Estado, página) deja `data`
+    // en undefined y la tarjeta parpadea. Sirve lo anterior mientras llega lo
+    // nuevo; `isFetching` sigue girando el icono de Refresh como aviso.
+    placeholderData: keepPreviousData,
   })
 
   const displayedJobs = data?.jobs ?? []
   const totalJobs = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(totalJobs / itemsPerPage))
-  const loading = isLoading || isFetching
+  const loading = isPending || isFetching
   const loadError = error ? (error as Error).message : null
 
   const handleRetry = async () => {
@@ -272,7 +287,14 @@ export default function JobsPage() {
             </div>
           </div>
 
-          {loading && displayedJobs.length === 0 ? (
+          {/* Solo la PRIMERA carga, cuando aún no hay ningún dato. El guard
+              anterior (`loading && displayedJobs.length === 0`) también saltaba
+              con cada key nueva y desmontaba el buscador; y con una búsqueda de
+              0 resultados volvía a saltar aunque haya placeholderData.
+              `isPending`, no `isLoading`: isLoading es `isPending && isFetching`
+              y da false en el render donde la query se habilita pero aún no
+              arranca, colando un fotograma del estado vacío. */}
+          {isPending ? (
             <div className="flex h-64 items-center justify-center">
               <div className="flex flex-col items-center gap-2">
                 <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-slate-600"></div>
