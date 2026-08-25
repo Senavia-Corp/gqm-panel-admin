@@ -26,7 +26,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
         setLoading(true)
         const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
         const res = await apiFetch(`/api/tasks/weekly?${idParam}`)
-        if (!res.ok) throw new Error(t("detail.errLoad"))
+        if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
         setTasks(data || [])
       } catch (err: any) {
