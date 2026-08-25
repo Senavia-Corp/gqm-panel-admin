@@ -317,7 +317,14 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                     </div>
 
                     <div className="flex flex-col gap-2 shrink-0">
-                      {!sync.resolved && (
+                      {/*
+                        También en las que figuran resueltas y su fichero NO
+                        está: el aviso de arriba las denuncia, y sin este botón
+                        la única salida era Delete — que borra el inventario de
+                        lo que falta. El backend solo acepta reintentar las que
+                        mienten de forma medible.
+                      */}
+                      {(!sync.resolved || sync.fichero_recuperado === false) && (
                         <Button
                           onClick={() => handleResync(sync.id)}
                           size="sm"
@@ -329,7 +336,7 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                           ) : (
                             <>
                               <RefreshCw className="h-4 w-4 mr-2" />
-                              Resync
+                              {sync.resolved ? "Recuperar" : "Resync"}
                             </>
                           )}
                         </Button>
