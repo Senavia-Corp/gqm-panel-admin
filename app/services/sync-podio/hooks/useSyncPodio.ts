@@ -47,6 +47,20 @@ export const useResyncFailedSync = () => {
   })
 }
 
+export const useResolverFailedSync = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, nota }: { id: number; nota?: string }) => {
+      return syncPodioService.resolverFailedSync(id, nota)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["failedSyncs"] })
+      queryClient.invalidateQueries({ queryKey: ["failedSyncsCount"] })
+    },
+  })
+}
+
 export const useDeleteFailedSync = () => {
   const queryClient = useQueryClient()
 

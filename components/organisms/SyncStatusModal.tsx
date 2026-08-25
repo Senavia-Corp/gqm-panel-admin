@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   Cloud, AlertCircle, CheckCircle2, RefreshCw,
-  X, Trash2
+  X, Trash2, FileWarning, FileCheck2, ShieldAlert
 } from "lucide-react"
 import {
   useFailedSyncs,
   useResyncFailedSync,
   useDeleteFailedSync,
+  useResolverFailedSync,
   useParidad
 } from "@/app/services/sync-podio/hooks/useSyncPodio"
 import { ParidadPanel } from "./ParidadPanel"
@@ -25,11 +26,13 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
   const { data: syncs, isLoading, refetch } = useFailedSyncs()
   const resyncMutation = useResyncFailedSync()
   const deleteMutation = useDeleteFailedSync()
+  const resolverMutation = useResolverFailedSync()
 
   const [activeTab, setActiveTab] = useState<"unresolved" | "resolved" | "paridad">("unresolved")
   const paridad = useParidad(open && activeTab === "paridad")
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [errorMap, setErrorMap] = useState<Record<number, string>>({})
+  const [confirmarBorrado, setConfirmarBorrado] = useState<number | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -41,6 +44,12 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
 
   const unresolvedSyncs = syncs?.filter(s => !s.resolved) || []
   const resolvedSyncs = syncs?.filter(s => s.resolved) || []
+
+  // Una fila marcada resuelta cuyo fichero NO llegó a `attachments`. En
+  // producción hay 7. Contarlas aparte es lo que impide que el daño real (13)
+  // siga leyéndose como 6.
+  const resueltasEnFalso = resolvedSyncs.filter(
+    s => s.fichero_recuperado === false)
 
   const displayedSyncs = activeTab === "unresolved" ? unresolvedSyncs : resolvedSyncs
 
@@ -57,12 +66,38 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
     }
   }
 
+  // Borrar NO estaba confirmado. Mientras el fichero siga sin estar, esta fila
+  // es el ÚNICO inventario de lo que falta: un clic accidental destruía la
+  // evidencia y el problema pasaba a ser invisible. Por eso el botón pide
+  // confirmación y, si el fichero sigue pendiente, la pide en rojo.
   const handleDelete = async (id: number) => {
     setProcessingId(id)
+    setErrorMap(prev => ({ ...prev, [id]: "" }))
     try {
       await deleteMutation.mutateAsync(id)
-    } catch (err) {
-      console.error("Error deleting sync:", err)
+    } catch (err: any) {
+      setErrorMap(prev => ({
+        ...prev,
+        [id]: err?.data?.error || err?.message || "Unknown error",
+      }))
+    } finally {
+      setProcessingId(null)
+      setConfirmarBorrado(null)
+    }
+  }
+
+  // Cerrar una falla recuperada por fuera SIN destruir la evidencia. El backend
+  // se niega (409) si los adjuntos siguen sin converger.
+  const handleResolver = async (id: number) => {
+    setProcessingId(id)
+    setErrorMap(prev => ({ ...prev, [id]: "" }))
+    try {
+      await resolverMutation.mutateAsync({ id })
+    } catch (err: any) {
+      setErrorMap(prev => ({
+        ...prev,
+        [id]: err?.data?.error || err?.message || "Unknown error",
+      }))
     } finally {
       setProcessingId(null)
     }
@@ -134,6 +169,14 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                 {resolvedSyncs.length}
               </Badge>
             )}
+            {resueltasEnFalso.length > 0 && (
+              <Badge
+                className="bg-amber-100 text-amber-800 border-amber-300"
+                title="Marcadas como resueltas, pero su fichero sigue sin estar en la base"
+              >
+                {resueltasEnFalso.length} sin fichero
+              </Badge>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("paridad")}
@@ -177,6 +220,19 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
             </div>
           ) : (
             <div className="space-y-4">
+              {activeTab === "resolved" && resueltasEnFalso.length > 0 && (
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-300 bg-amber-50">
+                  <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-900">
+                    <strong>
+                      {resueltasEnFalso.length} de estas {resolvedSyncs.length} figuran
+                      resueltas y su fichero sigue sin estar.
+                    </strong>{" "}
+                    Se cerraron con un «Resync exitoso» que no llegó a recuperar
+                    nada. Cuentan como pérdidas, no como arregladas.
+                  </div>
+                </div>
+              )}
               {displayedSyncs.map((sync) => (
                 <div
                   key={sync.id}
@@ -198,6 +254,23 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                             Item ID: {sync.item_id}
                           </Badge>
                         )}
+                        {/*
+                          El dato que faltaba. El modal no mencionaba los
+                          adjuntos en ningún sitio, así que una fila resuelta de
+                          mentira se veía idéntica a una resuelta de verdad.
+                        */}
+                        {sync.fichero_recuperado === true && (
+                          <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+                            <FileCheck2 className="h-3 w-3 mr-1" />
+                            Fichero en la base
+                          </Badge>
+                        )}
+                        {sync.fichero_recuperado === false && (
+                          <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                            <FileWarning className="h-3 w-3 mr-1" />
+                            Fichero AUSENTE
+                          </Badge>
+                        )}
                         <span className="text-xs text-slate-500 ml-2">
                           {new Date(sync.created_at).toLocaleString()}
                         </span>
@@ -215,6 +288,22 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                           <h4 className="text-sm font-semibold text-slate-900 mb-1">Resync Failed:</h4>
                           <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-100 break-words font-mono text-xs">
                             {errorMap[sync.id]}
+                          </p>
+                        </div>
+                      )}
+
+                      {sync.resolved && sync.fichero_recuperado === false && (
+                        <div className="mb-3 flex items-start gap-2 p-2 rounded-md border border-amber-200 bg-amber-50">
+                          <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-amber-900">
+                            Figura resuelta, pero el fichero no está en la base.
+                            Esta fila es el único inventario de lo que falta:{" "}
+                            <strong>no la borres.</strong>
+                            {sync.file_ids_pendientes?.length ? (
+                              <span className="block mt-1 font-mono">
+                                Pendientes: {sync.file_ids_pendientes.join(", ")}
+                              </span>
+                            ) : null}
                           </p>
                         </div>
                       )}
@@ -245,22 +334,60 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                           )}
                         </Button>
                       )}
-                      <Button
-                        onClick={() => handleDelete(sync.id)}
-                        size="sm"
-                        variant="destructive"
-                        disabled={processingId === sync.id}
-                        className="w-28"
-                      >
-                        {processingId === sync.id && sync.resolved ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </>
-                        )}
-                      </Button>
+                      {!sync.resolved && sync.fichero_recuperado === true && (
+                        <Button
+                          onClick={() => handleResolver(sync.id)}
+                          size="sm"
+                          variant="outline"
+                          disabled={processingId === sync.id}
+                          className="w-28 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          title="El fichero ya está en la base: cerrar la falla sin borrarla"
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Cerrar
+                        </Button>
+                      )}
+
+                      {confirmarBorrado === sync.id ? (
+                        <div className="flex flex-col gap-1 w-28">
+                          <p className="text-[11px] leading-tight text-red-700">
+                            {sync.fichero_recuperado === false
+                              ? "El fichero sigue perdido. Borrar elimina la única prueba."
+                              : "Se borra el registro. No tiene vuelta atrás."}
+                          </p>
+                          <Button
+                            onClick={() => handleDelete(sync.id)}
+                            size="sm"
+                            variant="destructive"
+                            disabled={processingId === sync.id}
+                          >
+                            {processingId === sync.id ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Sí, borrar"
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => setConfirmarBorrado(null)}
+                            size="sm"
+                            variant="ghost"
+                            disabled={processingId === sync.id}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => setConfirmarBorrado(sync.id)}
+                          size="sm"
+                          variant="destructive"
+                          disabled={processingId === sync.id}
+                          className="w-28"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
