@@ -28,7 +28,7 @@ export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = 
         const statuses = encodeURIComponent("Assigned/P. Quote,Scheduled / Work in Progress,In Progress")
         const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
         const res = await apiFetch(`/api/jobs?${idParam}&status=${statuses}&limit=50`)
-        if (!res.ok) throw new Error(t("detail.errLoad"))
+        if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
         setJobs(data.results || [])
       } catch (err: any) {

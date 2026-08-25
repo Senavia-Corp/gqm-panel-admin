@@ -18,7 +18,7 @@ export function ProfileCommunities({ memberId }: { memberId: string }) {
       try {
         setLoading(true)
         const res = await apiFetch(`/api/metrics/clients?member_id=${memberId}&limit=50&order_by=revenue`)
-        if (!res.ok) throw new Error(t("detail.errLoad"))
+        if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
         setCommunities(data.clients || [])
       } catch (err: any) {

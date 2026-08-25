@@ -3792,7 +3792,8 @@
       "groupsDetails": "Grupos y Detalles",
       "labelJobs": "trabajos",
       "moreGroups": "grupos más",
-      "noDetails": "No hay detalles disponibles."
+      "noDetails": "No hay detalles disponibles.",
+      "errLoad": "Error al cargar"
     },
     "personal": {
       "title": "Información Personal",

@@ -73,6 +73,20 @@ test("/profile carga sin toast de error", async ({ page }) => {
   await expect(page.getByText(/Failed to load/i)).toHaveCount(0)
 })
 
+test("/profile: la pestana Commissions carga (autoservicio, no 403)", async ({ page }) => {
+  // El Deny `commission:*` del rol devolvia 403 y el panel pintaba la clave
+  // i18n cruda `detail.errLoad`. Este test buscaba /Failed to load/ y por eso
+  // pasaba en verde con el bug delante: hay que buscar la clave sin traducir.
+  await page.goto("/profile")
+  await page.getByRole("tab", { name: /commissions/i }).click()
+  await settle(page)
+  await expect(page.getByText(/errLoad|detail\./)).toHaveCount(0)
+  // Lista con filtros o estado vacio, pero nunca el recuadro de error.
+  await expect(
+    page.getByText(/Filter|No commissions found/i).first(),
+  ).toBeVisible({ timeout: 30_000 })
+})
+
 test("/subcontractors/create con rol preseleccionado", async ({ page }) => {
   await page.goto("/subcontractors/create")
   const roleSelect = page.locator("select").filter({ has: page.locator("option", { hasText: /subcontractor/i }) })

@@ -22,7 +22,7 @@ export function ProfileCommissions({ memberId }: { memberId: string }) {
       try {
         setLoading(true)
         const res = await apiFetch(`/api/commission?memberId=${memberId}`)
-        if (!res.ok) throw new Error(t("detail.errLoad"))
+        if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
         setCommissions(data || [])
       } catch (err: any) {

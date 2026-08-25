@@ -3792,7 +3792,8 @@
       "groupsDetails": "Groups & Details",
       "labelJobs": "jobs",
       "moreGroups": "more groups",
-      "noDetails": "No details available."
+      "noDetails": "No details available.",
+      "errLoad": "Failed to load"
     },
     "personal": {
       "title": "Personal Information",
