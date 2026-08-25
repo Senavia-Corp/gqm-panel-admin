@@ -23,6 +23,18 @@ export class SyncPodioService {
     return data;
   }
 
+  /**
+   * Cierra una falla que se recuperó por fuera, SIN borrar la evidencia.
+   *
+   * El backend se niega (409) si los adjuntos siguen sin converger, así que
+   * esto no puede repetir lo de las 7 filas resueltas en falso.
+   */
+  async resolverFailedSync(id: number, nota?: string): Promise<any> {
+    const { data } = await this.api.post<any>(
+      `/webhook/podio/failed_syncs/${id}/resolver`, { nota });
+    return data;
+  }
+
   async deleteFailedSync(id: number): Promise<any> {
     const { data } = await this.api.delete<any>(`/webhook/podio/failed_syncs/${id}`);
     return data;

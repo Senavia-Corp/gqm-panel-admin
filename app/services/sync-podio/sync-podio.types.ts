@@ -7,6 +7,22 @@ export interface PodioFailedSync {
   resolved: boolean;
   created_at: string;
   updated_at: string;
+
+  /**
+   * ¿El fichero de esta falla llegó de verdad a `attachments`?
+   *
+   * `null`/`undefined` cuando la falla no habla de adjuntos, o cuando no se
+   * pudo comprobar.
+   *
+   * Sin este dato el panel pintaba IGUAL un resuelto real y uno de mentira. En
+   * producción hay 7 filas con `resolved = true` cuyos 7 ficheros siguen sin
+   * estar: el botón devolvía «Resync exitoso» sin haber trabajado, y aquí no
+   * había forma de desmentirlo.
+   */
+  fichero_recuperado?: boolean | null;
+
+  /** Los file_id que siguen sin estar como pedía el evento. */
+  file_ids_pendientes?: string[] | null;
 }
 
 export interface FailedSyncsCount {
