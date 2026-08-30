@@ -18,22 +18,10 @@ import {
   ShoppingCart, ExternalLink,
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useEtiquetasCatalogo, SPECIALTIES, COVERAGE_AREAS } from "@/lib/supplier-labels"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SPECIALTIES = [
-  "Doors", "Windows/Glazing", "Plumbing Materials", "Fencing",
-  "Landscaping Supplies", "Tile/Flooring", "Stones/Masonry", "Rental Equip",
-  "Electrical Materials", "HVAC Materials", "Paint Suppliers", "Roll Up Doors",
-  "Kitchen Cabinets", "Roofing Materials", "Glass/Mirrors", "Construction Supplies",
-  "Bathroom Supplies", "Gutters / Screens",
-]
-
-const COVERAGE_AREAS = [
-  "Dade County", "Broward County", "Palm Beach County", "St. Lucie County",
-  "Orange County", "Seminole County", "Pinellas County (St Pete)",
-  "Hillsborough County (Tampa)", "Osceola County",
-]
 
 // ─── ComboSelect ──────────────────────────────────────────────────────────────
 
@@ -48,6 +36,7 @@ function ComboSelect({
   prefix?: "spec_" | "area_"
 }) {
   const t = useTranslations("suppliers")
+  const { etiqueta } = useEtiquetasCatalogo()
   const isCurrentlyCustom = value !== "" && !options.includes(value)
   const [customMode, setCustomMode] = useState(isCurrentlyCustom)
 
@@ -82,10 +71,9 @@ function ComboSelect({
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => {
-          const key = prefix ? (prefix + o.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) : o
-          return <option key={o} value={o}>{prefix ? t(key as any) : o}</option>
-        })}
+        {options.map((o) => (
+          <option key={o} value={o}>{prefix ? etiqueta(prefix, o) : o}</option>
+        ))}
         {allowCustom && <option value="__custom__">{t("form_comboOther")}</option>}
       </select>
       {customMode && (
@@ -169,35 +157,25 @@ type LinkedPurchase = {
   Selling_rep?: string | null
 }
 
-function LinkedPurchasesSection({ supplierId }: { supplierId: string }) {
+/**
+ * Compras enlazadas a ESTE supplier.
+ *
+ * Antes pedía `/api/purchases?supplier_id=…`, pero el backend
+ * (`src/routes/Purchase.py`, `list_purchases`) no lee ese parámetro: devolvía
+ * las primeras 50 compras de TODA la tabla, así que cada ficha mostraba las
+ * mismas compras ajenas. No se veía porque la tabla `supplier` estaba vacía.
+ *
+ * La relación ya viene en la respuesta de `GET /supplier/<id>`, que la expande
+ * con `add_relationships(obj, ["attachments", "purchases"])`. Se lee de ahí:
+ * es el dato correcto, y además ahorra una petición por ficha.
+ */
+function LinkedPurchasesSection({ purchases }: { purchases?: LinkedPurchase[] }) {
   const t = useTranslations("suppliers")
-  const [rows, setRows] = useState<LinkedPurchase[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(false)
-    apiFetch(`/api/purchases?supplier_id=${encodeURIComponent(supplierId)}&limit=50`, { cache: "no-store" })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        if (!cancelled) setRows(Array.isArray(data.results) ? data.results : [])
-      })
-      .catch(() => { if (!cancelled) setError(true) })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [supplierId])
+  const rows = purchases ?? []
 
   return (
     <SectionCard icon={ShoppingCart} title={t("det_secLinkedPurchases")}>
-      {loading ? (
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
-        </div>
-      ) : error ? (
-        <p className="text-xs text-slate-400 text-center py-4">{t("det_loadPurchasesError")}</p>
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <ShoppingCart className="h-8 w-8 text-slate-200" />
           <p className="text-sm text-slate-400">{t("det_noPurchases")}</p>
@@ -241,6 +219,7 @@ export default function SupplierDetailPage() {
   const id = params.id as string
   const router = useRouter()
   const t = useTranslations("suppliers")
+  const { etiqueta } = useEtiquetasCatalogo()
 
   const [supplier, setSupplier] = useState<Supplier | null>(null)
   const [loading, setLoading] = useState(true)
@@ -539,7 +518,7 @@ export default function SupplierDetailPage() {
                     )}
                   </>
                 ) : (
-                  <ReadonlyField value={supplier.Speciality ? t(("spec_" + supplier.Speciality.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) as any) : null} />
+                  <ReadonlyField value={etiqueta("spec_", supplier.Speciality)} />
                 )}
               </div>
 
@@ -560,7 +539,7 @@ export default function SupplierDetailPage() {
                     )}
                   </>
                 ) : (
-                  <ReadonlyField value={supplier.Coverage_Area ? t(("area_" + supplier.Coverage_Area.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) as any) : null} />
+                  <ReadonlyField value={etiqueta("area_", supplier.Coverage_Area)} />
                 )}
               </div>
             </SectionCard>
@@ -595,7 +574,7 @@ export default function SupplierDetailPage() {
             </SectionCard>
 
             {/* Linked Purchases */}
-            <LinkedPurchasesSection supplierId={supplier.ID_Supplier} />
+            <LinkedPurchasesSection purchases={supplier.purchases} />
 
           </div>
         </main>

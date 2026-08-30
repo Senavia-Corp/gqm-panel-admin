@@ -774,6 +774,18 @@ export interface Supplier {
   Phone_Number: string | null
   Address: string | null
   podio_item_id: string | null
+  /**
+   * Compras enlazadas. `GET /supplier/<id>` las expande con
+   * `add_relationships(obj, ["attachments", "purchases"])`; con la relación
+   * vacía llega `[]`, no `null`. Opcional porque `GET /supplier/` (lista) y
+   * las respuestas de POST/PATCH devuelven `model_dump()` sin relaciones.
+   */
+  purchases?: {
+    ID_Purchase: string
+    Description?: string | null
+    Status?: string | null
+    Selling_rep?: string | null
+  }[]
 }
 
 export interface SupplierRow {
