@@ -12,22 +12,10 @@ import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "@/components/ui/use-toast"
 import { Store, ArrowLeft, Save, Loader2, Info, Phone, Zap, Globe } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useEtiquetasCatalogo, SPECIALTIES, COVERAGE_AREAS } from "@/lib/supplier-labels"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SPECIALTIES = [
-  "Doors", "Windows/Glazing", "Plumbing Materials", "Fencing",
-  "Landscaping Supplies", "Tile/Flooring", "Stones/Masonry", "Rental Equip",
-  "Electrical Materials", "HVAC Materials", "Paint Suppliers", "Roll Up Doors",
-  "Kitchen Cabinets", "Roofing Materials", "Glass/Mirrors", "Construction Supplies",
-  "Bathroom Supplies", "Gutters / Screens",
-]
-
-const COVERAGE_AREAS = [
-  "Dade County", "Broward County", "Palm Beach County", "St. Lucie County",
-  "Orange County", "Seminole County", "Pinellas County (St Pete)",
-  "Hillsborough County (Tampa)", "Osceola County",
-]
 
 // ─── ComboSelect ──────────────────────────────────────────────────────────────
 
@@ -42,6 +30,7 @@ function ComboSelect({
   prefix?: "spec_" | "area_"
 }) {
   const t = useTranslations("suppliers")
+  const { etiqueta } = useEtiquetasCatalogo()
   const isCurrentlyCustom = value !== "" && !options.includes(value)
   const [customMode, setCustomMode] = useState(isCurrentlyCustom)
 
@@ -70,10 +59,9 @@ function ComboSelect({
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => {
-          const key = prefix ? (prefix + o.split("/")[0].split(" ")[0].replace(/[^a-zA-Z]/g, "")) : o
-          return <option key={o} value={o}>{prefix ? t(key as any) : o}</option>
-        })}
+        {options.map((o) => (
+          <option key={o} value={o}>{prefix ? etiqueta(prefix, o) : o}</option>
+        ))}
         {allowCustom && <option value="__custom__">{t("form_comboOther")}</option>}
       </select>
       {customMode && (
