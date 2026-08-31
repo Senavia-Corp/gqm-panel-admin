@@ -238,9 +238,26 @@ export function Sidebar() {
       if (item.href === "/members")              return can("member:read")
       if (item.href === "/clients")             return hasPermission("client:read") || hasPermission("parent_mgmt_co:read")
       if (item.href === "/subcontractors")      return hasPermission("subcontractor:read")
-      if (item.href === "/building-departments")return hasPermission("bldg_dept:read")
-      if (item.href === "/opportunities")       return hasPermission("subcontractor:read")
-      if (item.href === "/suppliers")           return hasPermission("subcontractor:read")
+      // Catálogos. `supplier_bp` y `bldg_dept_bp` no llevan decoradores
+      // propios: los protege `protect_blueprint(_bp, "catalog")` en el
+      // `main.py` del API, y un GET exige por tanto `catalog:read`.
+      //
+      // Antes pedían `subcontractor:read` y `bldg_dept:read`, permisos que no
+      // tienen nada que ver con lo que el API comprueba. Hoy no se nota porque
+      // los 13 miembros reales están en políticas con comodín `*` y las cuatro
+      // acciones les evalúan a true. Pero la política «Full Permission»
+      // concede `subcontractor:read` y NO `catalog:read`: en cuanto alguien
+      // tenga ese rol, vería Suppliers y recibiría un 403 del API. Y
+      // `bldg_dept:read` no lo concede NINGUNA política, así que ese enlace
+      // depende por completo de que el rol tenga comodín — un rol con
+      // `catalog:read` explícito no vería Building Depts pese a poder entrar.
+      //
+      // El enlace debe preguntar exactamente lo que el API va a exigir.
+      if (item.href === "/building-departments")return hasPermission("catalog:read")
+      if (item.href === "/suppliers")           return hasPermission("catalog:read")
+      // `opportunities_bp` va con `protect_blueprint(_bp, "client")`, no con
+      // catalog: su lectura exige `client:read`.
+      if (item.href === "/opportunities")       return hasPermission("client:read")
       // Comisiones no tenía gate alguno: caía en el `return true` de abajo y
       // la veía todo el mundo. El control real es el Deny de commission:* en
       // la política del rol; esto solo evita ofrecer un enlace a un 403.
