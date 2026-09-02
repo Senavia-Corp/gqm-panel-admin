@@ -100,8 +100,14 @@ export function useJobDetail(jobId: string) {
     setChangedFields((prev) => new Set([...prev, key]))
   }, [])
 
+  // Un campo que el usuario vació es `null`, no `""`. La API guardaba el `""`
+  // literal y el mapeador lo mandaba a Podio como {"value": ""}, que devuelve
+  // 400 y tumba la sincronización ENTERA del job (QID61399, 1-sep-2026). Crear
+  // un job ya normalizaba así (app/jobs/create/page.tsx); editarlo no.
+  // Sólo se convierte lo que ya está vacío: los valores con contenido no se recortan.
+  const blankToNull = (v: any) => (typeof v === "string" && v.trim() === "" ? null : v)
   const getValue = (j: any, uiKey: string, pyKey: string) =>
-    j?.[uiKey] !== undefined ? j[uiKey] : j?.[pyKey]
+    blankToNull(j?.[uiKey] !== undefined ? j[uiKey] : j?.[pyKey])
 
   // ── Manual patch (direct payload, no field mapping) ──────────────────────
   const patch = useCallback(
@@ -201,10 +207,10 @@ export function useJobDetail(jobId: string) {
 
           // ── Manual pricing fields (the only editable ones) ──────────────
           case "pricingTarget":
-            payload.Pricing_target = (job as any)?.Pricing_target ?? null
+            payload.Pricing_target = blankToNull((job as any)?.Pricing_target) ?? null
             break
           case "permit":
-            payload.Permit = (job as any)?.Permit ?? null
+            payload.Permit = blankToNull((job as any)?.Permit) ?? null
             break
         }
 
