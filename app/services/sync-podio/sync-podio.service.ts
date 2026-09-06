@@ -8,9 +8,12 @@ export class SyncPodioService {
     this.api = ApiProvider.getInstance();
   }
 
-  async getFailedSyncsCount(): Promise<number> {
+  async getFailedSyncsCount(): Promise<FailedSyncsCount> {
     const { data } = await this.api.get<FailedSyncsCount>("/webhook/podio/failed_syncs/count");
-    return data.count;
+    // Se devuelve el objeto entero: el badge necesita distinguir lo que alguien
+    // puede arreglar de lo que ya no tiene arreglo. Quedarse solo con `count`
+    // haria desaparecer del panel las fallas permanentes, y no estan resueltas.
+    return data;
   }
 
   async getFailedSyncs(): Promise<PodioFailedSync[]> {

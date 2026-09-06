@@ -23,10 +23,16 @@ export interface PodioFailedSync {
 
   /** Los file_id que siguen sin estar como pedía el evento. */
   file_ids_pendientes?: string[] | null;
+  /** Reintentar no lo arregla: el fichero ya no existe o no cabe. */
+  irrecuperable?: boolean;
 }
 
 export interface FailedSyncsCount {
+  /** Solo lo ACCIONABLE: lo que un Resync puede arreglar. */
   count: number;
+  /** Fallos permanentes (fichero borrado en Podio, o demasiado grande). */
+  irrecuperables?: number;
+  total_abiertas?: number;
 }
 
 /** Una app-año de Podio comparada contra la BD. */
