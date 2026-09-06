@@ -10,7 +10,7 @@ import { SyncStatusModal } from "@/components/organisms/SyncStatusModal"
 
 export function SyncStatusButton() {
   const { data: count, isLoading, refetch: refetchCount } = useFailedSyncsCount()
-  const { refetch: refetchList } = useFailedSyncs()
+  const { data: filas, refetch: refetchList } = useFailedSyncs()
 
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(true)
@@ -31,6 +31,23 @@ export function SyncStatusButton() {
   const totalIssues = count || 0
   const hasIssues = totalIssues > 0
 
+  // El contador del backend cuenta FILAS, y una fila puede arrastrar varios
+  // ficheros: el 3-sep-2026 el panel decia 5 mientras faltaban 8 ficheros,
+  // porque la fila 19 traia cinco `file_ids` en una sola cadena. El endpoint de
+  // lista ya calcula `file_ids_pendientes` por fila, asi que sumarlos aqui no
+  // cuesta ninguna peticion extra.
+  //
+  // `file_ids_pendientes` es `null` cuando la comprobacion no se pudo hacer y
+  // `[]` en las filas que no hablan de adjuntos: por eso el numero de ficheros
+  // es un SUELO, no un total, y solo se muestra si aporta algo sobre las filas.
+  const ficherosPendientes = (filas ?? [])
+    .filter((f) => !f.resolved)
+    .reduce((n, f) => n + (f.file_ids_pendientes?.length ?? 0), 0)
+  const etiqueta =
+    ficherosPendientes > totalIssues
+      ? `Sync Errors: ${totalIssues} (${ficherosPendientes} ficheros)`
+      : `Sync Errors: ${totalIssues}`
+
   return (
     <>
       <button
@@ -44,7 +61,7 @@ export function SyncStatusButton() {
         {hasIssues ? (
           <>
             <CloudOff className="h-4 w-4" />
-            <span>Sync Errors: {totalIssues}</span>
+            <span>{etiqueta}</span>
           </>
         ) : (
           <>

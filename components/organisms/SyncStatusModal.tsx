@@ -292,16 +292,25 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                         </div>
                       )}
 
-                      {sync.resolved && sync.fichero_recuperado === false && (
+                      {/* Antes esto solo se pintaba en las resueltas-en-falso, así
+                          que una fila ABIERTA con cinco ficheros perdidos se veía
+                          igual que una con uno. Es donde se escondía el salto de
+                          «5 errores» a 8 ficheros del 3-sep-2026: los ids solo
+                          asomaban en el Payload Preview crudo. */}
+                      {sync.fichero_recuperado === false && (
                         <div className="mb-3 flex items-start gap-2 p-2 rounded-md border border-amber-200 bg-amber-50">
                           <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                           <p className="text-xs text-amber-900">
-                            Figura resuelta, pero el fichero no está en la base.
+                            {sync.resolved
+                              ? "Figura resuelta, pero el fichero no está en la base."
+                              : "El fichero no está en la base."}{" "}
                             Esta fila es el único inventario de lo que falta:{" "}
                             <strong>no la borres.</strong>
                             {sync.file_ids_pendientes?.length ? (
                               <span className="block mt-1 font-mono">
-                                Pendientes: {sync.file_ids_pendientes.join(", ")}
+                                {sync.file_ids_pendientes.length} pendiente
+                                {sync.file_ids_pendientes.length > 1 ? "s" : ""}:{" "}
+                                {sync.file_ids_pendientes.join(", ")}
                               </span>
                             ) : null}
                           </p>
@@ -359,21 +368,27 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                         <div className="flex flex-col gap-1 w-28">
                           <p className="text-[11px] leading-tight text-red-700">
                             {sync.fichero_recuperado === false
-                              ? "El fichero sigue perdido. Borrar elimina la única prueba."
+                              ? "El fichero sigue perdido. Borrar elimina la única prueba de que falta: recupéralo con Resync primero."
                               : "Se borra el registro. No tiene vuelta atrás."}
                           </p>
-                          <Button
-                            onClick={() => handleDelete(sync.id)}
-                            size="sm"
-                            variant="destructive"
-                            disabled={processingId === sync.id}
-                          >
-                            {processingId === sync.id ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Sí, borrar"
-                            )}
-                          </Button>
+                          {/* El aviso existía pero no impedía nada, y el DELETE
+                              del backend no comprueba los adjuntos: un clic
+                              confirmado destruía el inventario. Mientras el
+                              fichero falte, no hay borrado que hacer. */}
+                          {sync.fichero_recuperado !== false && (
+                            <Button
+                              onClick={() => handleDelete(sync.id)}
+                              size="sm"
+                              variant="destructive"
+                              disabled={processingId === sync.id}
+                            >
+                              {processingId === sync.id ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Sí, borrar"
+                              )}
+                            </Button>
+                          )}
                           <Button
                             onClick={() => setConfirmarBorrado(null)}
                             size="sm"

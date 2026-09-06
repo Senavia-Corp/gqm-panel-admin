@@ -40,7 +40,11 @@ export const useResyncFailedSync = () => {
     mutationFn: async (id: number) => {
       return syncPodioService.resyncFailedSync(id)
     },
-    onSuccess: () => {
+    // `onSettled`, no `onSuccess`: el resync de una fila con varios ficheros es
+    // idempotente y va fichero a fichero, asi que un 502 significa recuperacion
+    // PARCIAL, no nula. Invalidando solo en exito, esos ficheros ya recuperados
+    // seguian contando como pendientes hasta reabrir el modal.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["failedSyncs"] })
       queryClient.invalidateQueries({ queryKey: ["failedSyncsCount"] })
     },
