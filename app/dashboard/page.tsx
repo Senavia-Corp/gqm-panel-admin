@@ -23,6 +23,7 @@ import { LeadTechnicianDashboard } from "@/components/organisms/LeadTechnicianDa
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { isAuthenticated, logout } from "@/lib/auth-utils"
+import { isPortalRole, roleSlugFromCookie, type RoleSlug } from "@/lib/role-map"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -45,6 +46,8 @@ export default function DashboardPage() {
   const [jobTab,  setJobTab]  = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
   const [user,    setUser]    = useState<User | null>(null)
+  // Vocabulario del SERVIDOR (cookie gqm_role): decide qué dashboard se sirve.
+  const [roleSlug, setRoleSlug] = useState<RoleSlug | null>(null)
 
   const [isDownloadingReport, setIsDownloadingReport] = useState(false)
 
@@ -66,6 +69,7 @@ export default function DashboardPage() {
     // gqm_role señala sesión activa (el middleware ya protege la ruta).
     const userData = localStorage.getItem("user_data")
     if (!isAuthenticated() || !userData) { logout(); return }
+    setRoleSlug(roleSlugFromCookie())
     try { setUser(JSON.parse(userData)) } catch { logout() }
   }, [router])
 
@@ -112,7 +116,12 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  if (user.role === "LEAD_TECHNICIAN" || user.role === "SUBCONTRACTOR") {
+  // U-01 · Ésta es la pantalla del portal. Antes se decidía con
+  // `user.role` (localStorage, reescribible desde devtools) y para el técnico
+  // era además inalcanzable: el middleware lo sacaba de /dashboard. Ahora
+  // /dashboard está en PORTAL_PREFIXES.technical y la rama se elige con la
+  // cookie `gqm_role`, que es la que evalúa el propio middleware.
+  if (isPortalRole(roleSlug)) {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />

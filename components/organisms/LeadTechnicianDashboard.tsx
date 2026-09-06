@@ -288,7 +288,19 @@ function TechJobsPanel({
 export function LeadTechnicianDashboard() {
   const t = useTranslations("dashboard")
 
-  const [view, setView] = useState<DashboardView>("jobs")
+  // El técnico aterriza en SUS TAREAS, no en "jobs".
+  //
+  // U-01 (auditoría de portal): al darle por fin una pantalla propia, la vista
+  // "jobs" pedía /api/metrics/jobs/summary, que exige `dashboard:read` — un
+  // permiso que la política `technical-portal` NO concede. Su primera pantalla
+  // era «Could not load jobs data.»: se cambió un callejón sin salida por otro.
+  // Lo que un técnico necesita al entrar son sus tareas, y esas salen de
+  // /api/technician/<id>, que sí puede pedir.
+  const esTecnico = typeof window !== "undefined" &&
+    (() => { try {
+      return JSON.parse(localStorage.getItem("user_data") || "{}")?.role === "LEAD_TECHNICIAN"
+    } catch { return false } })()
+  const [view, setView] = useState<DashboardView>(esTecnico ? "tasks" : "jobs")
   const [jobTab, setJobTab] = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL")
@@ -337,16 +349,23 @@ export function LeadTechnicianDashboard() {
       {/* ── View switcher (Top Tabs) ── */}
       <div className="overflow-x-auto pb-1 sm:pb-0">
         <div className="inline-flex min-w-max rounded-lg border bg-white p-1 gap-0.5">
-          <Button
-            variant={view === "jobs" ? "default" : "ghost"}
-            className={view === "jobs" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("jobs")}
-          >
-            <span className="flex items-center gap-2">
-              <File className="h-4 w-4" />
-              {t("viewJobs")}
-            </span>
-          </Button>
+          {/* U-01: al técnico no se le ofrece la pestaña Jobs. Su vista pide
+              /api/metrics/jobs/summary, que exige `dashboard:read`, y su
+              política no lo concede: el botón solo podía llevar a un error.
+              Un botón visible que termina en 403 es un callejón sin salida,
+              que es justo lo que este arreglo venía a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "jobs" ? "default" : "ghost"}
+              className={view === "jobs" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("jobs")}
+            >
+              <span className="flex items-center gap-2">
+                <File className="h-4 w-4" />
+                {t("viewJobs")}
+              </span>
+            </Button>
+          )}
           <Button
             variant={view === "tasks" ? "default" : "ghost"}
             className={view === "tasks" ? "bg-gqm-green text-white" : ""}

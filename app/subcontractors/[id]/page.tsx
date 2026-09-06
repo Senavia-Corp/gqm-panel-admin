@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/atoms/UserAvatar"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
+import { isPortalRole, roleSlugFromCookie, uidFromCookie, type RoleSlug } from "@/lib/role-map"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -295,6 +296,12 @@ export default function SubcontractorDetailsPage() {
 
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
+  // Rol e id de la SESIÓN (cookies gqm_role/gqm_uid): es el vocabulario que
+  // evalúa el middleware. `localStorage.user_data.role` se reescribe desde
+  // devtools y su valor LEAD_TECHNICIAN ni siquiera existe en el backend (D6).
+  const [roleSlug, setRoleSlug] = useState<RoleSlug | null>(null)
+  const [sessionUid, setSessionUid] = useState<string | null>(null)
+  const isPortal = isPortalRole(roleSlug)
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [subc, setSubc] = useState<SubcFull | null>(null)
@@ -402,6 +409,8 @@ export default function SubcontractorDetailsPage() {
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
+    setRoleSlug(roleSlugFromCookie())
+    setSessionUid(uidFromCookie())
     setUser(JSON.parse(u))
   }, [router])
 
@@ -456,6 +465,20 @@ export default function SubcontractorDetailsPage() {
 
   useEffect(() => {
     if (user && id) {
+      // U-03 · Pertenencia. La única guarda que había estaba escrita para
+      // LEAD_TECHNICIAN, un rol que el backend NO emite (cero coincidencias en
+      // todo gqm-api): no protegía a nadie, y `/subcontractors/<ajeno>` pintaba
+      // la ficha del otro sub. Se escribe contra el rol real de la sesión.
+      // El middleware ya rebota este caso y la API responderá 404 tras P-05;
+      // esta comprobación es la tercera capa, no la única.
+      if (roleSlug === "subcontractor") {
+        if (sessionUid && String(sessionUid) !== String(id)) {
+          router.replace(`/subcontractors/${sessionUid}`)
+        } else {
+          fetchSubc()
+        }
+        return
+      }
       const isTech = user.role === "LEAD_TECHNICIAN"
       if (isTech) {
         apiFetch(`/api/technician/${user.id}`)
@@ -477,7 +500,7 @@ export default function SubcontractorDetailsPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, id])
+  }, [user, id, roleSlug, sessionUid])
 
   // ── Save changes ───────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -890,6 +913,9 @@ export default function SubcontractorDetailsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* U-04 · Sincronizar con Podio no es una acción de portal:
+                      el interruptor solo se ofrece a roles internos. */}
+                  {!isPortal && (
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:border-slate-300 sm:px-3">
                     <div className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                       onClick={() => setSyncPodio(v => !v)}>
@@ -897,6 +923,7 @@ export default function SubcontractorDetailsPage() {
                     </div>
                     <span className="hidden sm:inline">{t("syncPodio")}</span>
                   </label>
+                  )}
 
                   {hasPermission("subcontractor:update") && (
                     !editing
@@ -1318,7 +1345,13 @@ export default function SubcontractorDetailsPage() {
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                                 {filteredTasks.length}/{allSubcTasks.length}
                               </span>
-                              {hasPermission("subcontractor:update") && (
+                              {/* U-02 · El permiso que rige de verdad crear una
+                                  tarea es `tasks:create` (lo comprueba la API en
+                                  POST /tasks/). Condicionarlo a
+                                  `subcontractor:update` dejaba al subcontratista
+                                  —que tiene `tasks:create` y no el otro— sin
+                                  ningún camino para ejercer la regla R3. */}
+                              {hasPermission("tasks:create") && (
                                 <Button
                                   size="sm"
                                   onClick={() => setCreateTaskOpen(true)}
@@ -1375,7 +1408,7 @@ export default function SubcontractorDetailsPage() {
                                 <div className="flex flex-col items-center justify-center gap-2 py-12">
                                   <ClipboardList className="h-8 w-8 text-slate-300" />
                                   <p className="text-sm text-slate-500">{t("noTasks")}</p>
-                                  {hasPermission("subcontractor:update") && (
+                                  {hasPermission("tasks:create") && (
                                     <Button size="sm" variant="outline" onClick={() => setCreateTaskOpen(true)} className="mt-1 gap-1.5 text-xs">
                                       <Plus className="h-3.5 w-3.5" /> {t("newTask")}
                                     </Button>
@@ -1461,12 +1494,20 @@ export default function SubcontractorDetailsPage() {
                           </div>
 
                           {/* ── Dialogs ── */}
+                          {/* Sin userRole el diálogo evaluaba
+                              `undefined !== "SUBCONTRACTOR"` → true y le
+                              desplegaba al sub las pestañas de asignación
+                              (Unassigned / GQM Member / Subcontractor) además de
+                              pedir el roster interno de /api/members. Se pasa el
+                              rol de la SESIÓN, no el de localStorage. */}
                           <CreateTaskDialog
                             open={createTaskOpen}
                             onOpenChange={setCreateTaskOpen}
                             jobId=""
                             jobData={subcJobData}
                             defaultSubcId={subc.ID_Subcontractor}
+                            userRole={roleSlug === "subcontractor" ? "SUBCONTRACTOR" : user?.role}
+                            userSubId={roleSlug === "subcontractor" ? (sessionUid ?? subc.ID_Subcontractor) : null}
                             onTaskCreated={() => { setCreateTaskOpen(false); fetchSubc() }}
                           />
                           <TaskDetailsDialog

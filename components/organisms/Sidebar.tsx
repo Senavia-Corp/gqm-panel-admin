@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import type { ElementType } from "react"
-import type { UserRole } from "@/lib/types"
+import { isPortalRole, roleSlugFromCookie, uidFromCookie, type RoleSlug } from "@/lib/role-map"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,15 +63,22 @@ const gqmMemberMenuItems: NavItem[] = [
   { icon: FileBadge,       labelKey: "rolesPermissions",   href: "/roles-permissions" },
 ]
 
+// U-05 · El menú del portal solo pinta rutas que ese rol puede abrir de
+// verdad: estas dos listas tienen que ser un subconjunto de
+// `PORTAL_PREFIXES` en `middleware.ts:19-31`. Antes ofrecían /dashboard y
+// /jobs, que el middleware rebotaba: 2 de los 3 enlaces del subcontratista y
+// los 2 del técnico estaban muertos.
+//
+// El subcontratista solo tiene /subcontractors (su propia ficha; el href se
+// reescribe abajo con el id de sesión) — /jobs no está en su prefijo y
+// /dashboard lo devuelve a su ficha.
 const subcontractorMenuItems: NavItem[] = [
-  { icon: LayoutDashboard, labelKey: "dashboard",      href: "/dashboard" },
-  { icon: Briefcase,       labelKey: "jobs",           href: "/jobs" },
   { icon: Users,           labelKey: "subcontractors", href: "/subcontractors" },
 ]
 
+// El técnico solo tiene /dashboard, que le sirve LeadTechnicianDashboard.
 const leadTechnicianMenuItems: NavItem[] = [
   { icon: LayoutDashboard, labelKey: "dashboard",    href: "/dashboard" },
-  { icon: Briefcase,       labelKey: "jobs",         href: "/jobs" },
 ]
 
 const bottomItems: NavItem[] = [
@@ -85,7 +92,7 @@ const bottomItems: NavItem[] = [
 interface SidebarContentProps {
   collapsed: boolean
   menuItems: NavItem[]
-  userRole: UserRole | null
+  roleSlug: RoleSlug | null
   pathname: string
   onNavigate?: () => void
 }
@@ -93,7 +100,7 @@ interface SidebarContentProps {
 function SidebarContent({
   collapsed,
   menuItems,
-  userRole,
+  roleSlug,
   pathname,
   onNavigate,
 }: SidebarContentProps) {
@@ -120,9 +127,7 @@ function SidebarContent({
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-          const isDisabled =
-            userRole === "LEAD_TECHNICIAN" &&
-            (item.href === "/reports")
+          const isDisabled = isPortalRole(roleSlug) && item.href === "/reports"
 
           return (
             <Link
@@ -151,9 +156,9 @@ function SidebarContent({
       <div className="space-y-1 border-t p-4">
         {bottomItems.map((item) => {
           const Icon = item.icon
-          const isDisabled =
-            userRole === "LEAD_TECHNICIAN" &&
-            (item.href === "/settings")
+          // /settings no está en PORTAL_PREFIXES: el middleware lo rebota
+          // para subcontratista y técnico, así que no se ofrece a ninguno.
+          const isDisabled = isPortalRole(roleSlug) && item.href === "/settings"
           const isLogout = item.labelKey === "logout"
 
           return (
@@ -198,17 +203,25 @@ function SidebarContent({
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  // Rol e id de la SESIÓN (cookies gqm_role/gqm_uid), no
+  // `localStorage.user_data`: el menú debe coincidir con lo que evalúa el
+  // middleware, y localStorage se reescribe desde devtools (D6).
+  const [roleSlug, setRoleSlug] = useState<RoleSlug | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const pathname = usePathname()
   const { isOpen, setIsOpen } = useSidebar()
   const t = useTranslations("navigation")
 
   useEffect(() => {
+    setRoleSlug(roleSlugFromCookie())
+    // El id sale de la misma cookie que usa el middleware para redirigir, de
+    // modo que el enlace del sub apunte exactamente a la ficha que le deja
+    // abrir. localStorage queda solo como reserva si la cookie viniera vacía.
+    const fromCookie = uidFromCookie()
+    if (fromCookie) { setUserId(fromCookie); return }
     const userData = localStorage.getItem("user_data")
     if (userData) {
       const user = JSON.parse(userData)
-      setUserRole(user.role)
       setUserId(localStorage.getItem("user_id") ?? user.id ?? user.user_id ?? user.ID_Member ?? user.ID_Technician ?? user.ID_Subcontractor)
     }
   }, [])
@@ -225,14 +238,14 @@ export function Sidebar() {
 
   const menuItems = useMemo(() => {
     let base = gqmMemberMenuItems
-    if (userRole === "SUBCONTRACTOR") {
+    if (roleSlug === "subcontractor") {
       base = subcontractorMenuItems.map(item => 
         item.href === "/subcontractors" && userId 
           ? { ...item, href: `/subcontractors/${userId}` } 
           : item
       )
     }
-    else if (userRole === "LEAD_TECHNICIAN") base = leadTechnicianMenuItems
+    else if (roleSlug === "technical") base = leadTechnicianMenuItems
     
     return base.filter((item) => {
       if (item.href === "/members")              return can("member:read")
@@ -271,7 +284,7 @@ export function Sidebar() {
       }
       return true
     })
-  }, [userRole, hasPermission, can])
+  }, [roleSlug, userId, hasPermission, can])
 
   return (
     <>
@@ -284,7 +297,7 @@ export function Sidebar() {
         <SidebarContent
           collapsed={collapsed}
           menuItems={menuItems}
-          userRole={userRole}
+          roleSlug={roleSlug}
           pathname={pathname}
         />
 
@@ -317,7 +330,7 @@ export function Sidebar() {
           <SidebarContent
             collapsed={false}
             menuItems={menuItems}
-            userRole={userRole}
+            roleSlug={roleSlug}
             pathname={pathname}
             onNavigate={() => setIsOpen(false)}
           />

@@ -186,6 +186,15 @@ export function CreateTaskDialog({
   // Fetch all GQM members when dialog opens
   useEffect(() => {
     if (!open) return
+    // Un subcontratista no puede asignar a un miembro de GQM: las pestañas de
+    // asignación no se le pintan y `/api/members` le responde 403. Pedir el
+    // roster interno completo era ruido y un intento de lectura que no le toca.
+    if (userRole === "SUBCONTRACTOR") {
+      setAllMembers([])
+      setMembersError(false)
+      setLoadingMembers(false)
+      return
+    }
     let cancelado = false
     setLoadingMembers(true)
     setMembersError(false)
@@ -211,7 +220,7 @@ export function CreateTaskDialog({
       })
       .finally(() => { if (!cancelado) setLoadingMembers(false) })
     return () => { cancelado = true }
-  }, [open, reintentoMiembros])
+  }, [open, reintentoMiembros, userRole])
 
   function nullable(v: string): string | null {
     return v === NONE || v === "" ? null : v

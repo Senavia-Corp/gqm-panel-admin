@@ -66,12 +66,11 @@ export function homeFor(role: Role): RegExp {
     case "technical":
     case "tech_de_sub_b":
     case "tech_independiente":
-      // OJO: esta landing está ROTA (hallazgo U-01 de la auditoría de portal).
-      // `/subcontractors` exige `subcontractor:read`, que el técnico no tiene,
-      // así que su primera pantalla es «Access Denied» y el único botón que
-      // ofrece vuelve a ella. Se codifica aquí porque es el comportamiento
-      // ACTUAL, no el deseado: al arreglar U-01 hay que cambiar esta línea.
-      return /\/subcontractors(?:[/?#]|$)/
+      // U-01 arreglado: `PORTAL_PREFIXES.technical` ya no apunta a
+      // /subcontractors (que exige `subcontractor:read`, permiso que el técnico
+      // no tiene) sino a /dashboard, donde `app/dashboard/page.tsx` le sirve
+      // `LeadTechnicianDashboard`: sus jobs, sus tareas y sus certificados.
+      return /\/dashboard(?:[/?#]|$)/
     default:
       return /\/dashboard(?:[/?#]|$)/
   }
