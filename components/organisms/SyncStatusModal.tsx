@@ -333,7 +333,14 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                         lo que falta. El backend solo acepta reintentar las que
                         mienten de forma medible.
                       */}
-                      {(!sync.resolved || sync.fichero_recuperado === false) && (
+                      {/*
+                        Una falla irrecuperable no lleva boton: el fichero se
+                        borro en Podio o no cabe en Cloudinary, y el backend la
+                        rechaza con 422. Ofrecer Resync solo invitaba a volver a
+                        descargar 18,9 MB para chocar contra el mismo tope.
+                      */}
+                      {!sync.irrecuperable &&
+                        (!sync.resolved || sync.fichero_recuperado === false) && (
                         <Button
                           onClick={() => handleResync(sync.id)}
                           size="sm"
@@ -349,7 +356,7 @@ export function SyncStatusModal({ open, onClose }: SyncModalProps) {
                             </>
                           )}
                         </Button>
-                      )}
+                        )}
                       {!sync.resolved && sync.fichero_recuperado === true && (
                         <Button
                           onClick={() => handleResolver(sync.id)}
