@@ -5,6 +5,23 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, Briefcase, MapPin, ChevronRight, AlertCircle } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useEsPortal } from "@/hooks/useEsPortal"
+
+/**
+ * U-09 bis: la tarjeta enlaza a `/jobs/<id>`, y `/jobs` no está en ningún
+ * `PORTAL_PREFIXES`: al portal el middleware lo rebota a su pantalla de inicio
+ * y encima le pierde el sitio. Para el portal se pinta la misma tarjeta sin
+ * enlace; para el resto, igual que antes.
+ */
+function FichaDeJob({ jobId, children }: { jobId: string; children: React.ReactNode }) {
+  const { esPortal } = useEsPortal()
+  if (esPortal) return <div className="block group">{children}</div>
+  return (
+    <Link href={`/jobs/${jobId}`} className="block group">
+      {children}
+    </Link>
+  )
+}
 
 export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
   const t = useTranslations()
@@ -14,7 +31,7 @@ export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = 
 
   useEffect(() => {
     // Para técnicos necesitamos el subcontractorId, para miembros el memberId
-    const targetId = isTechnician ? subcontractorId : memberId
+    const targetId = subcontractorId ?? memberId
     if (!targetId) {
       if (isTechnician) setError(t("profile.tabs.noSub"))
       setLoading(false)
@@ -26,7 +43,15 @@ export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = 
         setLoading(true)
         // Pedimos los estados de pipeline
         const statuses = encodeURIComponent("Assigned/P. Quote,Scheduled / Work in Progress,In Progress")
-        const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
+    // U-15: la rama se elegía con `isTechnician`, así que el SUBCONTRATISTA
+    // caía en la de miembro y pedía `member_id=<su ID_Subcontractor>` — un id
+    // de subcontratista en el parámetro de miembro. La consulta salía siempre
+    // vacía y su perfil enseñaba «no hay trabajos» sin que hubiera nada roto a
+    // la vista. Ahora decide el DATO: si hay id de subcontratista se consulta
+    // por él (vale para el técnico y para el propio sub); si no, es un miembro.
+        const idParam = subcontractorId
+          ? `subcontractor_id=${subcontractorId}`
+          : `member_id=${memberId}`
         const res = await apiFetch(`/api/jobs?${idParam}&status=${statuses}&limit=50`)
         if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
@@ -71,7 +96,7 @@ export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = 
   return (
     <div className="space-y-4">
       {jobs.map((job) => (
-        <Link key={job.ID_Jobs} href={`/jobs/${job.ID_Jobs}`} className="block group">
+        <FichaDeJob key={job.ID_Jobs} jobId={job.ID_Jobs}>
           <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl shadow-sm transition-all hover:border-emerald-300 hover:shadow-md">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -102,7 +127,7 @@ export function ProfilePipelineJobs({ memberId, subcontractorId, isTechnician = 
               </div>
             </div>
           </div>
-        </Link>
+        </FichaDeJob>
       ))}
     </div>
   )

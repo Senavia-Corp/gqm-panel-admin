@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -18,9 +18,19 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
 import type { TechnicianType } from "@/lib/types"
+import { reglasPassword } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
-export default function CreateTechnicianPage({ params }: { params: { id: string } }) {
+export default function CreateTechnicianPage({ params }: { params: Promise<{ id: string }> }) {
+  // U-11 (segunda mitad): en Next 16 `params` de una página de cliente es una
+  // PROMESA. Estas dos pantallas la declaraban como objeto plano, así que
+  // `idSubcontratista` era `undefined` — TypeScript no lo veía porque el tipo estaba
+  // escrito a mano y mentía. Medido: el alta salía SIN `ID_Subcontractor` (el
+  // técnico quedaba huérfano) y la redirección iba a `/subcontractors/undefined`.
+  // Todas las demás páginas del panel ya lo desenvuelven con `use()`.
+  const { id: idSubcontratista } = use(params)
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
@@ -45,19 +55,12 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
     setUser(JSON.parse(userData))
   }, [router])
 
-  const validatePassword = (password: string): string[] => {
-    const errors: string[] = []
-    if (password.length < 8) {
-      errors.push(t("pwdLength"))
-    }
-    if (!/\d/.test(password)) {
-      errors.push(t("pwdNumber"))
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push(t("pwdCapital"))
-    }
-    return errors
-  }
+  // O-06: esta lista decía «8 caracteres, un dígito, una mayúscula» y quien
+  // decide es el servidor, que pide 10 y 3 de 4 tipos de carácter. Medido:
+  // 'Abcdefg1' pasaba aquí y el API respondía 400. Ahora se pregunta al
+  // espejo de la política real (lib/password-policy.ts).
+  const validatePassword = (password: string): string[] =>
+    politica.reglas(password).filter((r) => !r.ok).map((r) => r.texto)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,9 +88,26 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
     }
 
     setLoading(true)
+    // U-11: esta pantalla NO PODÍA CREAR NADA. El formulario guarda sus campos
+    // en minúsculas (`name`, `email`, `password`...) y los mandaba tal cual,
+    // pero el modelo del API espera `Name`, `Email_Address`, `Password`,
+    // `Phone_Number` y `Type_of_technician` — y los dos últimos obligatorios no
+    // son opcionales. Medido con HTTP crudo contra `POST /technician/`:
+    //
+    //   cuerpo de la pantalla → 400 validation_error
+    //                           Email_Address: Field required
+    //                           Password:      Field required
+    //   cuerpo con los nombres del modelo → 201
+    //
+    // Además iba `confirmPassword` dentro, que no es un campo del recurso.
     const payload = {
-      ...formData,
-      ID_Subcontractor: params.id,
+      Name: formData.name,
+      Email_Address: formData.email,
+      Location: formData.location,
+      Phone_Number: formData.phoneNumber,
+      Type_of_technician: formData.type,
+      Password: formData.password,
+      ID_Subcontractor: idSubcontratista,
     }
 
     apiFetch("/api/technician", {
@@ -101,7 +121,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
           throw new Error(err.message || err.detail || `Error ${res.status}`)
         }
         toast({ title: t("success"), description: t("techCreated") })
-        router.push(`/subcontractors/${params.id}?tab=technicians`)
+        router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)
       })
       .catch((err) => {
         setErrors([err.message || t("failedToCreateTech")])
@@ -126,7 +146,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
             <p className="text-slate-500 max-w-md mb-8">
               {t("accessDeniedTechDesc")}
             </p>
-            <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+            <Button onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
               {t("returnTechs")}
             </Button>
@@ -144,7 +164,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
         <main className="flex-1 overflow-y-auto p-6">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+            onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)}
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -262,7 +282,7 @@ export default function CreateTechnicianPage({ params }: { params: { id: string 
                   type="button"
                   variant="outline"
                   className="flex-1 bg-transparent"
-                  onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+                  onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)}
                 >
                   {t("cancel")}
                 </Button>

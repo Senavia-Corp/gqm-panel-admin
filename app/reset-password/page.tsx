@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { motivoRechazo, reglasPassword } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 function ResetPasswordForm() {
   const router = useRouter()
   const t = useTranslations("auth")
+  const politica = usePasswordPolicy()
   const token = useSearchParams().get("token") ?? ""
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -21,8 +24,12 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (password.length < 8) {
-      setError(t("passwordMin"))
+    // O-06: aquí se pedían 8 caracteres y el servidor pide 10 y 3 de 4 tipos.
+    // Es la única puerta de contraseña que se usa SIN sesión —la de
+    // recuperación—, así que el desajuste lo sufría quien ya estaba fuera.
+    const motivo = politica.motivo(password)
+    if (motivo) {
+      setError(motivo)
       return
     }
     if (password !== confirm) {
@@ -82,6 +89,23 @@ function ResetPasswordForm() {
                 required
                 disabled={loading}
               />
+              {/* O-06: la página no decía en ninguna parte qué se le pide a la
+                  contraseña. El usuario tecleaba a ciegas y aprendía las
+                  reglas fallando — en la única pantalla a la que se llega ya
+                  estando fuera de la aplicación. */}
+              <ul className="space-y-0.5 pt-1">
+                {politica.reglas(password).map((r) => (
+                  <li
+                    key={r.clave}
+                    className={`text-xs flex items-center gap-1.5 ${
+                      r.ok ? "text-emerald-600" : "text-gray-500"
+                    }`}
+                  >
+                    <span aria-hidden="true">{r.ok ? "✓" : "•"}</span>
+                    {r.texto}
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm">{t("confirmPassword")}</Label>

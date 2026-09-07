@@ -1,7 +1,7 @@
 "use client"
 
 // REG-024: conectado al backend real (antes 100% mock).
-import { useEffect, useMemo, useState } from "react"
+import { use, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,8 +23,15 @@ interface ApiOrder {
 export default function SubcontractorOrdersPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  // Next 16: `params` es una PROMESA. Declarado como objeto plano, `parametros.id`
+// era `undefined` y la pantalla pedía `/api/order?subcontractorId=undefined`.
+// Medido: con sub-dev salía 403 y con admin-dev también fallaba —«No orders
+// found» para un subcontratista que SÍ tiene una orden en la base—, así que no
+// era un problema de permisos sino de que el filtro iba vacío. Se desenvuelve
+// con `React.use()`.
+  const parametros = use(params)
   const t = useTranslations("subcontractors")
   const router = useRouter()
   const [orders, setOrders] = useState<ApiOrder[]>([])
@@ -39,13 +46,17 @@ export default function SubcontractorOrdersPage({
     setLoading(true)
     setError("")
     try {
-      const resp = await apiFetch(`/api/order?subcontractorId=${encodeURIComponent(params.id)}`)
+      const resp = await apiFetch(`/api/order?subcontractorId=${encodeURIComponent(parametros.id)}`)
       if (!resp.ok) throw new Error(`(${resp.status})`)
       const data = await resp.json()
       setOrders(Array.isArray(data) ? data : (data?.results ?? []))
     } catch (e) {
+      // «No hay órdenes» y «no puedes verlas» son cosas distintas y aquí se
+      // pintaban con el mismo texto: un 403 finance:read acababa en
+      // «No orders found», que es una afirmación FALSA sobre los datos.
       console.error("[orders] load error:", e)
-      setError(t("noOrdersFound"))
+      const esProhibido = String(e).includes("(403)")
+      setError(esProhibido ? t("noPermissionOrders") : t("errorLoadingOrders"))
       setOrders([])
     } finally {
       setLoading(false)
@@ -55,7 +66,7 @@ export default function SubcontractorOrdersPage({
   useEffect(() => {
     loadOrders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id])
+  }, [parametros.id])
 
   const filteredOrders = useMemo(() => {
     const q = searchQuery.toLowerCase()
@@ -114,7 +125,7 @@ export default function SubcontractorOrdersPage({
               />
             </div>
             <Button
-              onClick={() => router.push(`/subcontractors/${params.id}/orders/create`)}
+              onClick={() => router.push(`/subcontractors/${parametros.id}/orders/create`)}
               className="gap-2 bg-gqm-green text-white hover:bg-gqm-green/90"
             >
               <Plus className="h-4 w-4" />
@@ -162,7 +173,7 @@ export default function SubcontractorOrdersPage({
                               variant="ghost"
                               size="sm"
                               onClick={() =>
-                                router.push(`/subcontractors/${params.id}/orders/${order.ID_Order}`)
+                                router.push(`/subcontractors/${parametros.id}/orders/${order.ID_Order}`)
                               }
                               className="h-8 w-8 p-0"
                             >

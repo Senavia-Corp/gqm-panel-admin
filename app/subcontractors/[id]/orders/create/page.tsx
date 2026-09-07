@@ -1,7 +1,7 @@
 "use client"
 
 // REG-026: conectado al backend real (antes 100% mock).
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -29,8 +29,15 @@ interface ApiEstimateCost {
 export default function CreateOrderPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  // Next 16: `params` es una PROMESA. Declarado como objeto plano, `parametros.id`
+// era `undefined` y la pantalla pedía `/api/order?subcontractorId=undefined`.
+// Medido: con sub-dev salía 403 y con admin-dev también fallaba —«No orders
+// found» para un subcontratista que SÍ tiene una orden en la base—, así que no
+// era un problema de permisos sino de que el filtro iba vacío. Se desenvuelve
+// con `React.use()`.
+  const parametros = use(params)
   const router = useRouter()
   const t = useTranslations("subcontractors")
   const [orderName, setOrderName] = useState("")
@@ -96,7 +103,7 @@ export default function CreateOrderPage({
         method: "POST",
         body: JSON.stringify({
           Title: orderName,
-          ID_Subcontractor: params.id,
+          ID_Subcontractor: parametros.id,
           job_podio_id: selectedJob?.podio_item_id ?? null,
           estimate_cost_ids: Array.from(selectedItems),
         }),
@@ -106,7 +113,7 @@ export default function CreateOrderPage({
         setError(data.detail || data.error || `Could not create order (${resp.status})`)
         return
       }
-      router.push(`/subcontractors/${params.id}/orders`)
+      router.push(`/subcontractors/${parametros.id}/orders`)
     } catch (e) {
       console.error("[create-order] error:", e)
       setError("Could not create order")
@@ -120,7 +127,7 @@ export default function CreateOrderPage({
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
-          onClick={() => router.push(`/subcontractors/${params.id}/orders`)}
+          onClick={() => router.push(`/subcontractors/${parametros.id}/orders`)}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />

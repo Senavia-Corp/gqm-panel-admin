@@ -9,13 +9,31 @@ import { join } from "node:path"
  * del repo). Nunca se imprimen: si falta una variable el error da el NOMBRE,
  * no el valor.
  */
-export type Role = "full_admin" | "gqm_member" | "subcontractor" | "technical"
+/** Los 4 roles originales (PR #49). Los specs existentes solo usan estos. */
+export type CoreRole = "full_admin" | "gqm_member" | "subcontractor" | "technical"
+
+/**
+ * Sujetos añadidos por la auditoría de portal (sep-2026).
+ *
+ * Con UN solo sujeto por rol el objeto «ajeno» no existe y un IDOR entre pares
+ * es invisible por construcción. `sub_b` no comparte ningún job con
+ * `subcontractor`, y por eso sirve de control.
+ *
+ * `tech_independiente` no es un caso de borde: `Technician.ID_Subcontractor` es
+ * nullable y la UI de alta ofrece el subcontratista como opcional.
+ */
+export type AuditRole = "sub_b" | "tech_de_sub_b" | "tech_independiente"
+
+export type Role = CoreRole | AuditRole
 
 const ROLE_ENV: Record<Role, string> = {
   full_admin: "FULL_ADMIN",
   gqm_member: "GQM_MEMBER",
   subcontractor: "SUBCONTRACTOR",
   technical: "TECHNICAL",
+  sub_b: "SUB_B",
+  tech_de_sub_b: "TECH_DE_SUB_B",
+  tech_independiente: "TECH_INDEPENDIENTE",
 }
 
 export function env(name: string): string {
@@ -33,6 +51,9 @@ export const ids = {
   job: () => env("RBAC_JOB_ID"),
   jobTasks: () => env("RBAC_JOB_ID_TASKS"),
   sub: () => env("RBAC_SUB_ID"),
+  // Añadidos por la auditoría de portal: el «otro lado» contra el que probar.
+  subB: () => env("RBAC_SUB_B_ID"),
+  jobB: () => env("RBAC_JOB_B_ID"),
 }
 
 /** Dónde aterriza cada rol tras el login (redirecciones del middleware). */
@@ -40,8 +61,16 @@ export function homeFor(role: Role): RegExp {
   switch (role) {
     case "subcontractor":
       return new RegExp(`/subcontractors/${ids.sub()}(?:[/?#]|$)`)
+    case "sub_b":
+      return new RegExp(`/subcontractors/${ids.subB()}(?:[/?#]|$)`)
     case "technical":
-      return /\/subcontractors(?:[/?#]|$)/
+    case "tech_de_sub_b":
+    case "tech_independiente":
+      // U-01 arreglado: `PORTAL_PREFIXES.technical` ya no apunta a
+      // /subcontractors (que exige `subcontractor:read`, permiso que el técnico
+      // no tiene) sino a /dashboard, donde `app/dashboard/page.tsx` le sirve
+      // `LeadTechnicianDashboard`: sus jobs, sus tareas y sus certificados.
+      return /\/dashboard(?:[/?#]|$)/
     default:
       return /\/dashboard(?:[/?#]|$)/
   }

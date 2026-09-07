@@ -1,5 +1,7 @@
 "use client"
 
+import { roleSlugFromCookie } from "@/lib/role-map"
+
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
@@ -29,6 +31,8 @@ import {
 } from "lucide-react"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,6 +201,7 @@ function PageSkeleton({ user }: { user: any }) {
 
 export default function TechnicianDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { id }       = use(params)
@@ -397,8 +402,12 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const handleSavePassword = async () => {
     if (!pwForm.new || !pwForm.confirm) { toast({ title: t("toastPwdFill"), variant: "destructive" }); return }
     if (pwForm.new !== pwForm.confirm)  { toast({ title: t("techPwdNoMatch"), variant: "destructive" }); return }
-    if (pwForm.new.length < 8 || !/[A-Z]/.test(pwForm.new) || !/[0-9]/.test(pwForm.new)) {
-      toast({ title: t("toastPwdWeak"), description: t("toastPwdWeakDesc"), variant: "destructive" }); return
+    // O-06: se pedían 8 caracteres, una mayúscula y un dígito; el servidor
+    // exige 10 y 3 de 4 tipos. El mensaje ahora dice el motivo concreto en
+    // vez de un «weak password» genérico que no orienta a nadie.
+    const motivo = politica.motivo(pwForm.new)
+    if (motivo) {
+      toast({ title: t("toastPwdWeak"), description: motivo, variant: "destructive" }); return
     }
     setPwSaving(true)
     try {
@@ -490,7 +499,14 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   )
 
   const initials = (technician.Name ?? technician.ID_Technician).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "??"
-  const canUpdate = user?.role === "LEAD_TECHNICIAN" || hasPermission("technician:update")
+  // D6: `user` sale de `localStorage.user_data`, que se reescribe desde
+  // devtools, y `LEAD_TECHNICIAN` es un valor que el backend NO emite nunca
+  // (lo inventa app/login/page.tsx). Esta ruta está en PORTAL_PREFIXES.technical
+  // y el técnico llega a ella, así que la decisión se toma con la MISMA cookie
+  // que evalúa el middleware. El API sigue siendo la barrera real —un PATCH sin
+  // permiso acaba en 403— pero esta ronda declaró que toda guarda tocada
+  // preguntaría a la cookie, y este fichero se tocó sin cambiar esta línea.
+  const canUpdate = hasPermission("technician:update") || roleSlugFromCookie() === "technical"
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

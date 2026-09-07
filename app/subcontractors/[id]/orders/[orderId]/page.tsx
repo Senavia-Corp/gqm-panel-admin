@@ -1,7 +1,7 @@
 "use client"
 
 // REG-025: conectado al backend real (antes 100% mock).
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,8 +35,15 @@ interface ApiOrder {
 export default function OrderDetailPage({
   params,
 }: {
-  params: { id: string; orderId: string }
+  params: Promise<{ id: string; orderId: string }>
 }) {
+  // Next 16: `params` es una PROMESA. Declarado como objeto plano, `parametros.id`
+// era `undefined` y la pantalla pedía `/api/order?subcontractorId=undefined`.
+// Medido: con sub-dev salía 403 y con admin-dev también fallaba —«No orders
+// found» para un subcontratista que SÍ tiene una orden en la base—, así que no
+// era un problema de permisos sino de que el filtro iba vacío. Se desenvuelve
+// con `React.use()`.
+  const parametros = use(params)
   const router = useRouter()
   const t = useTranslations("subcontractors")
   const [order, setOrder] = useState<ApiOrder | null>(null)
@@ -51,7 +58,7 @@ export default function OrderDetailPage({
     setLoading(true)
     setError("")
     try {
-      const resp = await apiFetch(`/api/order/${encodeURIComponent(params.orderId)}`)
+      const resp = await apiFetch(`/api/order/${encodeURIComponent(parametros.orderId)}`)
       if (!resp.ok) throw new Error(`(${resp.status})`)
       const data: ApiOrder = await resp.json()
       setOrder(data)
@@ -80,7 +87,7 @@ export default function OrderDetailPage({
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.orderId])
+  }, [parametros.orderId])
 
   const handleSave = async () => {
     if (!order) return
@@ -132,7 +139,7 @@ export default function OrderDetailPage({
     return (
       <div className="space-y-4 py-12 text-center">
         <p className="text-muted-foreground">{error || "Order not found"}</p>
-        <Button variant="outline" onClick={() => router.push(`/subcontractors/${params.id}/orders`)}>
+        <Button variant="outline" onClick={() => router.push(`/subcontractors/${parametros.id}/orders`)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> {t("backToOrders")}
         </Button>
       </div>
@@ -146,7 +153,7 @@ export default function OrderDetailPage({
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
-          onClick={() => router.push(`/subcontractors/${params.id}/orders`)}
+          onClick={() => router.push(`/subcontractors/${parametros.id}/orders`)}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />

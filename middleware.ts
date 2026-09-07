@@ -18,7 +18,15 @@ const FULL_ADMIN_ONLY = ["/roles-permissions", "/members", "/commissions"]
 // Prefijos permitidos para los roles de portal (además de /profile)
 const PORTAL_PREFIXES: Record<string, string[]> = {
   subcontractor: ["/subcontractors", "/profile"],
-  technical: ["/subcontractors", "/technicians", "/profile"],
+  // U-01: el técnico aterrizaba en /subcontractors, que exige
+  // `subcontractor:read` — permiso que la política `technical-portal` NO
+  // concede. Su primera pantalla era «Access Denied» y su único botón volvía
+  // a ella: bucle cerrado. Se le da /dashboard, donde `app/dashboard/page.tsx`
+  // sirve `LeadTechnicianDashboard` (sus jobs, sus tareas, certificados y
+  // rendimiento) — un componente que ya existía y era inalcanzable justo por
+  // esta lista. Y se le quita /subcontractors, que no puede ver.
+  // El primer elemento es además el destino de la redirección de abajo.
+  technical: ["/dashboard", "/technicians", "/profile"],
   // Member sin rol: solo su perfil (sin bucle, /profile está permitido)
   none: ["/profile"],
 }
@@ -91,17 +99,50 @@ export function middleware(request: NextRequest) {
 
   const portalPrefixes = PORTAL_PREFIXES[role]
   if (portalPrefixes) {
+    const uid = request.cookies.get("gqm_uid")?.value
+    const home =
+      uid && role === "subcontractor" ? `/subcontractors/${uid}` : portalPrefixes[0]
+
     const allowed =
       pathname === "/" ||
       portalPrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))
     if (!allowed) {
       const url = request.nextUrl.clone()
-      const uid = request.cookies.get("gqm_uid")?.value
-      url.pathname = uid && role === "subcontractor"
-        ? `/subcontractors/${uid}`
-        : portalPrefixes[0]
+      url.pathname = home
       url.search = ""
       return NextResponse.redirect(url)
+    }
+
+    // U-03: el prefijo `/subcontractors` se comparaba SIN mirar el id, así que
+    // `/subcontractors/<otro>` pasaba y la ficha ajena se pintaba. La única
+    // guarda de pertenencia de la página estaba escrita para LEAD_TECHNICIAN,
+    // un rol que el backend no emite. Aquí se compara contra `gqm_uid`, que la
+    // escribe el servidor en el login junto con `gqm_role`.
+    if (role === "subcontractor" && uid && pathname.startsWith("/subcontractors/")) {
+      const requested = pathname.split("/")[2]
+      if (requested && requested !== uid) {
+        const url = request.nextUrl.clone()
+        url.pathname = home
+        url.search = ""
+        return NextResponse.redirect(url)
+      }
+    }
+
+    // U-18: la guarda de arriba se escribió sólo para `subcontractor`, y a
+    // `technical` se le dio `/technicians` en sus prefijos (U-01) sin ninguna
+    // comprobación de a QUIÉN pide. Medido: un técnico abre
+    // /technicians/<otro> y el middleware le deja pasar; la pantalla se queda
+    // en blanco porque el API sí le niega los datos — no hay fuga, pero sí un
+    // callejón sin salida y sin mensaje, que es justo lo que U-01 vino a
+    // quitar. Misma regla que para el sub: sólo su propia ficha.
+    if (role === "technical" && uid && pathname.startsWith("/technicians/")) {
+      const requested = pathname.split("/")[2]
+      if (requested && requested !== uid) {
+        const url = request.nextUrl.clone()
+        url.pathname = home
+        url.search = ""
+        return NextResponse.redirect(url)
+      }
     }
   }
 

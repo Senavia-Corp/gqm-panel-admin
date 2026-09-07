@@ -8,6 +8,9 @@ import { UserAvatar } from "@/components/atoms/UserAvatar"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
 import { apiFetch } from "@/lib/apiFetch"
+import { uidFromCookie, type RoleSlug } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,14 +26,7 @@ import { CreateTaskDialog } from "@/components/organisms/CreateTaskDialog"
 import { TaskDetailsDialog } from "@/components/organisms/TaskDetailsDialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
-import {
-  ArrowLeft, Save, Search, Plus, ChevronLeft, ChevronRight,
-  Wrench, Link2, Unlink, Loader2, MapPin, Map, X, Mail, Phone,
-  Building2, Globe, Star, ShieldCheck, FileText, CheckCircle,
-  AlertCircle, RefreshCw, Hash, Briefcase, ClipboardList, Calendar,
-  DollarSign, Tag, ExternalLink, Clock, Sparkles, ShoppingBag, Activity,
-  Zap, Edit3, Info, Users, Award
-} from "lucide-react"
+import { Activity, AlertCircle, ArrowLeft, Award, Briefcase, Building2, Calendar, CheckCircle, ChevronLeft, ChevronRight, ClipboardList, Clock, DollarSign, Edit3, ExternalLink, Eye, EyeOff, FileText, Globe, Hash, Info, Link2, Loader2, Mail, Map, MapPin, Phone, Plus, RefreshCw, Save, Search, Shield, ShieldCheck, ShoppingBag, Sparkles, Star, Tag, Unlink, Users, Wrench, X, Zap } from "lucide-react"
 import type { Subcontractor } from "@/lib/types"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
@@ -285,6 +281,26 @@ function PageSkeleton({ user }: { user: any }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+function EntradaPassword({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder: string
+}) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        type={visible ? "text" : "password"}
+        value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-slate-200 px-3 py-2 pr-10 text-sm"
+      />
+      <button type="button" onClick={() => setVisible(v => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  )
+}
+
 export default function SubcontractorDetailsPage() {
   const t = useTranslations("subcontractors")
   const router = useRouter()
@@ -295,6 +311,18 @@ export default function SubcontractorDetailsPage() {
 
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
+  // Rol e id de la SESIÓN (cookies gqm_role/gqm_uid): es el vocabulario que
+  // evalúa el middleware. `localStorage.user_data.role` se reescribe desde
+  // devtools y su valor LEAD_TECHNICIAN ni siquiera existe en el backend (D6).
+  // U-17 bis. Esto era `useState<RoleSlug|null>(null)` + `isPortalRole(roleSlug)`,
+  // y `isPortalRole(null)` es `false`: en el PRIMER render `isPortal` valía
+  // false para todo el mundo, así que el efecto de abajo pedía
+  // `GET /api/roles?limit=100` ANTES de que nadie supiera el rol y el
+  // subcontratista se comía un 403 en su pantalla de aterrizaje — justo lo
+  // que U-17 decía haber cerrado. El hook resuelve el desconocido hacia
+  // «portal»; ver hooks/useEsPortal.ts.
+  const { esPortal: isPortal, rol: roleSlug } = useEsPortal()
+  const [sessionUid, setSessionUid] = useState<string | null>(null)
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [subc, setSubc] = useState<SubcFull | null>(null)
@@ -359,6 +387,45 @@ export default function SubcontractorDetailsPage() {
   const [allSkills, setAllSkills] = useState<Skill[]>([])
   const [skillsSearch, setSkillsSearch] = useState("")
   const [skillsPage, setSkillsPage] = useState(1)
+  // ── Reposición de contraseña (ver el bloque de UI en la pestaña Details) ──
+  const [pwAbierto, setPwAbierto] = useState(false)
+  const [pwNueva, setPwNueva] = useState("")
+  const [pwRepetida, setPwRepetida] = useState("")
+  const [pwGuardando, setPwGuardando] = useState(false)
+  const politicaPw = usePasswordPolicy()
+
+  const guardarPassword = async () => {
+    if (!pwNueva || !pwRepetida) {
+      toast({ title: t("toastPwdFill"), variant: "destructive" }); return
+    }
+    if (pwNueva !== pwRepetida) {
+      toast({ title: t("techPwdNoMatch"), variant: "destructive" }); return
+    }
+    // La MISMA política que impone el servidor (10 caracteres y 3 de 4 tipos),
+    // con el motivo concreto en vez de un «weak password» que no orienta.
+    const motivo = politicaPw.motivo(pwNueva)
+    if (motivo) {
+      toast({ title: t("toastPwdWeak"), description: motivo, variant: "destructive" }); return
+    }
+    setPwGuardando(true)
+    try {
+      const res = await apiFetch(`/api/subcontractors/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Password: pwNueva }),
+        cache: "no-store",
+      })
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => null)
+        throw new Error(cuerpo?.detail || cuerpo?.error || `Error ${res.status}`)
+      }
+      toast({ title: t("toastPwdUpdated") })
+      setPwNueva(""); setPwRepetida(""); setPwAbierto(false)
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message, variant: "destructive" })
+    } finally { setPwGuardando(false) }
+  }
+
   const [ordersSearch, setOrdersSearch] = useState("")
   const [ordersPayFilter, setOrdersPayFilter] = useState<"all" | "paid" | "pending" | "unlinked">("all")
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
@@ -371,6 +438,13 @@ export default function SubcontractorDetailsPage() {
   const [roles, setRoles] = useState<any[]>([])
 
   useEffect(() => {
+    // U-17: mismo defecto que U-06 arregló en el diálogo de tarea. Esta es la
+    // pantalla de ATERRIZAJE del subcontratista, y pedía el catálogo de roles
+    // en cada carga: medido con sub-dev en /subcontractors/SUBC60001,
+    // `GET /api/roles?limit=100` responde 403 y el `if (res.ok)` lo deja pasar
+    // en silencio. Ni lo necesita —los roles sólo se pintan en la parte de
+    // administración— ni le toca leer el catálogo de roles del sistema.
+    if (isPortal) return
     async function fetchRoles() {
       try {
         const res = await apiFetch("/api/roles?limit=100")
@@ -383,7 +457,7 @@ export default function SubcontractorDetailsPage() {
       }
     }
     fetchRoles()
-  }, [])
+  }, [isPortal])
 
   // ── Manage Skills state ────────────────────────────────────────────────────
   const [manageSkillsOpen, setManageSkillsOpen] = useState(false)
@@ -402,6 +476,7 @@ export default function SubcontractorDetailsPage() {
   useEffect(() => {
     const u = localStorage.getItem("user_data")
     if (!u) { router.push("/login"); return }
+    setSessionUid(uidFromCookie())
     setUser(JSON.parse(u))
   }, [router])
 
@@ -456,6 +531,20 @@ export default function SubcontractorDetailsPage() {
 
   useEffect(() => {
     if (user && id) {
+      // U-03 · Pertenencia. La única guarda que había estaba escrita para
+      // LEAD_TECHNICIAN, un rol que el backend NO emite (cero coincidencias en
+      // todo gqm-api): no protegía a nadie, y `/subcontractors/<ajeno>` pintaba
+      // la ficha del otro sub. Se escribe contra el rol real de la sesión.
+      // El middleware ya rebota este caso y la API responderá 404 tras P-05;
+      // esta comprobación es la tercera capa, no la única.
+      if (roleSlug === "subcontractor") {
+        if (sessionUid && String(sessionUid) !== String(id)) {
+          router.replace(`/subcontractors/${sessionUid}`)
+        } else {
+          fetchSubc()
+        }
+        return
+      }
       const isTech = user.role === "LEAD_TECHNICIAN"
       if (isTech) {
         apiFetch(`/api/technician/${user.id}`)
@@ -477,7 +566,7 @@ export default function SubcontractorDetailsPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, id])
+  }, [user, id, roleSlug, sessionUid])
 
   // ── Save changes ───────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -890,6 +979,9 @@ export default function SubcontractorDetailsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* U-04 · Sincronizar con Podio no es una acción de portal:
+                      el interruptor solo se ofrece a roles internos. */}
+                  {!isPortal && (
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:border-slate-300 sm:px-3">
                     <div className={`relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors ${syncPodio ? "bg-emerald-500" : "bg-slate-200"}`}
                       onClick={() => setSyncPodio(v => !v)}>
@@ -897,6 +989,7 @@ export default function SubcontractorDetailsPage() {
                     </div>
                     <span className="hidden sm:inline">{t("syncPodio")}</span>
                   </label>
+                  )}
 
                   {hasPermission("subcontractor:update") && (
                     !editing
@@ -928,7 +1021,17 @@ export default function SubcontractorDetailsPage() {
                 { value: "details",      label: t("tabDetails"),      icon: FileText   },
                 { value: "certificates", label: t("tabCertificates"), icon: Award      },
                 { value: "technicians",  label: t("tabTechnicians"),  icon: Users,     count: technicians.length },
-                { value: "orders",       label: t("purchaseOrders"),  icon: ShoppingBag, count: subc.orders?.length ?? 0 },
+                // Purchase Orders lleva condiciones económicas (Formula,
+                // Adj_formula, pagos) y el API se las niega al portal:
+                // `GET /order?subcontractorId=…` con token de sub responde 403
+                // finance:read. El dato simplemente no venía, así que la
+                // pestaña decía «Purchase Orders 0 · No orders assigned» para
+                // un subcontratista que SÍ tiene una orden. Eso no es «no
+                // tienes ninguna», es «no puedes verlas», y presentado como un
+                // cero nadie detecta la diferencia. Mismo criterio que U-06 con
+                // los paneles de TaskDetailsDialog: si no le toca verlo, no se
+                // le ofrece la pestaña.
+                ...(isPortal ? [] : [{ value: "orders", label: t("purchaseOrders"), icon: ShoppingBag, count: subc.orders?.length ?? 0 }]),
                 { value: "jobs",         label: t("tabJobs"),         icon: Briefcase, count: subc.jobs?.length ?? 0 },
                 { value: "tasks",        label: t("tabTasks"),        icon: ClipboardList, count: allSubcTasks.length },
                 { value: "skills",       label: t("tabSkills"),       icon: Wrench,    count: subc.skills?.length ?? 0 },
@@ -1151,6 +1254,48 @@ export default function SubcontractorDetailsPage() {
                         </div>
                       </div>
                     </SectionCard>
+
+                    {/* ── Contraseña ────────────────────────────────────────
+                        No existía. La ficha del TÉCNICO y la del MEMBER tienen
+                        «Change Password»; la del subcontratista no mencionaba
+                        la palabra «password» ni una vez, así que la única forma
+                        de reponerle el acceso a un sub era que él mismo usara
+                        forgot-password —que exige que su correo sea correcto y
+                        le llegue— o un UPDATE a mano en la base.
+                        Con 432 subcontratistas a punto de encenderse, esa
+                        llamada («no puedo entrar») es la que va a llegar.
+                        No se ofrece a los roles de portal: un sub no repone
+                        contraseñas, ni la suya desde aquí. */}
+                    {!isPortal && (
+                      <SectionCard icon={Shield} iconBg="bg-slate-100" iconColor="text-slate-500"
+                        title={t("authentication")}
+                        action={
+                          <Button variant="outline" size="sm" onClick={() => setPwAbierto(v => !v)}
+                            className="text-xs border-slate-200">
+                            {pwAbierto ? t("cancel") : t("btnChangePassword")}
+                          </Button>
+                        }>
+                        {pwAbierto ? (
+                          <div className="space-y-4 max-w-md">
+                            <div>
+                              <FieldLabel>{t("newPassword")}</FieldLabel>
+                              <EntradaPassword value={pwNueva} onChange={setPwNueva} placeholder={t("newPassword")} />
+                              <p className="mt-1 text-[11px] text-slate-400">{t("passwordHelp")}</p>
+                            </div>
+                            <div>
+                              <FieldLabel>{t("techConfirmPassword")}</FieldLabel>
+                              <EntradaPassword value={pwRepetida} onChange={setPwRepetida} placeholder={t("techRepeatPassword")} />
+                            </div>
+                            <Button onClick={guardarPassword} disabled={pwGuardando} size="sm"
+                              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                              {pwGuardando ? t("saving") : t("btnUpdatePassword")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-sm italic text-slate-400">{t("clickChangePwd")}</p>
+                        )}
+                      </SectionCard>
+                    )}
                   </TabsContent>
 
                   {/* ── CERTIFICATES tab ─────────────────────────────────── */}
@@ -1318,7 +1463,13 @@ export default function SubcontractorDetailsPage() {
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
                                 {filteredTasks.length}/{allSubcTasks.length}
                               </span>
-                              {hasPermission("subcontractor:update") && (
+                              {/* U-02 · El permiso que rige de verdad crear una
+                                  tarea es `tasks:create` (lo comprueba la API en
+                                  POST /tasks/). Condicionarlo a
+                                  `subcontractor:update` dejaba al subcontratista
+                                  —que tiene `tasks:create` y no el otro— sin
+                                  ningún camino para ejercer la regla R3. */}
+                              {hasPermission("tasks:create") && (
                                 <Button
                                   size="sm"
                                   onClick={() => setCreateTaskOpen(true)}
@@ -1375,7 +1526,7 @@ export default function SubcontractorDetailsPage() {
                                 <div className="flex flex-col items-center justify-center gap-2 py-12">
                                   <ClipboardList className="h-8 w-8 text-slate-300" />
                                   <p className="text-sm text-slate-500">{t("noTasks")}</p>
-                                  {hasPermission("subcontractor:update") && (
+                                  {hasPermission("tasks:create") && (
                                     <Button size="sm" variant="outline" onClick={() => setCreateTaskOpen(true)} className="mt-1 gap-1.5 text-xs">
                                       <Plus className="h-3.5 w-3.5" /> {t("newTask")}
                                     </Button>
@@ -1461,12 +1612,20 @@ export default function SubcontractorDetailsPage() {
                           </div>
 
                           {/* ── Dialogs ── */}
+                          {/* Sin userRole el diálogo evaluaba
+                              `undefined !== "SUBCONTRACTOR"` → true y le
+                              desplegaba al sub las pestañas de asignación
+                              (Unassigned / GQM Member / Subcontractor) además de
+                              pedir el roster interno de /api/members. Se pasa el
+                              rol de la SESIÓN, no el de localStorage. */}
                           <CreateTaskDialog
                             open={createTaskOpen}
                             onOpenChange={setCreateTaskOpen}
                             jobId=""
                             jobData={subcJobData}
                             defaultSubcId={subc.ID_Subcontractor}
+                            userRole={roleSlug === "subcontractor" ? "SUBCONTRACTOR" : user?.role}
+                            userSubId={roleSlug === "subcontractor" ? (sessionUid ?? subc.ID_Subcontractor) : null}
                             onTaskCreated={() => { setCreateTaskOpen(false); fetchSubc() }}
                           />
                           <TaskDetailsDialog
@@ -1687,11 +1846,22 @@ export default function SubcontractorDetailsPage() {
                                         {t("permit")}: {job.Permit}
                                       </span>
                                     ) : <div />}
+                                    {/* U-09: para el subcontratista este botón
+                                        no lleva a ninguna parte. `/jobs` no
+                                        está en `PORTAL_PREFIXES.subcontractor`
+                                        y `middleware.ts` lo rebota. Medido:
+                                        desde ?tab=jobs se acaba en
+                                        /subcontractors/<id> — y encima se
+                                        pierde la pestaña. Su ficha ya muestra
+                                        el job; la página interna añade lo que
+                                        no debe ver (precios, márgenes). */}
+                                    {!isPortal && (
                                     <button
                                       onClick={() => router.push(`/jobs/${jobId}`)}
                                       className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
                                       View Job <ExternalLink className="h-3 w-3" />
                                     </button>
+                                    )}
                                   </div>
                                 </div>
                               )
@@ -1919,11 +2089,15 @@ export default function SubcontractorDetailsPage() {
                                                       </p>
                                                     )}
                                                   </div>
+                                                  {/* U-09: mismo rebote que el
+                                                      botón «View Job» de arriba. */}
+                                                  {!isPortal && (
                                                   <button
                                                     onClick={() => router.push(`/jobs/${job.ID_Jobs}`)}
                                                     className="flex-shrink-0 flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-500 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
                                                     <ExternalLink className="h-3 w-3" />
                                                   </button>
+                                                  )}
                                                 </div>
                                               ))}
                                             </div>

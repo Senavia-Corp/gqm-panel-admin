@@ -4,6 +4,8 @@ import { Eye, Trash2, Mail, Phone, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Technician } from "@/lib/types"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 interface TechnicianCardProps {
   technician: Technician
@@ -13,6 +15,22 @@ interface TechnicianCardProps {
 
 export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardProps) {
   const t = useTranslations("subcontractors")
+  // U-08: los dos botones del pie no llevaban a ninguna parte para el portal.
+  //
+  //  · «Delete» comprueba `subcontractor:update`, permiso que la política del
+  //    subcontratista no concede: sólo podía terminar en un aviso de denegado.
+  //  · «view» empuja a /technicians/<id>, ruta que `middleware.ts` NO tiene en
+  //    `PORTAL_PREFIXES.subcontractor` y rebota a su propia ficha. Medido: un
+  //    viaje de ida y vuelta a la misma pantalla.
+  //
+  // Ampliar el prefijo tampoco valía: de los cuatro endpoints que pide esa
+  // página, con el token del sub sólo responde `GET /technician/<id>` (200);
+  // `/metrics/jobs/summary` da 403 y `/permissions` y `/subcontractors_table`
+  // dan 404. Se habría cambiado un rebote por una pantalla rota a medias.
+  //
+  // La lista de la propia ficha del subcontratista ya muestra nombre, correo,
+  // ubicación, teléfono y tipo: lo mismo que enseñaría la tarjeta.
+  const { esPortal } = useEsPortal()
   
   const isLeader = technician.Type === "Leader" || technician.Type_of_technician === "Leader"
   
@@ -55,6 +73,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
       </div>
 
       {/* Footer Actions */}
+      {!esPortal && (
       <div className="flex items-center border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-5">
         <div className="flex w-full items-center gap-2">
           <Button
@@ -77,6 +96,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
           </Button>
         </div>
       </div>
+      )}
     </div>
   )
 }

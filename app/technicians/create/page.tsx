@@ -20,6 +20,8 @@ import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontra
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
+import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 export default function CreateTechnicianPage() {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
 
   function PasswordInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder: string
@@ -83,18 +86,21 @@ export default function CreateTechnicianPage() {
 
   function PasswordStrength({ password }: { password: string }) {
     if (!password) return null
-    const checks = [
-      { label: t("techPwdLen"),    ok: password.length >= 8 },
-      { label: t("techPwdUpper"), ok: /[A-Z]/.test(password) },
-      { label: t("techPwdNum"),           ok: /[0-9]/.test(password) },
-    ]
+    // O-06: los requisitos ya no se escriben aquí. Los dicta el espejo de la
+    // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
+    // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
+    // verde entero y el alta terminaba en 400.
+    const checks = politica.reglas(password).map((r) => ({ label: r.texto, ok: r.ok }))
     const score = checks.filter(c => c.ok).length
-    const bar   = ["bg-red-400", "bg-amber-400", "bg-emerald-400"][score - 1] ?? "bg-slate-200"
+    // Una regla más que antes: la barra se dibuja sobre `checks.length`,
+    // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.
+    const bar   = score >= checks.length ? "bg-emerald-400"
+                : score >= checks.length - 1 ? "bg-amber-400" : "bg-red-400"
 
     return (
       <div className="mt-2 space-y-1.5">
         <div className="flex gap-1">
-          {[0, 1, 2].map(i => (
+          {checks.map((_, i) => (
             <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? bar : "bg-slate-100"}`} />
           ))}
         </div>
@@ -174,8 +180,13 @@ export default function CreateTechnicianPage() {
     if (!form.Email_Address.trim()) return t("errEmailReq")
     if (!form.Password)             return t("errPwdReq")
     if (form.Password !== form.confirmPassword) return t("techPwdNoMatch")
-    if (form.Password.length < 8 || !/[A-Z]/.test(form.Password) || !/[0-9]/.test(form.Password))
-      return t("errPwdComplexity")
+    // O-06: aquí se pedían 8 caracteres, una mayúscula y un dígito, y quien
+    // decide es el servidor: 10 caracteres y 3 de 4 tipos. Medido con HTTP
+    // crudo, 'Abcdefg1' pasaba esta validación y el API respondía 400.
+    {
+      const motivo = politica.motivo(form.Password)
+      if (motivo) return motivo
+    }
     return null
   }
 
@@ -515,7 +526,7 @@ export default function CreateTechnicianPage() {
                     {[
                       { label: t("techFullName"),    done: !!form.Name.trim() },
                       { label: t("email"),        done: !!form.Email_Address.trim() },
-                      { label: t("Password"),     done: form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) },
+                      { label: t("Password"),     done: passwordValida(form.Password) },
                       { label: t("techConfirmPassword"), done: !!form.confirmPassword && form.Password === form.confirmPassword },
                     ].map(({ label, done }) => (
                       <li key={label} className={`flex items-center gap-1.5 text-[11px] font-medium ${done ? "text-emerald-600" : "text-amber-600"}`}>

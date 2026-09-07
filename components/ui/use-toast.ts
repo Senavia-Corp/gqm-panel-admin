@@ -1,190 +1,87 @@
 'use client'
 
-// Inspired by react-hot-toast library
-import * as React from 'react'
+/**
+ * U-07 — los avisos de esta cola no se pintaban en ninguna parte.
+ *
+ * Esto era la implementación shadcn/radix de `toast()`: un store en memoria
+ * que sólo se ve si alguien monta `<Toaster />` de `@/components/ui/toaster`.
+ * Ese componente NO EXISTE en el repositorio y nadie lo importa. `app/layout.tsx`
+ * monta el `<Toaster />` de **sonner**, que escucha un store distinto.
+ *
+ * Resultado: los 28 ficheros que llaman a `toast()` desde aquí —132 avisos de
+ * error, 174 títulos— escribían en una cola que nadie renderiza. Medido en el
+ * navegador: un subcontratista pulsa «Delete» en la tarjeta de un técnico, el
+ * manejador ejecuta `toast({ title: "Denied", ... })` y en pantalla no ocurre
+ * absolutamente nada: ni diálogo, ni aviso, ni petición. Un botón mudo.
+ *
+ * Para el portal es lo más grave de la pantalla: el subcontratista no tiene
+ * a nadie a quien preguntar, y la aplicación le contestaba con silencio.
+ *
+ * En vez de tocar 28 ficheros, este módulo reenvía a sonner —el `<Toaster />`
+ * que sí está montado— manteniendo la firma `{ title, description, variant }`
+ * que ya usan todos. Comprobado antes de escribirlo: nadie lee el array
+ * `toasts` ni el objeto que devolvía `toast()`, y la única variante en uso es
+ * `"destructive"` (132 apariciones).
+ */
+import { toast as sonner } from 'sonner'
 
-import type { ToastActionElement, ToastProps } from '@/components/ui/toast'
-
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
-
-type ToasterToast = ToastProps & {
-  id: string
-  title?: React.ReactNode
-  description?: React.ReactNode
-  action?: ToastActionElement
+/**
+ * El tipo dice TEXTO, no `ReactNode`, a propósito.
+ *
+ * La primera versión declaraba `title?: React.ReactNode`, así que TypeScript
+ * aceptaba JSX — y el runtime lo descartaba sin decir nada: el aviso salía en
+ * blanco o perdía el título. Un tipo que promete lo que no cumple es peor que
+ * uno estrecho. Comprobado con grep sobre los 43 llamadores: **ninguno** pasa
+ * JSX hoy, así que estrecharlo no rompe nada y convierte ese fallo silencioso
+ * en un error de compilación el día que alguien lo intente.
+ */
+export type ToastOptions = {
+  title?: string | number | null
+  description?: string | number | null
+  variant?: 'default' | 'destructive'
+  duration?: number
 }
 
-const actionTypes = {
-  ADD_TOAST: 'ADD_TOAST',
-  UPDATE_TOAST: 'UPDATE_TOAST',
-  DISMISS_TOAST: 'DISMISS_TOAST',
-  REMOVE_TOAST: 'REMOVE_TOAST',
-} as const
-
-let count = 0
-
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
-  return count.toString()
+function textoPlano(v: string | number | null | undefined): string | undefined {
+  if (v === null || v === undefined) return undefined
+  return typeof v === 'number' ? String(v) : v
 }
 
-type ActionType = typeof actionTypes
+/** Un error tiene que dar tiempo a leerlo. Los 4 s por defecto de sonner no. */
+const DURACION_ERROR = 10_000
 
-type Action =
-  | {
-      type: ActionType['ADD_TOAST']
-      toast: ToasterToast
-    }
-  | {
-      type: ActionType['UPDATE_TOAST']
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: ActionType['DISMISS_TOAST']
-      toastId?: ToasterToast['id']
-    }
-  | {
-      type: ActionType['REMOVE_TOAST']
-      toastId?: ToasterToast['id']
-    }
-
-interface State {
-  toasts: ToasterToast[]
-}
-
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-const addToRemoveQueue = (toastId: string) => {
-  if (toastTimeouts.has(toastId)) {
-    return
+function toast({ title, description, variant, duration }: ToastOptions = {}) {
+  const encabezado = textoPlano(title)
+  const detalle = textoPlano(description)
+  // Sin título, el cuerpo pasa a ser el mensaje: sonner no pinta nada con un
+  // primer argumento vacío, y varios llamadores mandan solo `description`.
+  const mensaje = encabezado ?? detalle ?? ''
+  const esError = variant === 'destructive'
+  const opciones = {
+    description: encabezado ? detalle : undefined,
+    duration: duration ?? (esError ? DURACION_ERROR : undefined),
   }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: 'REMOVE_TOAST',
-      toastId: toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
-
-  toastTimeouts.set(toastId, timeout)
-}
-
-export const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case 'ADD_TOAST':
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      }
-
-    case 'UPDATE_TOAST':
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t,
-        ),
-      }
-
-    case 'DISMISS_TOAST': {
-      const { toastId } = action
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t,
-        ),
-      }
-    }
-    case 'REMOVE_TOAST':
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      }
-  }
-}
-
-const listeners: Array<(state: State) => void> = []
-
-let memoryState: State = { toasts: [] }
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
-}
-
-type Toast = Omit<ToasterToast, 'id'>
-
-function toast({ ...props }: Toast) {
-  const id = genId()
-
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: 'UPDATE_TOAST',
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id })
-
-  dispatch({
-    type: 'ADD_TOAST',
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
-  })
-
+  const id = esError ? sonner.error(mensaje, opciones) : sonner(mensaje, opciones)
   return {
-    id: id,
-    dismiss,
-    update,
+    // El id se devuelve TAL CUAL. Los de sonner son números (un contador
+    // interno), y pasarlo por `String()` daba un id que `sonner.dismiss()` ya
+    // no reconoce: quedaba un descarte que no descarta.
+    id,
+    dismiss: () => sonner.dismiss(id),
+    update: () => {},
   }
 }
 
+/**
+ * `useToast()` se usa en 16 sitios solo para desestructurar `toast`. Se
+ * mantiene la forma para no tocarlos. `toasts` va vacío a propósito: nadie lo
+ * lee, y devolver una lista que ya no gobierna nada sería mentir.
+ */
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
   return {
-    ...state,
+    toasts: [] as const,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
+    dismiss: (toastId?: string | number) => sonner.dismiss(toastId),
   }
 }
 

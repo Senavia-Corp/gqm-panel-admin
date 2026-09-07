@@ -23,6 +23,8 @@ import { LeadTechnicianDashboard } from "@/components/organisms/LeadTechnicianDa
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { isAuthenticated, logout } from "@/lib/auth-utils"
+import { type RoleSlug } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { apiFetch } from "@/lib/apiFetch"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
@@ -45,6 +47,12 @@ export default function DashboardPage() {
   const [jobTab,  setJobTab]  = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
   const [user,    setUser]    = useState<User | null>(null)
+  // Vocabulario del SERVIDOR (cookie gqm_role): decide qué dashboard se sirve.
+  // El desconocido cuenta como portal. Con `useState(null)` + `isPortalRole`,
+  // en el primer render esta comprobación daba false y se montaba el panel de
+  // ADMINISTRACIÓN para un usuario de portal —con sus efectos de carga— antes
+  // de cambiarlo por LeadTechnicianDashboard. Ver hooks/useEsPortal.ts.
+  const { esPortal, rol: roleSlug } = useEsPortal()
 
   const [isDownloadingReport, setIsDownloadingReport] = useState(false)
 
@@ -112,7 +120,12 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  if (user.role === "LEAD_TECHNICIAN" || user.role === "SUBCONTRACTOR") {
+  // U-01 · Ésta es la pantalla del portal. Antes se decidía con
+  // `user.role` (localStorage, reescribible desde devtools) y para el técnico
+  // era además inalcanzable: el middleware lo sacaba de /dashboard. Ahora
+  // /dashboard está en PORTAL_PREFIXES.technical y la rama se elige con la
+  // cookie `gqm_role`, que es la que evalúa el propio middleware.
+  if (esPortal) {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />

@@ -21,6 +21,8 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // Sentinel — never pass "" to Radix Select
 const NONE = "__none__"
@@ -126,6 +128,17 @@ export function CreateTaskDialog({
   userSubId,
 }: CreateTaskDialogProps) {
   const t = useTranslations("jobTasks")
+  // D6: el rol se comprueba también contra la cookie `gqm_role`, que la escribe
+  // el servidor. El prop `userRole` lo rellenan cuatro llamadores y uno de ellos
+  // se lo pasa desde `localStorage.user_data.role` — vocabulario del cliente,
+  // reescribible desde devtools. Así el diálogo es correcto aunque el llamador
+  // no lo sea; para un admin la cookie dice `full_admin` y nada cambia.
+  // El desconocido cuenta como subcontratista: ver hooks/useEsPortal.ts. Antes
+  // de hidratar, `roleSlugFromCookie()` es null y esto daba «no es sub», así
+  // que las pestañas de asignación que el sub no puede usar se pintaban un
+  // instante y luego desaparecían.
+  const { esPortal, resuelto } = useEsPortal()
+  const esSub = userRole === "SUBCONTRACTOR" || !resuelto || esPortal
   const [formData, setFormData] = useState(INITIAL_FORM())
   const [assignType, setAssignType] = useState<AssignType>("none")
   const [loading, setLoading] = useState(false)
@@ -143,7 +156,7 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (open) {
       const base = INITIAL_FORM()
-      const isSub = userRole === "SUBCONTRACTOR"
+      const isSub = esSub
       const subcId = isSub ? userSubId : defaultSubcId
       const subcOverride = subcId ? { ID_Subcontractor: subcId } : {}
       if (prefill) {
@@ -186,6 +199,15 @@ export function CreateTaskDialog({
   // Fetch all GQM members when dialog opens
   useEffect(() => {
     if (!open) return
+    // Un subcontratista no puede asignar a un miembro de GQM: las pestañas de
+    // asignación no se le pintan y `/api/members` le responde 403. Pedir el
+    // roster interno completo era ruido y un intento de lectura que no le toca.
+    if (esSub) {
+      setAllMembers([])
+      setMembersError(false)
+      setLoadingMembers(false)
+      return
+    }
     let cancelado = false
     setLoadingMembers(true)
     setMembersError(false)
@@ -211,7 +233,7 @@ export function CreateTaskDialog({
       })
       .finally(() => { if (!cancelado) setLoadingMembers(false) })
     return () => { cancelado = true }
-  }, [open, reintentoMiembros])
+  }, [open, reintentoMiembros, esSub])
 
   function nullable(v: string): string | null {
     return v === NONE || v === "" ? null : v
@@ -524,7 +546,7 @@ export function CreateTaskDialog({
             <SectionHeader icon={<UserCheck size={13} />} label={t("assignment")} />
 
             {/* Assignment type tabs */}
-            {userRole !== "SUBCONTRACTOR" && (
+            {!esSub && (
               <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
                 {[
                   { key: "none" as AssignType,          label: t("unassignedType"),     icon: <Circle size={13} /> },
@@ -668,9 +690,9 @@ export function CreateTaskDialog({
                     <Select
                       value={formData.ID_Subcontractor}
                       onValueChange={v => setFormData(p => ({ ...p, ID_Subcontractor: v, ID_Technician: NONE }))}
-                      disabled={userRole === "SUBCONTRACTOR"}
+                      disabled={esSub}
                     >
-                      <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: userRole === "SUBCONTRACTOR" ? "#F3F4F6" : "#fff" }}>
+                      <SelectTrigger style={{ borderRadius: "9px", fontSize: "13px", height: "40px", background: esSub ? "#F3F4F6" : "#fff" }}>
                         <SelectValue placeholder={t("selectSubcontractor")} />
                       </SelectTrigger>
                       <SelectContent>

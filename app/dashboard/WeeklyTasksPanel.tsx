@@ -32,6 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -371,15 +373,51 @@ function TaskRow({
 
 // ─── Task Detail Dialog ────────────────────────────────────────────────────────
 
+const ESTADOS_TAREA = ["Not started", "Work-in-progress", "Completed"] as const
+
 function TaskDetailDialog({
   task,
   onClose,
+  onUpdated,
 }: {
   task: WeeklyTask | null
   onClose: () => void
+  onUpdated?: () => void
 }) {
   const t = useTranslations("dashboard")
+  const { esPortal } = useEsPortal()
+  const [guardando, setGuardando] = useState(false)
+  const [errorEstado, setErrorEstado] = useState<string | null>(null)
+  // El componente no se desmonta al cerrar (el `return null` está DEBAJO de los
+  // hooks), así que `errorEstado` sobrevivía y se pintaba sobre la SIGUIENTE
+  // tarea que se abriera: un fallo de la anterior acusando a otra.
+  useEffect(() => { setErrorEstado(null) }, [task?.ID_Tasks])
   if (!task) return null
+
+  // R4 — «el tecnico actualiza el estado de su tarea» era la unica cosa que el
+  // rol tiene que poder hacer, y este dialogo era de SOLO LECTURA: su unico
+  // boton era cerrar. La regla estaba permitida en la API (PATCH /tasks/<id>
+  // con `tasks:update`, que `technical-portal` concede) y no tenia camino en el
+  // producto — el mismo defecto que U-02 tenia para el subcontratista.
+  const cambiarEstado = async (nuevo: string) => {
+    setGuardando(true); setErrorEstado(null)
+    try {
+      // El proxy espera `ID_Tasks` en el CUERPO (app/api/tasks/route.ts:PATCH),
+      // no como parametro de consulta: lo extrae y lo pone en la ruta del API.
+      const res = await apiFetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ID_Tasks: task.ID_Tasks, Task_status: nuevo }),
+      })
+      if (!res.ok) { setErrorEstado(`No se pudo actualizar (${res.status})`); return }
+      onUpdated?.()
+      onClose()
+    } catch {
+      setErrorEstado("No se pudo actualizar")
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const priority = getPriority(task.Priority, t)
   const status = getStatus(task.Task_status, t)
@@ -395,6 +433,44 @@ function TaskDetailDialog({
           </DialogTitle>
           <p className="text-xs text-gray-400 font-mono mt-0.5">{task.ID_Tasks}</p>
         </DialogHeader>
+
+        {/* Cambio de estado — R4 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400">{t("colStatus")}</span>
+          {ESTADOS_TAREA.map((e) => {
+            // Normalizado: en la BD conviven grafias ("In Progress" y
+            // "Work-in-progress"), y comparar en crudo dejaria el estado
+            // actual sin marcar y su boton pulsable.
+            // Se compara por la MISMA clave que usa `STATUS_CONFIG`, no por la
+            // cadena en crudo: en la BD conviven «In Progress» y
+            // «Work-in-progress», y comparando texto ninguno de los tres
+            // botones quedaba marcado como el estado actual — el usuario no
+            // veía en cuál estaba y podía volver a pulsar el que ya tenía.
+            const claveDe = (v: string | null) =>
+              (getStatus(v, t).key ?? (v ?? "").toLowerCase().trim())
+            const actual = claveDe(e) === claveDe(task.Task_status)
+            return (
+              <button
+                key={e}
+                type="button"
+                disabled={guardando || actual}
+                onClick={() => cambiarEstado(e)}
+                className={[
+                  "rounded-full px-2.5 py-1 text-xs font-medium border transition-colors",
+                  actual
+                    ? "bg-gqm-green text-white border-transparent"
+                    : "bg-white text-gray-600 hover:bg-gray-50",
+                  guardando ? "opacity-50" : "",
+                ].join(" ")}
+              >
+                {getStatus(e, t).label}
+              </button>
+            )
+          })}
+        </div>
+        {errorEstado && (
+          <p className="text-xs text-red-600">{errorEstado}</p>
+        )}
 
         {/* Status + Priority + Job type */}
         <div className="flex flex-wrap gap-2">
@@ -463,12 +539,19 @@ function TaskDetailDialog({
               <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">
                 {t("dialogJob")}
               </p>
-              <Link
-                href={`/jobs/${task.job.ID_Jobs}`}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
-              >
-                {t("dialogViewJob")} <ExternalLink className="h-3 w-3" />
-              </Link>
+              {/* U-09: a un rol de portal este enlace no le lleva a ninguna
+                  parte. `/jobs` no está en `PORTAL_PREFIXES` y `middleware.ts`
+                  lo rebota. Medido con el técnico: pulsar «View job» sobre
+                  /jobs/QID-I60001 termina en /dashboard, con el diálogo
+                  cerrado y habiendo perdido el sitio donde estaba. */}
+              {!esPortal && (
+                <Link
+                  href={`/jobs/${task.job.ID_Jobs}`}
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  {t("dialogViewJob")} <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -1037,6 +1120,11 @@ export default function WeeklyTasksPanel({
 
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
 
+  // Se incrementa al cambiar el estado de una tarea: sin esto el listado
+  // seguiria mostrando el estado viejo hasta recargar la pagina, y el usuario
+  // no sabria si su cambio se guardo.
+  const [recarga, setRecarga] = useState(0)
+
   // Fetch
   useEffect(() => {
     setDetailTask(null)
@@ -1066,7 +1154,7 @@ export default function WeeklyTasksPanel({
       }
     }
     run()
-  }, [jobType, weekOffset, subFilter, subcontractorId])
+  }, [jobType, weekOffset, subFilter, subcontractorId, recarga])
 
   // Reset page when filters change
   useEffect(() => {
@@ -1459,6 +1547,7 @@ export default function WeeklyTasksPanel({
       <TaskDetailDialog
         task={detailTask}
         onClose={() => setDetailTask(null)}
+        onUpdated={() => setRecarga((n) => n + 1)}
       />
     </div>
   )

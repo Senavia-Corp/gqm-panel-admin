@@ -28,6 +28,7 @@ import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 import WeeklyTasksPanel from "@/app/dashboard/WeeklyTasksPanel"
 import TechCertificatesPanel from "@/components/organisms/TechCertificatesPanel"
 import TechPerformancePanel from "@/components/organisms/TechPerformancePanel"
+import { roleSlugFromCookie } from "@/lib/role-map"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -288,7 +289,27 @@ function TechJobsPanel({
 export function LeadTechnicianDashboard() {
   const t = useTranslations("dashboard")
 
-  const [view, setView] = useState<DashboardView>("jobs")
+  // El técnico aterriza en SUS TAREAS, no en "jobs".
+  //
+  // U-01 (auditoría de portal): al darle por fin una pantalla propia, la vista
+  // "jobs" pedía /api/metrics/jobs/summary, que exige `dashboard:read` — un
+  // permiso que la política `technical-portal` NO concede. Su primera pantalla
+  // era «Could not load jobs data.»: se cambió un callejón sin salida por otro.
+  // Lo que un técnico necesita al entrar son sus tareas, y esas salen de
+  // /api/technician/<id>, que sí puede pedir.
+  // D6: se preguntaba a `localStorage.user_data.role`, cuyo valor
+  // «LEAD_TECHNICIAN» el backend no emite nunca —lo inventa la pantalla de
+  // login para la etiqueta de la cabecera— y que se reescribe desde devtools.
+  // La cookie `gqm_role` la escribe el servidor y es la que evalúa
+  // `middleware.ts`; el localStorage queda de reserva para sesiones ya
+  // abiertas antes de este cambio.
+  const esTecnico =
+    roleSlugFromCookie() === "technical" ||
+    (typeof window !== "undefined" &&
+      (() => { try {
+        return JSON.parse(localStorage.getItem("user_data") || "{}")?.role === "LEAD_TECHNICIAN"
+      } catch { return false } })())
+  const [view, setView] = useState<DashboardView>(esTecnico ? "tasks" : "jobs")
   const [jobTab, setJobTab] = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL")
@@ -337,16 +358,23 @@ export function LeadTechnicianDashboard() {
       {/* ── View switcher (Top Tabs) ── */}
       <div className="overflow-x-auto pb-1 sm:pb-0">
         <div className="inline-flex min-w-max rounded-lg border bg-white p-1 gap-0.5">
-          <Button
-            variant={view === "jobs" ? "default" : "ghost"}
-            className={view === "jobs" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("jobs")}
-          >
-            <span className="flex items-center gap-2">
-              <File className="h-4 w-4" />
-              {t("viewJobs")}
-            </span>
-          </Button>
+          {/* U-01: al técnico no se le ofrece la pestaña Jobs. Su vista pide
+              /api/metrics/jobs/summary, que exige `dashboard:read`, y su
+              política no lo concede: el botón solo podía llevar a un error.
+              Un botón visible que termina en 403 es un callejón sin salida,
+              que es justo lo que este arreglo venía a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "jobs" ? "default" : "ghost"}
+              className={view === "jobs" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("jobs")}
+            >
+              <span className="flex items-center gap-2">
+                <File className="h-4 w-4" />
+                {t("viewJobs")}
+              </span>
+            </Button>
+          )}
           <Button
             variant={view === "tasks" ? "default" : "ghost"}
             className={view === "tasks" ? "bg-gqm-green text-white" : ""}
@@ -357,36 +385,54 @@ export function LeadTechnicianDashboard() {
               {t("viewWeeklyTasks")}
             </span>
           </Button>
-          <Button
-            variant={view === "opportunities" ? "default" : "ghost"}
-            className={view === "opportunities" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("opportunities")}
-          >
-            <span className="flex items-center gap-2">
-              <Megaphone className="h-4 w-4" />
-              {t("viewOpportunities")}
-            </span>
-          </Button>
-          <Button
-            variant={view === "certificates" ? "default" : "ghost"}
-            className={view === "certificates" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("certificates")}
-          >
-            <span className="flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              {t("tabCertificates")}
-            </span>
-          </Button>
-          <Button
-            variant={view === "performance" ? "default" : "ghost"}
-            className={view === "performance" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("performance")}
-          >
-            <span className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              {t("tabPerformance")}
-            </span>
-          </Button>
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `client:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "opportunities" ? "default" : "ghost"}
+              className={view === "opportunities" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("opportunities")}
+            >
+              <span className="flex items-center gap-2">
+                <Megaphone className="h-4 w-4" />
+                {t("viewOpportunities")}
+              </span>
+            </Button>
+          )}
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `certificate:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "certificates" ? "default" : "ghost"}
+              className={view === "certificates" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("certificates")}
+            >
+              <span className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                {t("tabCertificates")}
+              </span>
+            </Button>
+          )}
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `subcontractor:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "performance" ? "default" : "ghost"}
+              className={view === "performance" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("performance")}
+            >
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                {t("tabPerformance")}
+              </span>
+            </Button>
+          )}
         </div>
       </div>
 

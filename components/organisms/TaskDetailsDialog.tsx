@@ -36,6 +36,8 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
+import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // ── Sentinel — never pass "" to Radix Select ──────────────────────────────────
 const NONE = "__none__"
@@ -258,9 +260,17 @@ const memberId = toForm(task.ID_Member)
     setSaveError(null)
   }, [task])
 
+  // U-06: mismo defecto que ya se arregló en CreateTaskDialog, y este diálogo
+  // se quedó fuera. Medido abriendo una tarea como subcontratista desde
+  // /subcontractors/<id>?tab=tasks: sale `GET /api/members` y vuelve 403, que
+  // el `.catch()` de abajo convierte en lista vacía — un fallo de permisos
+  // disfrazado de «no hay miembros».
+  const { esPortal } = useEsPortal()
+
   // Fetch all members when dialog opens (needed for view + edit mode name display)
   useEffect(() => {
     if (!open) return
+    if (esPortal) { setAllMembers([]); setLoadingMembers(false); return }
     setLoadingMembers(true)
     apiFetch("/api/members?page=1&limit=200")
       .then(r => r.json())
@@ -274,7 +284,7 @@ const memberId = toForm(task.ID_Member)
       })
       .catch(() => setAllMembers([]))
       .finally(() => setLoadingMembers(false))
-  }, [open])
+  }, [open, esPortal])
 
   if (!task) return null
 
@@ -286,6 +296,16 @@ const memberId = toForm(task.ID_Member)
   }
 
   function handleAssignTypeChange(type: AssignType) {
+    // U-06 bis: para el portal, la ÚNICA pestaña que se pinta es la suya, y
+    // pulsarla vaciaba `ID_Subcontractor` e `ID_Technician` — es decir, el
+    // único botón que le quedaba le borraba la asignación, y el Guardar de
+    // después sólo podía terminar en el 403 «no puedes modificar
+    // ID_Subcontractor». Cambiar de tipo de asignación es precisamente lo que
+    // el portal NO puede hacer, así que aquí no hay nada que limpiar.
+    if (esPortal) {
+      setAssignType(type)
+      return
+    }
     setAssignType(type)
     setFormData(p => ({ ...p, ID_Member: NONE, ID_Subcontractor: NONE, ID_Technician: NONE }))
     setEditedFields(prev => {
@@ -691,11 +711,18 @@ const memberId = toForm(task.ID_Member)
               <>
                 {/* Assignment type tabs */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
-                  {[
+                  {([
                     { key: "none" as AssignType,          label: t("unassignedLabel"),    icon: <Circle size={13} /> },
                     { key: "member" as AssignType,        label: t("gqmMember"),    icon: <Users size={13} /> },
                     { key: "subcontractor" as AssignType, label: t("subcontractor"), icon: <Building2 size={13} /> },
-                  ].map(opt => {
+                  // U-06: al portal solo se le deja «Subcontractor», que es la
+                  // única rama que el API le permite guardar. `PATCH /tasks/<id>`
+                  // rechaza con 403 cualquier cambio de `ID_Member` y de
+                  // `ID_Subcontractor` (Tasks.py), así que «GQM Member» y
+                  // «Unassigned» eran dos botones que solo podían acabar en error.
+                  // Lo que sí puede hacer —reasignar entre SUS técnicos— vive
+                  // dentro de esta pestaña y sigue disponible.
+                  ]).filter(opt => !esPortal || opt.key === "subcontractor").map(opt => {
                     const active = assignType === opt.key
                     return (
                       <button
@@ -718,8 +745,13 @@ const memberId = toForm(task.ID_Member)
                   })}
                 </div>
 
-                {/* Member select */}
-                {assignType === "member" && (
+                {/* Member select — U-06 bis: el filtro de pestañas no bastaba.
+                    `assignType` se calcula desde la tarea (`if (memberId !== NONE)
+                    setAssignType("member")`), así que un sub que abría una tarea
+                    ya asignada a un miembro de GQM veía el panel igual, sin
+                    pestaña que lo hubiera activado, y su Guardar acababa en el
+                    403 «no puedes modificar ID_Member». */}
+                {!esPortal && assignType === "member" && (
                   <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "12px", padding: "14px" }}>
                     <FieldLabel>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
@@ -823,7 +855,17 @@ const memberId = toForm(task.ID_Member)
                 border: "1px solid #F3F4F6",
                 borderRadius: "12px",
               }}>
-                {assignType === "member" && fromForm(formData.ID_Member) ? (
+                {/* U-19: al portal ya no se le pide el roster de GQM (403), así
+                    que `allMembers` queda vacío y `memberName` caía en el id
+                    crudo: la tarjeta decía «MEM60002 · GQM Member · MEM60002».
+                    Un identificador interno repetido dos veces no le dice nada
+                    a un subcontratista. Se le muestra que está asignada a GQM,
+                    sin el id. */}
+                {esPortal && assignType === "member" && fromForm(formData.ID_Member) ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#6B7280" }}>
+                    <Users size={13} /> {t("gqmMember")}
+                  </div>
+                ) : assignType === "member" && fromForm(formData.ID_Member) ? (
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{
                       width: "40px", height: "40px", borderRadius: "50%", flexShrink: 0,

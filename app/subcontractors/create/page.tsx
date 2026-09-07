@@ -19,6 +19,8 @@ import {
   Mail, Phone, Globe, MapPin, Map, ShieldCheck, GraduationCap,
   ClipboardList, Save, Star, Wrench, Shield, EyeOff, Eye
 } from "lucide-react"
+import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +97,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
   onChange: (v: string[]) => void
 }) {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
@@ -133,6 +136,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
 
 export default function CreateSubcontractorPage() {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
 
   function PasswordInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder: string
@@ -160,18 +164,21 @@ export default function CreateSubcontractorPage() {
 
   function PasswordStrength({ password }: { password: string }) {
     if (!password) return null
-    const checks = [
-      { label: t("pwdLen", { defaultValue: "8+ chars" }), ok: password.length >= 8 },
-      { label: t("pwdUpper", { defaultValue: "1 uppercase" }), ok: /[A-Z]/.test(password) },
-      { label: t("pwdNum", { defaultValue: "1 number" }), ok: /[0-9]/.test(password) },
-    ]
+    // O-06: los requisitos ya no se escriben aquí. Los dicta el espejo de la
+    // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
+    // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
+    // verde entero y el alta terminaba en 400.
+    const checks = politica.reglas(password).map((r) => ({ label: r.texto, ok: r.ok }))
     const score = checks.filter(c => c.ok).length
-    const bar   = ["bg-red-400", "bg-amber-400", "bg-emerald-400"][score - 1] ?? "bg-slate-200"
+    // Una regla más que antes: la barra se dibuja sobre `checks.length`,
+    // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.
+    const bar   = score >= checks.length ? "bg-emerald-400"
+                : score >= checks.length - 1 ? "bg-amber-400" : "bg-red-400"
 
     return (
       <div className="mt-2 space-y-1.5">
         <div className="flex gap-1">
-          {[0, 1, 2].map(i => (
+          {checks.map((_, i) => (
             <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? bar : "bg-slate-100"}`} />
           ))}
         </div>
@@ -244,7 +251,9 @@ export default function CreateSubcontractorPage() {
 
   const canSubmit = useMemo(() => {
     const isBasicValid = clean(form.Name).length > 0 && clean(form.Organization).length > 0 && !submitting;
-    const isPasswordValid = form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) && form.Password === form.confirmPassword;
+    // O-06: ver lib/password-policy.ts — el panel prometía 8 caracteres y el
+    // servidor exige 10 y 3 de 4 tipos de carácter.
+    const isPasswordValid = passwordValida(form.Password) && form.Password === form.confirmPassword;
     return isBasicValid && isPasswordValid;
   }, [form.Name, form.Organization, form.Password, form.confirmPassword, submitting]
   )
