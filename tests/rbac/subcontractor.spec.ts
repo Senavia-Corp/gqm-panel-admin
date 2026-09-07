@@ -91,3 +91,63 @@ test("/profile carga", async ({ page }) => {
   await page.goto("/profile")
   await expect(page.getByText(credentials("subcontractor").email)).toBeVisible({ timeout: 30_000 })
 })
+
+test("del job no puede modificar nada", async ({ page }) => {
+  // CERROJO, y conviene decir qué NO prueba.
+  //
+  // Se intentó convertirla en detector de la guarda nueva por cookie
+  // (`readOnly={esPortal || ...}`) falsificando `localStorage.user_policies`
+  // para concederse `job:update`. No funciona, y por una buena razón:
+  // `usePermissions` se siembra de localStorage pero acto seguido REFRESCA
+  // desde `/api/auth/me`, así que la política del servidor gana y el campo
+  // sigue siendo de sólo lectura. Medido: con la guarda por cookie quitada,
+  // esta prueba sigue verde.
+  //
+  // Conclusión honesta: para el subcontratista el sólo-lectura ya lo imponía
+  // el permiso, y `esPortal` es defensa en profundidad cuyo efecto NO se puede
+  // demostrar desde el navegador. Lo que esta prueba sí guarda es el resultado:
+  // que el portal no pueda editar la ficha. El control de que no mide el aire
+  // es el admin, que en la misma pantalla tiene 7 campos editables.
+  await page.addInitScript(() => {
+    window.localStorage.setItem("user_policies", JSON.stringify(
+      [{ Statement: [{ Effect: "Allow", Action: ["*"], Resource: ["*"] }] }]))
+  })
+  await page.goto(`/jobs/${ids.job()}`)
+  // Positivo primero: la ficha cargó de verdad.
+  await expect(page.getByTestId("job-tab").first()).toBeVisible({ timeout: 30_000 })
+  await settle(page)
+
+  // Lo OBSERVABLE es que los campos de Details no se puedan editar. Guardar y
+  // el interruptor de Podio cuelgan además de `jobDetail.hasChanges`, que un
+  // rol de portal no puede activar precisamente porque todo es de sólo
+  // lectura: por eso una sonda que sólo mirase esos dos botones no puede
+  // ponerse roja nunca — comprobado— y estaría midiendo el aire.
+  const editables = page.locator(
+    "main input:not([readonly]):not([disabled]), main textarea:not([readonly]):not([disabled])")
+  expect(await editables.count(), "campos editables en la ficha del job").toBe(0)
+
+  const botones = (await page.locator("button").allInnerTexts()).map((x) => x.trim())
+  expect(botones.filter((x) => /^save$|guardar|podio/i.test(x))).toEqual([])
+})
+
+test("la ficha de su técnico no le ofrece asignarle trabajos", async ({ page }) => {
+  await page.goto(`/subcontractors/${ids.sub()}/technicians/${process.env.RBAC_TECHNICAL_ID}`)
+  // Positivo primero: la ficha del técnico cargó.
+  await expect(page.getByText("DEV Technician").first()).toBeVisible({ timeout: 30_000 })
+  await settle(page)
+  await expect(page.getByRole("button", { name: /Assign New Job/i })).toHaveCount(0)
+})
+
+
+test("(control) el staff sí puede editar esa misma ficha", async ({ page, browser }) => {
+  // Sin este control, el `toBe(0)` de la prueba de arriba pasaría igual si la
+  // pantalla no pintara nada: mediría el aire. Medido: 7 campos editables.
+  const ctx = await browser.newContext({ storageState: stateFile("full_admin") })
+  const p2 = await ctx.newPage()
+  await p2.goto(`/jobs/${ids.job()}`)
+  await p2.getByTestId("job-tab").first().waitFor({ timeout: 30_000 })
+  await settle(p2)
+  expect(await p2.locator("main input:not([readonly]):not([disabled])").count())
+    .toBeGreaterThan(0)
+  await ctx.close()
+})
