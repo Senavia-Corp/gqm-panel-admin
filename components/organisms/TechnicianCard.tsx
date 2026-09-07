@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import type { Technician } from "@/lib/types"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 interface TechnicianCardProps {
   technician: Technician
@@ -29,7 +30,7 @@ export function TechnicianCard({ technician, onView, onDelete }: TechnicianCardP
   //
   // La lista de la propia ficha del subcontratista ya muestra nombre, correo,
   // ubicación, teléfono y tipo: lo mismo que enseñaría la tarjeta.
-  const esPortal = isPortalRole(roleSlugFromCookie())
+  const { esPortal } = useEsPortal()
   
   const isLeader = technician.Type === "Leader" || technician.Type_of_technician === "Leader"
   

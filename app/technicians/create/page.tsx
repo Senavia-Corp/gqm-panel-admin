@@ -21,6 +21,7 @@ import { useTranslations } from "@/components/providers/LocaleProvider"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ErrorModal, useErrorModal } from "@/components/organisms/ErrorModal"
 import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 export default function CreateTechnicianPage() {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
 
   function PasswordInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder: string
@@ -88,7 +90,7 @@ export default function CreateTechnicianPage() {
     // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
     // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
     // verde entero y el alta terminaba en 400.
-    const checks = reglasPassword(password).map((r) => ({ label: r.texto, ok: r.ok }))
+    const checks = politica.reglas(password).map((r) => ({ label: r.texto, ok: r.ok }))
     const score = checks.filter(c => c.ok).length
     // Una regla más que antes: la barra se dibuja sobre `checks.length`,
     // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.
@@ -182,7 +184,7 @@ export default function CreateTechnicianPage() {
     // decide es el servidor: 10 caracteres y 3 de 4 tipos. Medido con HTTP
     // crudo, 'Abcdefg1' pasaba esta validación y el API respondía 400.
     {
-      const motivo = motivoRechazo(form.Password)
+      const motivo = politica.motivo(form.Password)
       if (motivo) return motivo
     }
     return null

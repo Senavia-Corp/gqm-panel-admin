@@ -86,7 +86,14 @@ test.describe("portal · la tarjeta de técnico no ofrece botones muertos (U-07/
       const botones = (await page.getByRole("button").allInnerTexts())
         .map((t) => t.replace(/\s+/g, " ").trim())
       // Se ENUMERA: «hay 2» pasaría con dos botones equivocados.
-      expect(botones.filter((b) => /^(view|Delete)$/i.test(b)).sort()).toEqual(["Delete", "view"])
+      //
+      // La etiqueta es «View», con mayúscula. Antes ponía «view» en minúscula
+      // porque la clave `subcontractors.view` NO EXISTÍA en los ficheros de
+      // traducción y `t()` devuelve la propia clave cuando no la encuentra: el
+      // botón enseñaba el nombre interno de la clave. Esta prueba tenía
+      // congelado ese fallo COMO expectativa. Al añadir la clave, se puso roja
+      // — que es exactamente lo que tenía que hacer.
+      expect(botones.filter((b) => /^(view|Delete)$/i.test(b)).sort()).toEqual(["Delete", "View"])
     })
   })
 })
@@ -113,9 +120,42 @@ test.describe("los avisos de use-toast se pintan (U-07)", () => {
     await campos.nth(1).fill("Otra-Clave-Larga!2026")
     await page.getByRole("button").filter({ hasText: /^Update$/ }).first().click()
 
-    // Sonner pinta sus avisos en una región con role="status".
-    await expect(page.locator('[data-sonner-toast], [role="status"]').first())
-      .toBeVisible({ timeout: 10_000 })
+    // Se comprueba EL TEXTO, no que exista un nodo.
+    //
+    // La primera versión afirmaba `expect(locator).toBeVisible()` sobre
+    // `[data-sonner-toast]`: presencia, no contenido. Probado por mutación —
+    // haciendo que `textoPlano` devolviera siempre `undefined`, el adaptador
+    // tiraba TODO el texto del aviso, salía un bocadillo vacío y la prueba
+    // seguía en verde. Un aviso en blanco es tan inútil como no tenerlo.
+    const aviso = page.locator("[data-sonner-toast]").first()
+    await expect(aviso).toBeVisible({ timeout: 10_000 })
+    const texto = (await aviso.innerText()).replace(/\s+/g, " ").trim()
+    expect(texto.length, `el aviso salió vacío: ${JSON.stringify(texto)}`).toBeGreaterThan(3)
+    // Y que sea EL aviso que corresponde, no uno cualquiera: el manejador llama
+    // a toast() con `profile.toasts.errMatch`, cuyo texto habla de que las
+    // contraseñas no coinciden.
+    expect(texto).toMatch(/match|coincid/i)
+  })
+
+  test("un aviso de error se puede cerrar y no se va antes de leerlo", async ({ page }) => {
+    // La cola de radix que esto sustituye dejaba los avisos hasta que alguien
+    // los cerraba; sonner los quita solos en 4 s por defecto y sin botón. Un
+    // error que desaparece mientras lo lees es medio error.
+    await page.goto("/profile")
+    await settle(page)
+    await page.getByRole("button").filter({ hasText: /Change/ }).first().click()
+    const campos = page.locator('input[type="password"]')
+    await expect(campos.first()).toBeVisible({ timeout: 15_000 })
+    await campos.nth(0).fill("Una-Clave-Larga!2026")
+    await campos.nth(1).fill("Otra-Clave-Larga!2026")
+    await page.getByRole("button").filter({ hasText: /^Update$/ }).first().click()
+
+    const aviso = page.locator("[data-sonner-toast]").first()
+    await expect(aviso).toBeVisible({ timeout: 10_000 })
+    await expect(aviso.locator("[data-close-button]")).toBeVisible()
+    // Sigue ahí pasados los 4 s por defecto de sonner.
+    await page.waitForTimeout(6_000)
+    await expect(aviso).toBeVisible()
   })
 })
 

@@ -127,6 +127,23 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(url)
       }
     }
+
+    // U-18: la guarda de arriba se escribió sólo para `subcontractor`, y a
+    // `technical` se le dio `/technicians` en sus prefijos (U-01) sin ninguna
+    // comprobación de a QUIÉN pide. Medido: un técnico abre
+    // /technicians/<otro> y el middleware le deja pasar; la pantalla se queda
+    // en blanco porque el API sí le niega los datos — no hay fuga, pero sí un
+    // callejón sin salida y sin mensaje, que es justo lo que U-01 vino a
+    // quitar. Misma regla que para el sub: sólo su propia ficha.
+    if (role === "technical" && uid && pathname.startsWith("/technicians/")) {
+      const requested = pathname.split("/")[2]
+      if (requested && requested !== uid) {
+        const url = request.nextUrl.clone()
+        url.pathname = home
+        url.search = ""
+        return NextResponse.redirect(url)
+      }
+    }
   }
 
   return NextResponse.next()

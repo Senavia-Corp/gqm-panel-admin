@@ -42,13 +42,20 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
       setFilteredJobs(jobs)
     } else {
       const query = searchQuery.toLowerCase()
+      // U-13: `Job_status` es NULLABLE en la base de datos y `client` puede no
+      // venir. Cualquiera de los cuatro `.toLowerCase()` sobre un valor
+      // ausente tiraba la página entera con «Cannot read properties of
+      // undefined (reading 'toLowerCase')». No se veía porque la ficha del
+      // técnico nunca llegaba a cargar datos (pedía /api/technician/undefined),
+      // así que este componente no se había ejecutado nunca con jobs de verdad.
+      const texto = (v: unknown) => String(v ?? "").toLowerCase()
       setFilteredJobs(
         jobs.filter(
           (job) =>
-            job.id.toLowerCase().includes(query) ||
-            job.projectName.toLowerCase().includes(query) ||
-            job.client.name.toLowerCase().includes(query) ||
-            job.status.toLowerCase().includes(query),
+            texto(job.id).includes(query) ||
+            texto(job.projectName).includes(query) ||
+            texto(job.client?.name).includes(query) ||
+            texto(job.status).includes(query),
         ),
       )
     }
@@ -147,10 +154,11 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
   const filteredAvailableJobs = availableJobs.filter(
     (job) =>
       assignSearchQuery.trim() === "" ||
-      job.id.toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
-      job.projectName.toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
-      job.client.name.toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
-      job.status.toLowerCase().includes(assignSearchQuery.toLowerCase()),
+      // U-13: mismo motivo que arriba — status y client pueden faltar.
+      String(job.id ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
+      String(job.projectName ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
+      String(job.client?.name ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
+      String(job.status ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()),
   )
 
   return (
@@ -207,7 +215,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                             <TableCell className="text-base">{job.projectName}</TableCell>
                             <TableCell className="text-base">{job.client.name}</TableCell>
                             <TableCell>
-                              <Badge className={`${getStatusColor(job.status)} text-sm px-3 py-1`}>{t(job.status.toLowerCase())}</Badge>
+                              <Badge className={`${getStatusColor(job.status ?? "")} text-sm px-3 py-1`}>{job.status ? t(job.status.toLowerCase()) : t("noStatus")}</Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
                               <Button
@@ -271,7 +279,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                     <TableCell>{job.projectName}</TableCell>
                     <TableCell>{job.client.name}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(job.status)}>{t(job.status.toLowerCase())}</Badge>
+                      <Badge className={getStatusColor(job.status ?? "")}>{job.status ? t(job.status.toLowerCase()) : t("noStatus")}</Badge>
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-2">

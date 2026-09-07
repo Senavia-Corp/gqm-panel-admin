@@ -60,7 +60,11 @@ export default function RootLayout({
               </SidebarProvider>
             </TooltipProvider>
             <Analytics />
-            <Toaster richColors position="top-right" />
+            {/* closeButton: la cola de radix que esto sustituye dejaba los avisos en
+                pantalla hasta que alguien los cerraba. Sin el botón, un error
+                que se va solo a los pocos segundos se pierde justo cuando hace
+                falta leerlo. */}
+            <Toaster richColors closeButton position="top-right" />
           </LocaleProvider>
         </ReactQueryProvider>
       </body>

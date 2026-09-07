@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { motivoRechazo, reglasPassword } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 function ResetPasswordForm() {
   const router = useRouter()
   const t = useTranslations("auth")
+  const politica = usePasswordPolicy()
   const token = useSearchParams().get("token") ?? ""
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -25,7 +27,7 @@ function ResetPasswordForm() {
     // O-06: aquí se pedían 8 caracteres y el servidor pide 10 y 3 de 4 tipos.
     // Es la única puerta de contraseña que se usa SIN sesión —la de
     // recuperación—, así que el desajuste lo sufría quien ya estaba fuera.
-    const motivo = motivoRechazo(password)
+    const motivo = politica.motivo(password)
     if (motivo) {
       setError(motivo)
       return
@@ -92,7 +94,7 @@ function ResetPasswordForm() {
                   reglas fallando — en la única pantalla a la que se llega ya
                   estando fuera de la aplicación. */}
               <ul className="space-y-0.5 pt-1">
-                {reglasPassword(password).map((r) => (
+                {politica.reglas(password).map((r) => (
                   <li
                     key={r.clave}
                     className={`text-xs flex items-center gap-1.5 ${

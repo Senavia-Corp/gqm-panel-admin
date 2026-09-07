@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/organisms/Sidebar"
 import { TopBar } from "@/components/organisms/TopBar"
@@ -19,9 +19,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Technician } from "@/lib/types"
 import { TechnicianJobsSection } from "@/components/organisms/TechnicianJobsSection"
 import { reglasPassword } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
-export default function TechnicianDetailsPage({ params }: { params: { id: string; technicianId: string } }) {
+export default function TechnicianDetailsPage({ params }: { params: Promise<{ id: string; technicianId: string }> }) {
+  // U-11 (segunda mitad): ver la pantalla hermana. `params` es una promesa en
+  // Next 16 y aquí se declaraba como objeto plano, así que `idTecnico`
+  // era `undefined` y la ficha pedía `/api/technician/undefined`.
+  const { id: idSubcontratista, technicianId: idTecnico } = use(params)
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const router = useRouter()
   const { hasPermission } = usePermissions()
   const [user, setUser] = useState<any>(null)
@@ -35,7 +41,6 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
   const [showPassword, setShowPassword] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
-    oldPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
@@ -45,7 +50,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
     try {
       setLoading(true)
       setLoadError(null)
-      const res = await apiFetch(`/api/technician/${params.technicianId}`)
+      const res = await apiFetch(`/api/technician/${idTecnico}`)
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setTechnician(data)
@@ -65,7 +70,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
     }
     setUser(JSON.parse(userData))
     fetchTechnician()
-  }, [params.technicianId, router])
+  }, [idTecnico, router])
 
   const handleFieldChange = (field: keyof Technician, value: any) => {
     setEditedFields(new Set(editedFields.add(field)))
@@ -78,14 +83,28 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
   // 'Abcdefg1' pasaba aquí y el API respondía 400. Ahora se pregunta al
   // espejo de la política real (lib/password-policy.ts).
   const validatePassword = (password: string): string[] =>
-    reglasPassword(password).filter((r) => !r.ok).map((r) => r.texto)
+    politica.reglas(password).filter((r) => !r.ok).map((r) => r.texto)
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     const errors: string[] = []
 
-    if (passwordForm.oldPassword !== technician?.Password) {
-      errors.push(t("currentPwdIncorrect"))
-    }
+    // U-10: aquí se comparaba `passwordForm.oldPassword` con
+    // `technician?.Password`, y el API NUNCA devuelve ese campo. Comprobado
+    // con HTTP crudo: `GET /technician/TEC60001` responde con
+    // Email_Address, ID_Technician, Location, Name, Phone_Number,
+    // Type_of_technician, attachments, permissions, subcontractor y tasks —
+    // Password no está, y hace bien en no estar. Así que la comparación era
+    // siempre `algo !== undefined`, siempre añadía «contraseña actual
+    // incorrecta», y el cambio de contraseña de esta pantalla era
+    // INALCANZABLE. Nadie podía cambiarla desde aquí, nunca.
+    //
+    // No se arregla pidiendo el hash: comparar una contraseña en claro contra
+    // un hash EN EL CLIENTE no es una comprobación, y mandar el hash al
+    // navegador sería peor que el fallo. Esta es una pantalla de
+    // administración —la protege `subcontractor:update`, como la de al lado
+    // (`/technicians/<id>`), que tampoco pide la contraseña anterior—, así que
+    // se quita el campo y se deja la política de la nueva, que sí es real y sí
+    // la impone el servidor.
 
     const validationErrors = validatePassword(passwordForm.newPassword)
     errors.push(...validationErrors)
@@ -99,16 +118,41 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
       return
     }
 
-    handleFieldChange("Password", passwordForm.newPassword)
+    // U-14: el botón dice «Save Password» y sólo DEJABA EL CAMPO PREPARADO.
+    // Quien lo pulsaba se iba creyendo que la contraseña estaba cambiada, y en
+    // la base de datos seguía la vieja: el guardado de verdad estaba detrás de
+    // otro botón, «Save Changes», que sólo aparece en modo edición. Medido
+    // sobre un técnico desechable — tras pulsar «Save Password», cero
+    // peticiones y la fila con la contraseña anterior intacta.
+    //
+    // Ahora guarda, como hace la pantalla hermana `/technicians/<id>`.
     setPasswordErrors([])
-    setIsChangingPassword(false)
-    setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" })
+    setSaving(true)
+    try {
+      const res = await apiFetch(`/api/technician/${idTecnico}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Password: passwordForm.newPassword }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.detail ?? err?.error ?? `Error ${res.status}`)
+      }
+      setIsChangingPassword(false)
+      setPasswordForm({ newPassword: "", confirmPassword: "" })
+      toast({ title: t("saved"), description: t("techUpdated") })
+    } catch (e: any) {
+      setPasswordErrors([e.message])
+      toast({ title: t("error"), description: e.message, variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveChanges = async () => {
     try {
       setSaving(true)
-      const res = await apiFetch(`/api/technician/${params.technicianId}`, {
+      const res = await apiFetch(`/api/technician/${idTecnico}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -142,7 +186,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
             <p className="text-slate-500 max-w-md mb-8">
               {t("accessDeniedTechViewDesc")}
             </p>
-            <Button onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+            <Button onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)}
               className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12 rounded-xl font-bold shadow-lg">
               {t("returnTechs")}
             </Button>
@@ -174,7 +218,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
           <main className="flex-1 overflow-y-auto p-6">
-            <Button variant="ghost" onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)} className="mb-4">
+            <Button variant="ghost" onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)} className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" /> {t("backTechs")}
             </Button>
             <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
@@ -201,7 +245,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
         <main className="flex-1 overflow-y-auto p-6">
           <Button
             variant="ghost"
-            onClick={() => router.push(`/subcontractors/${params.id}?tab=technicians`)}
+            onClick={() => router.push(`/subcontractors/${idSubcontratista}?tab=technicians`)}
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -323,14 +367,6 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                   ) : (
                     <div className="space-y-4">
                       <div>
-                        <Label className="mb-2 block font-semibold">{t("currentPassword")}</Label>
-                        <Input
-                          type="password"
-                          value={passwordForm.oldPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
-                        />
-                      </div>
-                      <div>
                         <Label className="mb-2 block font-semibold">{t("newPassword")}</Label>
                         <Input
                           type="password"
@@ -364,7 +400,7 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                           variant="outline"
                           onClick={() => {
                             setIsChangingPassword(false)
-                            setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" })
+                            setPasswordForm({ newPassword: "", confirmPassword: "" })
                             setPasswordErrors([])
                           }}
                         >
@@ -424,17 +460,25 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
                 <Card className="p-6">
                   <h2 className="mb-4 text-xl font-semibold">{t("recentTasks")}</h2>
                   <div className="space-y-3">
-                    {technician.tasks.slice(0, 5).map((t: any) => (
-                      <TimelineItem 
-                        key={t.ID_Tasks || t.ID_Task} 
+                    {/* U-12: la variable del map se llamaba `t` y tapaba al
+                        traductor, así que `t("taskAssigned")` llamaba al OBJETO
+                        de la tarea como si fuera una función y la página
+                        reventaba con «t is not a function». Sólo se renderiza
+                        cuando el técnico tiene tareas, y como la ficha ni
+                        siquiera llegaba a cargar datos (pedía
+                        /api/technician/undefined), nunca se había llegado a
+                        ver: dos fallos, uno detrás del otro. */}
+                    {technician.tasks.slice(0, 5).map((tarea: any) => (
+                      <TimelineItem
+                        key={tarea.ID_Tasks || tarea.ID_Task}
                         entry={{
-                          ID_TLActivity: t.ID_Tasks || t.ID_Task,
+                          ID_TLActivity: tarea.ID_Tasks || tarea.ID_Task,
                           Action: t("taskAssigned"),
-                          Action_datetime: t.Designation_date || null,
-                          Description: t.Name || "",
+                          Action_datetime: tarea.Designation_date || null,
+                          Description: tarea.Name || "",
                           ID_Jobs: null,
-                          ID_Member: null
-                         }} 
+                          ID_Member: null,
+                        }}
                       />
                     ))}
                   </div>

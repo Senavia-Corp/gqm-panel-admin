@@ -20,6 +20,7 @@ import {
   ClipboardList, Save, Star, Wrench, Shield, EyeOff, Eye
 } from "lucide-react"
 import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
   onChange: (v: string[]) => void
 }) {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const items = values.length ? values : [""]
   return (
     <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
@@ -134,6 +136,7 @@ function ArrayEditField({ values, icon: Icon, placeholder, onChange }: {
 
 export default function CreateSubcontractorPage() {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
 
   function PasswordInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder: string
@@ -165,7 +168,7 @@ export default function CreateSubcontractorPage() {
     // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
     // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
     // verde entero y el alta terminaba en 400.
-    const checks = reglasPassword(password).map((r) => ({ label: r.texto, ok: r.ok }))
+    const checks = politica.reglas(password).map((r) => ({ label: r.texto, ok: r.ok }))
     const score = checks.filter(c => c.ok).length
     // Una regla más que antes: la barra se dibuja sobre `checks.length`,
     // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.

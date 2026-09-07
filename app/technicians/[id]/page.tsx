@@ -30,6 +30,7 @@ import {
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,6 +199,7 @@ function PageSkeleton({ user }: { user: any }) {
 
 export default function TechnicianDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useTranslations("subcontractors")
+  const politica = usePasswordPolicy()
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { id }       = use(params)
@@ -401,7 +403,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
     // O-06: se pedían 8 caracteres, una mayúscula y un dígito; el servidor
     // exige 10 y 3 de 4 tipos. El mensaje ahora dice el motivo concreto en
     // vez de un «weak password» genérico que no orienta a nadie.
-    const motivo = motivoRechazo(pwForm.new)
+    const motivo = politica.motivo(pwForm.new)
     if (motivo) {
       toast({ title: t("toastPwdWeak"), description: motivo, variant: "destructive" }); return
     }

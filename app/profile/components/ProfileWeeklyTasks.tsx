@@ -5,8 +5,10 @@ import Link from "next/link"
 import { apiFetch } from "@/lib/apiFetch"
 import { Loader2, CheckSquare, Calendar, ChevronRight, AlertCircle, Clock } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = false }: { memberId: string, subcontractorId?: string | null, isTechnician?: boolean }) {
+  const { esPortal } = useEsPortal()
   const t = useTranslations()
   const [tasks, setTasks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -14,7 +16,7 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
 
   useEffect(() => {
     // Para técnicos necesitamos el subcontractorId, para miembros el memberId
-    const targetId = isTechnician ? subcontractorId : memberId
+    const targetId = subcontractorId ?? memberId
     if (!targetId) {
       if (isTechnician) setError(t("profile.tabs.noSub"))
       setLoading(false)
@@ -24,7 +26,15 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
     const fetchTasks = async () => {
       try {
         setLoading(true)
-        const idParam = isTechnician ? `subcontractor_id=${subcontractorId}` : `member_id=${memberId}`
+    // U-15: la rama se elegía con `isTechnician`, así que el SUBCONTRATISTA
+    // caía en la de miembro y pedía `member_id=<su ID_Subcontractor>` — un id
+    // de subcontratista en el parámetro de miembro. La consulta salía siempre
+    // vacía y su perfil enseñaba «no hay tareas» sin que hubiera nada roto a
+    // la vista. Ahora decide el DATO: si hay id de subcontratista se consulta
+    // por él (vale para el técnico y para el propio sub); si no, es un miembro.
+        const idParam = subcontractorId
+          ? `subcontractor_id=${subcontractorId}`
+          : `member_id=${memberId}`
         const res = await apiFetch(`/api/tasks/weekly?${idParam}`)
         if (!res.ok) throw new Error(t("profile.tabs.errLoad"))
         const data = await res.json()
@@ -113,14 +123,25 @@ export function ProfileWeeklyTasks({ memberId, subcontractorId, isTechnician = f
               </span>
             </div>
             
+            {/* U-09 bis: este enlace se quedó fuera de la ronda. `/jobs` no está
+                en ningún `PORTAL_PREFIXES`, así que al portal el middleware lo
+                rebota a su pantalla de inicio: un viaje de ida y vuelta que
+                además le pierde el sitio. Al portal se le enseña el id sin
+                enlace, que es la información que necesita. */}
             {task.job && (
-              <Link 
-                href={`/jobs/${task.job.ID_Jobs}`}
-                className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 text-sm text-indigo-600 hover:text-indigo-800 font-semibold group"
-              >
-                <span>{t("profile.tabs.labelJob")}: {task.job.ID_Jobs}</span>
-                <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-              </Link>
+              esPortal ? (
+                <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 text-sm text-slate-500 font-semibold">
+                  <span>{t("profile.tabs.labelJob")}: {task.job.ID_Jobs}</span>
+                </div>
+              ) : (
+                <Link
+                  href={`/jobs/${task.job.ID_Jobs}`}
+                  className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 text-sm text-indigo-600 hover:text-indigo-800 font-semibold group"
+                >
+                  <span>{t("profile.tabs.labelJob")}: {task.job.ID_Jobs}</span>
+                  <ChevronRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                </Link>
+              )
             )}
           </div>
         </div>

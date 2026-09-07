@@ -15,6 +15,7 @@ import {
   User, Mail, Phone, MapPin, Shield, Briefcase,
 } from "lucide-react"
 import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,12 +74,13 @@ function PasswordInput({ value, onChange, placeholder }: {
 
 function PasswordStrength({ password }: { password: string }) {
   const t = useTranslations("members")
+  const politica = usePasswordPolicy()
   if (!password) return null
   // O-06: los requisitos ya no se escriben aquí. Los dicta el espejo de la
   // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
   // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
   // verde entero y el alta terminaba en 400.
-  const checks = reglasPassword(password).map((r) => ({ label: r.texto, ok: r.ok }))
+  const checks = politica.reglas(password).map((r) => ({ label: r.texto, ok: r.ok }))
   const score = checks.filter(c => c.ok).length
   // Una regla más que antes: la barra se dibuja sobre `checks.length`,
   // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.
@@ -110,6 +112,7 @@ export default function CreateMemberPage() {
   const [user, setUser]     = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const t = useTranslations("members")
+  const politica = usePasswordPolicy()
 
   const [form, setForm] = useState({
     Member_Name:  "",
@@ -137,7 +140,7 @@ export default function CreateMemberPage() {
     // O-06: ver lib/password-policy.ts — el panel prometía 8 caracteres y el
     // servidor exige 10 y 3 de 4 tipos de carácter.
     {
-      const motivo = motivoRechazo(form.Password)
+      const motivo = politica.motivo(form.Password)
       if (motivo) return motivo
     }
     return null

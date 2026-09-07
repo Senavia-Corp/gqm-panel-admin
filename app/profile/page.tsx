@@ -20,10 +20,10 @@ import { ProfilePipelineJobs } from "./components/ProfilePipelineJobs"
 import { ProfileWeeklyTasks } from "./components/ProfileWeeklyTasks"
 import { ProfileCommunities } from "./components/ProfileCommunities"
 import { ProfileCommissions } from "./components/ProfileCommissions"
-import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { roleSlugFromCookie } from "@/lib/role-map"
 import { motivoRechazo, reglasPassword } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface MemberProfile {
@@ -65,6 +65,7 @@ function EditableField({
   onChange: (k: keyof EditState, v: string) => void
 }) {
   const t = useTranslations()
+  const politica = usePasswordPolicy()
   return (
     <div className="group relative">
       <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -182,6 +183,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const { toast } = useToast()
   const t = useTranslations()
+  const politica = usePasswordPolicy()
 
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<MemberProfile | null>(null)
@@ -340,7 +342,7 @@ export default function ProfilePage() {
     // técnico cambia su propia contraseña. El servidor exige 10 y 3 de 4
     // tipos de carácter, así que el usuario del portal se llevaba un 400 con
     // el mensaje del API después de darle a guardar.
-    const motivoPw = motivoRechazo(editValues.newPassword)
+    const motivoPw = politica.motivo(editValues.newPassword)
     if (motivoPw) {
       toast({ title: t("profile.toasts.errShort"), description: motivoPw, variant: "destructive" })
       return
@@ -475,12 +477,14 @@ export default function ProfilePage() {
                     <span className="sm:hidden">{t("common.tasks")}</span>
                     <span className="hidden sm:inline">{t("profile.tabs.tasks")}</span>
                   </TabsTrigger>
-                  {isTech && (
-                    <TabsTrigger value="opportunities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                      <span className="sm:hidden">{t("profile.tabs.opportunitiesShort")}</span>
-                      <span className="hidden sm:inline">{t("profile.tabs.opportunities")}</span>
-                    </TabsTrigger>
-                  )}
+                  {/* U-16: aquí se le ofrecía al técnico «Applied Opportunities»
+                      y el endpoint le responde 403 — medido:
+                      GET /opportunities?limit=100&subcontractor_id=SUBC60001 con
+                      el token de tech-dev devuelve 403, porque `client:read` no
+                      está en la política `technical-portal`. El panel se tragaba
+                      el error y lo pintaba como «no hay oportunidades», que es
+                      mentira: no es que no tenga, es que no puede verlas. Mismo
+                      caso que las tres pestañas que U-01 quitó de su panel. */}
                   {(!isTech && !isSubc) && (
                     <>
                       <TabsTrigger value="communities" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">{t("profile.tabs.communities")}</TabsTrigger>
@@ -623,7 +627,7 @@ export default function ProfilePage() {
                         <div className="flex flex-col justify-end">
                           <p className="text-xs text-slate-400 mb-1.5">{t("profile.security.strength")}</p>
                           <div className="flex gap-1">
-                            {reglasPassword(editValues.newPassword).map((r) => (
+                            {politica.reglas(editValues.newPassword).map((r) => (
                               <div
                                 key={r.clave}
                                 className={`h-1.5 flex-1 rounded-full transition-colors ${
@@ -633,7 +637,7 @@ export default function ProfilePage() {
                             ))}
                           </div>
                           <ul className="mt-1 space-y-0.5">
-                            {reglasPassword(editValues.newPassword).map((r) => (
+                            {politica.reglas(editValues.newPassword).map((r) => (
                               <li
                                 key={r.clave}
                                 className={`text-xs flex items-center gap-1.5 ${
@@ -697,15 +701,6 @@ export default function ProfilePage() {
                   />
                 </TabsContent>
 
-                {isTech && (
-                  <TabsContent value="opportunities" className="mt-0">
-                    <OpportunitiesPanel 
-                      subcontractorId={profile.ID_Subcontractor} 
-                      isTechnician={true} 
-                      onlyApplied={true}
-                    />
-                  </TabsContent>
-                )}
 
                 {(!isTech && !isSubc) && (
                   <>

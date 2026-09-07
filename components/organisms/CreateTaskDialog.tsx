@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // Sentinel — never pass "" to Radix Select
 const NONE = "__none__"
@@ -132,7 +133,12 @@ export function CreateTaskDialog({
   // se lo pasa desde `localStorage.user_data.role` — vocabulario del cliente,
   // reescribible desde devtools. Así el diálogo es correcto aunque el llamador
   // no lo sea; para un admin la cookie dice `full_admin` y nada cambia.
-  const esSub = userRole === "SUBCONTRACTOR" || roleSlugFromCookie() === "subcontractor"
+  // El desconocido cuenta como subcontratista: ver hooks/useEsPortal.ts. Antes
+  // de hidratar, `roleSlugFromCookie()` es null y esto daba «no es sub», así
+  // que las pestañas de asignación que el sub no puede usar se pintaban un
+  // instante y luego desaparecían.
+  const { esPortal, resuelto } = useEsPortal()
+  const esSub = userRole === "SUBCONTRACTOR" || !resuelto || esPortal
   const [formData, setFormData] = useState(INITIAL_FORM())
   const [assignType, setAssignType] = useState<AssignType>("none")
   const [loading, setLoading] = useState(false)

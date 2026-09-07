@@ -378,6 +378,13 @@ export default function SubcontractorDetailsPage() {
   const [roles, setRoles] = useState<any[]>([])
 
   useEffect(() => {
+    // U-17: mismo defecto que U-06 arregló en el diálogo de tarea. Esta es la
+    // pantalla de ATERRIZAJE del subcontratista, y pedía el catálogo de roles
+    // en cada carga: medido con sub-dev en /subcontractors/SUBC60001,
+    // `GET /api/roles?limit=100` responde 403 y el `if (res.ok)` lo deja pasar
+    // en silencio. Ni lo necesita —los roles sólo se pintan en la parte de
+    // administración— ni le toca leer el catálogo de roles del sistema.
+    if (isPortal) return
     async function fetchRoles() {
       try {
         const res = await apiFetch("/api/roles?limit=100")
@@ -390,7 +397,7 @@ export default function SubcontractorDetailsPage() {
       }
     }
     fetchRoles()
-  }, [])
+  }, [isPortal])
 
   // ── Manage Skills state ────────────────────────────────────────────────────
   const [manageSkillsOpen, setManageSkillsOpen] = useState(false)

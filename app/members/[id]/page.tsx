@@ -31,6 +31,7 @@ import {
   Users, Building2,
 } from "lucide-react"
 import { motivoRechazo } from "@/lib/password-policy"
+import { usePasswordPolicy } from "@/hooks/usePasswordPolicy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -390,6 +391,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const { hasPermission } = usePermissions()
   const canUpdate = hasPermission("member:update")
   const t = useTranslations("members")
+  const politica = usePasswordPolicy()
 
   // ── Edit state ─────────────────────────────────────────────────────────────
   const [editing, setEditing]   = useState(false)
@@ -508,7 +510,7 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
     if (pwForm.new !== pwForm.confirm)  { toast({ title: t("toastPwdMatch"), variant: "destructive" }); return }
     // O-06: ver lib/password-policy.ts — el panel prometía 8 caracteres y el
     // servidor exige 10 y 3 de 4 tipos de carácter.
-    const motivo = motivoRechazo(pwForm.new)
+    const motivo = politica.motivo(pwForm.new)
     if (motivo) {
       toast({ title: t("toastWeakPwd"), description: motivo, variant: "destructive" }); return
     }

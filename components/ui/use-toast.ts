@@ -25,19 +25,30 @@
  */
 import { toast as sonner } from 'sonner'
 
+/**
+ * El tipo dice TEXTO, no `ReactNode`, a propósito.
+ *
+ * La primera versión declaraba `title?: React.ReactNode`, así que TypeScript
+ * aceptaba JSX — y el runtime lo descartaba sin decir nada: el aviso salía en
+ * blanco o perdía el título. Un tipo que promete lo que no cumple es peor que
+ * uno estrecho. Comprobado con grep sobre los 43 llamadores: **ninguno** pasa
+ * JSX hoy, así que estrecharlo no rompe nada y convierte ese fallo silencioso
+ * en un error de compilación el día que alguien lo intente.
+ */
 export type ToastOptions = {
-  title?: React.ReactNode
-  description?: React.ReactNode
+  title?: string | number | null
+  description?: string | number | null
   variant?: 'default' | 'destructive'
   duration?: number
 }
 
-function textoPlano(v: React.ReactNode): string | undefined {
-  if (v === null || v === undefined || typeof v === 'boolean') return undefined
-  if (typeof v === 'string') return v
-  if (typeof v === 'number') return String(v)
-  return undefined
+function textoPlano(v: string | number | null | undefined): string | undefined {
+  if (v === null || v === undefined) return undefined
+  return typeof v === 'number' ? String(v) : v
 }
+
+/** Un error tiene que dar tiempo a leerlo. Los 4 s por defecto de sonner no. */
+const DURACION_ERROR = 10_000
 
 function toast({ title, description, variant, duration }: ToastOptions = {}) {
   const encabezado = textoPlano(title)
@@ -45,14 +56,17 @@ function toast({ title, description, variant, duration }: ToastOptions = {}) {
   // Sin título, el cuerpo pasa a ser el mensaje: sonner no pinta nada con un
   // primer argumento vacío, y varios llamadores mandan solo `description`.
   const mensaje = encabezado ?? detalle ?? ''
+  const esError = variant === 'destructive'
   const opciones = {
     description: encabezado ? detalle : undefined,
-    duration,
+    duration: duration ?? (esError ? DURACION_ERROR : undefined),
   }
-  const id =
-    variant === 'destructive' ? sonner.error(mensaje, opciones) : sonner(mensaje, opciones)
+  const id = esError ? sonner.error(mensaje, opciones) : sonner(mensaje, opciones)
   return {
-    id: String(id),
+    // El id se devuelve TAL CUAL. Los de sonner son números (un contador
+    // interno), y pasarlo por `String()` daba un id que `sonner.dismiss()` ya
+    // no reconoce: quedaba un descarte que no descarta.
+    id,
     dismiss: () => sonner.dismiss(id),
     update: () => {},
   }
@@ -67,7 +81,7 @@ function useToast() {
   return {
     toasts: [] as const,
     toast,
-    dismiss: (toastId?: string) => sonner.dismiss(toastId),
+    dismiss: (toastId?: string | number) => sonner.dismiss(toastId),
   }
 }
 

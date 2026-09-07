@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -384,8 +385,13 @@ function TaskDetailDialog({
   onUpdated?: () => void
 }) {
   const t = useTranslations("dashboard")
+  const { esPortal } = useEsPortal()
   const [guardando, setGuardando] = useState(false)
   const [errorEstado, setErrorEstado] = useState<string | null>(null)
+  // El componente no se desmonta al cerrar (el `return null` está DEBAJO de los
+  // hooks), así que `errorEstado` sobrevivía y se pintaba sobre la SIGUIENTE
+  // tarea que se abriera: un fallo de la anterior acusando a otra.
+  useEffect(() => { setErrorEstado(null) }, [task?.ID_Tasks])
   if (!task) return null
 
   // R4 — «el tecnico actualiza el estado de su tarea» era la unica cosa que el
@@ -435,7 +441,14 @@ function TaskDetailDialog({
             // Normalizado: en la BD conviven grafias ("In Progress" y
             // "Work-in-progress"), y comparar en crudo dejaria el estado
             // actual sin marcar y su boton pulsable.
-            const actual = e.toLowerCase() === (task.Task_status ?? "").toLowerCase().trim()
+            // Se compara por la MISMA clave que usa `STATUS_CONFIG`, no por la
+            // cadena en crudo: en la BD conviven «In Progress» y
+            // «Work-in-progress», y comparando texto ninguno de los tres
+            // botones quedaba marcado como el estado actual — el usuario no
+            // veía en cuál estaba y podía volver a pulsar el que ya tenía.
+            const claveDe = (v: string | null) =>
+              (getStatus(v, t).key ?? (v ?? "").toLowerCase().trim())
+            const actual = claveDe(e) === claveDe(task.Task_status)
             return (
               <button
                 key={e}
@@ -531,7 +544,7 @@ function TaskDetailDialog({
                   lo rebota. Medido con el técnico: pulsar «View job» sobre
                   /jobs/QID-I60001 termina en /dashboard, con el diálogo
                   cerrado y habiendo perdido el sitio donde estaba. */}
-              {!isPortalRole(roleSlugFromCookie()) && (
+              {!esPortal && (
                 <Link
                   href={`/jobs/${task.job.ID_Jobs}`}
                   className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
