@@ -1223,7 +1223,9 @@
     "pageOf": "Página {current} de {total}",
     "pwdNoMatch": "Las contraseñas no coinciden",
     "remaining": "Restantes",
-    "subcontractors": "Subcontratistas"
+    "subcontractors": "Subcontratistas",
+    "noPermissionOrders": "No tienes permiso para ver las órdenes de compra.",
+    "errorLoadingOrders": "No se pudieron cargar las órdenes. Inténtalo de nuevo."
   },
   "jobs": {
     "title": "Trabajos",
@@ -3798,7 +3800,10 @@
       "labelRole": "Rol",
       "roleLeader": "Líder",
       "roleMember": "Miembro",
-      "noRole": "Rol no asignado"
+      "noRole": "Rol no asignado",
+      "titleSubc": "PERFIL DEL SUBCONTRATISTA",
+      "labelIdSubc": "ID DEL SUBCONTRATISTA",
+      "roleSubc": "Subcontratista"
     },
     "tabs": {
       "personal": "Info Personal",

@@ -37,7 +37,8 @@ import {
 } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import type { ElementType } from "react"
-import { isPortalRole, roleSlugFromCookie, uidFromCookie, type RoleSlug } from "@/lib/role-map"
+import { uidFromCookie, type RoleSlug } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,8 @@ interface SidebarContentProps {
   collapsed: boolean
   menuItems: NavItem[]
   roleSlug: RoleSlug | null
+  /** Ya resuelto por `useEsPortal()`: el desconocido cuenta como portal. */
+  esPortal: boolean
   pathname: string
   onNavigate?: () => void
 }
@@ -101,6 +104,7 @@ function SidebarContent({
   collapsed,
   menuItems,
   roleSlug,
+  esPortal,
   pathname,
   onNavigate,
 }: SidebarContentProps) {
@@ -127,7 +131,7 @@ function SidebarContent({
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-          const isDisabled = isPortalRole(roleSlug) && item.href === "/reports"
+          const isDisabled = esPortal && item.href === "/reports"
 
           return (
             <Link
@@ -158,7 +162,7 @@ function SidebarContent({
           const Icon = item.icon
           // /settings no está en PORTAL_PREFIXES: el middleware lo rebota
           // para subcontratista y técnico, así que no se ofrece a ninguno.
-          const isDisabled = isPortalRole(roleSlug) && item.href === "/settings"
+          const isDisabled = esPortal && item.href === "/settings"
           const isLogout = item.labelKey === "logout"
 
           return (
@@ -206,14 +210,19 @@ export function Sidebar() {
   // Rol e id de la SESIÓN (cookies gqm_role/gqm_uid), no
   // `localStorage.user_data`: el menú debe coincidir con lo que evalúa el
   // middleware, y localStorage se reescribe desde devtools (D6).
-  const [roleSlug, setRoleSlug] = useState<RoleSlug | null>(null)
+  // El rol de la sesión, con el «todavía no lo sé» resuelto hacia el lado
+  // seguro. Antes era un `useState(null)` propio y `isPortalRole(null)` es
+  // `false`, es decir «rol interno»: en el PRIMER render un subcontratista
+  // veía el menú de GQM Member entero (el `let base = gqmMemberMenuItems` de
+  // abajo) y los enlaces a /reports y /settings habilitados, y sólo después
+  // se corregían. Ver hooks/useEsPortal.ts.
+  const { esPortal, rol: roleSlug, resuelto: rolResuelto } = useEsPortal()
   const [userId, setUserId] = useState<string | null>(null)
   const pathname = usePathname()
   const { isOpen, setIsOpen } = useSidebar()
   const t = useTranslations("navigation")
 
   useEffect(() => {
-    setRoleSlug(roleSlugFromCookie())
     // El id sale de la misma cookie que usa el middleware para redirigir, de
     // modo que el enlace del sub apunte exactamente a la ficha que le deja
     // abrir. localStorage queda solo como reserva si la cookie viniera vacía.
@@ -237,6 +246,9 @@ export function Sidebar() {
   const { can } = useCan(["member:read", "commission:read"])
 
   const menuItems = useMemo(() => {
+    // Sin rol resuelto no se pinta menú: el defecto de abajo es el de GQM
+    // Member, así que pintarlo «mientras tanto» se lo enseña al portal.
+    if (!rolResuelto) return []
     let base = gqmMemberMenuItems
     if (roleSlug === "subcontractor") {
       base = subcontractorMenuItems.map(item => 
@@ -284,7 +296,7 @@ export function Sidebar() {
       }
       return true
     })
-  }, [roleSlug, userId, hasPermission, can])
+  }, [rolResuelto, roleSlug, userId, hasPermission, can])
 
   return (
     <>
@@ -298,6 +310,7 @@ export function Sidebar() {
           collapsed={collapsed}
           menuItems={menuItems}
           roleSlug={roleSlug}
+          esPortal={esPortal}
           pathname={pathname}
         />
 
@@ -331,6 +344,7 @@ export function Sidebar() {
             collapsed={false}
             menuItems={menuItems}
             roleSlug={roleSlug}
+            esPortal={esPortal}
             pathname={pathname}
             onNavigate={() => setIsOpen(false)}
           />

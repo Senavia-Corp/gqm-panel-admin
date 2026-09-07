@@ -1223,7 +1223,9 @@
     "pageOf": "Page {current} of {total}",
     "pwdNoMatch": "The passwords do not match",
     "remaining": "Remaining",
-    "subcontractors": "Subcontractors"
+    "subcontractors": "Subcontractors",
+    "noPermissionOrders": "You do not have permission to view purchase orders.",
+    "errorLoadingOrders": "Could not load orders. Try again."
   },
   "jobs": {
     "title": "Jobs",
@@ -3798,7 +3800,10 @@
       "labelRole": "Role",
       "roleLeader": "Leader",
       "roleMember": "Member",
-      "noRole": "No role set"
+      "noRole": "No role set",
+      "titleSubc": "SUBCONTRACTOR PROFILE",
+      "labelIdSubc": "SUBCONTRACTOR ID",
+      "roleSubc": "Subcontractor"
     },
     "tabs": {
       "personal": "Personal Info",

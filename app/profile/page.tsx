@@ -424,7 +424,7 @@ export default function ProfilePage() {
                   <AvatarInitials name={profile?.Member_Name ?? null} />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
-                      {isTech ? t("profile.header.titleTech") : isSubc ? "SUBCONTRACTOR" : t("profile.header.titleMember")}
+                      {isTech ? t("profile.header.titleTech") : isSubc ? t("profile.header.titleSubc") : t("profile.header.titleMember")}
                     </p>
                     <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
                       {profile?.Member_Name ?? "—"}
@@ -439,13 +439,13 @@ export default function ProfilePage() {
                 {/* Stat pills */}
                 <div className="flex flex-wrap gap-2">
                   <StatPill
-                    label={isTech ? t("profile.header.labelIdTech") : t("profile.header.labelIdMember")}
+                    label={isTech ? t("profile.header.labelIdTech") : isSubc ? t("profile.header.labelIdSubc") : t("profile.header.labelIdMember")}
                     value={profile?.ID_Member ?? "—"}
                     color="bg-white/5 text-white"
                   />
                   <StatPill
                     label={t("profile.header.labelRole")}
-                    value={isTech ? t("profile.header.roleLeader") : (profile?.role?.Role_Name ?? t("profile.header.roleMember"))}
+                    value={isTech ? t("profile.header.roleLeader") : isSubc ? (profile?.role?.Role_Name ?? t("profile.header.roleSubc")) : (profile?.role?.Role_Name ?? t("profile.header.roleMember"))}
                     color="bg-emerald-500/20 text-emerald-300"
                   />
                 </div>

@@ -15,6 +15,24 @@ import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { apiFetch } from "@/lib/apiFetch"
 
+/** JobDTO (lo que devuelve el API) → la forma que pinta esta tabla.
+ *
+ * Existe para que el desajuste no vuelva a esconderse detrás de un `as any`:
+ * las claves del API son `ID_Jobs`/`Project_name`/`Job_status`, las de la UI
+ * son `id`/`projectName`/`status`. */
+function deDTO(dto: any): Job {
+  return {
+    ...dto,
+    id: dto?.ID_Jobs ?? dto?.id ?? "",
+    projectName: dto?.Project_name ?? dto?.projectName ?? "",
+    status: dto?.Job_status ?? dto?.status ?? "",
+    client: {
+      ...(dto?.client ?? {}),
+      name: dto?.client?.Client_Community ?? dto?.client?.name ?? "",
+    },
+  } as Job
+}
+
 interface TechnicianJobsSectionProps {
   technician: Technician
 }
@@ -64,27 +82,31 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
   const loadJobs = async () => {
     setIsLoading(true)
     try {
-      console.log("[v0] Fetching technician assigned job IDs for:", technician.ID_Technician)
+      // Esta sección no funcionaba para NINGÚN rol. Dos fallos encadenados:
+      //
+      //  1. los ids salían de `techData.subcontractor?.jobs`, es decir de los
+      //     jobs del SUBCONTRATISTA, no de los que tiene asignados el técnico;
+      //  2. se cruzaban con `fetchedJobs.filter(job => jobIds.includes(job.id))`
+      //     y `fetchJobs` devuelve JobDTO —`ID_Jobs`, `Project_name`,
+      //     `Job_status`, `client.Client_Community`—, así que `job.id` era
+      //     `undefined` y `includes(undefined)` es SIEMPRE false.
+      //
+      // El `as any` de las tres asignaciones tapaba el desajuste de formas, y
+      // el resultado medido era «No jobs found» con dos filas en
+      // `job_technician`, y filas en blanco en el diálogo de asignación.
+      //
+      // Ahora se le pide al API los jobs DE ESTE TÉCNICO (`technicianId`, que
+      // el API resuelve por `JobTechnicianLink`) y se mapea el DTO una sola vez.
+      const [mios, todos] = await Promise.all([
+        fetchJobs(1, 200, { technicianId: technician.ID_Technician } as any),
+        fetchJobs(1, 200),
+      ])
 
-      const techResponse = await apiFetch(`/api/technician/${technician.ID_Technician}`)
-      if (!techResponse.ok) {
-        throw new Error("Failed to fetch technician data")
-      }
-      const techData = await techResponse.json()
-
-      // Extract job IDs from subcontractor.jobs
-      const jobIds = techData.subcontractor?.jobs?.map((job: any) => job.ID_Jobs) || []
-      setAssignedJobIds(jobIds)
-      console.log("[v0] Technician assigned job IDs:", jobIds)
-
-      const { jobs: fetchedJobs } = await fetchJobs(1, 200) // Fetch more to ensure we get all assigned jobs
-
-      const technicianJobs = fetchedJobs.filter((job) => jobIds.includes(job.id))
-      console.log("[v0] Filtered technician jobs:", technicianJobs.length, "of", fetchedJobs.length)
-
-      setJobs(technicianJobs as any)
-      setFilteredJobs(technicianJobs as any)
-      setAvailableJobs(fetchedJobs as any)
+      const asignados = mios.jobs.map(deDTO)
+      setAssignedJobIds(asignados.map((j) => j.id))
+      setJobs(asignados)
+      setFilteredJobs(asignados)
+      setAvailableJobs(todos.jobs.map(deDTO))
     } catch (error) {
       console.error("[v0] Error loading jobs:", error)
       toast({
@@ -108,20 +130,44 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
     )
   }
 
-  const handleAssignJob = (job: Job) => {
-    // In a real app, this would make an API call to assign the job
-    console.log("[v0] Assigning job", job.id, "to technician", technician.ID_Technician)
-
-    // Add to the jobs list if not already there
-    if (!jobs.find((j) => j.id === job.id)) {
-      setJobs([...jobs, job])
+  const handleAssignJob = async (job: Job) => {
+    // Esto era un simulacro: `// In a real app, this would make an API call`,
+    // un `console.log`, mutar el estado local y pintar un aviso de ÉXITO.
+    // Medido: al pulsar «Assign» no salía ni una petición que no fuera GET, la
+    // tabla `job_technician` no cambiaba, y la pantalla decía «Done — Job
+    // undefined assigned to …».
+    //
+    // Mientras los avisos se escribían en una cola que nadie renderizaba el
+    // fallo era mudo. Al arreglar esa cola (U-07) el no-op silencioso pasó a
+    // ser una CONFIRMACIÓN FALSA, que es peor. El endpoint existe
+    // (`POST /job_technician/jobs/<job>/technicians/<tec>`, protegido con
+    // `job:create`), así que se llama de verdad: al administrador le funciona
+    // y al rol de portal le sale el 403 honesto en lugar de un éxito inventado.
+    try {
+      const res = await apiFetch("/api/job-technician", {
+        method: "POST",
+        body: JSON.stringify({ jobId: job.id, technicianId: technician.ID_Technician }),
+      })
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => null)
+        toast({
+          title: t("error"),
+          description: cuerpo?.detail || cuerpo?.error || t("failedToLoadJobs"),
+          variant: "destructive",
+        })
+        return
+      }
+      setIsAssignDialogOpen(false)
+      // La respuesta HTTP no es la verdad: se relee del servidor en vez de
+      // apuntar el cambio en el estado local y darlo por hecho.
+      await loadJobs()
+      toast({
+        title: t("success"),
+        description: t("jobAssignedSuccess", { id: job.id, name: technician.Name }),
+      })
+    } catch (e) {
+      toast({ title: t("error"), description: String(e), variant: "destructive" })
     }
-
-    setIsAssignDialogOpen(false)
-    toast({
-      title: t("success"),
-      description: t("jobAssignedSuccess", { id: job.id, name: technician.Name }),
-    })
   }
 
   const getStatusColor = (status: string) => {
@@ -213,7 +259,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                           <TableRow key={job.id} className="hover:bg-muted/50 cursor-pointer">
                             <TableCell className="font-medium pl-6 text-base">{job.id}</TableCell>
                             <TableCell className="text-base">{job.projectName}</TableCell>
-                            <TableCell className="text-base">{job.client.name}</TableCell>
+                            <TableCell className="text-base">{job.client?.name ?? "—"}</TableCell>
                             <TableCell>
                               <Badge className={`${getStatusColor(job.status ?? "")} text-sm px-3 py-1`}>{job.status ? t(job.status.toLowerCase()) : t("noStatus")}</Badge>
                             </TableCell>
@@ -277,7 +323,7 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
                   <TableRow key={job.id}>
                     <TableCell className="font-medium pl-6">{job.id}</TableCell>
                     <TableCell>{job.projectName}</TableCell>
-                    <TableCell>{job.client.name}</TableCell>
+                    <TableCell>{job.client?.name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(job.status ?? "")}>{job.status ? t(job.status.toLowerCase()) : t("noStatus")}</Badge>
                     </TableCell>
