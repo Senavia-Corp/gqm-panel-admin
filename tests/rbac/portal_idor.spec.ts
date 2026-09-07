@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { ids, stateFile } from "./helpers"
+import { ids, settle, stateFile } from "./helpers"
 
 /**
  * Regresiones de la auditoría de portal (sep-2026).
@@ -90,5 +90,67 @@ test.describe("portal · la API es el límite de confianza, no el BFF", () => {
     // El middleware solo rellena `authorization` si NO viene: el del cliente gana.
     // La petición falla únicamente porque el header desplazó a la sesión.
     expect(conHeader.status(), "el BFF no ata la petición a la sesión").not.toBe(200)
+  })
+})
+
+/**
+ * U-06 — el diálogo de detalle de tarea ofrecía al subcontratista dos ramas
+ * de asignación que el API rechaza, y pedía el roster interno de GQM.
+ *
+ * Es el mismo defecto que se arregló en `CreateTaskDialog` y que este diálogo
+ * se saltó. Medido abriendo una tarea desde /subcontractors/<id>?tab=tasks:
+ * salía `GET /api/members` → 403, que el `.catch()` convertía en «no hay
+ * miembros», y en modo edición aparecían las pestañas «Unassigned» y
+ * «GQM Member». `PATCH /tasks/<id>` responde 403 a cualquier cambio de
+ * `ID_Member` o `ID_Subcontractor` para un rol de portal (src/routes/Tasks.py),
+ * así que las dos solo podían terminar en error.
+ */
+test.describe("portal · el diálogo de tarea no ofrece caminos que el API rechaza", () => {
+  test.use({ storageState: stateFile("subcontractor") })
+
+  test("un subcontratista no ve «GQM Member» ni se pide /api/members", async ({ page }) => {
+    const fallos: string[] = []
+    const miembros: string[] = []
+    page.on("response", (r) => {
+      if (!r.url().includes("/api/")) return
+      if (r.url().includes("/api/members")) miembros.push(`${r.status()} ${r.url()}`)
+      if (r.status() >= 400) fallos.push(`${r.status()} ${new URL(r.url()).pathname}`)
+    })
+
+    await page.goto(`/subcontractors/${ids.sub()}?tab=tasks`)
+    await settle(page)
+    fallos.length = 0
+    miembros.length = 0
+
+    await page.getByText("AUDIT-PORTAL-A-tarea-sin-asignar").first().click()
+    const dlg = page.getByRole("dialog")
+    await expect(dlg).toBeVisible({ timeout: 15_000 })
+    await dlg.getByRole("button").filter({ hasText: /Edit Task/i }).first().click()
+    await expect(dlg.getByRole("combobox").first()).toBeVisible({ timeout: 15_000 })
+
+    // Se ENUMERAN las ramas ofrecidas: «no está GQM Member» pasaría también si
+    // el diálogo se hubiera quedado sin ninguna y el sub no pudiera reasignar.
+    const ramas = (await dlg.locator("button").allInnerTexts())
+      .map((t) => t.replace(/\s+/g, " ").trim())
+      .filter((t) => ["Unassigned", "GQM Member", "Subcontractor"].includes(t))
+    expect(ramas).toEqual(["Subcontractor"])
+
+    expect(miembros, `se pidió el roster interno de GQM: ${miembros.join(", ")}`).toEqual([])
+    expect(fallos, `el diálogo dejó errores de API: ${fallos.join(", ")}`).toEqual([])
+  })
+
+  test("y sigue pudiendo reasignar entre SUS técnicos, solo los suyos", async ({ page }) => {
+    await page.goto(`/subcontractors/${ids.sub()}?tab=tasks`)
+    await settle(page)
+    await page.getByText("AUDIT-PORTAL-A-tarea-sin-asignar").first().click()
+    const dlg = page.getByRole("dialog")
+    await dlg.getByRole("button").filter({ hasText: /Edit Task/i }).first().click()
+    await dlg.getByRole("combobox").filter({ hasText: /technician|Skip/i }).first().click()
+
+    // Enumeración otra vez: el técnico del OTRO sub no puede estar en la lista.
+    const opciones = (await page.getByRole("option").allInnerTexts())
+      .map((t) => t.replace(/\s+/g, " ").trim())
+    expect(opciones).toContain("DEV Technician")
+    expect(opciones.join(" | ")).not.toMatch(/Technician B|TEC60002/)
   })
 })

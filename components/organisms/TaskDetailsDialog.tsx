@@ -36,6 +36,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 import { usePermissions } from "@/hooks/usePermissions"
+import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
 
 // ── Sentinel — never pass "" to Radix Select ──────────────────────────────────
 const NONE = "__none__"
@@ -258,9 +259,17 @@ const memberId = toForm(task.ID_Member)
     setSaveError(null)
   }, [task])
 
+  // U-06: mismo defecto que ya se arregló en CreateTaskDialog, y este diálogo
+  // se quedó fuera. Medido abriendo una tarea como subcontratista desde
+  // /subcontractors/<id>?tab=tasks: sale `GET /api/members` y vuelve 403, que
+  // el `.catch()` de abajo convierte en lista vacía — un fallo de permisos
+  // disfrazado de «no hay miembros».
+  const esPortal = isPortalRole(roleSlugFromCookie())
+
   // Fetch all members when dialog opens (needed for view + edit mode name display)
   useEffect(() => {
     if (!open) return
+    if (esPortal) { setAllMembers([]); setLoadingMembers(false); return }
     setLoadingMembers(true)
     apiFetch("/api/members?page=1&limit=200")
       .then(r => r.json())
@@ -274,7 +283,7 @@ const memberId = toForm(task.ID_Member)
       })
       .catch(() => setAllMembers([]))
       .finally(() => setLoadingMembers(false))
-  }, [open])
+  }, [open, esPortal])
 
   if (!task) return null
 
@@ -691,11 +700,18 @@ const memberId = toForm(task.ID_Member)
               <>
                 {/* Assignment type tabs */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
-                  {[
+                  {([
                     { key: "none" as AssignType,          label: t("unassignedLabel"),    icon: <Circle size={13} /> },
                     { key: "member" as AssignType,        label: t("gqmMember"),    icon: <Users size={13} /> },
                     { key: "subcontractor" as AssignType, label: t("subcontractor"), icon: <Building2 size={13} /> },
-                  ].map(opt => {
+                  // U-06: al portal solo se le deja «Subcontractor», que es la
+                  // única rama que el API le permite guardar. `PATCH /tasks/<id>`
+                  // rechaza con 403 cualquier cambio de `ID_Member` y de
+                  // `ID_Subcontractor` (Tasks.py), así que «GQM Member» y
+                  // «Unassigned» eran dos botones que solo podían acabar en error.
+                  // Lo que sí puede hacer —reasignar entre SUS técnicos— vive
+                  // dentro de esta pestaña y sigue disponible.
+                  ]).filter(opt => !esPortal || opt.key === "subcontractor").map(opt => {
                     const active = assignType === opt.key
                     return (
                       <button
