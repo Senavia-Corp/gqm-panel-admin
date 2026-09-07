@@ -23,6 +23,8 @@ type Props = {
   onFieldChange: (field: string, value: any) => void
   isFieldChanged: (field: string) => boolean
   readOnly?: boolean
+  /** Rol de portal, resuelto desde la cookie `gqm_role`. */
+  esPortal?: boolean
   patch?: (updates: Record<string, any>, opts?: { sync_podio?: boolean }) => Promise<void>
   isSaving?: boolean
   syncPodio?: boolean
@@ -234,16 +236,20 @@ export function JobDetailsTab({
   onFieldChange,
   isFieldChanged,
   readOnly = false,
+  esPortal = false,
   patch,
   isSaving = false,
   syncPodio = false,
 }: Props) {
-  const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
-  const isRestrictedRole = RESTRICTED_ROLES.includes(role)
-  
-  const isRestrictedReadOnly = readOnly || isRestrictedRole 
-  // We use isRestrictedReadOnly for all the green sections according to user instructions
-  const isActuallyReadOnly = readOnly || isRestrictedRole
+  // El recorte se decide con la cookie `gqm_role` (prop `esPortal`), no con el
+  // `role` de `localStorage.user_data`: ese se reescribe desde la consola del
+  // navegador y su valor LEAD_TECHNICIAN ni siquiera lo emite el backend. Se
+  // conserva `role` para lo demás (etiquetas, secciones de staff).
+  const isRestrictedRole = esPortal
+
+  // Antes había DOS nombres —`isRestrictedReadOnly` e `isRestrictedReadOnly`—
+  // con la misma expresión exacta, usados indistintamente en 14 sitios. Uno.
+  const isRestrictedReadOnly = readOnly || isRestrictedRole
 
   const { hasPermission } = usePermissions()
   const canReadClients = hasPermission("client:read")
@@ -341,7 +347,7 @@ export function JobDetailsTab({
           {/* Status */}
           <div>
             <FieldLabel>{t("detailFieldStatus")}</FieldLabel>
-            {isActuallyReadOnly ? (
+            {isRestrictedReadOnly ? (
               <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${statusColor}`}>
                 <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
                 <span className="text-sm font-medium">{status || "—"}</span>
@@ -537,7 +543,7 @@ export function JobDetailsTab({
 
       {/* ── 6. Additional Details ──────────────────────────────────────── */}
       <SectionCard icon={Info} title={t("detailSectionAdditional")}>
-        {isActuallyReadOnly ? (
+        {isRestrictedReadOnly ? (
           <ReadonlyField value={additionalDetail} />
         ) : (
           <EditableTextarea

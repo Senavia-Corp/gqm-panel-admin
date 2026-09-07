@@ -13,6 +13,7 @@ import type { Technician, Job } from "@/lib/types"
 import { fetchJobs } from "@/lib/services/jobs-service"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { apiFetch } from "@/lib/apiFetch"
 
 /** JobDTO (lo que devuelve el API) → la forma que pinta esta tabla.
@@ -38,6 +39,15 @@ interface TechnicianJobsSectionProps {
 }
 
 export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps) {
+  // La guarda va AQUI y no solo en el sitio donde se monta, para que el
+  // componente sea seguro alla donde alguien lo monte despues.
+  //
+  // Esta seccion es la superficie del vinculo job<->tecnico: asignar una obra a
+  // un tecnico es gestion de staff. «Assign New Job» no tenia ningun gate de
+  // cliente y llamaba a POST /job_technician, que exige `job:create` — un 403
+  // garantizado para el portal. Y llenaba el dialogo con `fetchJobs(1, 200)`,
+  // es decir le ensenaba sus obras para luego no dejarle asignarlas.
+  const { esPortal } = useEsPortal()
   const t = useTranslations("subcontractors")
   const router = useRouter()
   const { toast } = useToast()
@@ -206,6 +216,8 @@ export function TechnicianJobsSection({ technician }: TechnicianJobsSectionProps
       String(job.client?.name ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
       String(job.status ?? "").toLowerCase().includes(assignSearchQuery.toLowerCase()),
   )
+
+  if (esPortal) return null
 
   return (
     <Card>

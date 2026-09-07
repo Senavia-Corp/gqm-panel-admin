@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import type { RoleSlug } from "@/lib/role-map"
+import { PORTAL_DENY, PORTAL_PREFIXES, bajoAlgunPrefijo } from "@/lib/portal-routes"
 
 /**
  * Protección server-side de la sesión httpOnly (REG-109/REG-046/REG-039):
@@ -15,21 +16,6 @@ import type { RoleSlug } from "@/lib/role-map"
 
 const PUBLIC_PAGES = ["/login", "/forgot-password", "/reset-password"]
 const FULL_ADMIN_ONLY = ["/roles-permissions", "/members", "/commissions"]
-// Prefijos permitidos para los roles de portal (además de /profile)
-const PORTAL_PREFIXES: Record<string, string[]> = {
-  subcontractor: ["/subcontractors", "/profile"],
-  // U-01: el técnico aterrizaba en /subcontractors, que exige
-  // `subcontractor:read` — permiso que la política `technical-portal` NO
-  // concede. Su primera pantalla era «Access Denied» y su único botón volvía
-  // a ella: bucle cerrado. Se le da /dashboard, donde `app/dashboard/page.tsx`
-  // sirve `LeadTechnicianDashboard` (sus jobs, sus tareas, certificados y
-  // rendimiento) — un componente que ya existía y era inalcanzable justo por
-  // esta lista. Y se le quita /subcontractors, que no puede ver.
-  // El primer elemento es además el destino de la redirección de abajo.
-  technical: ["/dashboard", "/technicians", "/profile"],
-  // Member sin rol: solo su perfil (sin bucle, /profile está permitido)
-  none: ["/profile"],
-}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -103,9 +89,13 @@ export function middleware(request: NextRequest) {
     const home =
       uid && role === "subcontractor" ? `/subcontractors/${uid}` : portalPrefixes[0]
 
+    // El deny va ANTES del allow: `/jobs/create` cae bajo el prefijo `/jobs`,
+    // así que sin esto el prefijo lo dejaría pasar.
+    const denegado = bajoAlgunPrefijo(pathname, PORTAL_DENY[role] ?? [])
+
     const allowed =
-      pathname === "/" ||
-      portalPrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+      !denegado &&
+      (pathname === "/" || bajoAlgunPrefijo(pathname, portalPrefixes))
     if (!allowed) {
       const url = request.nextUrl.clone()
       url.pathname = home
@@ -128,22 +118,11 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    // U-18: la guarda de arriba se escribió sólo para `subcontractor`, y a
-    // `technical` se le dio `/technicians` en sus prefijos (U-01) sin ninguna
-    // comprobación de a QUIÉN pide. Medido: un técnico abre
-    // /technicians/<otro> y el middleware le deja pasar; la pantalla se queda
-    // en blanco porque el API sí le niega los datos — no hay fuga, pero sí un
-    // callejón sin salida y sin mensaje, que es justo lo que U-01 vino a
-    // quitar. Misma regla que para el sub: sólo su propia ficha.
-    if (role === "technical" && uid && pathname.startsWith("/technicians/")) {
-      const requested = pathname.split("/")[2]
-      if (requested && requested !== uid) {
-        const url = request.nextUrl.clone()
-        url.pathname = home
-        url.search = ""
-        return NextResponse.redirect(url)
-      }
-    }
+    // U-18 (retirado): aquí vivía la guarda por id de `/technicians/<otro>`
+    // para el rol técnico. Ya no hace falta: `/technicians` salió entero de
+    // sus prefijos, así que cualquier ficha de técnico —la suya incluida— la
+    // rebota el `allowed` de arriba. Una guarda que defiende un prefijo que ya
+    // no se concede es peor que ninguna: invita a creer que el prefijo sigue.
   }
 
   return NextResponse.next()

@@ -60,6 +60,13 @@ export function JobDetailTabs({ tabs, activeTab, onChange, hasTabChanges }: JobD
                 <Button
                   key={tab.id}
                   type="button"
+                  // Asidero estable para las pruebas: el recorte de pestañas del
+                  // portal es una regla de negocio, y comprobarla por clase CSS
+                  // o por «cualquier botón dentro de un nav» mide otra cosa —
+                  // la primera versión de esta prueba enumeró el menú lateral y
+                  // dio por buenas dos pestañas que no existían.
+                  data-testid="job-tab"
+                  data-tab-id={tab.id}
                   variant={isActive ? "default" : "ghost"}
                   onClick={() => onChange(tab.id)}
                   className={cn(

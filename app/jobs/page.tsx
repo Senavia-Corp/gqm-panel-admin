@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Layers, ClipboardList, Wrench, Briefcase, RefreshCw } from "lucide-react"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { useJobFilters } from "@/hooks/useJobFilters"
 import { apiFetch } from "@/lib/apiFetch"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
@@ -102,8 +103,14 @@ export default function JobsPage() {
     open: boolean; job: JobDTO | null; suggestedYear: number | null
   }>({ open: false, job: null, suggestedYear: null })
 
-  const isTechnician = user?.role === "LEAD_TECHNICIAN"
-  const isSubcontractor = user?.role === "SUBCONTRACTOR"
+  // Vocabulario del SERVIDOR (cookie `gqm_role`), no `localStorage.user_data`.
+  // El de localStorage se reescribe desde la consola del navegador, y su valor
+  // LEAD_TECHNICIAN no lo emite el backend: era un rol fantasma gobernando
+  // condiciones de render reales. `useEsPortal` resuelve además el «todavía no
+  // sé el rol» hacia portal, así que el control prohibido no llega a pintarse
+  // ni un fotograma. Ver hooks/useEsPortal.ts.
+  const { esPortal, rol } = useEsPortal()
+  const isSubcontractor = rol === "subcontractor"
   const queryClient = useQueryClient()
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -128,33 +135,16 @@ export default function JobsPage() {
   const { data, isPending, isFetching, error, refetch } = useQuery({
     // `page` va SUELTO: toServiceFilters() no lo devuelve. Si se olvida, la
     // paginación sirve siempre la página 1 sin dar error.
-    queryKey: ["jobs_list", user?.id, isTechnician, isSubcontractor, filters.page, serviceFilters],
+    queryKey: ["jobs_list", user?.id, esPortal, filters.page, serviceFilters],
     queryFn: async () => {
       if (!user) return { jobs: [], total: 0 }
-      if (isSubcontractor) {
-        const { jobs: subJobs, total } = await fetchJobs(
-          filters.page,
-          itemsPerPage,
-          { ...serviceFilters, subcontractorId: user.id }
-        )
-        return { jobs: sortArchivedLast(subJobs), total }
-      }
-
-      if (isTechnician) {
-        const techRes = await apiFetch(`/api/technician/${user.id}`, { cache: "no-store" })
-        if (!techRes.ok) throw new Error("Failed to fetch technician data")
-        const techData = await techRes.json()
-        const subId = techData?.subcontractor?.ID_Subcontractor
-        
-        if (!subId) return { jobs: [], total: 0 }
-
-        const { jobs: subJobs, total } = await fetchJobs(
-          filters.page,
-          itemsPerPage,
-          { ...serviceFilters, subcontractorId: subId }
-        )
-        return { jobs: sortArchivedLast(subJobs), total }
-      }
+      // Ya NO se inyecta `subcontractorId`. El API acota por sí solo la lista
+      // del portal a sus obras —filas Y total— con `scope_jobs_statement`
+      // (routes_protection.py:136-149, aplicado en Job.py:283 y :287), así que
+      // el parámetro era redundante y su valor salía de `localStorage.user_id`.
+      // Y la rama del técnico desaparece: `/jobs` ya no está entre sus
+      // prefijos, así que era una llamada a /api/technician/<id> en una página
+      // que ese rol no puede abrir.
 
       const { jobs: jobsData, total } = await fetchJobs(
         filters.page,
@@ -283,7 +273,11 @@ export default function JobsPage() {
                 <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
                 {tCommon("refresh") ?? "Refresh"}
               </Button>
-              <SyncStatusButton />
+              {/* Sincronizar con Podio no es una acción de portal: el botón
+                  consulta /webhook/podio/failed_syncs, que la matriz RBAC
+                  registra como exclusivo de Full Admin. Sin este gate sería un
+                  403 visible en la pantalla nueva del subcontratista. */}
+              {!esPortal && <SyncStatusButton />}
             </div>
           </div>
 
@@ -330,7 +324,11 @@ export default function JobsPage() {
                 onDateFromChange={handlers.setDateFrom}
                 onDateToChange={handlers.setDateTo}
                 onResetFilters={handlers.resetFilters}
-                isTechnician={isTechnician}
+                // `modoPortal` oculta lo que el portal no puede usar; `isTechnician`
+                // se mantiene para el staff (el vocabulario viejo ya no decide nada
+                // aquí, porque el técnico no alcanza esta página).
+                isTechnician={false}
+                modoPortal={esPortal}
 
                 // El gate era `user?.role === "GQM_MEMBER"`, asi que un FULL_ADMIN
                 // NO veia el boton de crear. Regresion de e335903: ese commit
@@ -341,11 +339,14 @@ export default function JobsPage() {
                 // da exactamente los cuatro roles bien (admin y member tienen
                 // job:create; subcontratista y tecnico no).
                 onAddNew={
-                  hasPermission("job:create")
+                  !esPortal && hasPermission("job:create")
                     ? () => router.push("/jobs/create")
                     : undefined
                 }
-                onExportClick={esPersonalInterno(user?.role) ? () => setIsExportOpen(true) : undefined}
+                // Export salía por `esPersonalInterno(user?.role)`, que lee el
+                // vocabulario de localStorage. La cookie es la que evalúa el
+                // middleware; el permiso sigue decidiendo para el staff.
+                onExportClick={!esPortal ? () => setIsExportOpen(true) : undefined}
               />
 
               {displayedJobs.length === 0 ? (
@@ -370,7 +371,7 @@ export default function JobsPage() {
                           <Button variant="outline" onClick={() => window.location.reload()}>{t("reloadPage")}</Button>
                         </>
                       ) : (
-                        hasPermission("job:create") && totalJobs === 0 && (
+                        !esPortal && hasPermission("job:create") && totalJobs === 0 && (
                           <>
                             <Button onClick={() => router.push("/jobs/create")} className="bg-gqm-green hover:bg-gqm-green-dark">
                               {t("createFirstJob")}

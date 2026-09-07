@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { useQuery } from "@tanstack/react-query"
 import { JobOpportunitiesSection } from "./JobOpportunitiesSection"
 import { esPersonalInterno } from "@/lib/types"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 type Props = {
   role: string
@@ -50,10 +51,11 @@ export function JobSubcontractorsTab({
   timelineEvents,
   syncPodio,
 }: Props) {
-  const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
-  const isRestrictedRole = RESTRICTED_ROLES.includes(role)
-  const isTech = role === "LEAD_TECHNICIAN"
-  const isSubcontractor = role === "SUBCONTRACTOR"
+  // Rol por cookie `gqm_role`, no por el `role` de localStorage.
+  const { esPortal, rol: rolPortal } = useEsPortal()
+  const isRestrictedRole = esPortal
+  const isTech = rolPortal === "technical"
+  const isSubcontractor = rolPortal === "subcontractor"
   const [linkTechOpen, setLinkTechOpen] = useState(false)
 
   const { data: userSubId, isLoading: loadingSubId } = useQuery<string | null>({
@@ -102,7 +104,7 @@ export function JobSubcontractorsTab({
   }
 
   const handleUnlinkTechnician = async (techId: string) => {
-    if (isRestrictedRole && !isSubcontractor) return // Guard
+    if (esPortal) return // Guard: desvincular técnicos es acción de staff
     const res = await apiFetch("/api/job-technician", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -156,8 +158,15 @@ export function JobSubcontractorsTab({
           <TechniciansTable
             technicians={linkedTechnicians}
             onViewDetails={() => {}}
-            onLinkClick={isSubcontractor ? () => setLinkTechOpen(true) : undefined}
-            onUnlinkClick={isSubcontractor ? handleUnlinkTechnician : undefined}
+            // Estaba al revés: se pasaban SÓLO si `isSubcontractor`, es decir
+            // se ofrecían exactamente al rol al que el API responde 403
+            // —`POST /job_technician` exige `job:create` y el `DELETE`
+            // `job:update`, y la política de portal no trae ninguno
+            // (main.py:237-241)—, mientras que el Full Admin y el GQM Member,
+            // que sí los tienen, no veían ningún botón. Vincular y desvincular
+            // un técnico a una obra es gestión de staff.
+            onLinkClick={!esPortal ? () => setLinkTechOpen(true) : undefined}
+            onUnlinkClick={!esPortal ? handleUnlinkTechnician : undefined}
           />
         </div>
 

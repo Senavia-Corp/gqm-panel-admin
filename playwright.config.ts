@@ -17,6 +17,15 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: process.env.PANEL_URL ?? "http://localhost:3100",
+    // Navegador provisto por el entorno. Sin esto, un contenedor que ya trae
+    // Chromium pero con una revisión distinta a la que fija @playwright/test
+    // no puede ejecutar la suite: aborta en el `chromium.launch()` del
+    // global-setup pidiendo `playwright install`, y eso NO se distingue de un
+    // fallo del producto salvo que uno lea el mensaje. Sin la variable, el
+    // comportamiento es el de siempre.
+    launchOptions: process.env.PW_EXECUTABLE_PATH
+      ? { executablePath: process.env.PW_EXECUTABLE_PATH }
+      : undefined,
     trace: "off",
     screenshot: "only-on-failure",
     video: "off",
