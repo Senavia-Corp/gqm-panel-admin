@@ -371,15 +371,46 @@ function TaskRow({
 
 // ─── Task Detail Dialog ────────────────────────────────────────────────────────
 
+const ESTADOS_TAREA = ["Not started", "Work-in-progress", "Completed"] as const
+
 function TaskDetailDialog({
   task,
   onClose,
+  onUpdated,
 }: {
   task: WeeklyTask | null
   onClose: () => void
+  onUpdated?: () => void
 }) {
   const t = useTranslations("dashboard")
+  const [guardando, setGuardando] = useState(false)
+  const [errorEstado, setErrorEstado] = useState<string | null>(null)
   if (!task) return null
+
+  // R4 — «el tecnico actualiza el estado de su tarea» era la unica cosa que el
+  // rol tiene que poder hacer, y este dialogo era de SOLO LECTURA: su unico
+  // boton era cerrar. La regla estaba permitida en la API (PATCH /tasks/<id>
+  // con `tasks:update`, que `technical-portal` concede) y no tenia camino en el
+  // producto — el mismo defecto que U-02 tenia para el subcontratista.
+  const cambiarEstado = async (nuevo: string) => {
+    setGuardando(true); setErrorEstado(null)
+    try {
+      // El proxy espera `ID_Tasks` en el CUERPO (app/api/tasks/route.ts:PATCH),
+      // no como parametro de consulta: lo extrae y lo pone en la ruta del API.
+      const res = await apiFetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ID_Tasks: task.ID_Tasks, Task_status: nuevo }),
+      })
+      if (!res.ok) { setErrorEstado(`No se pudo actualizar (${res.status})`); return }
+      onUpdated?.()
+      onClose()
+    } catch {
+      setErrorEstado("No se pudo actualizar")
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const priority = getPriority(task.Priority, t)
   const status = getStatus(task.Task_status, t)
@@ -395,6 +426,37 @@ function TaskDetailDialog({
           </DialogTitle>
           <p className="text-xs text-gray-400 font-mono mt-0.5">{task.ID_Tasks}</p>
         </DialogHeader>
+
+        {/* Cambio de estado — R4 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400">{t("colStatus")}</span>
+          {ESTADOS_TAREA.map((e) => {
+            // Normalizado: en la BD conviven grafias ("In Progress" y
+            // "Work-in-progress"), y comparar en crudo dejaria el estado
+            // actual sin marcar y su boton pulsable.
+            const actual = e.toLowerCase() === (task.Task_status ?? "").toLowerCase().trim()
+            return (
+              <button
+                key={e}
+                type="button"
+                disabled={guardando || actual}
+                onClick={() => cambiarEstado(e)}
+                className={[
+                  "rounded-full px-2.5 py-1 text-xs font-medium border transition-colors",
+                  actual
+                    ? "bg-gqm-green text-white border-transparent"
+                    : "bg-white text-gray-600 hover:bg-gray-50",
+                  guardando ? "opacity-50" : "",
+                ].join(" ")}
+              >
+                {getStatus(e, t).label}
+              </button>
+            )
+          })}
+        </div>
+        {errorEstado && (
+          <p className="text-xs text-red-600">{errorEstado}</p>
+        )}
 
         {/* Status + Priority + Job type */}
         <div className="flex flex-wrap gap-2">
@@ -1037,6 +1099,11 @@ export default function WeeklyTasksPanel({
 
   const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset])
 
+  // Se incrementa al cambiar el estado de una tarea: sin esto el listado
+  // seguiria mostrando el estado viejo hasta recargar la pagina, y el usuario
+  // no sabria si su cambio se guardo.
+  const [recarga, setRecarga] = useState(0)
+
   // Fetch
   useEffect(() => {
     setDetailTask(null)
@@ -1066,7 +1133,7 @@ export default function WeeklyTasksPanel({
       }
     }
     run()
-  }, [jobType, weekOffset, subFilter, subcontractorId])
+  }, [jobType, weekOffset, subFilter, subcontractorId, recarga])
 
   // Reset page when filters change
   useEffect(() => {
@@ -1459,6 +1526,7 @@ export default function WeeklyTasksPanel({
       <TaskDetailDialog
         task={detailTask}
         onClose={() => setDetailTask(null)}
+        onUpdated={() => setRecarga((n) => n + 1)}
       />
     </div>
   )

@@ -376,36 +376,54 @@ export function LeadTechnicianDashboard() {
               {t("viewWeeklyTasks")}
             </span>
           </Button>
-          <Button
-            variant={view === "opportunities" ? "default" : "ghost"}
-            className={view === "opportunities" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("opportunities")}
-          >
-            <span className="flex items-center gap-2">
-              <Megaphone className="h-4 w-4" />
-              {t("viewOpportunities")}
-            </span>
-          </Button>
-          <Button
-            variant={view === "certificates" ? "default" : "ghost"}
-            className={view === "certificates" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("certificates")}
-          >
-            <span className="flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              {t("tabCertificates")}
-            </span>
-          </Button>
-          <Button
-            variant={view === "performance" ? "default" : "ghost"}
-            className={view === "performance" ? "bg-gqm-green text-white" : ""}
-            onClick={() => setView("performance")}
-          >
-            <span className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              {t("tabPerformance")}
-            </span>
-          </Button>
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `client:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "opportunities" ? "default" : "ghost"}
+              className={view === "opportunities" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("opportunities")}
+            >
+              <span className="flex items-center gap-2">
+                <Megaphone className="h-4 w-4" />
+                {t("viewOpportunities")}
+              </span>
+            </Button>
+          )}
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `certificate:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "certificates" ? "default" : "ghost"}
+              className={view === "certificates" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("certificates")}
+            >
+              <span className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                {t("tabCertificates")}
+              </span>
+            </Button>
+          )}
+          {/* U-01: al tecnico no se le ofrece esta pestana. Pide un endpoint que
+              exige `subcontractor:read`, permiso que `technical-portal` no concede:
+              medido, terminaba en 403. Un boton visible que acaba en 403 es
+              el callejon sin salida que este arreglo venia a quitar. */}
+          {!esTecnico && (
+            <Button
+              variant={view === "performance" ? "default" : "ghost"}
+              className={view === "performance" ? "bg-gqm-green text-white" : ""}
+              onClick={() => setView("performance")}
+            >
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                {t("tabPerformance")}
+              </span>
+            </Button>
+          )}
         </div>
       </div>
 
