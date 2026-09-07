@@ -62,13 +62,27 @@ test("subcontratista: Add Technician visible", async ({ page }) => {
 test("sin cookie gqm_role → /login (nunca se degrada a otro rol)", async ({ page }) => {
   await page.goto("/dashboard")
   await expect(page).toHaveURL(/\/dashboard/)
+  // El tablero sigue pidiendo datos un rato después de pintar. Si se le quita
+  // la cookie a mitad, una de esas peticiones responde 401, `apiFetch` llama a
+  // logout() y ESE salto del cliente cancela la navegación de abajo
+  // (net::ERR_ABORTED). Medido: sin este settle falla 5 de 5; con él, 0 de 5.
+  // No es un fallo del producto —acaba en /login igual— sino la prueba
+  // compitiendo consigo misma.
+  await settle(page)
   await page.context().clearCookies({ name: "gqm_role" })
   // Tiene que ser el middleware (redirección del servidor), no el logout()
-  // del cliente que ya hacía isAuthenticated(): se mira la respuesta final
-  // de la navegación, antes de que corra ningún efecto de React.
-  const resp = await page.goto("/dashboard")
-  expect(new URL(resp!.url()).pathname).toBe("/login")
-  await expect(page).toHaveURL(/\/login(?:[/?#]|$)/, { timeout: 15_000 })
+  // del cliente que ya hacía isAuthenticated(). Por eso se navega desde una
+  // PESTAÑA NUEVA del mismo contexto: comparte el tarro de cookies pero no ha
+  // ejecutado ni una línea de la aplicación, así que el único que puede
+  // mandarla a /login es el servidor.
+  const limpia = await page.context().newPage()
+  try {
+    const resp = await limpia.goto("/dashboard")
+    expect(new URL(resp!.url()).pathname).toBe("/login")
+    await expect(limpia).toHaveURL(/\/login(?:[/?#]|$)/, { timeout: 15_000 })
+  } finally {
+    await limpia.close()
+  }
   const cookies = await page.context().cookies()
   expect(cookies.find((c) => c.name === "gqm_at")).toBeUndefined()
 })
