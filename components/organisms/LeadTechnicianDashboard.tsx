@@ -28,6 +28,7 @@ import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 import WeeklyTasksPanel from "@/app/dashboard/WeeklyTasksPanel"
 import TechCertificatesPanel from "@/components/organisms/TechCertificatesPanel"
 import TechPerformancePanel from "@/components/organisms/TechPerformancePanel"
+import { roleSlugFromCookie } from "@/lib/role-map"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -296,10 +297,18 @@ export function LeadTechnicianDashboard() {
   // era «Could not load jobs data.»: se cambió un callejón sin salida por otro.
   // Lo que un técnico necesita al entrar son sus tareas, y esas salen de
   // /api/technician/<id>, que sí puede pedir.
-  const esTecnico = typeof window !== "undefined" &&
-    (() => { try {
-      return JSON.parse(localStorage.getItem("user_data") || "{}")?.role === "LEAD_TECHNICIAN"
-    } catch { return false } })()
+  // D6: se preguntaba a `localStorage.user_data.role`, cuyo valor
+  // «LEAD_TECHNICIAN» el backend no emite nunca —lo inventa la pantalla de
+  // login para la etiqueta de la cabecera— y que se reescribe desde devtools.
+  // La cookie `gqm_role` la escribe el servidor y es la que evalúa
+  // `middleware.ts`; el localStorage queda de reserva para sesiones ya
+  // abiertas antes de este cambio.
+  const esTecnico =
+    roleSlugFromCookie() === "technical" ||
+    (typeof window !== "undefined" &&
+      (() => { try {
+        return JSON.parse(localStorage.getItem("user_data") || "{}")?.role === "LEAD_TECHNICIAN"
+      } catch { return false } })())
   const [view, setView] = useState<DashboardView>(esTecnico ? "tasks" : "jobs")
   const [jobTab, setJobTab] = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")

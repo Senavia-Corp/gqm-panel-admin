@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { isPortalRole, roleSlugFromCookie } from "@/lib/role-map"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -525,12 +526,19 @@ function TaskDetailDialog({
               <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">
                 {t("dialogJob")}
               </p>
-              <Link
-                href={`/jobs/${task.job.ID_Jobs}`}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
-              >
-                {t("dialogViewJob")} <ExternalLink className="h-3 w-3" />
-              </Link>
+              {/* U-09: a un rol de portal este enlace no le lleva a ninguna
+                  parte. `/jobs` no está en `PORTAL_PREFIXES` y `middleware.ts`
+                  lo rebota. Medido con el técnico: pulsar «View job» sobre
+                  /jobs/QID-I60001 termina en /dashboard, con el diálogo
+                  cerrado y habiendo perdido el sitio donde estaba. */}
+              {!isPortalRole(roleSlugFromCookie()) && (
+                <Link
+                  href={`/jobs/${task.job.ID_Jobs}`}
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  {t("dialogViewJob")} <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">

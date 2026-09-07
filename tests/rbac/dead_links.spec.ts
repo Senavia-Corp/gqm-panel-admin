@@ -118,3 +118,97 @@ test.describe("los avisos de use-toast se pintan (U-07)", () => {
       .toBeVisible({ timeout: 10_000 })
   })
 })
+
+/**
+ * U-09 — enlaces DENTRO de las pantallas del portal que el middleware rebota.
+ *
+ * Los tests de arriba miran el menú lateral. Este mira el contenido, que es
+ * donde estaban vivos: dos botones «View Job» en la ficha del subcontratista y
+ * un enlace «View job» dentro del diálogo de tarea del técnico, los tres a
+ * `/jobs/<id>`, ruta que no está en ningún `PORTAL_PREFIXES`.
+ *
+ * Medido antes del arreglo:
+ *   sub    · desde ?tab=jobs → acaba en /subcontractors/SUBC60001 (y pierde la pestaña)
+ *   técnico· /jobs/QID-I60001 → acaba en /dashboard, con el diálogo cerrado
+ *
+ * La primera prueba comprueba la REGLA, no tres botones concretos: ningún
+ * `<a href>` de la pantalla puede caer fuera de los prefijos del rol, así que
+ * caza también el siguiente enlace que alguien añada.
+ *
+ * LÍMITE DECLARADO de esa prueba: sólo ve anclas. Dos de los tres fallos que
+ * la originaron eran `<button onClick={router.push(...)}>`, invisibles para
+ * cualquier barrido del DOM — comprobado poniéndola contra el código
+ * saboteado, donde pasó en verde. Por eso van además las pruebas concretas de
+ * abajo, que sí los ven. Un barrido de anclas NO sustituye a mirar los
+ * botones.
+ */
+const PREFIJOS_PORTAL: Record<string, string[]> = {
+  subcontractor: ["/subcontractors", "/profile"],
+  technical: ["/dashboard", "/technicians", "/profile"],
+}
+
+/** `/login` es el enlace de «Log out»: página pública, salida legítima. */
+const SALIDAS_LEGITIMAS = ["/login"]
+
+function fueraDeAlcance(hrefs: (string | null)[], prefijos: string[]): string[] {
+  return [...new Set(hrefs)]
+    .filter((h): h is string => !!h)
+    .filter((h) => !h.startsWith("http") && !h.startsWith("#") && !h.startsWith("mailto"))
+    .filter((h) => {
+      const ruta = h.split("?")[0]
+      if (ruta === "/" || SALIDAS_LEGITIMAS.includes(ruta)) return false
+      return !prefijos.some((p) => ruta === p || ruta.startsWith(`${p}/`))
+    })
+}
+
+test.describe("portal · ningún enlace de la pantalla sale de su alcance (U-09)", () => {
+  test.describe("subcontratista", () => {
+    test.use({ storageState: stateFile("subcontractor") })
+
+    test("sus pestañas no ofrecen destinos que el middleware rebota", async ({ page }) => {
+      for (const tab of ["jobs", "tasks", "certificates", "timeline", "purchase-orders", "technicians"]) {
+        await page.goto(`/subcontractors/${ids.sub()}?tab=${tab}`)
+        await settle(page)
+        const hrefs = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href")))
+        expect(fueraDeAlcance(hrefs, PREFIJOS_PORTAL.subcontractor),
+          `pestaña ${tab}`).toEqual([])
+      }
+    })
+
+    test("y el botón «View Job» de la pestaña Jobs ya no se le ofrece", async ({ page }) => {
+      await page.goto(`/subcontractors/${ids.sub()}?tab=jobs`)
+      await settle(page)
+      // Señal positiva antes de la negativa: la pestaña cargó con jobs dentro.
+      await expect(page.getByText("AUDIT-PORTAL-A-job-de-sub-A").first()).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole("button").filter({ hasText: /View Job/i })).toHaveCount(0)
+    })
+  })
+
+  test.describe("técnico", () => {
+    test.use({ storageState: stateFile("technical") })
+
+    test("el diálogo de su tarea no enlaza al job (el middleware lo rebota)", async ({ page }) => {
+      await page.goto("/dashboard")
+      await settle(page)
+      await page.getByText(/AUDIT-PORTAL-A-tarea-de-tech-A/).first().click()
+      const dlg = page.getByRole("dialog")
+      await expect(dlg).toBeVisible({ timeout: 15_000 })
+      // Señal positiva: el diálogo trae el job dentro, solo que sin enlace.
+      await expect(dlg).toContainText("QID-I60001")
+
+      const hrefs = await dlg.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href")))
+      expect(fueraDeAlcance(hrefs, PREFIJOS_PORTAL.technical)).toEqual([])
+    })
+  })
+
+  test.describe("full admin (no debe haber regresión)", () => {
+    test.use({ storageState: stateFile("full_admin") })
+
+    test("sigue viendo «View Job» en la ficha del subcontratista", async ({ page }) => {
+      await page.goto(`/subcontractors/${ids.sub()}?tab=jobs`)
+      await settle(page)
+      await expect(page.getByRole("button").filter({ hasText: /View Job/i }).first())
+        .toBeVisible({ timeout: 30_000 })
+    })
+  })
+})
