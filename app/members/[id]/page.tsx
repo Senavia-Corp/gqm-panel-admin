@@ -30,6 +30,7 @@ import {
   Clock, FileText, Wrench, Shield, Filter, ChevronDown, ChevronUp,
   Users, Building2,
 } from "lucide-react"
+import { motivoRechazo } from "@/lib/password-policy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -505,8 +506,11 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
   const handleSavePassword = async () => {
     if (!pwForm.new || !pwForm.confirm) { toast({ title: t("toastFillPwd"), variant: "destructive" }); return }
     if (pwForm.new !== pwForm.confirm)  { toast({ title: t("toastPwdMatch"), variant: "destructive" }); return }
-    if (pwForm.new.length < 8 || !/[A-Z]/.test(pwForm.new) || !/[0-9]/.test(pwForm.new)) {
-      toast({ title: t("toastWeakPwd"), description: t("toastWeakPwdDesc"), variant: "destructive" }); return
+    // O-06: ver lib/password-policy.ts — el panel prometía 8 caracteres y el
+    // servidor exige 10 y 3 de 4 tipos de carácter.
+    const motivo = motivoRechazo(pwForm.new)
+    if (motivo) {
+      toast({ title: t("toastWeakPwd"), description: motivo, variant: "destructive" }); return
     }
     setPwSaving(true)
     try {

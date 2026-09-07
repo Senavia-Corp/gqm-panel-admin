@@ -3858,7 +3858,6 @@
     "updating": "Actualizando...",
     "passwordUpdated": "Tu contraseña fue actualizada.",
     "missingToken": "Falta el token — usa el enlace de tu correo.",
-    "passwordMin": "La contraseña debe tener al menos 8 caracteres",
     "passwordMismatch": "Las contraseñas no coinciden",
     "invalidResetLink": "Enlace inválido o caducado"
   }

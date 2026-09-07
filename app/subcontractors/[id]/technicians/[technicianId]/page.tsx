@@ -18,6 +18,7 @@ import { ArrowLeft, Save, Eye, EyeOff, ShieldCheck, Loader2, RefreshCw, AlertCir
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Technician } from "@/lib/types"
 import { TechnicianJobsSection } from "@/components/organisms/TechnicianJobsSection"
+import { reglasPassword } from "@/lib/password-policy"
 
 export default function TechnicianDetailsPage({ params }: { params: { id: string; technicianId: string } }) {
   const t = useTranslations("subcontractors")
@@ -72,19 +73,12 @@ export default function TechnicianDetailsPage({ params }: { params: { id: string
     setIsEditing(true)
   }
 
-  const validatePassword = (password: string): string[] => {
-    const errors: string[] = []
-    if (password.length < 8) {
-      errors.push(t("pwdLength"))
-    }
-    if (!/\d/.test(password)) {
-      errors.push(t("pwdNumber"))
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push(t("pwdCapital"))
-    }
-    return errors
-  }
+  // O-06: esta lista decía «8 caracteres, un dígito, una mayúscula» y quien
+  // decide es el servidor, que pide 10 y 3 de 4 tipos de carácter. Medido:
+  // 'Abcdefg1' pasaba aquí y el API respondía 400. Ahora se pregunta al
+  // espejo de la política real (lib/password-policy.ts).
+  const validatePassword = (password: string): string[] =>
+    reglasPassword(password).filter((r) => !r.ok).map((r) => r.texto)
 
   const handlePasswordChange = () => {
     const errors: string[] = []

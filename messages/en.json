@@ -3858,7 +3858,6 @@
     "updating": "Updating...",
     "passwordUpdated": "Your password was updated.",
     "missingToken": "Missing reset token — use the link from your email.",
-    "passwordMin": "Password must be at least 8 characters",
     "passwordMismatch": "Passwords do not match",
     "invalidResetLink": "Invalid or expired reset link"
   }

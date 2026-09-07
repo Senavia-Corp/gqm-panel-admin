@@ -14,6 +14,7 @@ import {
   ArrowLeft, Save, Loader2, Eye, EyeOff,
   User, Mail, Phone, MapPin, Shield, Briefcase,
 } from "lucide-react"
+import { reglasPassword, passwordValida, motivoRechazo } from "@/lib/password-policy"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,18 +74,21 @@ function PasswordInput({ value, onChange, placeholder }: {
 function PasswordStrength({ password }: { password: string }) {
   const t = useTranslations("members")
   if (!password) return null
-  const checks = [
-    { label: t("pwdRuleLength"), ok: password.length >= 8 },
-    { label: t("pwdRuleUpper"),  ok: /[A-Z]/.test(password) },
-    { label: t("pwdRuleNum"),    ok: /[0-9]/.test(password) },
-  ]
+  // O-06: los requisitos ya no se escriben aquí. Los dicta el espejo de la
+  // política del servidor (lib/password-policy.ts): decían «8+ chars» y el
+  // API exige 10 caracteres y 3 de 4 tipos, así que el formulario se ponía
+  // verde entero y el alta terminaba en 400.
+  const checks = reglasPassword(password).map((r) => ({ label: r.texto, ok: r.ok }))
   const score = checks.filter(c => c.ok).length
-  const bar   = ["bg-red-400", "bg-amber-400", "bg-emerald-400"][score - 1] ?? "bg-slate-200"
+  // Una regla más que antes: la barra se dibuja sobre `checks.length`,
+  // no sobre un 3 escrito a mano que dejaría un requisito sin segmento.
+  const bar   = score >= checks.length ? "bg-emerald-400"
+              : score >= checks.length - 1 ? "bg-amber-400" : "bg-red-400"
 
   return (
     <div className="mt-2 space-y-1.5">
       <div className="flex gap-1">
-        {[0, 1, 2].map(i => (
+        {checks.map((_, i) => (
           <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? bar : "bg-slate-100"}`} />
         ))}
       </div>
@@ -130,8 +134,12 @@ export default function CreateMemberPage() {
     if (!form.Email_Address.trim()) return t("valEmailReq")
     if (!form.Password)             return t("valPwdReq")
     if (form.Password !== form.confirmPassword) return t("valPwdMismatch")
-    if (form.Password.length < 8 || !/[A-Z]/.test(form.Password) || !/[0-9]/.test(form.Password))
-      return t("valPwdRules")
+    // O-06: ver lib/password-policy.ts — el panel prometía 8 caracteres y el
+    // servidor exige 10 y 3 de 4 tipos de carácter.
+    {
+      const motivo = motivoRechazo(form.Password)
+      if (motivo) return motivo
+    }
     return null
   }
 
@@ -390,7 +398,7 @@ export default function CreateMemberPage() {
                     {[
                       { label: t("fieldFullName"), done: !!form.Member_Name.trim() },
                       { label: t("previewEmail"),  done: !!form.Email_Address.trim() },
-                      { label: t("fieldPassword"), done: form.Password.length >= 8 && /[A-Z]/.test(form.Password) && /[0-9]/.test(form.Password) },
+                      { label: t("fieldPassword"), done: passwordValida(form.Password) },
                       { label: t("reqPwdMatch"),   done: !!form.confirmPassword && form.Password === form.confirmPassword },
                     ].map(({ label, done }) => (
                       <li key={label} className={`flex items-center gap-1.5 text-[11px] font-medium ${done ? "text-emerald-600" : "text-amber-600"}`}>

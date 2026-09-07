@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { SelectSubcontractorModal } from "@/components/organisms/SelectSubcontractorModal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { motivoRechazo } from "@/lib/password-policy"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -397,8 +398,12 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const handleSavePassword = async () => {
     if (!pwForm.new || !pwForm.confirm) { toast({ title: t("toastPwdFill"), variant: "destructive" }); return }
     if (pwForm.new !== pwForm.confirm)  { toast({ title: t("techPwdNoMatch"), variant: "destructive" }); return }
-    if (pwForm.new.length < 8 || !/[A-Z]/.test(pwForm.new) || !/[0-9]/.test(pwForm.new)) {
-      toast({ title: t("toastPwdWeak"), description: t("toastPwdWeakDesc"), variant: "destructive" }); return
+    // O-06: se pedían 8 caracteres, una mayúscula y un dígito; el servidor
+    // exige 10 y 3 de 4 tipos. El mensaje ahora dice el motivo concreto en
+    // vez de un «weak password» genérico que no orienta a nadie.
+    const motivo = motivoRechazo(pwForm.new)
+    if (motivo) {
+      toast({ title: t("toastPwdWeak"), description: motivo, variant: "destructive" }); return
     }
     setPwSaving(true)
     try {

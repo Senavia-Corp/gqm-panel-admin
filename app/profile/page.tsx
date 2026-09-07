@@ -22,6 +22,8 @@ import { ProfileCommunities } from "./components/ProfileCommunities"
 import { ProfileCommissions } from "./components/ProfileCommissions"
 import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 import { useTranslations } from "@/components/providers/LocaleProvider"
+import { roleSlugFromCookie } from "@/lib/role-map"
+import { motivoRechazo, reglasPassword } from "@/lib/password-policy"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface MemberProfile {
@@ -150,6 +152,32 @@ function AvatarInitials({ name }: { name: string | null }) {
 }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
+/**
+ * D6 (auditoría de portal): qué tipo de cuenta es esta sesión.
+ *
+ * Convivían dos vocabularios de rol y esta página usaba el del CLIENTE:
+ * `localStorage.user_data.role`, cuyo valor «LEAD_TECHNICIAN» el backend no
+ * emite nunca — lo inventa `app/login/page.tsx` al guardar la etiqueta de la
+ * cabecera. De ese valor dependía a qué endpoint se manda el PATCH del propio
+ * perfil, y se reescribe desde devtools.
+ *
+ * Se pregunta primero a la cookie `gqm_role`, que es la que escribe el
+ * servidor en el login y la que evalúa `middleware.ts`. El localStorage queda
+ * solo de reserva para sesiones abiertas antes de este cambio.
+ */
+function tipoDeCuenta(user: any): { isTech: boolean; isSubc: boolean } {
+  const cookie = roleSlugFromCookie()
+  if (cookie) return { isTech: cookie === "technical", isSubc: cookie === "subcontractor" }
+  const heredado =
+    user?.role ||
+    (typeof localStorage !== "undefined" ? localStorage.getItem("user_type") : null) ||
+    user?.user_type
+  return {
+    isTech: heredado === "LEAD_TECHNICIAN" || heredado === "technician" || heredado === "technical",
+    isSubc: heredado === "SUBCONTRACTOR" || heredado === "subcontractor",
+  }
+}
+
 export default function ProfilePage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -184,9 +212,7 @@ export default function ProfilePage() {
   // ── Fetch profile from API ────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return
-    const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-    const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
-    const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+    const { isTech, isSubc } = tipoDeCuenta(user)
     const memberId = localStorage.getItem("user_id") ?? user?.id ?? user?.user_id ?? user?.ID_Member ?? user?.ID_Technician ?? user?.ID_Subcontractor
     if (!memberId) { setIsLoading(false); return }
 
@@ -251,9 +277,7 @@ export default function ProfilePage() {
     if (!profile || !user) return
     setIsSaving(true)
     try {
-      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-      const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
-      const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+      const { isTech, isSubc } = tipoDeCuenta(user)
 
       const payload: Record<string, string> = isTech
         ? {
@@ -311,15 +335,19 @@ export default function ProfilePage() {
       toast({ title: t("profile.toasts.errMatch"), description: t("profile.toasts.errMatchDesc"), variant: "destructive" })
       return
     }
-    if (editValues.newPassword.length < 6) {
-      toast({ title: t("profile.toasts.errShort"), description: t("profile.toasts.errShortDesc"), variant: "destructive" })
+    // O-06: aquí se pedían SEIS caracteres —la puerta más floja de las ocho
+    // que hay en el panel— y es la pantalla donde un subcontratista o un
+    // técnico cambia su propia contraseña. El servidor exige 10 y 3 de 4
+    // tipos de carácter, así que el usuario del portal se llevaba un 400 con
+    // el mensaje del API después de darle a guardar.
+    const motivoPw = motivoRechazo(editValues.newPassword)
+    if (motivoPw) {
+      toast({ title: t("profile.toasts.errShort"), description: motivoPw, variant: "destructive" })
       return
     }
     setIsSaving(true)
     try {
-      const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-      const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
-      const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+      const { isTech, isSubc } = tipoDeCuenta(user)
 
       const endpoint = isTech 
         ? `/api/technician/${profile.ID_Member}` 
@@ -365,9 +393,7 @@ export default function ProfilePage() {
 
   if (!user) return null
 
-  const userRole = user.role || localStorage.getItem("user_type") || user.user_type
-  const isTech = userRole === "LEAD_TECHNICIAN" || userRole === "technician"
-  const isSubc = userRole === "SUBCONTRACTOR" || userRole === "subcontractor"
+  const { isTech, isSubc } = tipoDeCuenta(user)
 
   return (
     <div className="flex h-screen bg-slate-50/80">
@@ -587,25 +613,38 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 gap-4 p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3">
                       <PasswordField label={t("profile.security.labelNew")} fieldKey="newPassword" icon={Lock} editValues={editValues} onChange={handleChange} />
                       <PasswordField label={t("profile.security.labelConfirm")} fieldKey="confirmPassword" icon={Shield} editValues={editValues} onChange={handleChange} />
-                      {/* Strength hint */}
+                      {/* O-06: era un medidor de «fuerza» por longitud a secas
+                          que llamaba «Good» a 8 caracteres — justo por debajo
+                          de los 10 que exige el servidor. Un usuario del
+                          portal veía la barra en verde y el guardado fallaba.
+                          Ahora las barras son los requisitos REALES, uno por
+                          regla, y el texto dice cuál falta. */}
                       {editValues.newPassword && (
                         <div className="flex flex-col justify-end">
                           <p className="text-xs text-slate-400 mb-1.5">{t("profile.security.strength")}</p>
                           <div className="flex gap-1">
-                            {[1, 2, 3, 4].map((i) => (
+                            {reglasPassword(editValues.newPassword).map((r) => (
                               <div
-                                key={i}
+                                key={r.clave}
                                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                                  editValues.newPassword.length >= i * 3
-                                    ? i <= 1 ? "bg-red-400" : i <= 2 ? "bg-amber-400" : i <= 3 ? "bg-yellow-400" : "bg-emerald-500"
-                                    : "bg-slate-200"
+                                  r.ok ? "bg-emerald-500" : "bg-slate-200"
                                 }`}
                               />
                             ))}
                           </div>
-                          <p className="text-xs text-slate-400 mt-1">
-                            {editValues.newPassword.length < 4 ? t("profile.security.strengthWeak") : editValues.newPassword.length < 8 ? t("profile.security.strengthFair") : editValues.newPassword.length < 12 ? t("profile.security.strengthGood") : t("profile.security.strengthStrong")}
-                          </p>
+                          <ul className="mt-1 space-y-0.5">
+                            {reglasPassword(editValues.newPassword).map((r) => (
+                              <li
+                                key={r.clave}
+                                className={`text-xs flex items-center gap-1.5 ${
+                                  r.ok ? "text-emerald-600" : "text-slate-400"
+                                }`}
+                              >
+                                <span aria-hidden="true">{r.ok ? "✓" : "○"}</span>
+                                {r.texto}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
