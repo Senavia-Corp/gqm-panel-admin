@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { settle, stateFile } from "./helpers"
+import { ids, settle, stateFile } from "./helpers"
 
 /**
  * O-06 bis — la política se cableó en DIEZ pantallas y sólo `/profile` se
@@ -104,7 +104,7 @@ test("la ficha del subcontratista sí ofrece reponer la contraseña", async ({ p
    * pudiera entrar — con 432 a punto de encenderse, esa es la llamada que
    * llega. Esta prueba fija que el bloque existe y que impone la política.
    */
-  await page.goto("/subcontractors/SUBC60001?tab=details")
+  await page.goto(`/subcontractors/${ids.sub()}?tab=details`)
   await settle(page)
 
   const abrir = page.getByRole("button").filter({ hasText: /Change Password/ }).first()

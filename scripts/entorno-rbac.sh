@@ -47,13 +47,41 @@ for _rol in FULL_ADMIN GQM_MEMBER SUBCONTRACTOR TECHNICAL SUB_B TECH_DE_SUB_B TE
 done
 unset _rol
 
+# Los ids de los objetos NO se escriben a mano: se resuelven por NOMBRE contra
+# la base de desarrollo. Salen de un contador que ni `--limpiar` reinicia, asi
+# que en cuanto se resiembra apuntan a otra cosa —o directamente no existen— y
+# la suite se pone roja por «no encuentro el job», que se parece muchisimo a un
+# fallo del producto. Medido: tras una resiembra, QID-I60001 paso a ser
+# QID-I60033 y cuatro pruebas de staff fallaron sin que nada estuviera roto.
+#
+# Lo que ya venga por entorno manda, para poder apuntar a otro mundo.
+if [ -z "${RBAC_JOB_ID:-}" ] && [ -x "$API_DIR/.venv/bin/python" ]; then
+  _ids=$("$API_DIR/.venv/bin/python" - "$API_DIR" <<'PYIDS' 2>/dev/null
+import os, sys
+sys.path.insert(0, sys.argv[1]); os.chdir(sys.argv[1])
+from scripts.audit_portal_lib import mundos_sembrados
+A, B = mundos_sembrados()
+print(f"{A['sub']} {B['sub']} {A['job']} {B['job']} {A['compartido']} {A['tec']} {B['tec']}")
+PYIDS
+)
+  if [ -n "$_ids" ]; then
+    set -- $_ids
+    export RBAC_SUB_ID="$1" RBAC_SUB_B_ID="$2" RBAC_JOB_ID="$3" \
+           RBAC_JOB_B_ID="$4" RBAC_JOB_ID_TASKS="$5" \
+           RBAC_TECHNICAL_ID="$6" RBAC_TEC_B_ID="$7"
+    echo "entorno-rbac: ids resueltos de la BD -> job=$RBAC_JOB_ID sub=$RBAC_SUB_ID"
+  fi
+  unset _ids
+fi
+
+# Defectos historicos, por si no hay BD alcanzable (p.ej. contra otro entorno).
 export RBAC_SUB_ID="${RBAC_SUB_ID:-SUBC60001}"
 export RBAC_SUB_B_ID="${RBAC_SUB_B_ID:-SUBC60002}"
 export RBAC_JOB_ID="${RBAC_JOB_ID:-QID-I60001}"
 export RBAC_JOB_B_ID="${RBAC_JOB_B_ID:-PTL-I60001}"
 export RBAC_JOB_ID_TASKS="${RBAC_JOB_ID_TASKS:-QID-I60029}"
-export RBAC_TECHNICAL_ID="${RBAC_TECHNICAL_ID:-TEC60001}"   # tecnico de SUBC60001
-export RBAC_TEC_B_ID="${RBAC_TEC_B_ID:-TEC60002}"           # tecnico de SUBC60002
+export RBAC_TECHNICAL_ID="${RBAC_TECHNICAL_ID:-TEC60001}"
+export RBAC_TEC_B_ID="${RBAC_TEC_B_ID:-TEC60002}"
 
 # ── Comprobacion del propio wrapper ─────────────────────────────────────────
 # Enumera las RBAC_* que la suite lee de verdad y avisa de las que falten. Este

@@ -253,7 +253,10 @@ test.describe("portal · ningún enlace de la pantalla sale de su alcance (U-09)
       const dlg = page.getByRole("dialog")
       await expect(dlg).toBeVisible({ timeout: 15_000 })
       // Señal positiva: el diálogo trae el job dentro, solo que sin enlace.
-      await expect(dlg).toContainText("QID-I60001")
+      // `ids.job()` y no un id escrito a mano: los ids salen de un contador
+      // y cambian con cada resiembra. Medido: tras una, esta línea buscaba
+      // QID-I60001 en un diálogo que decía QID-I60033.
+      await expect(dlg).toContainText(ids.job())
 
       const hrefs = await dlg.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href")))
       expect(fueraDeAlcance(hrefs, PREFIJOS_PORTAL.technical)).toEqual([])
