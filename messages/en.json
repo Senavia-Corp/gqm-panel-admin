@@ -748,7 +748,9 @@
     "priorityNone": "—",
     "maintenanceTitle": "UNDER MAINTENANCE",
     "maintenanceSubtitle": "To ensure accuracy in your performance metrics, it is vital that all Purchase Orders have their corresponding Bills correctly linked. This relationship allows for precise tracking of settled and pending payments. The link between purchase orders and invoices was recently added to the application, so historical data will not appear in the metrics until it is linked.",
-    "maintenanceImproving": "Improving Metrics"
+    "maintenanceImproving": "Improving Metrics",
+    "error": "Error",
+    "loading": "Loading…"
   },
   "subcontractors": {
     "title": "Subcontractors",
@@ -1212,7 +1214,16 @@
     "jobId": "Job ID",
     "jobName": "Job name",
     "loadingJobs": "Loading jobs…",
-    "searchJobs": "Search jobs"
+    "searchJobs": "Search jobs",
+    "back": "Back",
+    "backToSub": "Back to subcontractor",
+    "generalInfo": "General information",
+    "goToTechPage": "Go to technician page",
+    "id": "ID",
+    "pageOf": "Page {current} of {total}",
+    "pwdNoMatch": "The passwords do not match",
+    "remaining": "Remaining",
+    "subcontractors": "Subcontractors"
   },
   "jobs": {
     "title": "Jobs",

@@ -748,7 +748,9 @@
     "priorityNone": "—",
     "maintenanceTitle": "EN MANTENIMIENTO",
     "maintenanceSubtitle": "Para garantizar la precisión en sus métricas de desempeño, es vital que todas las Órdenes de Compra tengan sus Bills correspondientes correctamente vinculados. Esta relación permite un seguimiento preciso de los pagos liquidados y pendientes. La vinculación entre las Purchase Orders y los Bills se implementó recientemente a la aplicación, por lo cuál datos anteriores no se reflejan en las métricas hasta ser vinculados.",
-    "maintenanceImproving": "Mejorando Métricas"
+    "maintenanceImproving": "Mejorando Métricas",
+    "error": "Error",
+    "loading": "Cargando…"
   },
   "subcontractors": {
     "title": "Subcontratistas",
@@ -1212,7 +1214,16 @@
     "jobId": "ID del trabajo",
     "jobName": "Nombre del trabajo",
     "loadingJobs": "Cargando trabajos…",
-    "searchJobs": "Buscar trabajos"
+    "searchJobs": "Buscar trabajos",
+    "back": "Volver",
+    "backToSub": "Volver al subcontratista",
+    "generalInfo": "Información general",
+    "goToTechPage": "Ir a la ficha del técnico",
+    "id": "ID",
+    "pageOf": "Página {current} de {total}",
+    "pwdNoMatch": "Las contraseñas no coinciden",
+    "remaining": "Restantes",
+    "subcontractors": "Subcontratistas"
   },
   "jobs": {
     "title": "Trabajos",
