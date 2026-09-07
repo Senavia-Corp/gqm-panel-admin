@@ -55,6 +55,7 @@ import { apiFetch } from "@/lib/apiFetch"
 import { PodioSyncAfterImportDialog } from "@/components/organisms/PodioSyncAfterImportDialog"
 import { useSearchParams } from "next/navigation"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { fetchJobById } from "@/lib/services/jobs-service"
 
@@ -181,6 +182,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const queryClient = useQueryClient()
 
   const { hasPermission } = usePermissions()
+  // Vocabulario del SERVIDOR (cookie `gqm_role`). De esta decisión cuelga el
+  // recorte ENTERO de esta página: mientras salía de `localStorage.user_data`,
+  // desactivarlo era escribir una línea en la consola del navegador. Y el valor
+  // `LEAD_TECHNICIAN` que gobernaba las pestañas ni siquiera lo emite el
+  // backend. `useEsPortal` resuelve el desconocido hacia portal.
+  const { esPortal, resuelto: rolResuelto } = useEsPortal()
   const t = useTranslations("jobs")
   const tCommon = useTranslations("common")
   const tTasks = useTranslations("jobTasks")
@@ -317,9 +324,20 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     setUser(parsedUser)
 
     setLoadError(null)
-    void loadClients()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
+
+  // El catálogo de clientes, cuando ya se sabe el rol.
+  //
+  // Iba en el efecto de arriba, que depende de `[router]`. Poner ahí un
+  // `if (esPortal) return` habría roto al STAFF: `useEsPortal` resuelve en un
+  // efecto y hasta entonces `esPortal` vale `true` para todo el mundo, así que
+  // el administrador se habría quedado sin selector de cliente y sin reintento.
+  useEffect(() => {
+    if (!rolResuelto || esPortal) return
+    void loadClients()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolResuelto, esPortal])
 
   const loadTimeline = async () => {
     try {
@@ -354,7 +372,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           if (!sourceJob) return
 
           loadTasks()
-          loadTimeline()
         } catch (err) {
           console.error("[jobs] reload error:", err)
           setLoadError(err instanceof Error ? err.message : "Unexpected error loading job")
@@ -362,6 +379,21 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, jobId])
+
+  // El timeline, en su propio efecto y sólo para el staff.
+  //
+  // Iba dentro del bloque de arriba, que se dispara con `[mounted, jobId]`. Un
+  // `if (!esPortal)` ahí NO habría funcionado: `useEsPortal` resuelve en un
+  // efecto y hasta entonces `esPortal` vale `true` para todo el mundo, así que
+  // el administrador se habría quedado SIN timeline según qué efecto corriera
+  // antes. Aquí se espera a `rolResuelto`, que es lo que hace la condición
+  // fiable, y se vuelve a evaluar cuando el rol se conoce.
+  useEffect(() => {
+    if (!mounted || !jobId || jobId === "create") return
+    if (!rolResuelto || esPortal) return
+    loadTimeline()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, jobId, rolResuelto, esPortal])
 
   // ---------------------------
   // auto-open task dialog for QID jobs
@@ -392,6 +424,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   // data loaders
   // ---------------------------
   const loadClients = async () => {
+    // El catálogo de clientes alimenta el SELECTOR de cliente de la pestaña
+    // Details, que al portal ni se le pinta (`JobDetailsTab` esconde la sección
+    // Client entera). Y `/clients` exige `client:read`, permiso que la política
+    // de portal no concede.
+    //
+    // Medido: con sesión de subcontratista, `/jobs/<suyo>` respondía 403 aquí,
+    // el `catch` ponía `loadError` y la página entera se sustituía por
+    // «Error loading job — Failed to fetch clients (403)». Es decir, el detalle
+    // del job era inalcanzable para el portal por un catálogo que no necesita.
+    if (esPortal) {
+      setClients([])
+      return
+    }
     try {
       setLoadError(null)
       const { clients: fetchedClients, total } = await fetchClients(1, 5)
@@ -399,7 +444,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     } catch (error) {
       console.error("[jobs] loadClients error:", error)
       setClients([])
-      setLoadError(error instanceof Error ? error.message : "Unexpected error loading clients")
+      // Un catálogo secundario que falla NO debe tumbar la ficha del job: sin
+      // esto, cualquier 403 o corte de red en /clients deja al usuario sin
+      // pantalla, con el job perfectamente cargado por detrás.
+      console.warn("[jobs] se continúa sin catálogo de clientes")
     }
   }
 
@@ -1089,11 +1137,18 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const tabs = useMemo(() => {
     if (!user) return []
 
-    // For LEAD_TECHNICIAN, we only show specific tabs: Details, Subcontractors, Documents, Pricing, Tasks, Timeline
-    if (user.role === "LEAD_TECHNICIAN") {
+    // Portal (subcontratista / técnico): exactamente tres pestañas, decididas
+    // por el cliente. Se sale ANTES de la escalera de permisos de abajo, y por
+    // eso no hay forma de que una pestaña se cuele por tener el permiso suelto:
+    // `subcontractors` entraba justo así, porque pide `subcontractor:read` y la
+    // política del sub SÍ lo concede.
+    //
+    // Sustituye a una rama escrita para `LEAD_TECHNICIAN` que daba cuatro
+    // pestañas sin comprobar un solo permiso, sobre un rol que el backend no
+    // emite.
+    if (esPortal) {
       return [
         { id: "details", label: t("tabDetails") },
-        { id: "subcontractors", label: t("tabSubcontractors") },
         { id: "documents", label: t("tabDocuments") },
         { id: "tasks", label: t("tabTasks") },
       ]
@@ -1144,7 +1199,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     return items
-  }, [user, hasPermission, t])
+  }, [user, esPortal, hasPermission, t])
 
   useEffect(() => {
     if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
@@ -1155,11 +1210,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const rightSidebar = useMemo(() => {
     if (!user || !job) return null
     
-    const RESTRICTED_ROLES = ["LEAD_TECHNICIAN", "SUBCONTRACTOR"]
-    if (RESTRICTED_ROLES.includes(user.role)) return null
+    // El panel «Client Information» entero fuera del portal: del cliente, el
+    // sub solo ve la dirección de la obra, y eso ya viene en Details.
+    if (esPortal) return null
     
     return <JobRightSidebar role={user.role} job={job as any} />
-  }, [user, job])
+  }, [user, job, esPortal])
 
 
 
@@ -1189,7 +1245,12 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             statusOptionsByJobType={STATUS_OPTIONS_BY_JOB_TYPE}
             onFieldChange={handleFieldChange}
             isFieldChanged={isFieldChanged}
-            readOnly={!hasPermission("job:update")}
+            // Del job, el portal no modifica NADA. El permiso sigue mandando
+            // para el staff; `esPortal` sale de la cookie y no de
+            // `localStorage.user_policies`, que es de donde se siembra
+            // `usePermissions` y se puede reescribir.
+            readOnly={esPortal || !hasPermission("job:update")}
+            esPortal={esPortal}
             patch={patch}
             isSaving={isSaving}
             syncPodio={syncPodio}
@@ -1493,7 +1554,10 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               </div>
 
               {/* Right: Podio sync toggle + Save button (only when there are changes) */}
-              {jobDetail.hasChanges && hasPermission("job:update") && (
+              {/* Ni Guardar ni el interruptor de Podio para el portal:
+                  sincronizar con Podio no es una acción suya, y `PATCH /jobs`
+                  le responde 403 de todos modos. */}
+              {jobDetail.hasChanges && !esPortal && hasPermission("job:update") && (
                 <div className="flex items-center gap-2 flex-shrink-0">
 
                   {/* Podio toggle */}

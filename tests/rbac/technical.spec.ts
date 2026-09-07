@@ -31,7 +31,11 @@ test("menú lateral: sin GQM Members, Commissions ni Roles & Permissions", async
 test("URLs directas fuera del portal → /dashboard", async ({ page }) => {
   // /subcontractors sale del portal técnico: es la pantalla que le denegaba el
   // acceso, y ya no está entre sus prefijos.
-  for (const path of ["/members", "/commissions", "/roles-permissions", "/jobs", "/subcontractors"]) {
+  // `/technicians` entra en la lista: la ficha de técnico es superficie de
+  // gestión del subcontratista, no del técnico. Su portal es sus tareas y su
+  // perfil.
+  for (const path of ["/members", "/commissions", "/roles-permissions", "/jobs",
+                      "/subcontractors", "/technicians"]) {
     await page.goto(path)
     await expect(page).toHaveURL(home, { timeout: 15_000 })
   }
@@ -60,10 +64,34 @@ test("la ficha de OTRO técnico rebota a su inicio (U-18)", async ({ page }) => 
   await expect(page).toHaveURL(/\/dashboard(?:[/?#]|$)/, { timeout: 15_000 })
 })
 
-test("y la suya propia sigue abriéndose (no se cierra de más)", async ({ page }) => {
-  // El control: una guarda que rebotara TODO también pasaría la prueba de
-  // arriba, y le habría quitado al técnico su propia ficha.
+test("y la suya propia TAMBIÉN rebota: /technicians salió de su portal", async ({ page }) => {
+  // Antes esto afirmaba lo contrario, y era el control de la guarda por id de
+  // U-18. Esa guarda ya no existe porque el prefijo entero salió de
+  // `PORTAL_PREFIXES.technical`: al técnico se le retira toda la superficie de
+  // gestión y le quedan sus tareas y su perfil. El control de «no se cierra de
+  // más» pasa a ser la prueba de abajo, que exige que su portal SIGA vivo.
   const propio = env("RBAC_TECHNICAL_ID")
-  const resp = await page.goto(`/technicians/${propio}`)
-  expect(new URL(resp!.url()).pathname).toBe(`/technicians/${propio}`)
+  await page.goto(`/technicians/${propio}`)
+  await expect(page).toHaveURL(/\/dashboard(?:[/?#]|$)/, { timeout: 15_000 })
+})
+
+test("su /dashboard ES su lista de tareas, sin pasar por nada más", async ({ page }) => {
+  // El control de que no se ha cerrado de más: `/dashboard` es el primer
+  // prefijo de su portal, o sea su destino de redirección. Si no sirviera sus
+  // tareas, el técnico se quedaría sin sitio donde caer.
+  await page.goto("/dashboard")
+  await expect(page.getByText("AUDIT-PORTAL-A-tarea-de-tech-A", { exact: false }).first())
+    .toBeVisible({ timeout: 30_000 })
+})
+
+test("ve su tarea aunque no tenga subcontratista asignado", async ({ page }) => {
+  // CERROJO, no detector de regresión de este cambio: medido, con el código
+  // anterior esta tarea TAMBIÉN se veía, porque el filtro en cliente por
+  // subcontratista nacía nulo (el id llega por fetch, después del `useState`).
+  // Lo que guarda esta prueba es que el tablero del técnico siga siendo el suyo
+  // el día que ese orden de render cambie —o que alguien siembre el filtro—,
+  // que es justo el escenario en el que la tarea desaparecería sin ruido.
+  await page.goto("/dashboard")
+  await expect(page.getByText("AUDIT-PORTAL-A-tarea-de-tech-A-sin-sub", { exact: false }).first())
+    .toBeVisible({ timeout: 30_000 })
 })

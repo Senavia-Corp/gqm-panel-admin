@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { apiFetch } from "@/lib/apiFetch"
 import { toast } from "@/components/ui/use-toast"
 import { useTranslations } from "@/components/providers/LocaleProvider"
@@ -30,6 +31,7 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
   const politica = usePasswordPolicy()
   const router = useRouter()
   const { hasPermission } = usePermissions()
+  const { esPortal } = useEsPortal()
   const [user, setUser] = useState<any>(null)
   const [technician, setTechnician] = useState<Technician | null>(null)
   const [loading, setLoading] = useState(true)
@@ -411,7 +413,10 @@ export default function TechnicianDetailsPage({ params }: { params: Promise<{ id
                   )}
                 </Card>
 
-                <TechnicianJobsSection technician={technician} />
+                {/* El vinculo job<->tecnico se mantiene para admin y GQM
+                    Member, y se oculta al portal. El componente ademas se
+                    protege por dentro. */}
+                {!esPortal && <TechnicianJobsSection technician={technician} />}
               </div>
             </div>
 

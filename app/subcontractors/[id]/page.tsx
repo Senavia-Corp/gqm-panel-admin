@@ -1846,22 +1846,21 @@ export default function SubcontractorDetailsPage() {
                                         {t("permit")}: {job.Permit}
                                       </span>
                                     ) : <div />}
-                                    {/* U-09: para el subcontratista este botón
-                                        no lleva a ninguna parte. `/jobs` no
-                                        está en `PORTAL_PREFIXES.subcontractor`
-                                        y `middleware.ts` lo rebota. Medido:
-                                        desde ?tab=jobs se acaba en
-                                        /subcontractors/<id> — y encima se
-                                        pierde la pestaña. Su ficha ya muestra
-                                        el job; la página interna añade lo que
-                                        no debe ver (precios, márgenes). */}
-                                    {!isPortal && (
+                                    {/* U-09 (resuelto): este botón estaba
+                                        oculto al portal porque era un callejón
+                                        sin salida — `/jobs` no estaba en
+                                        `PORTAL_PREFIXES.subcontractor` y el
+                                        middleware lo rebotaba a la propia
+                                        ficha, perdiendo además la pestaña.
+                                        Ahora `/jobs` sí es suyo y el detalle
+                                        le llega recortado a Details + Tasks +
+                                        Documents, sin precios ni márgenes, así
+                                        que el destino existe y es el correcto. */}
                                     <button
                                       onClick={() => router.push(`/jobs/${jobId}`)}
                                       className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
-                                      View Job <ExternalLink className="h-3 w-3" />
+                                      {t("viewJob")} <ExternalLink className="h-3 w-3" />
                                     </button>
-                                    )}
                                   </div>
                                 </div>
                               )

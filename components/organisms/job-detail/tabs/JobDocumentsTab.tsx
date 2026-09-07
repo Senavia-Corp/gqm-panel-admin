@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import type { Attachment } from "@/lib/types"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useEsPortal } from "@/hooks/useEsPortal"
 import { useTranslations } from "@/components/providers/LocaleProvider"
 
 type Props = {
@@ -108,10 +109,19 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
   const [activeFolder, setActiveFolder] = useState<FolderKey | null>(null)
   const [activeFilter, setActiveFilter] = useState<string>("all")
   const { hasPermission } = usePermissions()
+  const { esPortal } = useEsPortal()
 
   // ── Per-folder permission helpers ─────────────────────────────────────────
+  //
+  // Del job, el portal sólo trabaja la carpeta «technicians» — decisión del
+  // cliente, y lo que impone el API por su lado (a un rol de portal sólo le
+  // entrega adjuntos de job con `access_level="technicians"`, y sólo le deja
+  // subir ahí). Sin este caso especial se pintaban las DOS tarjetas, porque
+  // `attachment:read` GLOBAL —que el sub tiene— satisface el `||` de abajo.
   const canReadFolder = (folder: FolderKey) =>
-    hasPermission("attachment:read") || hasPermission(`attachment:read_${folder}`)
+    esPortal
+      ? folder === "technicians"
+      : hasPermission("attachment:read") || hasPermission(`attachment:read_${folder}`)
 
   const canUploadFolder = (folder: FolderKey) =>
     hasPermission("attachment:create") || hasPermission(`attachment:create_${folder}`)
@@ -134,6 +144,17 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
   // Per-folder file sets
   const membersFiles      = useMemo(() => allAttachments.filter((a) => belongsToFolder(a, "members")),      [allAttachments])
   const techniciansFiles  = useMemo(() => allAttachments.filter((a) => belongsToFolder(a, "technicians")),  [allAttachments])
+
+  // Lo que el contador de cabecera debe contar: lo que el usuario puede ABRIR.
+  //
+  // Sumaba `allAttachments`, es decir TODO —incluidos los del logbook, que
+  // llevan `access_level="logbook"` y no aparecen en ninguna carpeta—, así que
+  // al portal le anunciaba «N ficheros» sobre una sola carpeta con dos. Para el
+  // staff no cambia nada.
+  const adjuntosVisibles = useMemo(
+    () => (esPortal ? techniciansFiles : allAttachments),
+    [esPortal, techniciansFiles, allAttachments],
+  )
 
   // Files shown inside the active folder, further filtered by file type
   const folderFiles = useMemo(() => {
@@ -193,11 +214,11 @@ export function JobDocumentsTab({ job, onRefresh }: Props) {
           <div>
             <h3 className="text-base font-semibold text-slate-900">{t("docTitle")}</h3>
             <p className="text-xs text-slate-500">
-              {allAttachments.length === 0
+              {adjuntosVisibles.length === 0
                 ? t("docNoFilesYet")
-                : `${allAttachments.length} ${allAttachments.length !== 1 ? t("docFilePlural") : t("docFileSingular")} ${t("docAcrossAllFolders")}`}
+                : `${adjuntosVisibles.length} ${adjuntosVisibles.length !== 1 ? t("docFilePlural") : t("docFileSingular")} ${t("docAcrossAllFolders")}`}
             </p>
-            {allAttachments.length === 0 && jobYear !== undefined
+            {adjuntosVisibles.length === 0 && jobYear !== undefined
               && ANIOS_SIN_SYNC_DE_ADJUNTOS.includes(jobYear) && (
               <p className="mt-0.5 text-xs text-amber-600">{t("docYearNotSynced")}</p>
             )}

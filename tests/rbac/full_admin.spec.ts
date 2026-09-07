@@ -86,3 +86,14 @@ test("sin cookie gqm_role → /login (nunca se degrada a otro rol)", async ({ pa
   const cookies = await page.context().cookies()
   expect(cookies.find((c) => c.name === "gqm_at")).toBeUndefined()
 })
+
+test("subcontractors: vincular técnico es acción de STAFF y se le ofrece", async ({ page }) => {
+  // La condición estaba INVERTIDA: `onLinkClick`/`onUnlinkClick` se pasaban
+  // sólo si el rol era SUBCONTRACTOR — es decir, se ofrecían justo a quien el
+  // API responde 403 (`POST /job_technician` exige `job:create`; el `DELETE`,
+  // `job:update`), y el Full Admin y el GQM Member, que sí los tienen, no veían
+  // ningún botón. Aquí se guarda el lado del staff.
+  await page.goto(`/jobs/${ids.job()}?tab=subcontractors`)
+  await expect(page.getByRole("button", { name: /Link Technician/i }).first())
+    .toBeVisible({ timeout: 30_000 })
+})

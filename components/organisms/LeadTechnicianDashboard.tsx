@@ -28,7 +28,8 @@ import OpportunitiesPanel from "@/app/dashboard/OpportunitiesPanel"
 import WeeklyTasksPanel from "@/app/dashboard/WeeklyTasksPanel"
 import TechCertificatesPanel from "@/components/organisms/TechCertificatesPanel"
 import TechPerformancePanel from "@/components/organisms/TechPerformancePanel"
-import { roleSlugFromCookie } from "@/lib/role-map"
+import { uidFromCookie } from "@/lib/role-map"
+import { useEsPortal } from "@/hooks/useEsPortal"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -303,13 +304,18 @@ export function LeadTechnicianDashboard() {
   // La cookie `gqm_role` la escribe el servidor y es la que evalúa
   // `middleware.ts`; el localStorage queda de reserva para sesiones ya
   // abiertas antes de este cambio.
-  const esTecnico =
-    roleSlugFromCookie() === "technical" ||
-    (typeof window !== "undefined" &&
-      (() => { try {
-        return JSON.parse(localStorage.getItem("user_data") || "{}")?.role === "LEAD_TECHNICIAN"
-      } catch { return false } })())
-  const [view, setView] = useState<DashboardView>(esTecnico ? "tasks" : "jobs")
+  // Se leía la cookie DURANTE el render. En el render del SERVIDOR no existe
+  // `document`, así que `esTecnico` valía `false` para todo el mundo: el
+  // `useState` de abajo arrancaba en «jobs» y la hidratación lo cambiaba
+  // después. Dos consecuencias: desajuste de hidratación, y —peor— fail-open,
+  // porque durante ese primer render el técnico SÍ veía la pestaña Jobs, con
+  // sus enlaces a /jobs/<id> que el middleware le rebota. `useEsPortal`
+  // resuelve en un efecto y cuenta el desconocido como portal.
+  const { rol, resuelto: rolResuelto } = useEsPortal()
+  const esTecnico = !rolResuelto || rol === "technical"
+  // Arranca SIEMPRE en tareas. «jobs» sólo puede llegar cuando ya se sabe que
+  // no es un técnico, y el propio selector de vista está oculto hasta entonces.
+  const [view, setView] = useState<DashboardView>("tasks")
   const [jobTab, setJobTab] = useState<JobTab>("ALL")
   const [yearTab, setYearTab] = useState<YearTab>("ALL")
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL")
@@ -320,13 +326,10 @@ export function LeadTechnicianDashboard() {
   useEffect(() => {
     const run = async () => {
       try {
-        const userId = localStorage.getItem("user_id")
+        const userId = uidFromCookie() ?? localStorage.getItem("user_id")
         if (!userId) { setLoadingTech(false); return }
 
-        const userData = localStorage.getItem("user_data")
-        const role = userData ? JSON.parse(userData).role : null
-
-        if (role === "SUBCONTRACTOR") {
+        if (rol === "subcontractor") {
           setSubcontractorId(userId)
           setLoadingTech(false)
           return
@@ -343,8 +346,10 @@ export function LeadTechnicianDashboard() {
         setLoadingTech(false)
       }
     }
-    run()
-  }, [])
+    // Espera a que el rol esté resuelto: la rama del subcontratista lo lee, y
+    // con `rol` a null se iría a pedir /api/technician/<id de un sub>.
+    if (rolResuelto) run()
+  }, [rolResuelto, rol])
 
 
 
@@ -439,7 +444,26 @@ export function LeadTechnicianDashboard() {
       {view === "opportunities" ? (
         <OpportunitiesPanel subcontractorId={subcontractorId} isTechnician={true} />
       ) : view === "tasks" ? (
-        <WeeklyTasksPanel subcontractorId={subcontractorId ?? ""} hidePersonFilters />
+        // Al tecnico se le pide su tablero por TECNICO, que es la pregunta
+        // correcta: son SUS tareas. Antes se le pasaba el id de su
+        // subcontratista.
+        //
+        // Honestidad sobre el alcance: eso NO estaba produciendo un fallo
+        // visible. `WeeklyTasksPanel` usa ese id tambien para un filtro EN
+        // CLIENTE (`t.ID_Subcontractor === subFilter.id`) que habria escondido
+        // las tareas suyas sin subcontratista, pero el `useState` que lo siembra
+        // corre ANTES de que llegue el id (viene de un fetch), asi que el filtro
+        // quedaba nulo y no se aplicaba. Medido: con el codigo viejo las tres
+        // tareas del tecnico se ven, la que no tiene subcontratista incluida.
+        //
+        // Se cambia porque depender de ese orden de render es fragil —basta que
+        // el id llegue antes para que el tablero empiece a esconder tareas
+        // propias sin que nadie toque nada— y porque `technician_id` ya lo
+        // aceptaban el proxy y el handler y no lo usaba nadie. El
+        // subcontratista sigue igual.
+        esTecnico
+          ? <WeeklyTasksPanel technicianId={uidFromCookie() ?? ""} hidePersonFilters />
+          : <WeeklyTasksPanel subcontractorId={subcontractorId ?? ""} hidePersonFilters />
       ) : view === "certificates" ? (
         <TechCertificatesPanel subcontractorId={subcontractorId ?? ""} />
       ) : view === "performance" ? (

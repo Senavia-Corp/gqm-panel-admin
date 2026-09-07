@@ -65,19 +65,21 @@ const gqmMemberMenuItems: NavItem[] = [
 ]
 
 // U-05 · El menú del portal solo pinta rutas que ese rol puede abrir de
-// verdad: estas dos listas tienen que ser un subconjunto de
-// `PORTAL_PREFIXES` en `middleware.ts:19-31`. Antes ofrecían /dashboard y
-// /jobs, que el middleware rebotaba: 2 de los 3 enlaces del subcontratista y
-// los 2 del técnico estaban muertos.
+// verdad: estas dos listas tienen que ser un subconjunto de `PORTAL_PREFIXES`
+// (`lib/portal-routes.ts`), o se vuelve a prometer lo que el middleware niega
+// —que es como estaban: 2 de los 3 enlaces del sub y los 2 del técnico
+// llevaban a un rebote.
 //
-// El subcontratista solo tiene /subcontractors (su propia ficha; el href se
-// reescribe abajo con el id de sesión) — /jobs no está en su prefijo y
-// /dashboard lo devuelve a su ficha.
+// El subcontratista tiene su ficha (el href se reescribe abajo con el id de
+// sesión) y «Trabajos», que reutiliza /jobs: el API ya le acota la lista a sus
+// obras, filas y total (scope_jobs_statement), así que no hace falta filtro en
+// el cliente ni una ruta aparte.
 const subcontractorMenuItems: NavItem[] = [
-  { icon: Users,           labelKey: "subcontractors", href: "/subcontractors" },
+  { icon: Users,     labelKey: "subcontractors", href: "/subcontractors" },
+  { icon: Briefcase, labelKey: "jobs",           href: "/jobs" },
 ]
 
-// El técnico solo tiene /dashboard, que le sirve LeadTechnicianDashboard.
+// El técnico solo tiene /dashboard, que le sirve su tablero de tareas.
 const leadTechnicianMenuItems: NavItem[] = [
   { icon: LayoutDashboard, labelKey: "dashboard",    href: "/dashboard" },
 ]

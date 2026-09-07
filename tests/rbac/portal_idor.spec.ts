@@ -151,6 +151,7 @@ test.describe("portal · el diálogo de tarea no ofrece caminos que el API recha
     const opciones = (await page.getByRole("option").allInnerTexts())
       .map((t) => t.replace(/\s+/g, " ").trim())
     expect(opciones).toContain("DEV Technician")
-    expect(opciones.join(" | ")).not.toMatch(/Technician B|TEC60002/)
+    expect(opciones.join(" | ")).not.toMatch(
+      new RegExp(`Technician B|${process.env.RBAC_TEC_B_ID}`))
   })
 })

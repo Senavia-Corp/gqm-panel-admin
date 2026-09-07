@@ -75,6 +75,8 @@ interface AdvancedJobFiltersProps {
   onAddNew?: () => void
   onExportClick?: () => void
   isTechnician?: boolean
+  /** Rol de portal (cookie `gqm_role`): oculta lo que acaba en 403. */
+  modoPortal?: boolean
   actionButtons?: React.ReactNode
 }
 
@@ -105,6 +107,7 @@ export function AdvancedJobFilters({
   onAddNew,
   onExportClick,
   isTechnician,
+  modoPortal = false,
   actionButtons,
 }: AdvancedJobFiltersProps) {
   const t = useTranslations("jobs")
@@ -129,16 +132,22 @@ export function AdvancedJobFilters({
 
     const fetchData = async () => {
       try {
+        // Los tres catálogos que alimentan estos desplegables exigen
+        // `client:read`, `catalog:read` y `member:read`, y la política de
+        // portal no concede ninguno: para el subcontratista eran tres 403 y
+        // tres desplegables vacíos. El `?.ok` de abajo los tragaba en
+        // silencio, que es peor: el control se pintaba igual, sin opciones y
+        // sin explicación.
         const [clientsRes, parentsRes, membersRes] = await Promise.all([
-          apiFetch("/api/clients/table?limit=500"),
-          apiFetch("/api/parent_mgmt_co?limit=200"),
-          apiFetch("/api/members/table?limit=200")
+          modoPortal ? null : apiFetch("/api/clients/table?limit=500"),
+          modoPortal ? null : apiFetch("/api/parent_mgmt_co?limit=200"),
+          modoPortal ? null : apiFetch("/api/members/table?limit=200")
         ])
         
         const [clientsData, parentsData, membersData] = await Promise.all([
-           clientsRes.ok ? clientsRes.json() : { results: [] },
-           parentsRes.ok ? parentsRes.json() : { results: [] },
-           membersRes.ok ? membersRes.json() : { results: [] }
+           clientsRes?.ok ? clientsRes.json() : { results: [] },
+           parentsRes?.ok ? parentsRes.json() : { results: [] },
+           membersRes?.ok ? membersRes.json() : { results: [] }
         ])
         
         setClients(clientsData?.results ?? [])
@@ -247,10 +256,16 @@ export function AdvancedJobFilters({
               className="h-11 pl-10 pr-3 rounded-xl border-slate-200 bg-slate-50/50 focus-visible:ring-gqm-green-dark focus-visible:bg-white transition-all text-sm placeholder:text-slate-400 shadow-none sm:h-12 sm:pl-12 sm:pr-4 sm:text-base"
             />
           </div>
+          {/* «Analyze» fuera del portal. Ojo: esto NO le quita la búsqueda —
+              `onSearchKeyDown` sigue enviando con Enter—, solo el botón. Es lo
+              buscado: el sub filtra su propia lista; lo que no se le ofrece es
+              la herramienta de análisis del staff. */}
+          {!modoPortal && (
           <Button onClick={onSearchSubmit} size="lg" className="h-11 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md gap-2 font-bold shrink-0 sm:h-12 sm:px-8">
             <Search className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="hidden sm:inline">{t("filtersAnalyze")}</span>
           </Button>
+          )}
           {activeFilterCount > 0 && (
             <Button variant="outline" onClick={onResetFilters} size="lg" className="h-11 px-3 rounded-xl border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all font-bold shrink-0 gap-1.5 sm:h-12 sm:px-6 sm:gap-2">
               <RefreshCcw className="h-4 w-4" />
@@ -286,8 +301,11 @@ export function AdvancedJobFilters({
                 ))}
               </FilterSelect>
 
-              {/* Miembro / Asociado */}
-              {!isTechnician && (
+              {/* Miembro / Asociado — el «Representative». Estaba oculto solo
+                  al técnico; el subcontratista lo seguía viendo, y filtrar sus
+                  obras por personal interno de GQM no es asunto suyo (además,
+                  la lista de miembros que lo alimenta le responde 403). */}
+              {!isTechnician && !modoPortal && (
                 <FilterSelect
                   label={t("filterRep")}
                   icon={<Users className="h-3.5 w-3.5" />}
@@ -305,7 +323,9 @@ export function AdvancedJobFilters({
                 </FilterSelect>
               )}
 
-              {/* Cliente */}
+              {/* Cliente — mismo motivo que «Rep»: sin `client:read` la lista
+                  llega vacía y el control no filtra nada. */}
+              {!modoPortal && (
               <FilterSelect
                 label={t("filterClient")}
                 icon={<Building2 className="h-3.5 w-3.5" />}
@@ -321,8 +341,10 @@ export function AdvancedJobFilters({
                   </SelectItem>
                 ))}
               </FilterSelect>
+              )}
 
-              {/* Compañía padre */}
+              {/* Compañía padre — ídem, exige `catalog:read`. */}
+              {!modoPortal && (
               <FilterSelect
                  label={t("filterParent")}
                  icon={<Globe className="h-3.5 w-3.5" />}
@@ -338,6 +360,7 @@ export function AdvancedJobFilters({
                   </SelectItem>
                 ))}
               </FilterSelect>
+              )}
 
               {/* Rango de fechas */}
               <div className="space-y-2 group">

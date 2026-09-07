@@ -13,7 +13,13 @@ const ROLES: Role[] = ["full_admin", "gqm_member", "subcontractor", "technical"]
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]?.use?.baseURL ?? process.env.PANEL_URL ?? "http://localhost:3100"
   mkdirSync(stateDir(), { recursive: true, mode: 0o700 })
-  const browser = await chromium.launch()
+  // Mismo navegador que el de `playwright.config.ts`: este `launch()` es
+  // directo y NO hereda `use.launchOptions`.
+  const browser = await chromium.launch(
+    process.env.PW_EXECUTABLE_PATH
+      ? { executablePath: process.env.PW_EXECUTABLE_PATH }
+      : undefined,
+  )
   try {
     for (const role of ROLES) {
       const context = await browser.newContext({ baseURL })

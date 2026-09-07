@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { ids, settle, sidebarLink, stateFile } from "./helpers"
+import { PORTAL_PREFIXES } from "@/lib/portal-routes"
 
 /**
  * U-05 · El menú promete lo que el middleware niega.
@@ -18,11 +19,20 @@ for (const rol of ["subcontractor", "technical"] as const) {
     for (const href of ["/dashboard", "/jobs"]) {
       test(`el enlace ${href} o no se pinta, o lleva a alguna parte`, async ({ page }) => {
         await page.goto("/")
-        await page.waitForLoadState("networkidle").catch(() => {})
+        // `settle` y no un `networkidle` pelado: entrar por `/` encadena una
+        // redirección del middleware hasta el inicio del rol, y con la red ya
+        // en reposo el router del cliente todavía no ha terminado de hidratar.
+        // Medido: pulsando ahí mismo, el enlace no navega y la prueba lo
+        // denuncia como «pintado pero rebota»; con el `settle` de la casa
+        // —mismo que usa el resto de este fichero— navega siempre. El cuerpo de
+        // esta prueba NUNCA se había ejecutado para el subcontratista, porque
+        // hasta ahora `/jobs` no se le pintaba y salía por el `return` de
+        // abajo: la carrera estaba latente, no es nueva.
+        await settle(page)
         const enlace = sidebarLink(page, href)
         if ((await enlace.count()) === 0) return    // no pintarlo también es correcto
         await enlace.first().click()
-        await page.waitForLoadState("networkidle").catch(() => {})
+        await settle(page)
         expect(page.url(), `${href} está pintado pero rebota`).toContain(href)
       })
     }
@@ -182,10 +192,11 @@ test.describe("los avisos de use-toast se pintan (U-07)", () => {
  * abajo, que sí los ven. Un barrido de anclas NO sustituye a mirar los
  * botones.
  */
-const PREFIJOS_PORTAL: Record<string, string[]> = {
-  subcontractor: ["/subcontractors", "/profile"],
-  technical: ["/dashboard", "/technicians", "/profile"],
-}
+// Se IMPORTA del middleware en vez de copiarse a mano. La copia local era la
+// tercera de la misma tabla, y una copia desactualizada aquí no falla ruidosa:
+// o denuncia como fuera de alcance una ruta recién abierta (rojo falso), o deja
+// pasar una que ya no lo está (verde falso). Las dos mienten igual de bien.
+const PREFIJOS_PORTAL = PORTAL_PREFIXES
 
 /** `/login` es el enlace de «Log out»: página pública, salida legítima. */
 const SALIDAS_LEGITIMAS = ["/login"]
@@ -215,12 +226,20 @@ test.describe("portal · ningún enlace de la pantalla sale de su alcance (U-09)
       }
     })
 
-    test("y el botón «View Job» de la pestaña Jobs ya no se le ofrece", async ({ page }) => {
+    test("y el botón «View Job» le lleva de verdad a su job", async ({ page }) => {
+      // Esta prueba afirmaba lo contrario —que el botón NO se le ofrecía—, y
+      // era correcto mientras `/jobs` no estaba entre sus prefijos: el
+      // middleware lo rebotaba a su propia ficha y encima perdía la pestaña.
+      // Ahora el destino existe y llega recortado, así que el callejón sin
+      // salida se convierte en el camino previsto.
       await page.goto(`/subcontractors/${ids.sub()}?tab=jobs`)
       await settle(page)
       // Señal positiva antes de la negativa: la pestaña cargó con jobs dentro.
       await expect(page.getByText("AUDIT-PORTAL-A-job-de-sub-A").first()).toBeVisible({ timeout: 30_000 })
-      await expect(page.getByRole("button").filter({ hasText: /View Job/i })).toHaveCount(0)
+      const verJob = page.getByRole("button").filter({ hasText: /View Job|Ver Trabajo/i }).first()
+      await expect(verJob).toBeVisible()
+      await verJob.click()
+      await expect(page).toHaveURL(new RegExp(`/jobs/${ids.job()}`), { timeout: 15_000 })
     })
   })
 
@@ -234,7 +253,10 @@ test.describe("portal · ningún enlace de la pantalla sale de su alcance (U-09)
       const dlg = page.getByRole("dialog")
       await expect(dlg).toBeVisible({ timeout: 15_000 })
       // Señal positiva: el diálogo trae el job dentro, solo que sin enlace.
-      await expect(dlg).toContainText("QID-I60001")
+      // `ids.job()` y no un id escrito a mano: los ids salen de un contador
+      // y cambian con cada resiembra. Medido: tras una, esta línea buscaba
+      // QID-I60001 en un diálogo que decía QID-I60033.
+      await expect(dlg).toContainText(ids.job())
 
       const hrefs = await dlg.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href")))
       expect(fueraDeAlcance(hrefs, PREFIJOS_PORTAL.technical)).toEqual([])

@@ -1089,9 +1089,12 @@ function FilterChip({
 
 export default function WeeklyTasksPanel({
   subcontractorId,
+  technicianId,
   hidePersonFilters = false,
 }: {
   subcontractorId?: string | null
+  /** Tablero de UN técnico: sus tareas, no las de su subcontratista. */
+  technicianId?: string | null
   hidePersonFilters?: boolean
 }) {
   const t = useTranslations("dashboard")
@@ -1105,8 +1108,14 @@ export default function WeeklyTasksPanel({
   // Filter state
   const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("ALL")
   const [memberFilter, setMemberFilter] = useState<FilterOption | null>(null)
+  // Ojo: sembrar `subFilter` activa además el filtro EN CLIENTE de más abajo
+  // (`t.ID_Subcontractor === subFilter.id`), que para un tablero de técnico es
+  // la pregunta equivocada: escondería sus propias tareas sin dueño de sub.
+  // Hoy no llega a pasar —el id viene de un fetch y este inicializador corre
+  // antes, así que el filtro nace nulo—, pero eso es un accidente del orden de
+  // render, no una garantía.
   const [subFilter, setSubFilter] = useState<FilterOption | null>(
-    subcontractorId ? { id: subcontractorId, name: "" } : null
+    subcontractorId && !technicianId ? { id: subcontractorId, name: "" } : null
   )
   const [jobFilter, setJobFilter] = useState<FilterOption | null>(null)
 
@@ -1135,9 +1144,13 @@ export default function WeeklyTasksPanel({
         if (jobType !== "ALL") qs.set("job_type", jobType)
         if (weekOffset !== 0) qs.set("week_offset", String(weekOffset))
         
-        // Priority for subcontractorId prop (technician view)
-        const activeSubId = subcontractorId || subFilter?.id
-        if (activeSubId) qs.set("subcontractor_id", activeSubId)
+        // `technician_id` manda: es el tablero de una persona.
+        if (technicianId) {
+          qs.set("technician_id", technicianId)
+        } else {
+          const activeSubId = subcontractorId || subFilter?.id
+          if (activeSubId) qs.set("subcontractor_id", activeSubId)
+        }
         
         const res = await apiFetch(`/api/tasks/weekly?${qs.toString()}`, {
           cache: "no-store",
@@ -1154,7 +1167,7 @@ export default function WeeklyTasksPanel({
       }
     }
     run()
-  }, [jobType, weekOffset, subFilter, subcontractorId, recarga])
+  }, [jobType, weekOffset, subFilter, subcontractorId, technicianId, recarga])
 
   // Reset page when filters change
   useEffect(() => {
